@@ -114,6 +114,11 @@
             text-align: center;
             font-weight: bold;
         }
+
+        .cargando {
+            text-align: center;
+            color: #1557a6;
+        }
     </style>
 </head>
 
@@ -121,10 +126,10 @@
 
 <div class="contenedor">
 
-    <h1>Consulta de notas de Matemática</h1>
+    <h1>Consulta de Notas</h1>
 
     <div class="subtitulo">
-        Ingresa tu CI y PIN
+        Ingresa tu CI y fecha de nacimiento
     </div>
 
     <label for="ci">CI</label>
@@ -135,12 +140,13 @@
         placeholder="Ejemplo: 1234567"
     >
 
-    <label for="pin">PIN</label>
+    <label for="fecha_nacimiento">
+        Fecha de nacimiento
+    </label>
 
     <input
-        type="password"
-        id="pin"
-        placeholder="Ingresa tu PIN"
+        type="date"
+        id="fecha_nacimiento"
     >
 
     <button onclick="consultarNota()">
@@ -171,15 +177,11 @@
 
     async function consultarNota() {
 
-        const ci = document
-            .getElementById("ci")
-            .value
-            .trim();
+        const ci =
+            document.getElementById("ci").value.trim();
 
-        const pin = document
-            .getElementById("pin")
-            .value
-            .trim();
+        const fechaNacimiento =
+            document.getElementById("fecha_nacimiento").value;
 
         const resultado =
             document.getElementById("resultado");
@@ -188,33 +190,32 @@
         resultado.innerHTML = "";
 
 
-        // Verificar que se hayan colocado los datos
+        // Comprobar datos
 
-        if (!ci || !pin) {
+        if (!ci || !fechaNacimiento) {
 
             resultado.innerHTML =
-                '<p class="error">Ingresa tu CI y PIN.</p>';
+                '<p class="error">Ingresa tu CI y fecha de nacimiento.</p>';
 
             return;
         }
 
 
-        resultado.innerHTML = "Buscando...";
+        resultado.innerHTML =
+            '<p class="cargando">Buscando...</p>';
 
 
         try {
 
             const respuesta = await fetch(
 
-                `${SUPABASE_URL}/rest/v1/matematica?ci=eq.${encodeURIComponent(ci)}&pin=eq.${encodeURIComponent(pin)}&select=*`,
+                `${SUPABASE_URL}/rest/v1/matematica?ci=eq.${encodeURIComponent(ci)}&fecha_nacimiento=eq.${encodeURIComponent(fechaNacimiento)}&select=*`,
 
                 {
                     method: "GET",
 
                     headers: {
-
                         "apikey": SUPABASE_KEY,
-
                         "Authorization":
                             `Bearer ${SUPABASE_KEY}`
                     }
@@ -234,23 +235,21 @@
                 await respuesta.json();
 
 
-            // Si no encuentra al estudiante
+            // No encontrado
 
             if (datos.length === 0) {
 
                 resultado.innerHTML =
-                    '<p class="error">CI o PIN incorrectos.</p>';
+                    '<p class="error">CI o fecha de nacimiento incorrectos.</p>';
 
                 return;
             }
 
 
-            // Datos del estudiante
+            // Datos encontrados
 
             const alumno = datos[0];
 
-
-            // Mostrar información y notas
 
             resultado.innerHTML = `
 
@@ -280,21 +279,30 @@
 
                         <tr>
                             <td>1er Trimestre</td>
-                            <td>${alumno.nota_1t}</td>
+                            <td>
+                                ${alumno.nota_1t}
+                            </td>
                         </tr>
 
                         <tr>
                             <td>2do Trimestre</td>
-                            <td>${alumno.nota_2t}</td>
+                            <td>
+                                ${alumno.nota_2t}
+                            </td>
                         </tr>
 
                         <tr>
                             <td>3er Trimestre</td>
-                            <td>${alumno.nota_3t}</td>
+                            <td>
+                                ${alumno.nota_3t}
+                            </td>
                         </tr>
 
                         <tr>
-                            <td><strong>Nota Final</strong></td>
+                            <td>
+                                <strong>Nota Final</strong>
+                            </td>
+
                             <td class="final">
                                 ${alumno.final}
                             </td>
