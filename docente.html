@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Panel Docente</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f5f9;
+            color: #222;
+        }
+
+        .contenedor {
+            width: 95%;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+
+        .panel {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.10);
+        }
+
+        h1 {
+            color: #1557a6;
+            margin-top: 0;
+        }
+
+        .usuario {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .filtros {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .filtro {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .tabla-contenedor {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #1557a6;
+            color: white;
+        }
+
+        td.nombre {
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        td input {
+            width: 70px;
+            text-align: center;
+            padding: 7px;
+        }
+
+        .segundo {
+            font-weight: bold;
+        }
+
+        .botones {
+            margin-top: 25px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 22px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .guardar {
+            background: #16803c;
+            color: white;
+        }
+
+        .salir {
+            background: #c62828;
+            color: white;
+        }
+
+        .mensaje {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <div class="panel">
+
+        <h1>Panel Docente</h1>
+
+        <div class="usuario">
+            Usuario: <span id="usuario"></span>
+        </div>
+
+
+        <!-- FILTROS -->
+
+        <div class="filtros">
+
+            <div class="filtro">
+
+                <label>
+                    Buscar por nombre
+                </label>
+
+                <input
+                    type="text"
+                    id="buscarNombre"
+                    placeholder="Escribe un nombre..."
+                >
+
+            </div>
+
+
+            <div class="filtro">
+
+                <label>
+                    Curso
+                </label>
+
+                <select id="buscarCurso">
+
+                    <option value="">
+                        Todos los cursos
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+
+        <!-- TABLA -->
+
+        <div class="tabla-contenedor">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>CI</th>
+
+                        <th>Nombre</th>
+
+                        <th>Curso</th>
+
+                        <th>1T</th>
+
+                        <th>2T</th>
+
+                        <th>3T</th>
+
+                        <th>Final</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="tablaEstudiantes">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- BOTONES -->
+
+        <div class="botones">
+
+            <button
+                class="guardar"
+                onclick="guardarNotas()">
+
+                💾 Guardar
+
+            </button>
+
+
+            <button
+                class="salir"
+                onclick="cerrarSesion()">
+
+                🚪 Cerrar sesión
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="mensaje"
+            class="mensaje">
+        </div>
+
+    </div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+<script>
+
+    const SUPABASE_URL =
+        "https://tecphbbkkmlgahjddcep.supabase.co";
+
+    const SUPABASE_KEY =
+        "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
+
+
+    const supabaseClient =
+        window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+
+
+    let estudiantes = [];
+
+
+    // ==========================================
+    // COMPROBAR SESIÓN
+    // ==========================================
+
+    async function comprobarSesion() {
+
+        const {
+            data: {
+                user
+            }
+        } = await supabaseClient.auth.getUser();
+
+
+        if (!user) {
+
+            window.location.href =
+                "login-docente.html";
+
+            return;
+
+        }
+
+
+        document.getElementById("usuario")
+            .textContent = user.email;
+
+
+        cargarEstudiantes();
+
+    }
+
+
+    // ==========================================
+    // CARGAR ESTUDIANTES
+    // ==========================================
+
+    async function cargarEstudiantes() {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+
+            .from("matematica")
+
+            .select(
+                "id,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
+            )
+
+            .order("nombre");
+
+
+        if (error) {
+
+            console.error(error);
+
+            mostrarMensaje(
+                "Error al cargar los estudiantes.",
+                true
+            );
+
+            return;
+
+        }
+
+
+        estudiantes = data || [];
+
+
+        cargarCursos();
+
+        mostrarEstudiantes();
+
+    }
+
+
+    // ==========================================
+    // CURSOS
+    // ==========================================
+
+    function cargarCursos() {
+
+        const select =
+            document.getElementById("buscarCurso");
+
+
+        const cursos =
+            [...new Set(
+                estudiantes
+                    .map(e => e.curso)
+                    .filter(Boolean)
+            )]
+            .sort();
+
+
+        cursos.forEach(curso => {
+
+            const opcion =
+                document.createElement("option");
+
+            opcion.value = curso;
+
+            opcion.textContent = curso;
+
+            select.appendChild(opcion);
+
+        });
+
+    }
+
+
+    // ==========================================
+    // MOSTRAR ESTUDIANTES
+    // ==========================================
+
+    function mostrarEstudiantes() {
+
+        const nombre =
+            document.getElementById(
+                "buscarNombre"
+            ).value
+            .toLowerCase()
+            .trim();
+
+
+        const curso =
+            document.getElementById(
+                "buscarCurso"
+            ).value;
+
+
+        const filtrados =
+            estudiantes.filter(estudiante => {
+
+                const coincideNombre =
+                    estudiante.nombre
+                        .toLowerCase()
+                        .includes(nombre);
+
+
+                const coincideCurso =
+                    !curso ||
+                    estudiante.curso === curso;
+
+
+                return coincideNombre &&
+                       coincideCurso;
+
+            });
+
+
+        const tabla =
+            document.getElementById(
+                "tablaEstudiantes"
+            );
+
+
+        tabla.innerHTML = "";
+
+
+        filtrados.forEach(estudiante => {
+
+            const fila =
+                document.createElement("tr");
+
+
+            fila.innerHTML = `
+
+                <td>
+                    ${estudiante.ci}
+                </td>
+
+                <td class="nombre">
+                    ${estudiante.nombre}
+                </td>
+
+                <td>
+                    ${estudiante.curso}
+                </td>
+
+                <td>
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="${estudiante.nota_1t ?? ""}"
+                        data-id="${estudiante.id}"
+                        data-campo="nota_1t">
+                </td>
+
+                <td>
+                    <input
+                        class="segundo"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="${estudiante.nota_2t ?? ""}"
+                        data-id="${estudiante.id}"
+                        data-campo="nota_2t">
+                </td>
+
+                <td>
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="${estudiante.nota_3t ?? ""}"
+                        data-id="${estudiante.id}"
+                        data-campo="nota_3t">
+                </td>
+
+                <td>
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="${estudiante.final ?? ""}"
+                        data-id="${estudiante.id}"
+                        data-campo="final">
+                </td>
+
+            `;
+
+
+            tabla.appendChild(fila);
+
+        });
+
+    }
+
+
+    // ==========================================
+    // GUARDAR
+    // ==========================================
+
+    async function guardarNotas() {
+
+        mostrarMensaje(
+            "Guardando..."
+        );
+
+
+        const inputs =
+            document.querySelectorAll(
+                "#tablaEstudiantes input"
+            );
+
+
+        const cambios = {};
+
+
+        inputs.forEach(input => {
+
+            const id =
+                input.dataset.id;
+
+            const campo =
+                input.dataset.campo;
+
+            if (!cambios[id]) {
+
+                cambios[id] = {
+                    id: id
+                };
+
+            }
+
+
+            cambios[id][campo] =
+                input.value === ""
+                    ? null
+                    : Number(input.value);
+
+        });
+
+
+        for (const id in cambios) {
+
+            const cambio =
+                cambios[id];
+
+
+            const {
+                id: estudianteId,
+                ...notas
+            } = cambio;
+
+
+            const {
+                error
+            } = await supabaseClient
+
+                .from("matematica")
+
+                .update(notas)
+
+                .eq("id", estudianteId);
+
+
+            if (error) {
+
+                console.error(error);
+
+                mostrarMensaje(
+                    "Ocurrió un error al guardar.",
+                    true
+                );
+
+                return;
+
+            }
+
+        }
+
+
+        mostrarMensaje(
+            "✓ Notas guardadas correctamente."
+        );
+
+
+        cargarEstudiantes();
+
+    }
+
+
+    // ==========================================
+    // FILTROS
+    // ==========================================
+
+    document.getElementById(
+        "buscarNombre"
+    ).addEventListener(
+        "input",
+        mostrarEstudiantes
+    );
+
+
+    document.getElementById(
+        "buscarCurso"
+    ).addEventListener(
+        "change",
+        mostrarEstudiantes
+    );
+
+
+    // ==========================================
+    // CERRAR SESIÓN
+    // ==========================================
+
+    async function cerrarSesion() {
+
+        await supabaseClient.auth.signOut();
+
+        window.location.href =
+            "login-docente.html";
+
+    }
+
+
+    // ==========================================
+    // MENSAJES
+    // ==========================================
+
+    function mostrarMensaje(
+        texto,
+        error = false
+    ) {
+
+        const mensaje =
+            document.getElementById(
+                "mensaje"
+            );
+
+        mensaje.textContent = texto;
+
+        mensaje.style.color =
+            error
+                ? "#c62828"
+                : "#16803c";
+
+    }
+
+
+    comprobarSesion();
+
+</script>
+
+</body>
+
+</html>
