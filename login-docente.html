@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Acceso Docente</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #f2f5f9;
+
+            min-height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+        }
+
+
+        .login {
+
+            width: 90%;
+
+            max-width: 400px;
+
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 15px;
+
+            box-shadow:
+                0 5px 20px rgba(0,0,0,.12);
+
+        }
+
+
+        h1 {
+
+            text-align: center;
+
+            color: #1557a6;
+
+            margin-top: 0;
+
+        }
+
+
+        .subtitulo {
+
+            text-align: center;
+
+            color: #666;
+
+            margin-bottom: 25px;
+
+        }
+
+
+        label {
+
+            display: block;
+
+            font-weight: bold;
+
+            margin-top: 15px;
+
+            margin-bottom: 6px;
+
+        }
+
+
+        input {
+
+            width: 100%;
+
+            padding: 12px;
+
+            border: 1px solid #ccc;
+
+            border-radius: 8px;
+
+            font-size: 16px;
+
+        }
+
+
+        button {
+
+            width: 100%;
+
+            margin-top: 25px;
+
+            padding: 13px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background: #1557a6;
+
+            color: white;
+
+            font-size: 17px;
+
+            cursor: pointer;
+
+        }
+
+
+        button:hover {
+
+            background: #0d4282;
+
+        }
+
+
+        #mensaje {
+
+            margin-top: 15px;
+
+            text-align: center;
+
+            font-weight: bold;
+
+        }
+
+
+        .error {
+
+            color: #c62828;
+
+        }
+
+
+        .cargando {
+
+            color: #1557a6;
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="login">
+
+
+    <h1>Panel Docente</h1>
+
+
+    <div class="subtitulo">
+
+        Inicia sesión para continuar
+
+    </div>
+
+
+    <label for="email">
+
+        Correo electrónico
+
+    </label>
+
+
+    <input
+
+        type="email"
+
+        id="email"
+
+        placeholder="docente@colegio.com"
+
+    >
+
+
+    <label for="password">
+
+        Contraseña
+
+    </label>
+
+
+    <input
+
+        type="password"
+
+        id="password"
+
+        placeholder="Ingresa tu contraseña"
+
+    >
+
+
+    <button onclick="iniciarSesion()">
+
+        Ingresar
+
+    </button>
+
+
+    <div id="mensaje"></div>
+
+
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+<script>
+
+
+    const SUPABASE_URL =
+
+        "https://tecphbbkkmlgahjddcep.supabase.co";
+
+
+    const SUPABASE_KEY =
+
+        "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
+
+
+    const supabaseClient =
+
+        window.supabase.createClient(
+
+            SUPABASE_URL,
+
+            SUPABASE_KEY
+
+        );
+
+
+
+    async function iniciarSesion() {
+
+
+        const email =
+
+            document
+
+                .getElementById("email")
+
+                .value
+
+                .trim();
+
+
+        const password =
+
+            document
+
+                .getElementById("password")
+
+                .value;
+
+
+
+        const mensaje =
+
+            document
+
+                .getElementById("mensaje");
+
+
+
+        if (!email || !password) {
+
+            mensaje.textContent =
+
+                "Ingresa correo y contraseña.";
+
+            mensaje.className = "error";
+
+            return;
+
+        }
+
+
+
+        mensaje.textContent =
+
+            "Ingresando...";
+
+        mensaje.className = "cargando";
+
+
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabaseClient.auth.signInWithPassword({
+
+            email: email,
+
+            password: password
+
+        });
+
+
+
+        if (error) {
+
+            console.error(error);
+
+            mensaje.textContent =
+
+                "Correo o contraseña incorrectos.";
+
+            mensaje.className = "error";
+
+            return;
+
+        }
+
+
+
+        // Verificar que realmente sea docente
+
+        const {
+
+            data: docente,
+
+            error: errorDocente
+
+        } = await supabaseClient
+
+            .from("docentes")
+
+            .select("id,nombre,ci")
+
+            .eq("user_id", data.user.id)
+
+            .maybeSingle();
+
+
+
+        if (errorDocente || !docente) {
+
+            await supabaseClient.auth.signOut();
+
+            mensaje.textContent =
+
+                "Este usuario no está autorizado como docente.";
+
+            mensaje.className = "error";
+
+            return;
+
+        }
+
+
+
+        // Acceso correcto
+
+        window.location.href =
+
+            "docente.html";
+
+    }
+
+</script>
+
+
+</body>
+
+</html>
