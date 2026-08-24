@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Consulta de Notas</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f2f5f9;
+            color: #222;
+        }
+
+        .contenedor {
+            width: 90%;
+            max-width: 500px;
+            margin: 50px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+
+        /* ENCABEZADO INSTITUCIONAL */
+        .institucion {
+            text-align: center;
+            color: #1557a6;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1557a6;
+            margin: 5px 0;
+        }
+
+        .profesor {
+            text-align: center;
+            color: #555;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .subtitulo {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            background: #1557a6;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0d4282;
+        }
+
+        #resultado {
+            margin-top: 25px;
+        }
+
+        .datos {
+            background: #f1f6ff;
+            padding: 18px;
+            border-radius: 10px;
+        }
+
+        .datos h2 {
+            text-align: center;
+            color: #1557a6;
+        }
+
+        .tabla-notas {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .tabla-notas th,
+        .tabla-notas td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .tabla-notas th {
+            background: #1557a6;
+            color: white;
+        }
+
+        .final {
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .error {
+            color: #c62828;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .cargando {
+            text-align: center;
+            color: #1557a6;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <!-- ENCABEZADO -->
+    <div class="institucion">
+        U.E. GERMAN BUSCH I
+    </div>
+
+    <h1>Matemática 2026</h1>
+
+    <div class="profesor">
+        Prof. Javier Delmo Hacosta Moralez
+    </div>
+
+    <div class="subtitulo">
+        Ingresa tu CI y fecha de nacimiento
+    </div>
+
+    <label for="ci">CI</label>
+
+    <input
+        type="text"
+        id="ci"
+        placeholder="Ejemplo: 1234567"
+    >
+
+    <label for="fecha_nacimiento">
+        Fecha de nacimiento
+    </label>
+
+    <input
+        type="date"
+        id="fecha_nacimiento"
+    >
+
+    <button onclick="consultarNota()">
+        Consultar mis notas
+    </button>
+
+    <div id="resultado"></div>
+
+</div>
+
+
+<script>
+
+    // ==========================================
+    // CONEXIÓN CON SUPABASE
+    // ==========================================
+
+    const SUPABASE_URL =
+        "https://tecphbbkkmlgahjddcep.supabase.co";
+
+    const SUPABASE_KEY =
+        "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
+
+
+    // ==========================================
+    // CONSULTAR NOTAS
+    // ==========================================
+
+    async function consultarNota() {
+
+        const ci =
+            document.getElementById("ci").value.trim();
+
+        const fechaNacimiento =
+            document.getElementById("fecha_nacimiento").value;
+
+        const resultado =
+            document.getElementById("resultado");
+
+
+        resultado.innerHTML = "";
+
+
+        // Comprobar datos
+
+        if (!ci || !fechaNacimiento) {
+
+            resultado.innerHTML =
+                '<p class="error">Ingresa tu CI y fecha de nacimiento.</p>';
+
+            return;
+        }
+
+
+        resultado.innerHTML =
+            '<p class="cargando">Buscando...</p>';
+
+
+        try {
+
+            const respuesta = await fetch(
+
+                `${SUPABASE_URL}/rest/v1/matematica?ci=eq.${encodeURIComponent(ci)}&fecha_nacimiento=eq.${encodeURIComponent(fechaNacimiento)}&select=*`,
+
+                {
+                    method: "GET",
+
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+
+
+            if (!respuesta.ok) {
+
+                throw new Error(
+                    "Error al consultar Supabase"
+                );
+            }
+
+
+            const datos =
+                await respuesta.json();
+
+
+            // No encontrado
+
+            if (datos.length === 0) {
+
+                resultado.innerHTML =
+                    '<p class="error">CI o fecha de nacimiento incorrectos.</p>';
+
+                return;
+            }
+
+
+            // Datos encontrados
+
+            const alumno = datos[0];
+
+
+            resultado.innerHTML = `
+
+                <div class="datos">
+
+                    <h2>
+                        ${alumno.nombre}
+                    </h2>
+
+                    <p>
+                        <strong>CI:</strong>
+                        ${alumno.ci}
+                    </p>
+
+                    <p>
+                        <strong>Curso:</strong>
+                        ${alumno.curso}
+                    </p>
+
+
+                    <table class="tabla-notas">
+
+                        <tr>
+                            <th>Trimestre</th>
+                            <th>Nota</th>
+                        </tr>
+
+                        <tr>
+                            <td>1º Trimestre</td>
+                            <td>
+                                ${alumno.nota_1t ?? ""}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td><strong>2º Trimestre</strong></td>
+                            <td>
+                                <strong>${alumno.nota_2t ?? ""}</strong>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>3º Trimestre</td>
+                            <td>
+                                ${alumno.nota_3t ?? ""}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                <strong>Nota Final</strong>
+                            </td>
+
+                            <td class="final">
+                                ${alumno.final ?? ""}
+                            </td>
+                        </tr>
+
+                    </table>
+
+                </div>
+            `;
+        }
+
+
+        catch (error) {
+
+            console.error(error);
+
+            resultado.innerHTML =
+                '<p class="error">No se pudo conectar con el servidor.</p>';
+        }
+
+    }
+
+</script>
+
+</body>
+</html>
