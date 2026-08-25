@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 
@@ -50,6 +51,10 @@ h3 {
     margin-bottom: 25px;
 }
 
+/* =====================================================
+FILTROS
+===================================================== */
+
 .filtros {
     display: flex;
     gap: 15px;
@@ -85,6 +90,10 @@ select {
     border-radius: 8px;
 }
 
+/* =====================================================
+CREAR ACTIVIDAD
+===================================================== */
+
 .nueva-actividad {
     margin-top: 20px;
     padding: 20px;
@@ -99,6 +108,10 @@ select {
     gap: 15px;
     align-items: end;
 }
+
+/* =====================================================
+BOTONES GENERALES
+===================================================== */
 
 button {
     border: none;
@@ -132,6 +145,10 @@ button:hover {
     color: white;
 }
 
+/* =====================================================
+CATEGORÍAS
+===================================================== */
+
 .categoria {
     margin-top: 25px;
     border: 1px solid #ddd;
@@ -162,6 +179,10 @@ button:hover {
     background: #00838f;
 }
 
+/* =====================================================
+ACTIVIDAD
+===================================================== */
+
 .actividad {
     margin: 18px;
     border: 1px solid #ddd;
@@ -169,19 +190,62 @@ button:hover {
     overflow: hidden;
 }
 
+/* =====================================================
+ENCABEZADO ACTIVIDAD
+===================================================== */
+
 .encabezado-actividad {
     background: #f4f6f8;
     padding: 12px 15px;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     gap: 10px;
 }
+
+/* =====================================================
+NOMBRE + EDITAR + ELIMINAR
+===================================================== */
 
 .nombre-actividad {
     font-weight: bold;
     font-size: 16px;
+
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    min-width: 0;
 }
+
+.nombre-actividad > span:first-child {
+    overflow-wrap: anywhere;
+}
+
+.acciones-nombre {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.acciones-nombre button {
+    width: 30px;
+    height: 28px;
+
+    padding: 0;
+
+    border-radius: 6px;
+
+    font-size: 15px;
+}
+
+/* =====================================================
+PUNTAJE
+===================================================== */
 
 .puntaje-actividad {
     font-weight: normal;
@@ -189,8 +253,13 @@ button:hover {
     font-size: 14px;
 }
 
+/* =====================================================
+BOTONES DERECHA
+===================================================== */
+
 .botones-actividad {
     display: flex;
+    align-items: center;
     gap: 7px;
     flex-shrink: 0;
 }
@@ -200,10 +269,14 @@ button:hover {
 .boton-bloquear,
 .boton-eliminar {
     color: white;
+
     width: 38px;
     height: 34px;
+
     padding: 0;
+
     font-size: 18px;
+
     font-weight: bold;
 }
 
@@ -222,6 +295,10 @@ button:hover {
 .boton-eliminar {
     background: #c62828;
 }
+
+/* =====================================================
+CONTENIDO
+===================================================== */
 
 .contenido-actividad {
     padding: 0;
@@ -253,6 +330,10 @@ td.nombre {
     white-space: nowrap;
 }
 
+/* =====================================================
+NOTAS
+===================================================== */
+
 .nota-input {
     width: 75px;
     text-align: center;
@@ -278,6 +359,10 @@ td.nombre {
     margin-left: 5px;
 }
 
+/* =====================================================
+TABLA GENERAL
+===================================================== */
+
 .tabla-general {
     margin-top: 30px;
     border: 1px solid #ddd;
@@ -288,10 +373,13 @@ td.nombre {
 .titulo-general {
     background: #1557a6;
     color: white;
+
     padding: 13px 15px;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     font-size: 18px;
     font-weight: bold;
 }
@@ -299,9 +387,12 @@ td.nombre {
 .boton-general {
     background: rgba(255,255,255,.20);
     color: white;
+
     width: 38px;
     height: 34px;
+
     padding: 0;
+
     font-size: 22px;
     font-weight: bold;
 }
@@ -311,6 +402,10 @@ td.nombre {
     font-weight: bold;
     font-size: 18px;
 }
+
+/* =====================================================
+BOTONES INFERIORES
+===================================================== */
 
 .botones {
     margin-top: 25px;
@@ -328,6 +423,10 @@ td.nombre {
     display: none !important;
 }
 
+/* =====================================================
+MÓVIL
+===================================================== */
+
 @media (max-width: 800px) {
 
     .nueva-grid {
@@ -339,7 +438,28 @@ td.nombre {
     }
 
     .encabezado-actividad {
-        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .nombre-actividad {
+        flex: 1;
+    }
+
+    .botones-actividad {
+        flex-shrink: 0;
+    }
+
+}
+
+@media (max-width: 550px) {
+
+    .encabezado-actividad {
+        flex-direction: column;
+    }
+
+    .botones-actividad {
+        width: 100%;
+        justify-content: flex-end;
     }
 
 }
@@ -669,7 +789,8 @@ const LIMITES = {
 // ESTADO DE BLOQUEO
 // =====================================================
 
-const actividadesDesbloqueadas = new Set();
+const actividadesDesbloqueadas =
+new Set();
 
 
 // =====================================================
@@ -1236,6 +1357,10 @@ function crearActividadHTML(
     "encabezado-actividad";
 
 
+    // =================================================
+    // NOMBRE DE ACTIVIDAD
+    // =================================================
+
     const nombre =
     document.createElement(
         "div"
@@ -1268,16 +1393,34 @@ function crearActividadHTML(
     nombre.innerHTML = `
 
         <span id="nombre-actividad-${actividad.id}">
+            ${escapeHTML(actividad.nombre)}
+        </span>
 
-        ${escapeHTML(
-            actividad.nombre
-        )}
+        <span class="acciones-nombre">
+
+            <button
+                type="button"
+                class="boton-editar"
+                title="Editar nombre de actividad">
+
+                ✏️
+
+            </button>
+
+            <button
+                type="button"
+                class="boton-eliminar"
+                title="Eliminar actividad">
+
+                🗑️
+
+            </button>
 
         </span>
 
         <span class="puntaje-actividad">
 
-        — máximo ${puntajeMaximo} puntos
+            — máximo ${puntajeMaximo} puntos
 
         </span>
 
@@ -1285,7 +1428,7 @@ function crearActividadHTML(
 
 
     // =================================================
-    // BOTONES
+    // BOTONES DERECHA
     // =================================================
 
     const botones =
@@ -1318,26 +1461,6 @@ function crearActividadHTML(
     "Mostrar estudiantes";
 
 
-    // EDITAR NOMBRE
-
-    const botonEditar =
-    document.createElement(
-        "button"
-    );
-
-
-    botonEditar.className =
-    "boton-editar";
-
-
-    botonEditar.textContent =
-    "✏️";
-
-
-    botonEditar.title =
-    "Editar nombre de actividad";
-
-
     // BLOQUEAR
 
     const botonBloquear =
@@ -1358,43 +1481,13 @@ function crearActividadHTML(
     "Desbloquear notas";
 
 
-    // ELIMINAR
-
-    const botonEliminar =
-    document.createElement(
-        "button"
-    );
-
-
-    botonEliminar.className =
-    "boton-eliminar";
-
-
-    botonEliminar.textContent =
-    "🗑️";
-
-
-    botonEliminar.title =
-    "Eliminar actividad";
-
-
     botones.appendChild(
         botonOcultar
     );
 
 
     botones.appendChild(
-        botonEditar
-    );
-
-
-    botones.appendChild(
         botonBloquear
-    );
-
-
-    botones.appendChild(
-        botonEliminar
     );
 
 
@@ -1410,6 +1503,22 @@ function crearActividadHTML(
 
     bloque.appendChild(
         encabezado
+    );
+
+
+    // =================================================
+    // OBTENER BOTONES EDITAR Y ELIMINAR
+    // =================================================
+
+    const botonEditar =
+    nombre.querySelector(
+        ".boton-editar"
+    );
+
+
+    const botonEliminar =
+    nombre.querySelector(
+        ".boton-eliminar"
     );
 
 
@@ -2696,7 +2805,7 @@ async function guardarNotas() {
 
 
         // =================================================
-        // 3T REDONDEADO A 0 DECIMALES
+        // 3T REDONDEADO
         // =================================================
 
         const nota3T =
@@ -2711,7 +2820,7 @@ async function guardarNotas() {
 
 
         // =================================================
-        // NOTA FINAL ANUAL
+        // NOTA FINAL
         // =================================================
 
         const nota1T =
@@ -2807,9 +2916,7 @@ async function guardarNotas() {
 
     await cargarEstudiantes();
 
-
     await cargarActividades();
-
 
     mostrarTablaGeneral();
 
@@ -2921,7 +3028,7 @@ function calcularPuntosCategoria(
 
 
 // =====================================================
-// REDONDEAR A 0 DECIMALES
+// REDONDEAR
 // =====================================================
 
 function redondear(
@@ -3071,8 +3178,6 @@ async function exportarExcel() {
 
     try {
 
-        // Primero guardar
-
         const guardado =
         await guardarNotas();
 
@@ -3105,7 +3210,7 @@ async function exportarExcel() {
 
 
         // =================================================
-        // CARGAR ACTIVIDADES
+        // ACTIVIDADES
         // =================================================
 
         const {
@@ -3140,7 +3245,7 @@ async function exportarExcel() {
 
 
         // =================================================
-        // CARGAR CALIFICACIONES
+        // CALIFICACIONES
         // =================================================
 
         const idsActividades =
@@ -3302,7 +3407,7 @@ async function exportarExcel() {
 
 
             // =================================================
-            // COLUMNAS EN EL ORDEN SOLICITADO
+            // COLUMNAS
             // =================================================
 
             const columnas = [
@@ -3341,10 +3446,6 @@ async function exportarExcel() {
             const datos = [];
 
 
-            // =================================================
-            // ENCABEZADO
-            // =================================================
-
             datos.push(
                 columnas
             );
@@ -3360,15 +3461,11 @@ async function exportarExcel() {
                 const fila = [];
 
 
-                // Nº LISTA
-
                 fila.push(
                     estudiante.num_lista ??
                     ""
                 );
 
-
-                // NOMBRE
 
                 fila.push(
                     estudiante.nombre ??
@@ -3376,9 +3473,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
                 // SER
-                // =================================================
 
                 const notasSer =
                 ser.map(
@@ -3424,9 +3519,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
                 // SABER
-                // =================================================
 
                 const notasSaber =
                 saber.map(
@@ -3472,9 +3565,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
                 // HACER
-                // =================================================
 
                 const notasHacer =
                 hacer.map(
@@ -3520,9 +3611,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
                 // AUTOEVALUACIÓN
-                // =================================================
 
                 const notasAuto =
                 auto.map(
@@ -3548,9 +3637,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
                 // NOTA 3T
-                // =================================================
 
                 fila.push(
 
@@ -3566,9 +3653,7 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
-                // NOTA FINAL ANUAL
-                // =================================================
+                // FINAL
 
                 fila.push(
 
@@ -3592,7 +3677,7 @@ async function exportarExcel() {
 
 
             // =================================================
-            // CREAR HOJA
+            // HOJA
             // =================================================
 
             const hoja =
@@ -3601,19 +3686,11 @@ async function exportarExcel() {
             );
 
 
-            // =================================================
-            // CONGELAR ENCABEZADO
-            // =================================================
-
             hoja["!freeze"] = {
                 xSplit: 2,
                 ySplit: 1
             };
 
-
-            // =================================================
-            // ANCHOS
-            // =================================================
 
             hoja["!cols"] =
             columnas.map(
@@ -3742,8 +3819,6 @@ async function exportarExcel() {
                     };
 
 
-                    // ENCABEZADO
-
                     if (
                         fila === 0
                     ) {
@@ -3768,10 +3843,6 @@ async function exportarExcel() {
             }
 
 
-            // =================================================
-            // ALTURA
-            // =================================================
-
             hoja["!rows"] = [
 
                 {
@@ -3782,7 +3853,7 @@ async function exportarExcel() {
 
 
             // =================================================
-            // NOMBRE DE HOJA
+            // NOMBRE HOJA
             // =================================================
 
             let nombreHoja =
@@ -3974,11 +4045,6 @@ function calcularPromedioPonderado(
     ];
 
 
-    // =================================================
-    // IMPORTANTE:
-    // EL PROMEDIO DEL EXCEL TAMBIÉN SE REDONDEA A 0
-    // =================================================
-
     return Math.round(
 
         (
@@ -4084,3 +4150,4 @@ comprobarSesion();
 </body>
 
 </html>
+```
