@@ -1,16 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport"
+content="width=device-width, initial-scale=1.0">
 
-<head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
-<title>Panel Docente</title>
-
-<style>
+<title>Panel Docente</title><style>
 
 /* =====================================================
    GENERAL
@@ -71,6 +62,16 @@ h3 {
     min-width: 220px;
 }
 
+.filtro-curso {
+    display: flex;
+    gap: 8px;
+    align-items: end;
+}
+
+.curso-select {
+    flex: 1;
+}
+
 label {
     display: block;
     font-weight: bold;
@@ -88,6 +89,43 @@ select {
 
 
 /* =====================================================
+   BOTÓN NUEVA ACTIVIDAD
+===================================================== */
+
+.boton-nueva-actividad {
+
+    background: #1557a6;
+
+    color: white;
+
+    width: 46px;
+
+    height: 46px;
+
+    padding: 0;
+
+    border-radius: 8px;
+
+    font-size: 25px;
+
+    font-weight: bold;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+
+}
+
+.boton-nueva-actividad:hover {
+    background: #0d4384;
+}
+
+
+/* =====================================================
    INFORMACIÓN
 ===================================================== */
 
@@ -101,22 +139,129 @@ select {
 
 
 /* =====================================================
-   NUEVA ACTIVIDAD
+   CUADRO MODAL NUEVA ACTIVIDAD
 ===================================================== */
 
-.nueva-actividad {
-    margin-top: 20px;
+.modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,.45);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 15px;
+
+    z-index: 9999;
+
+}
+
+.modal.oculto {
+    display: none !important;
+}
+
+.modal-cuadro {
+
+    width: 100%;
+
+    max-width: 600px;
+
+    background: white;
+
+    border-radius: 14px;
+
+    box-shadow: 0 10px 35px rgba(0,0,0,.25);
+
+    overflow: hidden;
+
+}
+
+.modal-encabezado {
+
+    background: #1557a6;
+
+    color: white;
+
+    padding: 15px 18px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+}
+
+.modal-encabezado h3 {
+
+    margin: 0;
+
+    font-size: 19px;
+
+}
+
+.boton-cerrar-modal {
+
+    background: rgba(255,255,255,.15);
+
+    color: white;
+
+    width: 38px;
+
+    height: 34px;
+
+    padding: 0;
+
+    font-size: 22px;
+
+    font-weight: bold;
+
+}
+
+.boton-cerrar-modal:hover {
+    background: rgba(255,255,255,.30);
+}
+
+.modal-contenido {
+
     padding: 20px;
-    background: #eef4fb;
-    border: 1px solid #cbdced;
-    border-radius: 12px;
+
 }
 
 .nueva-grid {
+
     display: grid;
-    grid-template-columns: 1fr 260px auto;
+
+    grid-template-columns: 1fr 260px;
+
     gap: 15px;
+
     align-items: end;
+
+}
+
+.nueva-boton {
+
+    margin-top: 18px;
+
+    display: flex;
+
+    justify-content: flex-end;
+
+}
+
+.crear {
+
+    background: #1557a6;
+
+    color: white;
+
 }
 
 
@@ -134,11 +279,6 @@ button {
 
 button:hover {
     opacity: .9;
-}
-
-.crear {
-    background: #1557a6;
-    color: white;
 }
 
 .guardar {
@@ -222,9 +362,6 @@ button:hover {
 
 }
 
-
-/* CONTENEDOR IZQUIERDO */
-
 .izquierda-actividad {
 
     display: flex;
@@ -236,9 +373,6 @@ button:hover {
     min-width: 0;
 
 }
-
-
-/* CONTENEDOR DERECHO */
 
 .derecha-actividad {
 
@@ -289,17 +423,12 @@ button:hover {
 
 
 /* =====================================================
-   BOTONES DE ACTIVIDAD
+   BOTONES ACTIVIDAD
 ===================================================== */
 
 .botones-actividad {
-
     display: contents;
-
 }
-
-
-/* Botones pequeños */
 
 .boton-ocultar,
 .boton-editar,
@@ -328,29 +457,17 @@ button:hover {
 
 }
 
-
-/* Editar */
-
 .boton-editar {
     background: #1565c0;
 }
-
-
-/* Eliminar */
 
 .boton-eliminar {
     background: #c62828;
 }
 
-
-/* Mostrar / ocultar */
-
 .boton-ocultar {
     background: #555;
 }
-
-
-/* Bloquear */
 
 .boton-bloquear {
     background: #ef6c00;
@@ -406,31 +523,19 @@ td {
 }
 
 th {
-
     background: #f0f0f0;
-
 }
 
 
 /* =====================================================
-   NOMBRE DEL ESTUDIANTE
+   NOMBRE ESTUDIANTE
 ===================================================== */
 
 td.nombre {
 
     text-align: left;
 
-    /*
-       Permite que el nombre pase
-       automáticamente a otra línea
-    */
-
     white-space: normal;
-
-    /*
-       Evita que nombres extremadamente
-       largos rompan la tabla
-    */
 
     overflow-wrap: anywhere;
 
@@ -444,7 +549,7 @@ td.nombre {
 
 
 /* =====================================================
-   COLUMNA Nº
+   Nº
 ===================================================== */
 
 th:first-child,
@@ -458,7 +563,7 @@ td:first-child {
 
 
 /* =====================================================
-   INPUT DE NOTAS
+   INPUT NOTAS
 ===================================================== */
 
 .nota-input {
@@ -686,6 +791,20 @@ td:first-child {
 
     }
 
+    .filtro-curso {
+
+        align-items: end;
+
+    }
+
+    .boton-nueva-actividad {
+
+        width: 44px;
+
+        height: 44px;
+
+    }
+
     .encabezado-actividad {
 
         flex-wrap: wrap;
@@ -707,11 +826,6 @@ td:first-child {
         justify-content: flex-end;
 
     }
-
-
-    /* =================================================
-       TABLA EN CELULAR
-    ================================================= */
 
     .tabla-contenedor {
 
@@ -740,9 +854,6 @@ td:first-child {
 
     }
 
-
-    /* Nº */
-
     th:first-child,
     td:first-child {
 
@@ -751,9 +862,6 @@ td:first-child {
         min-width: 38px;
 
     }
-
-
-    /* Nombre */
 
     th:nth-child(2),
     td:nth-child(2) {
@@ -776,9 +884,6 @@ td:first-child {
 
     }
 
-
-    /* Curso */
-
     th:nth-child(3),
     td:nth-child(3) {
 
@@ -787,9 +892,6 @@ td:first-child {
         min-width: 50px;
 
     }
-
-
-    /* Input de nota */
 
     .nota-input {
 
@@ -802,9 +904,6 @@ td:first-child {
         font-size: 14px;
 
     }
-
-
-    /* Tabla general */
 
     #tablaGeneral table {
 
@@ -863,6 +962,12 @@ td:first-child {
 
     }
 
+    .modal-contenido {
+
+        padding: 15px;
+
+    }
+
 }
 
 
@@ -893,9 +998,6 @@ td:first-child {
 
     }
 
-
-    /* Nº */
-
     th:first-child,
     td:first-child {
 
@@ -904,9 +1006,6 @@ td:first-child {
         min-width: 32px;
 
     }
-
-
-    /* Curso */
 
     th:nth-child(3),
     td:nth-child(3) {
@@ -917,9 +1016,6 @@ td:first-child {
 
     }
 
-
-    /* Input nota */
-
     .nota-input {
 
         width: 52px;
@@ -927,9 +1023,6 @@ td:first-child {
         font-size: 13px;
 
     }
-
-
-    /* Tabla general */
 
     #tablaGeneral th:first-child,
     #tablaGeneral td:first-child {
@@ -968,7 +1061,7 @@ td:first-child {
 
 
 /* =====================================================
-   EVITAR DESBORDAMIENTO DE TEXTOS
+   EVITAR DESBORDAMIENTO
 ===================================================== */
 
 th,
@@ -981,11 +1074,6 @@ td,
 
 }
 
-
-/* =====================================================
-   NOMBRE DE ACTIVIDAD
-===================================================== */
-
 .nombre-actividad > span:first-child {
 
     overflow-wrap: anywhere;
@@ -994,297 +1082,121 @@ td,
 
 }
 
-</style>
-
-</head>
-
-
-<body>
-
-
-<div class="contenedor">
-
-<div class="panel">
-
-
-<h1>
+</style></head><body><div class="contenedor"><div class="panel"><h1>
 Panel Docente
-</h1>
-
-
-<div class="usuario">
-
-Usuario:
+</h1><div class="usuario">Usuario:
 <span id="usuario"></span>
 
-</div>
-
-
-<!-- =====================================================
+</div><!-- =====================================================
 FILTROS
-===================================================== -->
-
-<div class="filtros">
-
-
-<div class="filtro">
-
-<label>
+===================================================== --><div class="filtros"><div class="filtro"><label>
 Buscar estudiante
-</label>
+</label><input
+type="text"
+id="buscarNombre"
+placeholder="Buscar por nombre o Nº de lista..."
 
-<input
-    type="text"
-    id="buscarNombre"
-    placeholder="Buscar por nombre o Nº de lista..."
->
+«»
 
-
-</div>
-
-
-<div class="filtro">
-
-<label>
+</div><div class="filtro"><label>
 Curso
-</label>
-
-<select id="buscarCurso">
-
-<option value="">
+</label><div class="filtro-curso"><div class="curso-select"><select id="buscarCurso"><option value="">
 Selecciona un curso
-</option>
+</option></select></div><button
+type="button"
+id="botonNuevaActividad"
+class="boton-nueva-actividad"
+title="Crear nueva actividad"
+onclick="abrirNuevaActividad()">
 
-</select>
++ 
 
-</div>
-
-
-</div>
-
-
-<div
+</button></div></div></div><div
     id="mensajeCurso"
-    class="info">
+    class="info">Selecciona un curso para comenzar.
 
-Selecciona un curso para comenzar.
-
-</div>
-
-
-<!-- =====================================================
-CREAR ACTIVIDAD
-===================================================== -->
-
-<div
-    id="panelNuevaActividad"
-    class="nueva-actividad oculto">
-
-
-<h3>
+</div><!-- =====================================================
+MODAL CREAR ACTIVIDAD
+===================================================== --><div
+    id="modalNuevaActividad"
+    class="modal oculto"><div class="modal-cuadro"><div class="modal-encabezado"><h3>
 ➕ Crear nueva actividad
-</h3>
+</h3><button
+type="button"
+class="boton-cerrar-modal"
+onclick="cerrarNuevaActividad()">
 
+✕
 
-<div class="nueva-grid">
-
-
-<div>
-
-<label>
+</button></div><div class="modal-contenido"><div class="nueva-grid"><div><label>
 Nombre de la actividad
-</label>
+</label><input
+type="text"
+id="nombreActividad"
+placeholder="Ej.: Evaluación de números"
 
-<input
-    type="text"
-    id="nombreActividad"
-    placeholder="Ej.: Evaluación de números"
->
+«»
 
-</div>
-
-
-<div>
-
-<label>
+</div><div><label>
 Categoría
-</label>
-
-<select id="categoriaActividad">
-
-<option value="SER">
+</label><select id="categoriaActividad"><option value="SER">
 SER — 10 puntos
-</option>
-
-<option value="SABER">
+</option><option value="SABER">
 SABER — 45 puntos
-</option>
-
-<option value="HACER">
+</option><option value="HACER">
 HACER — 40 puntos
-</option>
-
-<option value="AUTOEVALUACION">
+</option><option value="AUTOEVALUACION">
 AUTOEVALUACIÓN — 5 puntos
-</option>
-
-</select>
-
-</div>
-
-
-<div>
-
-<button
-    class="crear"
-    onclick="crearActividad()">
+</option></select></div></div><div class="nueva-boton"><button
+type="button"
+class="crear"
+onclick="crearActividad()">
 
 ➕ Crear actividad
 
-</button>
-
-</div>
-
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
+</button></div></div></div></div><!-- =====================================================
 ACTIVIDADES
-===================================================== -->
-
-<div
+===================================================== --><div
     id="contenedorActividades">
-</div>
-
-
-<!-- =====================================================
+</div><!-- =====================================================
 TABLA GENERAL
-===================================================== -->
-
-<div
+===================================================== --><div
     id="tablaGeneral"
-    class="tabla-general oculto">
-
-
-<div class="titulo-general">
-
-<span>
+    class="tabla-general oculto"><div class="titulo-general"><span>
 📊 Calificaciones del curso
-</span>
-
-
-<button
-    id="botonGeneral"
-    class="boton-general"
-    onclick="ocultarTablaGeneral()">
+</span><button
+id="botonGeneral"
+class="boton-general"
+onclick="ocultarTablaGeneral()">
 
 −
 
-</button>
-
-</div>
-
-
-<div id="contenidoGeneral">
-
-<div class="tabla-contenedor">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>Nº</th>
-
-<th>Nombre</th>
-
-<th>Curso</th>
-
-<th>1T</th>
-
-<th>2T</th>
-
-<th>3T</th>
-
-<th>Final</th>
-
-</tr>
-
-</thead>
-
-
-<tbody
+</button></div><div id="contenidoGeneral"><div class="tabla-contenedor"><table><thead><tr><th>Nº</th><th>Nombre</th><th>Curso</th><th>1T</th><th>2T</th><th>3T</th><th>Final</th></tr></thead><tbody
     id="tablaEstudiantes">
-</tbody>
-
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
+</tbody></table></div></div></div><!-- =====================================================
 BOTONES
-===================================================== -->
-
-<div class="botones">
-
-
-<button
-    class="guardar"
-    onclick="guardarNotas()">
+===================================================== --><div class="botones"><button
+class="guardar"
+onclick="guardarNotas()">
 
 💾 Guardar notas
 
-</button>
-
-
-<button
-    class="exportar"
-    onclick="exportarExcel()">
+</button><button
+class="exportar"
+onclick="exportarExcel()">
 
 📊 Exportar Excel
 
-</button>
-
-
-<button
-    class="salir"
-    onclick="cerrarSesion()">
+</button><button
+class="salir"
+onclick="cerrarSesion()">
 
 🚪 Cerrar sesión
 
-</button>
-
-
-</div>
-
-
-<div
+</button></div><div
     id="mensaje"
     class="mensaje">
-</div>
-
-
-</div>
-
-</div>
-
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-
-<script>
+</div></div></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script>
 
 
 // =====================================================
@@ -1501,6 +1413,97 @@ function cargarCursos() {
 
 
 // =====================================================
+// ABRIR CUADRO NUEVA ACTIVIDAD
+// =====================================================
+
+function abrirNuevaActividad() {
+
+    if (!cursoSeleccionado) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return;
+
+    }
+
+
+    document.getElementById(
+        "modalNuevaActividad"
+    ).classList.remove(
+        "oculto"
+    );
+
+
+    setTimeout(
+    function() {
+
+        document.getElementById(
+            "nombreActividad"
+        ).focus();
+
+    }, 100);
+
+}
+
+
+// =====================================================
+// CERRAR CUADRO NUEVA ACTIVIDAD
+// =====================================================
+
+function cerrarNuevaActividad() {
+
+    document.getElementById(
+        "modalNuevaActividad"
+    ).classList.add(
+        "oculto"
+    );
+
+}
+
+
+// =====================================================
+// CERRAR MODAL AL HACER CLIC FUERA
+// =====================================================
+
+document.getElementById(
+    "modalNuevaActividad"
+).addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            event.target === this
+        ) {
+
+            cerrarNuevaActividad();
+
+        }
+
+    });
+
+
+// =====================================================
+// ESC TECLADO
+// =====================================================
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            cerrarNuevaActividad();
+
+        }
+
+    });
+
+
+// =====================================================
 // CAMBIO DE CURSO
 // =====================================================
 
@@ -1531,11 +1534,7 @@ document.getElementById(
         );
 
 
-        document.getElementById(
-            "panelNuevaActividad"
-        ).classList.add(
-            "oculto"
-        );
+        cerrarNuevaActividad();
 
 
         actividadesDesbloqueadas.clear();
@@ -1554,17 +1553,15 @@ document.getElementById(
 
 
         document.getElementById(
-            "panelNuevaActividad"
-        ).classList.remove(
-            "oculto"
-        );
+            "mensajeCurso"
+        ).textContent = "";
 
 
         document.getElementById(
             "mensajeCurso"
-        ).textContent =
-        "Curso seleccionado: " +
-        cursoSeleccionado;
+        ).classList.add(
+            "oculto"
+        );
 
 
         await cargarActividades();
@@ -1883,7 +1880,7 @@ function mostrarActividades() {
 
 
 // =====================================================
-// CREAR HTML DE ACTIVIDAD
+// CREAR HTML ACTIVIDAD
 // =====================================================
 
 function crearActividadHTML(
@@ -1910,11 +1907,6 @@ function crearActividadHTML(
     "encabezado-actividad";
 
 
-    // =================================================
-    // CONTENEDOR IZQUIERDO
-    // EDITAR + ELIMINAR + NOMBRE
-    // =================================================
-
     const izquierda =
     document.createElement(
         "div"
@@ -1924,10 +1916,6 @@ function crearActividadHTML(
     izquierda.className =
     "izquierda-actividad";
 
-
-    // =================================================
-    // BOTÓN EDITAR
-    // =================================================
 
     const botonEditar =
     document.createElement(
@@ -1947,10 +1935,6 @@ function crearActividadHTML(
     "Editar nombre de actividad";
 
 
-    // =================================================
-    // BOTÓN ELIMINAR
-    // =================================================
-
     const botonEliminar =
     document.createElement(
         "button"
@@ -1968,10 +1952,6 @@ function crearActividadHTML(
     botonEliminar.title =
     "Eliminar actividad";
 
-
-    // =================================================
-    // NOMBRE
-    // =================================================
 
     const nombre =
     document.createElement(
@@ -2025,21 +2005,14 @@ function crearActividadHTML(
         botonEditar
     );
 
-
     izquierda.appendChild(
         botonEliminar
     );
-
 
     izquierda.appendChild(
         nombre
     );
 
-
-    // =================================================
-    // CONTENEDOR DERECHO
-    // MOSTRAR + BLOQUEAR
-    // =================================================
 
     const derecha =
     document.createElement(
@@ -2050,10 +2023,6 @@ function crearActividadHTML(
     derecha.className =
     "derecha-actividad";
 
-
-    // =================================================
-    // BOTÓN MOSTRAR / OCULTAR
-    // =================================================
 
     const botonOcultar =
     document.createElement(
@@ -2072,10 +2041,6 @@ function crearActividadHTML(
     botonOcultar.title =
     "Mostrar estudiantes";
 
-
-    // =================================================
-    // BOTÓN BLOQUEAR
-    // =================================================
 
     const botonBloquear =
     document.createElement(
@@ -2099,7 +2064,6 @@ function crearActividadHTML(
         botonOcultar
     );
 
-
     derecha.appendChild(
         botonBloquear
     );
@@ -2108,7 +2072,6 @@ function crearActividadHTML(
     encabezado.appendChild(
         izquierda
     );
-
 
     encabezado.appendChild(
         derecha
@@ -2119,10 +2082,6 @@ function crearActividadHTML(
         encabezado
     );
 
-
-    // =================================================
-    // CONTENIDO
-    // =================================================
 
     const contenido =
     document.createElement(
@@ -2303,10 +2262,6 @@ function crearActividadHTML(
     );
 
 
-    // =================================================
-    // MOSTRAR / OCULTAR
-    // =================================================
-
     botonOcultar.onclick =
     function() {
 
@@ -2320,10 +2275,8 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "−";
-
 
             botonOcultar.title =
             "Ocultar estudiantes";
@@ -2334,10 +2287,8 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "+";
-
 
             botonOcultar.title =
             "Mostrar estudiantes";
@@ -2346,10 +2297,6 @@ function crearActividadHTML(
 
     };
 
-
-    // =================================================
-    // EDITAR
-    // =================================================
 
     botonEditar.onclick =
     function() {
@@ -2360,10 +2307,6 @@ function crearActividadHTML(
 
     };
 
-
-    // =================================================
-    // BLOQUEAR / DESBLOQUEAR
-    // =================================================
 
     botonBloquear.onclick =
     function() {
@@ -2381,8 +2324,6 @@ function crearActividadHTML(
 
 
         if (desbloqueada) {
-
-            // BLOQUEAR
 
             inputs.forEach(
             input => {
@@ -2416,8 +2357,6 @@ function crearActividadHTML(
             );
 
         } else {
-
-            // DESBLOQUEAR
 
             inputs.forEach(
             input => {
@@ -2455,10 +2394,6 @@ function crearActividadHTML(
     };
 
 
-    // =================================================
-    // ELIMINAR
-    // =================================================
-
     botonEliminar.onclick =
     function() {
 
@@ -2475,7 +2410,7 @@ function crearActividadHTML(
 
 
 // =====================================================
-// EDITAR NOMBRE ACTIVIDAD
+// EDITAR NOMBRE
 // =====================================================
 
 async function editarNombreActividad(
@@ -2818,6 +2753,9 @@ async function crearActividad() {
     ).value = "";
 
 
+    cerrarNuevaActividad();
+
+
     mostrarMensaje(
         "✓ Actividad creada correctamente."
     );
@@ -3114,7 +3052,7 @@ function ocultarTablaGeneral() {
 
 
 // =====================================================
-// BÚSQUEDA POR NOMBRE O NÚMERO DE LISTA
+// BÚSQUEDA
 // =====================================================
 
 document.getElementById(
@@ -3145,10 +3083,6 @@ function aplicarBusqueda() {
     .toLowerCase()
     .trim();
 
-
-    // =================================================
-    // ACTIVIDADES
-    // =================================================
 
     document.querySelectorAll(
         "#contenedorActividades tbody tr"
@@ -3208,10 +3142,6 @@ function aplicarBusqueda() {
 
     });
 
-
-    // =================================================
-    // TABLA GENERAL
-    // =================================================
 
     document.querySelectorAll(
         "#tablaEstudiantes tr"
@@ -3309,10 +3239,6 @@ async function guardarNotas() {
         ".nota-input"
     );
 
-
-    // =================================================
-    // VALIDAR
-    // =================================================
 
     for (
         const input of inputs
@@ -3470,10 +3396,6 @@ async function guardarNotas() {
     }
 
 
-    // =================================================
-    // CALCULAR 3T Y FINAL
-    // =================================================
-
     const estudiantesCurso =
     estudiantes.filter(
         e =>
@@ -3521,70 +3443,44 @@ async function guardarNotas() {
 
         const puntosSER =
         calcularPuntosCategoria(
-
             estudiante.id,
-
             actividadesSER,
-
             LIMITES.SER
-
         );
 
 
         const puntosSABER =
         calcularPuntosCategoria(
-
             estudiante.id,
-
             actividadesSABER,
-
             LIMITES.SABER
-
         );
 
 
         const puntosHACER =
         calcularPuntosCategoria(
-
             estudiante.id,
-
             actividadesHACER,
-
             LIMITES.HACER
-
         );
 
 
         const puntosAUTO =
         calcularPuntosCategoria(
-
             estudiante.id,
-
             actividadesAUTO,
-
             LIMITES.AUTOEVALUACION
-
         );
 
 
-        // =================================================
-        // NOTA 3T
-        // =================================================
-
         const nota3T =
         redondear(
-
             puntosSER +
             puntosSABER +
             puntosHACER +
             puntosAUTO
-
         );
 
-
-        // =================================================
-        // NOTA FINAL
-        // =================================================
 
         const nota1T =
         convertirNumero(
@@ -3609,21 +3505,15 @@ async function guardarNotas() {
 
             notaFinal =
             redondear(
-
                 (
                     nota1T +
                     nota2T +
                     nota3T
                 ) / 3
-
             );
 
         }
 
-
-        // =================================================
-        // ACTUALIZAR SUPABASE
-        // =================================================
 
         const {
             error
@@ -3922,10 +3812,6 @@ async function exportarExcel() {
         }
 
 
-        // =================================================
-        // ACTIVIDADES
-        // =================================================
-
         const {
             data:
             todasActividades,
@@ -3956,10 +3842,6 @@ async function exportarExcel() {
 
         }
 
-
-        // =================================================
-        // CALIFICACIONES
-        // =================================================
 
         const idsActividades =
         (todasActividades || [])
@@ -4006,10 +3888,6 @@ async function exportarExcel() {
         }
 
 
-        // =================================================
-        // MAPA
-        // =================================================
-
         const mapaCalificaciones = {};
 
 
@@ -4029,10 +3907,6 @@ async function exportarExcel() {
 
         });
 
-
-        // =================================================
-        // CURSOS
-        // =================================================
 
         const cursos =
         [...new Set(
@@ -4062,10 +3936,6 @@ async function exportarExcel() {
         const libro =
         XLSX.utils.book_new();
 
-
-        // =================================================
-        // UNA HOJA POR CURSO
-        // =================================================
 
         cursos.forEach(
         curso => {
@@ -4119,10 +3989,6 @@ async function exportarExcel() {
             );
 
 
-            // =================================================
-            // COLUMNAS
-            // =================================================
-
             const columnas = [
 
                 "Nº LISTA",
@@ -4158,15 +4024,10 @@ async function exportarExcel() {
 
             const datos = [];
 
-
             datos.push(
                 columnas
             );
 
-
-            // =================================================
-            // ESTUDIANTES
-            // =================================================
 
             estudiantesCurso.forEach(
             estudiante => {
@@ -4186,10 +4047,6 @@ async function exportarExcel() {
                 );
 
 
-                // =================================================
-                // SER
-                // =================================================
-
                 const notasSer =
                 ser.map(
                     actividad =>
@@ -4205,38 +4062,23 @@ async function exportarExcel() {
                 actividad => {
 
                     fila.push(
-
                         obtenerNotaExcel(
-
                             estudiante.id,
-
                             actividad.id,
-
                             mapaCalificaciones
-
                         )
-
                     );
 
                 });
 
 
                 fila.push(
-
                     calcularPromedioPonderado(
-
                         notasSer,
-
                         ser
-
                     )
-
                 );
 
-
-                // =================================================
-                // SABER
-                // =================================================
 
                 const notasSaber =
                 saber.map(
@@ -4253,38 +4095,23 @@ async function exportarExcel() {
                 actividad => {
 
                     fila.push(
-
                         obtenerNotaExcel(
-
                             estudiante.id,
-
                             actividad.id,
-
                             mapaCalificaciones
-
                         )
-
                     );
 
                 });
 
 
                 fila.push(
-
                     calcularPromedioPonderado(
-
                         notasSaber,
-
                         saber
-
                     )
-
                 );
 
-
-                // =================================================
-                // HACER
-                // =================================================
 
                 const notasHacer =
                 hacer.map(
@@ -4301,38 +4128,23 @@ async function exportarExcel() {
                 actividad => {
 
                     fila.push(
-
                         obtenerNotaExcel(
-
                             estudiante.id,
-
                             actividad.id,
-
                             mapaCalificaciones
-
                         )
-
                     );
 
                 });
 
 
                 fila.push(
-
                     calcularPromedioPonderado(
-
                         notasHacer,
-
                         hacer
-
                     )
-
                 );
 
-
-                // =================================================
-                // AUTOEVALUACIÓN
-                // =================================================
 
                 const notasAuto =
                 auto.map(
@@ -4346,21 +4158,12 @@ async function exportarExcel() {
 
 
                 fila.push(
-
                     calcularPromedioPonderado(
-
                         notasAuto,
-
                         auto
-
                     )
-
                 );
 
-
-                // =================================================
-                // 3T
-                // =================================================
 
                 fila.push(
 
@@ -4375,10 +4178,6 @@ async function exportarExcel() {
 
                 );
 
-
-                // =================================================
-                // FINAL
-                // =================================================
 
                 fila.push(
 
@@ -4401,10 +4200,6 @@ async function exportarExcel() {
             });
 
 
-            // =================================================
-            // CREAR HOJA
-            // =================================================
-
             const hoja =
             XLSX.utils.aoa_to_sheet(
                 datos
@@ -4419,10 +4214,6 @@ async function exportarExcel() {
 
             };
 
-
-            // =================================================
-            // ANCHOS
-            // =================================================
 
             hoja["!cols"] =
             columnas.map(
@@ -4456,10 +4247,6 @@ async function exportarExcel() {
 
             });
 
-
-            // =================================================
-            // ESTILO
-            // =================================================
 
             const rango =
             XLSX.utils.decode_range(
@@ -4584,14 +4371,10 @@ async function exportarExcel() {
             ];
 
 
-            // =================================================
-            // NOMBRE HOJA
-            // =================================================
-
             let nombreHoja =
             String(curso)
             .replace(
-                /[\\\/\?\*\[\]:]/g,
+                /[\\\/\?\*:]/g,
                 ""
             )
             .substring(
@@ -4616,10 +4399,6 @@ async function exportarExcel() {
 
         });
 
-
-        // =================================================
-        // DESCARGAR
-        // =================================================
 
         const fecha =
         new Date()
@@ -4878,8 +4657,4 @@ function escapeHTML(
 comprobarSesion();
 
 
-</script>
-
-</body>
-
-</html>
+</script></body></html>
