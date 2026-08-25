@@ -147,6 +147,11 @@ button:hover {
     color: white;
 }
 
+.exportar {
+    background: #217346;
+    color: white;
+}
+
 
 /* =========================================
    ACTIVIDADES
@@ -223,7 +228,7 @@ button:hover {
 
 
 /* =========================================
-   BOTÓN +
+   BOTÓN + / -
 ========================================= */
 
 .boton-ocultar {
@@ -626,7 +631,7 @@ AUTOEVALUACIÓN — 5 puntos
 
 <tr>
 
-<th>CI</th>
+<th>N.º</th>
 
 <th>Nombre</th>
 
@@ -676,6 +681,15 @@ AUTOEVALUACIÓN — 5 puntos
 
 
 <button
+    class="exportar"
+    onclick="exportarExcel()">
+
+📊 Exportar Excel
+
+</button>
+
+
+<button
     class="salir"
     onclick="cerrarSesion()">
 
@@ -699,7 +713,13 @@ AUTOEVALUACIÓN — 5 puntos
 </div>
 
 
+<!-- SUPABASE -->
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- EXCEL -->
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 
 <script>
@@ -800,10 +820,11 @@ async function cargarEstudiantes() {
     .from("matematica")
 
     .select(
-        "id,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
+        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
     )
 
-    .order("nombre");
+    .order("curso")
+    .order("num_lista");
 
 
     if (error) {
@@ -1220,10 +1241,6 @@ function mostrarActividades() {
         }
 
 
-        // ==========================================
-        // CATEGORÍA
-        // ==========================================
-
         const seccion =
         document.createElement(
             "div"
@@ -1253,10 +1270,6 @@ function mostrarActividades() {
             encabezado
         );
 
-
-        // ==========================================
-        // ACTIVIDADES
-        // ==========================================
 
         lista.forEach(
         actividad => {
@@ -1316,10 +1329,6 @@ function crearActividadHTML(
     "actividad";
 
 
-    // ==========================================
-    // ENCABEZADO
-    // ==========================================
-
     const encabezado =
     document.createElement(
         "div"
@@ -1339,10 +1348,6 @@ function crearActividadHTML(
     nombre.className =
     "nombre-actividad";
 
-
-    // ==========================================
-    // PUNTAJE MÁXIMO
-    // ==========================================
 
     let puntajeMaximo =
     Number(
@@ -1388,10 +1393,6 @@ function crearActividadHTML(
     "botones-actividad";
 
 
-    // ==========================================
-    // BOTÓN +
-    // ==========================================
-
     const botonOcultar =
     document.createElement(
         "button"
@@ -1402,10 +1403,6 @@ function crearActividadHTML(
     "boton-ocultar";
 
 
-    // IMPORTANTE:
-    // AL ABRIR, TODAS LAS ACTIVIDADES
-    // ESTÁN MINIMIZADAS
-
     botonOcultar.textContent =
     "+";
 
@@ -1413,10 +1410,6 @@ function crearActividadHTML(
     botonOcultar.title =
     "Mostrar estudiantes";
 
-
-    // ==========================================
-    // BOTÓN BASURERO
-    // ==========================================
 
     const botonEliminar =
     document.createElement(
@@ -1461,10 +1454,6 @@ function crearActividadHTML(
     );
 
 
-    // ==========================================
-    // CONTENIDO
-    // ==========================================
-
     const contenido =
     document.createElement(
         "div"
@@ -1498,7 +1487,7 @@ function crearActividadHTML(
     <tr>
 
     <th>
-    CI
+    N.º
     </th>
 
     <th>
@@ -1572,7 +1561,7 @@ function crearActividadHTML(
 
         ${escapeHTML(
             String(
-                estudiante.ci
+                estudiante.num_lista ?? ""
             )
         )}
 
@@ -1651,10 +1640,6 @@ function crearActividadHTML(
     );
 
 
-    // ==========================================
-    // BOTÓN +
-    // ==========================================
-
     botonOcultar.onclick =
     function() {
 
@@ -1696,10 +1681,6 @@ function crearActividadHTML(
 
     };
 
-
-    // ==========================================
-    // ELIMINAR
-    // ==========================================
 
     botonEliminar.onclick =
     function() {
@@ -1746,10 +1727,6 @@ function validarNota(
     );
 
 
-    // ==========================================
-    // MENOR QUE CERO
-    // ==========================================
-
     if (
         valor < 0
     ) {
@@ -1766,10 +1743,6 @@ function validarNota(
 
     }
 
-
-    // ==========================================
-    // SUPERIOR AL MÁXIMO
-    // ==========================================
 
     if (
         valor > maximo
@@ -1894,10 +1867,6 @@ async function crearActividad() {
     );
 
 
-    // ==========================================
-    // ORDEN
-    // ==========================================
-
     let orden = 1;
 
 
@@ -1920,19 +1889,11 @@ async function crearActividad() {
     }
 
 
-    // ==========================================
-    // PUNTAJE AUTOMÁTICO
-    // ==========================================
-
     const puntajeMaximo =
     LIMITES[
         categoria
     ];
 
-
-    // ==========================================
-    // CREAR
-    // ==========================================
 
     const {
         data,
@@ -1994,11 +1955,6 @@ async function crearActividad() {
     );
 
 
-    // ==========================================
-    // RECARGAR
-    // Todas vuelven minimizadas
-    // ==========================================
-
     await cargarActividades();
 
 }
@@ -2043,10 +1999,6 @@ async function eliminarActividad(
     );
 
 
-    // ==========================================
-    // ELIMINAR CALIFICACIONES
-    // ==========================================
-
     const {
         error:
         errorCalificaciones
@@ -2085,10 +2037,6 @@ async function eliminarActividad(
 
     }
 
-
-    // ==========================================
-    // ELIMINAR ACTIVIDAD
-    // ==========================================
 
     const {
         error:
@@ -2188,7 +2136,7 @@ function mostrarTablaGeneral() {
 
         ${escapeHTML(
             String(
-                estudiante.ci
+                estudiante.num_lista ?? ""
             )
         )}
 
@@ -2356,10 +2304,6 @@ async function guardarNotas() {
     }
 
 
-    // ==========================================
-    // VALIDAR TODAS LAS NOTAS ANTES DE GUARDAR
-    // ==========================================
-
     const inputs =
     document.querySelectorAll(
         ".nota-input"
@@ -2409,11 +2353,6 @@ async function guardarNotas() {
                 "\" tiene un máximo de " +
 
                 maximo +
-
-                " puntos.\n\n" +
-
-                "Hay una nota de " +
-                valor +
                 " puntos."
 
             );
@@ -2486,10 +2425,6 @@ async function guardarNotas() {
     });
 
 
-    // ==========================================
-    // GUARDAR CALIFICACIONES
-    // ==========================================
-
     const {
         error:
         errorCalificaciones
@@ -2532,10 +2467,6 @@ async function guardarNotas() {
 
     }
 
-
-    // ==========================================
-    // CALCULAR NOTA DEL 3ER TRIMESTRE
-    // ==========================================
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -2608,10 +2539,6 @@ async function guardarNotas() {
         });
 
 
-        // ==========================================
-        // PROMEDIOS
-        // ==========================================
-
         const promedioSER =
         calcularPromedio(
             totales.SER
@@ -2636,10 +2563,6 @@ async function guardarNotas() {
         );
 
 
-        // ==========================================
-        // CONVERTIR A PUNTOS
-        // ==========================================
-
         const puntosSER =
         (promedioSER / 100) *
         LIMITES.SER;
@@ -2660,10 +2583,6 @@ async function guardarNotas() {
         LIMITES.AUTOEVALUACION;
 
 
-        // ==========================================
-        // NOTA 3T
-        // ==========================================
-
         const nota3T =
         Math.round(
 
@@ -2674,10 +2593,6 @@ async function guardarNotas() {
 
         );
 
-
-        // ==========================================
-        // ACTUALIZAR MATEMÁTICA
-        // ==========================================
 
         const {
             error
@@ -2767,9 +2682,10 @@ function calcularPromedio(
     );
 
 
-    return
-    suma /
-    valores.length;
+    return (
+        suma /
+        valores.length
+    );
 
 }
 
@@ -2851,6 +2767,477 @@ document.getElementById(
         });
 
     });
+
+
+// =================================================
+// EXPORTAR EXCEL
+// =================================================
+
+async function exportarExcel() {
+
+    try {
+
+        mostrarMensaje(
+            "Preparando archivo Excel..."
+        );
+
+
+        // ==========================================
+        // CARGAR TODOS LOS ESTUDIANTES
+        // ==========================================
+
+        const {
+            data: todosEstudiantes,
+            error: errorEstudiantes
+        } = await supabaseClient
+
+        .from("matematica")
+
+        .select(
+            "id,num_lista,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
+        )
+
+        .order("curso")
+        .order("num_lista");
+
+
+        if (errorEstudiantes) {
+
+            throw errorEstudiantes;
+
+        }
+
+
+        // ==========================================
+        // CARGAR TODAS LAS ACTIVIDADES
+        // ==========================================
+
+        const {
+            data: todasActividades,
+            error: errorActividades
+        } = await supabaseClient
+
+        .from("actividades")
+
+        .select(
+            "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
+        )
+
+        .eq(
+            "trimestre",
+            3
+        )
+
+        .order("curso")
+        .order("categoria")
+        .order("orden");
+
+
+        if (errorActividades) {
+
+            throw errorActividades;
+
+        }
+
+
+        // ==========================================
+        // CARGAR TODAS LAS CALIFICACIONES
+        // ==========================================
+
+        const {
+            data: todasCalificaciones,
+            error: errorCalificaciones
+        } = await supabaseClient
+
+        .from("calificaciones")
+
+        .select(
+            "id,actividad_id,estudiante_id,nota"
+        );
+
+
+        if (errorCalificaciones) {
+
+            throw errorCalificaciones;
+
+        }
+
+
+        // ==========================================
+        // CREAR MAPA DE CALIFICACIONES
+        // ==========================================
+
+        const mapaNotas = {};
+
+
+        (todasCalificaciones || []).forEach(
+        cal => {
+
+            if (
+                !mapaNotas[
+                    cal.estudiante_id
+                ]
+            ) {
+
+                mapaNotas[
+                    cal.estudiante_id
+                ] = {};
+
+            }
+
+
+            mapaNotas[
+                cal.estudiante_id
+            ][
+                cal.actividad_id
+            ] =
+            cal.nota;
+
+        });
+
+
+        // ==========================================
+        // HOJA 1: RESUMEN
+        // ==========================================
+
+        const resumen = [];
+
+
+        (todosEstudiantes || []).forEach(
+        estudiante => {
+
+            resumen.push({
+
+                "Curso":
+                estudiante.curso || "",
+
+                "N.º":
+                estudiante.num_lista ?? "",
+
+                "CI":
+                estudiante.ci || "",
+
+                "Nombre":
+                estudiante.nombre || "",
+
+                "1.er Trimestre":
+                estudiante.nota_1t ?? "",
+
+                "2.º Trimestre":
+                estudiante.nota_2t ?? "",
+
+                "3.er Trimestre":
+                estudiante.nota_3t ?? "",
+
+                "Nota Final":
+                estudiante.final ?? ""
+
+            });
+
+        });
+
+
+        // ==========================================
+        // HOJA 2: DETALLE ACTIVIDADES
+        // ==========================================
+
+        const detalle = [];
+
+
+        (todosEstudiantes || []).forEach(
+        estudiante => {
+
+
+            const actividadesCurso =
+            (todasActividades || []).filter(
+                actividad =>
+                actividad.curso ===
+                estudiante.curso
+            );
+
+
+            actividadesCurso.forEach(
+            actividad => {
+
+
+                let nota = "";
+
+
+                if (
+                    mapaNotas[
+                        estudiante.id
+                    ] &&
+                    mapaNotas[
+                        estudiante.id
+                    ][
+                        actividad.id
+                    ] !== undefined
+                ) {
+
+                    nota =
+                    mapaNotas[
+                        estudiante.id
+                    ][
+                        actividad.id
+                    ];
+
+                }
+
+
+                detalle.push({
+
+                    "Curso":
+                    estudiante.curso || "",
+
+                    "N.º":
+                    estudiante.num_lista ?? "",
+
+                    "CI":
+                    estudiante.ci || "",
+
+                    "Nombre":
+                    estudiante.nombre || "",
+
+                    "Categoría":
+                    actividad.categoria || "",
+
+                    "Actividad":
+                    actividad.nombre || "",
+
+                    "Puntaje máximo":
+                    actividad.puntaje_maximo ?? "",
+
+                    "Calificación":
+                    nota,
+
+                    "1.er Trimestre":
+                    estudiante.nota_1t ?? "",
+
+                    "2.º Trimestre":
+                    estudiante.nota_2t ?? "",
+
+                    "3.er Trimestre":
+                    estudiante.nota_3t ?? "",
+
+                    "Nota Final":
+                    estudiante.final ?? ""
+
+                });
+
+            });
+
+        });
+
+
+        // ==========================================
+        // HOJA 3: ACTIVIDADES
+        // ==========================================
+
+        const listaActividades = [];
+
+
+        (todasActividades || []).forEach(
+        actividad => {
+
+            listaActividades.push({
+
+                "Curso":
+                actividad.curso || "",
+
+                "Trimestre":
+                actividad.trimestre ?? "",
+
+                "Categoría":
+                actividad.categoria || "",
+
+                "Actividad":
+                actividad.nombre || "",
+
+                "Puntaje máximo":
+                actividad.puntaje_maximo ?? "",
+
+                "Orden":
+                actividad.orden ?? ""
+
+            });
+
+        });
+
+
+        // ==========================================
+        // CREAR LIBRO EXCEL
+        // ==========================================
+
+        const libro =
+        XLSX.utils.book_new();
+
+
+        // ==========================================
+        // RESUMEN
+        // ==========================================
+
+        const hojaResumen =
+        XLSX.utils.json_to_sheet(
+            resumen
+        );
+
+
+        // Ancho de columnas
+
+        hojaResumen["!cols"] = [
+
+            { wch: 12 },
+            { wch: 8 },
+            { wch: 15 },
+            { wch: 30 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 }
+
+        ];
+
+
+        XLSX.utils.book_append_sheet(
+            libro,
+            hojaResumen,
+            "Resumen"
+        );
+
+
+        // ==========================================
+        // DETALLE
+        // ==========================================
+
+        const hojaDetalle =
+        XLSX.utils.json_to_sheet(
+            detalle
+        );
+
+
+        hojaDetalle["!cols"] = [
+
+            { wch: 12 },
+            { wch: 8 },
+            { wch: 15 },
+            { wch: 30 },
+            { wch: 20 },
+            { wch: 35 },
+            { wch: 18 },
+            { wch: 18 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 }
+
+        ];
+
+
+        XLSX.utils.book_append_sheet(
+            libro,
+            hojaDetalle,
+            "Detalle actividades"
+        );
+
+
+        // ==========================================
+        // ACTIVIDADES
+        // ==========================================
+
+        const hojaActividades =
+        XLSX.utils.json_to_sheet(
+            listaActividades
+        );
+
+
+        hojaActividades["!cols"] = [
+
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 20 },
+            { wch: 40 },
+            { wch: 18 },
+            { wch: 10 }
+
+        ];
+
+
+        XLSX.utils.book_append_sheet(
+            libro,
+            hojaActividades,
+            "Actividades"
+        );
+
+
+        // ==========================================
+        // NOMBRE DEL ARCHIVO
+        // ==========================================
+
+        const fecha =
+        new Date();
+
+
+        const año =
+        fecha.getFullYear();
+
+
+        const mes =
+        String(
+            fecha.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+        const dia =
+        String(
+            fecha.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+        const nombreArchivo =
+        `Calificaciones_${año}-${mes}-${dia}.xlsx`;
+
+
+        // ==========================================
+        // DESCARGAR
+        // ==========================================
+
+        XLSX.writeFile(
+            libro,
+            nombreArchivo
+        );
+
+
+        mostrarMensaje(
+            "✓ Excel exportado correctamente."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Error exportando Excel:",
+            error
+        );
+
+
+        mostrarMensaje(
+
+            "Error al exportar Excel: " +
+            (error.message || error),
+
+            true
+
+        );
+
+    }
+
+}
 
 
 // =================================================
