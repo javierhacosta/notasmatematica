@@ -190,8 +190,122 @@ select {
 
 
 /* =====================================================
+   CATEGORÍAS CIRCULARES DEL MODAL
+===================================================== */
+
+.categorias-circulos {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.opcion-categoria {
+    cursor: pointer;
+    text-align: center;
+    user-select: none;
+}
+
+.opcion-categoria input {
+    display: none;
+}
+
+.circulo-categoria {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    border: 4px solid #ddd;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 13px;
+    transition: .2s;
+}
+
+.nombre-categoria {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+}
+
+
+/* SER */
+
+.opcion-categoria.ser .circulo-categoria {
+    color: #7b1fa2;
+}
+
+.opcion-categoria.ser input:checked + .circulo-categoria {
+    background: #7b1fa2;
+    border-color: #7b1fa2;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(123,31,162,.18);
+    transform: scale(1.06);
+}
+
+
+/* SABER */
+
+.opcion-categoria.saber .circulo-categoria {
+    color: #1565c0;
+}
+
+.opcion-categoria.saber input:checked + .circulo-categoria {
+    background: #1565c0;
+    border-color: #1565c0;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(21,101,192,.18);
+    transform: scale(1.06);
+}
+
+
+/* HACER */
+
+.opcion-categoria.hacer .circulo-categoria {
+    color: #ef6c00;
+}
+
+.opcion-categoria.hacer input:checked + .circulo-categoria {
+    background: #ef6c00;
+    border-color: #ef6c00;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(239,108,0,.18);
+    transform: scale(1.06);
+}
+
+
+/* AUTOEVALUACIÓN */
+
+.opcion-categoria.auto .circulo-categoria {
+    color: #00838f;
+}
+
+.opcion-categoria.auto input:checked + .circulo-categoria {
+    background: #00838f;
+    border-color: #00838f;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(0,131,143,.18);
+    transform: scale(1.06);
+}
+
+
+/* =====================================================
+   TEXTO DE PUNTAJE
+===================================================== */
+
+.puntaje-categoria {
+    display: block;
+    font-size: 12px;
+    color: #777;
+    margin-top: 2px;
+}
+
+
+/* =====================================================
    BOTONES DEL MODAL
-   AHORA SIEMPRE UNO AL LADO DEL OTRO
 ===================================================== */
 
 .modal-acciones {
@@ -688,8 +802,23 @@ td:first-child {
 
 
     /* =================================================
+       CATEGORÍAS CIRCULARES EN CELULAR
+    ================================================= */
+
+    .categorias-circulos {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px 8px;
+    }
+
+    .circulo-categoria {
+        width: 68px;
+        height: 68px;
+        font-size: 12px;
+    }
+
+
+    /* =================================================
        BOTONES DEL MODAL EN CELULAR
-       SE MANTIENEN LADO A LADO
     ================================================= */
 
     .modal-acciones {
@@ -1164,25 +1293,107 @@ Nombre de la actividad
 Categoría
 </label>
 
-<select id="categoriaActividad">
 
-<option value="SER">
-SER — 10 puntos
-</option>
+<!-- =====================================================
+     CÍRCULOS DE CATEGORÍA
+===================================================== -->
 
-<option value="SABER">
-SABER — 45 puntos
-</option>
+<div class="categorias-circulos">
 
-<option value="HACER">
-HACER — 40 puntos
-</option>
 
-<option value="AUTOEVALUACION">
-AUTOEVALUACIÓN — 5 puntos
-</option>
+<label class="opcion-categoria ser">
 
-</select>
+<input
+    type="radio"
+    name="categoriaActividad"
+    value="SER"
+    checked
+>
+
+<span class="circulo-categoria">
+SER
+</span>
+
+<span class="nombre-categoria">
+SER
+</span>
+
+<span class="puntaje-categoria">
+10 puntos
+</span>
+
+</label>
+
+
+<label class="opcion-categoria saber">
+
+<input
+    type="radio"
+    name="categoriaActividad"
+    value="SABER"
+>
+
+<span class="circulo-categoria">
+SABER
+</span>
+
+<span class="nombre-categoria">
+SABER
+</span>
+
+<span class="puntaje-categoria">
+45 puntos
+</span>
+
+</label>
+
+
+<label class="opcion-categoria hacer">
+
+<input
+    type="radio"
+    name="categoriaActividad"
+    value="HACER"
+>
+
+<span class="circulo-categoria">
+HACER
+</span>
+
+<span class="nombre-categoria">
+HACER
+</span>
+
+<span class="puntaje-categoria">
+40 puntos
+</span>
+
+</label>
+
+
+<label class="opcion-categoria auto">
+
+<input
+    type="radio"
+    name="categoriaActividad"
+    value="AUTOEVALUACION"
+>
+
+<span class="circulo-categoria">
+AUTO
+</span>
+
+<span class="nombre-categoria">
+AUTOEVALUACIÓN
+</span>
+
+<span class="puntaje-categoria">
+5 puntos
+</span>
+
+</label>
+
+</div>
 
 </div>
 
@@ -1488,6 +1699,30 @@ document.getElementById(
 
 
 /* =====================================================
+   OBTENER CATEGORÍA SELECCIONADA
+===================================================== */
+
+function obtenerCategoriaSeleccionada() {
+
+    const seleccionada =
+    document.querySelector(
+        'input[name="categoriaActividad"]:checked'
+    );
+
+
+    if (!seleccionada) {
+
+        return "SER";
+
+    }
+
+
+    return seleccionada.value;
+
+}
+
+
+/* =====================================================
    ABRIR MODAL NUEVA ACTIVIDAD
 ===================================================== */
 
@@ -1520,9 +1755,17 @@ function abrirModalActividad() {
     ).value = "";
 
 
-    document.getElementById(
-        "categoriaActividad"
-    ).value = "SER";
+    const ser =
+    document.querySelector(
+        'input[name="categoriaActividad"][value="SER"]'
+    );
+
+
+    if (ser) {
+
+        ser.checked = true;
+
+    }
 
 
     setTimeout(
@@ -2686,9 +2929,7 @@ async function crearActividad() {
 
 
     const categoria =
-    document.getElementById(
-        "categoriaActividad"
-    ).value;
+    obtenerCategoriaSeleccionada();
 
 
     if (!nombre) {
@@ -2789,9 +3030,17 @@ async function crearActividad() {
     ).value = "";
 
 
-    document.getElementById(
-        "categoriaActividad"
-    ).value = "SER";
+    const ser =
+    document.querySelector(
+        'input[name="categoriaActividad"][value="SER"]'
+    );
+
+
+    if (ser) {
+
+        ser.checked = true;
+
+    }
 
 
     cerrarModalActividad();
