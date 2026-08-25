@@ -613,6 +613,74 @@ const LIMITES = {
 
 
 // =====================================================
+// REDONDEO GENERAL
+// =====================================================
+//
+// TODAS las notas de promedio pasan por aquí.
+// Siempre devuelve 0 decimales.
+//
+// Ejemplos:
+//
+// 8.4  → 8
+// 8.5  → 9
+// 19.4 → 19
+// 19.5 → 20
+//
+// =====================================================
+
+function redondear(numero) {
+
+    if (
+        numero === null ||
+        numero === undefined ||
+        numero === "" ||
+        isNaN(numero)
+    ) {
+
+        return null;
+
+    }
+
+    return Math.round(
+        Number(numero)
+    );
+
+}
+
+
+// =====================================================
+// CONVERTIR NÚMERO
+// =====================================================
+
+function convertirNumero(valor) {
+
+    if (
+        valor === null ||
+        valor === undefined ||
+        valor === ""
+    ) {
+
+        return null;
+
+    }
+
+    const numero =
+    Number(valor);
+
+    if (
+        isNaN(numero)
+    ) {
+
+        return null;
+
+    }
+
+    return numero;
+
+}
+
+
+// =====================================================
 // SESIÓN
 // =====================================================
 
@@ -2158,7 +2226,7 @@ async function guardarNotas() {
     ) {
 
         // ==========================================
-        // OBTENER ACTIVIDADES POR CATEGORÍA
+        // ACTIVIDADES POR CATEGORÍA
         // ==========================================
 
         const actividadesSER =
@@ -2191,8 +2259,12 @@ async function guardarNotas() {
 
 
         // ==========================================
-        // CALCULAR CADA COMPONENTE
+        // CALCULAR COMPONENTES
         // ==========================================
+
+        // IMPORTANTE:
+        // Cada categoría se redondea individualmente
+        // a 0 decimales.
 
         const puntosSER =
         calcularPuntosCategoria(
@@ -2258,20 +2330,42 @@ async function guardarNotas() {
 
 
         // ==========================================
-        // CALCULAR FINAL
+        // OBTENER 1T Y 2T
         // ==========================================
 
-        const nota1T =
+        // También se redondean antes de calcular FINAL.
+
+        const nota1TOriginal =
         convertirNumero(
             estudiante.nota_1t
         );
 
 
-        const nota2T =
+        const nota2TOriginal =
         convertirNumero(
             estudiante.nota_2t
         );
 
+
+        const nota1T =
+        nota1TOriginal === null
+        ? null
+        : redondear(
+            nota1TOriginal
+        );
+
+
+        const nota2T =
+        nota2TOriginal === null
+        ? null
+        : redondear(
+            nota2TOriginal
+        );
+
+
+        // ==========================================
+        // CALCULAR FINAL
+        // ==========================================
 
         let notaFinal = null;
 
@@ -2367,23 +2461,31 @@ async function guardarNotas() {
 // CALCULAR PUNTOS DE UNA CATEGORÍA
 // =====================================================
 //
-// Ejemplo:
+// EJEMPLO:
 //
 // SABER = 45 puntos
 //
-// Actividades:
-// Evaluación 1 = 45
-// Evaluación 2 = 45
+// Actividad 1 = 45
+// Actividad 2 = 45
 //
-// Si obtiene:
-// 45 + 45
+// 45 + 45 = 90
 //
-// Resultado SABER = 45
+// 90 / 2 = 45
 //
-// Si obtiene:
-// 30 + 40
+// Resultado = 45
+//
+// Otro ejemplo:
+//
+// 30 + 40 = 70
+//
+// 70 / 2 = 35
 //
 // Resultado = 35
+//
+// Si el resultado es:
+//
+// 35.4 → 35
+// 35.5 → 36
 //
 // =====================================================
 
@@ -2470,8 +2572,9 @@ function calcularPuntosCategoria(
     }
 
 
-    // Convierte la suma de las notas
-    // proporcionalmente al valor de la categoría.
+    // -----------------------------------------------
+    // PROMEDIO PROPORCIONAL
+    // -----------------------------------------------
 
     const puntos =
     (
@@ -2481,78 +2584,24 @@ function calcularPuntosCategoria(
     limiteCategoria;
 
 
-    return puntos;
+    // -----------------------------------------------
+    // REDONDEAR A 0 DECIMALES
+    // -----------------------------------------------
 
-}
-
-
-// =====================================================
-// REDONDEAR
-// =====================================================
-
-function redondear(
-    numero
-) {
-
-    if (
-        numero === null ||
-        numero === undefined ||
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return Math.round(
-        numero
+    return redondear(
+        puntos
     );
-
-}
-
-
-// =====================================================
-// CONVERTIR NÚMERO
-// =====================================================
-
-function convertirNumero(
-    valor
-) {
-
-    if (
-        valor === null ||
-        valor === undefined ||
-        valor === ""
-    ) {
-
-        return null;
-
-    }
-
-
-    const numero =
-    Number(
-        valor
-    );
-
-
-    if (
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return numero;
 
 }
 
 
 // =====================================================
 // MOSTRAR NOTA
+// =====================================================
+//
+// 80.4 → 80
+// 80.5 → 81
+//
 // =====================================================
 
 function mostrarNota(
@@ -2570,7 +2619,22 @@ function mostrarNota(
     }
 
 
-    return nota;
+    const numero =
+    Number(nota);
+
+
+    if (
+        isNaN(numero)
+    ) {
+
+        return "";
+
+    }
+
+
+    return redondear(
+        numero
+    );
 
 }
 
@@ -2880,7 +2944,7 @@ async function exportarExcel() {
 
 
             const columnasAuto =
-            ["AUTOEVALUACIÓN"].concat(
+            ["PROMEDIO"].concat(
                 auto.map(
                     a => a.nombre
                 )
@@ -3080,7 +3144,9 @@ async function exportarExcel() {
                 let col = 2;
 
 
+                // ----------------------------------
                 // SER
+                // ----------------------------------
 
                 const notasSer =
                 ser.map(
@@ -3118,7 +3184,9 @@ async function exportarExcel() {
                 });
 
 
+                // ----------------------------------
                 // SABER
+                // ----------------------------------
 
                 const notasSaber =
                 saber.map(
@@ -3156,7 +3224,9 @@ async function exportarExcel() {
                 });
 
 
+                // ----------------------------------
                 // HACER
+                // ----------------------------------
 
                 const notasHacer =
                 hacer.map(
@@ -3194,7 +3264,9 @@ async function exportarExcel() {
                 });
 
 
-                // AUTO
+                // ----------------------------------
+                // AUTOEVALUACIÓN
+                // ----------------------------------
 
                 const notasAuto =
                 auto.map(
@@ -3232,11 +3304,22 @@ async function exportarExcel() {
                 });
 
 
+                // ----------------------------------
                 // TOTAL 3T
+                // ----------------------------------
+
+                const nota3T =
+                convertirNumero(
+                    estudiante.nota_3t
+                );
+
 
                 fila[col] =
-                estudiante.nota_3t ??
-                "";
+                nota3T === null
+                ? ""
+                : redondear(
+                    nota3T
+                );
 
 
                 datos.push(
@@ -3703,6 +3786,11 @@ function obtenerNotaExcel(
 // =====================================================
 // PROMEDIO EXCEL
 // =====================================================
+//
+// TODOS los promedios de categoría quedan
+// redondeados a 0 decimales.
+//
+// =====================================================
 
 function calcularPromedioPonderado(
     notas,
@@ -3778,15 +3866,20 @@ function calcularPromedioPonderado(
     ];
 
 
-    return Number(
+    const promedio =
+    (
+        suma /
+        maximos
+    ) *
+    limite;
 
-        (
-            suma /
-            maximos *
-            limite
 
-        ).toFixed(2)
+    // ==========================================
+    // REDONDEAR A 0 DECIMALES
+    // ==========================================
 
+    return redondear(
+        promedio
     );
 
 }
