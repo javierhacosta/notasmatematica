@@ -50,6 +50,7 @@ h3 {
     margin-bottom: 25px;
 }
 
+
 /* =========================================
    FILTROS
 ========================================= */
@@ -81,6 +82,7 @@ select {
     font-size: 16px;
 }
 
+
 /* =========================================
    INFORMACIÓN
 ========================================= */
@@ -92,6 +94,7 @@ select {
     border: 1px solid #ffe082;
     border-radius: 8px;
 }
+
 
 /* =========================================
    NUEVA ACTIVIDAD
@@ -111,6 +114,7 @@ select {
     gap: 15px;
     align-items: end;
 }
+
 
 /* =========================================
    BOTONES
@@ -138,15 +142,16 @@ button:hover {
     color: white;
 }
 
+.salir {
+    background: #c62828;
+    color: white;
+}
+
 .exportar {
     background: #217346;
     color: white;
 }
 
-.salir {
-    background: #c62828;
-    color: white;
-}
 
 /* =========================================
    ACTIVIDADES
@@ -181,6 +186,7 @@ button:hover {
 .auto {
     background: #00838f;
 }
+
 
 /* =========================================
    ACTIVIDAD
@@ -220,6 +226,11 @@ button:hover {
     gap: 7px;
 }
 
+
+/* =========================================
+   BOTÓN MINIMIZAR
+========================================= */
+
 .boton-ocultar {
     background: #555;
     color: white;
@@ -233,6 +244,11 @@ button:hover {
     font-weight: bold;
 }
 
+
+/* =========================================
+   BOTÓN ELIMINAR
+========================================= */
+
 .boton-eliminar {
     background: #c62828;
     color: white;
@@ -245,9 +261,15 @@ button:hover {
     font-size: 18px;
 }
 
+
+/* =========================================
+   CONTENIDO ACTIVIDAD
+========================================= */
+
 .contenido-actividad {
     padding: 0;
 }
+
 
 /* =========================================
    TABLAS
@@ -284,6 +306,7 @@ td.nombre {
     text-align: center;
     padding: 7px;
 }
+
 
 /* =========================================
    TABLA GENERAL
@@ -336,16 +359,14 @@ td.nombre {
 }
 
 .nota-3t {
-
     font-weight: bold;
-
     font-size: 18px;
 }
 
 .nota-final {
-
     font-weight: bold;
 }
+
 
 /* =========================================
    BOTONES INFERIORES
@@ -362,6 +383,7 @@ td.nombre {
     flex-wrap: wrap;
 }
 
+
 /* =========================================
    MENSAJE
 ========================================= */
@@ -373,6 +395,7 @@ td.nombre {
     font-weight: bold;
 }
 
+
 /* =========================================
    OCULTO
 ========================================= */
@@ -380,6 +403,7 @@ td.nombre {
 .oculto {
     display: none !important;
 }
+
 
 /* =========================================
    CELULAR
@@ -655,7 +679,7 @@ AUTOEVALUACIÓN — 5 puntos
 
 <button
     class="exportar"
-    onclick="exportarExcel()">
+    onclick="guardarYExportarExcel()">
 
 📊 Exportar Excel
 
@@ -686,12 +710,7 @@ AUTOEVALUACIÓN — 5 puntos
 </div>
 
 
-<!-- SUPABASE -->
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-
-<!-- SHEETJS -->
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -731,7 +750,7 @@ let cursoSeleccionado = "";
 
 
 // =================================================
-// PUNTAJES
+// PUNTAJES MÁXIMOS
 // =================================================
 
 const LIMITES = {
@@ -772,8 +791,7 @@ async function comprobarSesion() {
 
     document.getElementById(
         "usuario"
-    ).textContent =
-    user.email;
+    ).textContent = user.email;
 
 
     await cargarEstudiantes();
@@ -795,10 +813,8 @@ async function cargarEstudiantes() {
     .from("matematica")
 
     .select(
-        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
+        "id,ci,num_lista,nombre,curso,nota_1t,nota_2t,nota_3t,final"
     )
-
-    .order("curso")
 
     .order("num_lista");
 
@@ -1287,13 +1303,12 @@ function mostrarActividades() {
 
 
 // =================================================
-// CREAR HTML ACTIVIDAD
+// CREAR HTML DE ACTIVIDAD
 // =================================================
 
 function crearActividadHTML(
     actividad
 ) {
-
 
     const bloque =
     document.createElement(
@@ -1462,17 +1477,11 @@ function crearActividadHTML(
 
     <tr>
 
-    <th>
-    Nº
-    </th>
+    <th>Nº</th>
 
-    <th>
-    Nombre
-    </th>
+    <th>Nombre</th>
 
-    <th>
-    Nota / ${puntajeMaximo}
-    </th>
+    <th>Nota / ${puntajeMaximo}</th>
 
     </tr>
 
@@ -1619,7 +1628,6 @@ function crearActividadHTML(
     botonOcultar.onclick =
     function() {
 
-
         if (
             contenido.classList.contains(
                 "oculto"
@@ -1630,14 +1638,11 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "−";
 
-
             botonOcultar.title =
             "Ocultar estudiantes";
-
 
         } else {
 
@@ -1645,10 +1650,8 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "+";
-
 
             botonOcultar.title =
             "Mostrar estudiantes";
@@ -1681,7 +1684,6 @@ function validarNota(
     input
 ) {
 
-
     if (
         input.value === ""
     ) {
@@ -1711,9 +1713,7 @@ function validarNota(
             "La nota no puede ser menor que 0."
         );
 
-
         input.value = "";
-
 
         return false;
 
@@ -1749,9 +1749,7 @@ function validarNota(
 
         input.value = "";
 
-
         input.focus();
-
 
         return false;
 
@@ -1798,7 +1796,6 @@ function obtenerNombreActividad(
 // =================================================
 
 async function crearActividad() {
-
 
     if (
         !cursoSeleccionado
@@ -1944,7 +1941,6 @@ async function eliminarActividad(
     actividad
 ) {
 
-
     const confirmar =
     confirm(
 
@@ -2064,11 +2060,10 @@ async function eliminarActividad(
 
 
 // =================================================
-// TABLA GENERAL
+// MOSTRAR TABLA GENERAL
 // =================================================
 
 function mostrarTablaGeneral() {
-
 
     const tabla =
     document.getElementById(
@@ -2196,7 +2191,6 @@ function mostrarTablaGeneral() {
 
 function ocultarTablaGeneral() {
 
-
     const contenido =
     document.getElementById(
         "contenidoGeneral"
@@ -2253,7 +2247,6 @@ function ocultarTablaGeneral() {
 
 async function guardarNotas() {
 
-
     if (
         !cursoSeleccionado
     ) {
@@ -2262,7 +2255,7 @@ async function guardarNotas() {
             "Primero selecciona un curso."
         );
 
-        return;
+        return false;
 
     }
 
@@ -2275,7 +2268,7 @@ async function guardarNotas() {
             "Este curso no tiene actividades."
         );
 
-        return;
+        return false;
 
     }
 
@@ -2286,10 +2279,13 @@ async function guardarNotas() {
     );
 
 
+    // ==========================================
+    // VALIDAR ANTES DE GUARDAR
+    // ==========================================
+
     for (
         const input of inputs
     ) {
-
 
         if (
             input.value === ""
@@ -2313,45 +2309,38 @@ async function guardarNotas() {
 
 
         if (
+            valor < 0 ||
             valor > maximo
         ) {
 
             alert(
 
-                "⚠️ NO SE PUEDEN GUARDAR LAS NOTAS\n\n" +
+                "⚠️ Hay una nota inválida.\n\n" +
 
-                "La actividad \"" +
+                "Actividad: " +
 
                 obtenerNombreActividad(
                     input.dataset.actividad
                 ) +
 
-                "\" tiene un máximo de " +
+                "\nMáximo permitido: " +
 
-                maximo +
-
-                " puntos.\n\n" +
-
-                "Hay una nota de " +
-                valor +
-                " puntos."
+                maximo
 
             );
 
 
             input.focus();
 
-
-            return;
+            return false;
 
         }
-
 
     }
 
 
     mostrarMensaje(
-        "Guardando calificaciones..."
+        "💾 Guardando calificaciones..."
     );
 
 
@@ -2360,7 +2349,6 @@ async function guardarNotas() {
 
     inputs.forEach(
     input => {
-
 
         const estudianteId =
         Number(
@@ -2402,52 +2390,61 @@ async function guardarNotas() {
 
         });
 
-
     });
 
 
-    const {
-        error:
-        errorCalificaciones
-    } = await supabaseClient
-
-    .from("calificaciones")
-
-    .upsert(
-
-        registros,
-
-        {
-            onConflict:
-            "actividad_id,estudiante_id"
-        }
-
-    );
-
-
     if (
-        errorCalificaciones
+        registros.length > 0
     ) {
 
-        console.error(
+        const {
+            error:
             errorCalificaciones
+        } = await supabaseClient
+
+        .from("calificaciones")
+
+        .upsert(
+
+            registros,
+
+            {
+                onConflict:
+                "actividad_id,estudiante_id"
+            }
+
         );
 
 
-        mostrarMensaje(
+        if (
+            errorCalificaciones
+        ) {
 
-            "Error al guardar calificaciones: " +
+            console.error(
+                errorCalificaciones
+            );
 
-            errorCalificaciones.message,
 
-            true
+            mostrarMensaje(
 
-        );
+                "Error al guardar calificaciones: " +
 
-        return;
+                errorCalificaciones.message,
+
+                true
+
+            );
+
+            return false;
+
+        }
 
     }
 
+
+    // ==========================================
+    // CALCULAR 3T
+    // ==========================================
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -2461,7 +2458,6 @@ async function guardarNotas() {
         const estudiante
         of estudiantesCurso
     ) {
-
 
         const totales = {
 
@@ -2478,7 +2474,6 @@ async function guardarNotas() {
 
         actividades.forEach(
         actividad => {
-
 
             const input =
             document.querySelector(
@@ -2515,7 +2510,6 @@ async function guardarNotas() {
                 );
 
             }
-
 
         });
 
@@ -2607,7 +2601,7 @@ async function guardarNotas() {
 
             );
 
-            return;
+            return false;
 
         }
 
@@ -2621,23 +2615,741 @@ async function guardarNotas() {
 
     await cargarEstudiantes();
 
+    await cargarCalificaciones();
 
     mostrarTablaGeneral();
 
 
-    await cargarActividades();
+    return true;
 
 }
 
 
 // =================================================
-// PROMEDIO
+// GUARDAR Y EXPORTAR EXCEL
+// =================================================
+
+async function guardarYExportarExcel() {
+
+    if (
+        !cursoSeleccionado
+    ) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return;
+
+    }
+
+
+    // ==========================================
+    // GUARDAR PRIMERO
+    // ==========================================
+
+    const guardado =
+    await guardarNotas();
+
+
+    if (
+        !guardado
+    ) {
+
+        return;
+
+    }
+
+
+    mostrarMensaje(
+        "💾 Notas guardadas. Preparando Excel..."
+    );
+
+
+    // ==========================================
+    // ESPERAR ACTUALIZACIÓN
+    // ==========================================
+
+    await new Promise(
+        resolve =>
+        setTimeout(
+            resolve,
+            500
+        )
+    );
+
+
+    // ==========================================
+    // RECARGAR DATOS
+    // ==========================================
+
+    await cargarEstudiantes();
+
+    await cargarActividades();
+
+
+    // ==========================================
+    // EXPORTAR
+    // ==========================================
+
+    await exportarExcel();
+
+}
+
+
+// =================================================
+// EXPORTAR EXCEL
+// =================================================
+
+async function exportarExcel() {
+
+    try {
+
+        mostrarMensaje(
+            "📊 Preparando Excel..."
+        );
+
+
+        // ==========================================
+        // RECARGAR CALIFICACIONES
+        // ==========================================
+
+        await cargarCalificaciones();
+
+
+        const estudiantesCurso =
+        estudiantes
+
+        .filter(
+            e =>
+            e.curso ===
+            cursoSeleccionado
+        )
+
+        .sort(
+            (a,b) =>
+            Number(
+                a.num_lista || 0
+            ) -
+            Number(
+                b.num_lista || 0
+            )
+        );
+
+
+        if (
+            estudiantesCurso.length === 0
+        ) {
+
+            alert(
+                "No hay estudiantes en este curso."
+            );
+
+            return;
+
+        }
+
+
+        // ==========================================
+        // ACTIVIDADES POR CATEGORÍA
+        // ==========================================
+
+        const actividadesSER =
+        actividades.filter(
+            a =>
+            a.categoria === "SER"
+        );
+
+
+        const actividadesSABER =
+        actividades.filter(
+            a =>
+            a.categoria === "SABER"
+        );
+
+
+        const actividadesHACER =
+        actividades.filter(
+            a =>
+            a.categoria === "HACER"
+        );
+
+
+        const actividadesAUTO =
+        actividades.filter(
+            a =>
+            a.categoria ===
+            "AUTOEVALUACION"
+        );
+
+
+        // ==========================================
+        // FILAS
+        // ==========================================
+
+        const filas = [];
+
+
+        // ==========================================
+        // CABECERA 1
+        // ==========================================
+
+        const fila1 = [
+
+            "Nº",
+            "APELLIDOS Y NOMBRES",
+
+            "SER",
+            10,
+
+            "SABER",
+            45,
+
+            ...actividadesSABER.map(
+                a => a.nombre
+            ),
+
+            "HACER",
+            40,
+
+            ...actividadesHACER.map(
+                a => a.nombre
+            ),
+
+            "AUTOEVAL",
+            5,
+
+            ...actividadesAUTO.map(
+                a => a.nombre
+            ),
+
+            "NOTA 3T",
+            "1T",
+            "2T",
+            "FINAL"
+
+        ];
+
+
+        filas.push(
+            fila1
+        );
+
+
+        // ==========================================
+        // CABECERA 2
+        // ==========================================
+
+        const fila2 = [
+
+            "",
+            "",
+
+            "",
+            "",
+
+            "PROMEDIO",
+            "45",
+
+            ...actividadesSABER.map(
+                () => ""
+            ),
+
+            "PROMEDIO",
+            "40",
+
+            ...actividadesHACER.map(
+                () => ""
+            ),
+
+            "AUTOEVALUACIÓN",
+            "5",
+
+            ...actividadesAUTO.map(
+                () => ""
+            ),
+
+            "",
+            "",
+            "",
+            ""
+
+        ];
+
+
+        filas.push(
+            fila2
+        );
+
+
+        // ==========================================
+        // ESTUDIANTES
+        // ==========================================
+
+        estudiantesCurso.forEach(
+        estudiante => {
+
+            const fila = [];
+
+
+            // Nº
+            fila.push(
+                estudiante.num_lista ?? ""
+            );
+
+
+            // NOMBRE
+            fila.push(
+                estudiante.nombre ?? ""
+            );
+
+
+            // ======================================
+            // SER
+            // ======================================
+
+            const serNotas =
+            obtenerNotasCategoria(
+                estudiante.id,
+                actividadesSER
+            );
+
+
+            const promedioSER =
+            calcularPromedio(
+                serNotas
+            );
+
+
+            const puntosSER =
+            convertirAPuntos(
+                promedioSER,
+                LIMITES.SER
+            );
+
+
+            fila.push(
+                puntosSER
+            );
+
+
+            fila.push(
+                LIMITES.SER
+            );
+
+
+            // ======================================
+            // SABER
+            // ======================================
+
+            const saberNotas =
+            obtenerNotasCategoria(
+                estudiante.id,
+                actividadesSABER
+            );
+
+
+            const promedioSABER =
+            calcularPromedio(
+                saberNotas
+            );
+
+
+            const puntosSABER =
+            convertirAPuntos(
+                promedioSABER,
+                LIMITES.SABER
+            );
+
+
+            fila.push(
+                "SABER"
+            );
+
+
+            fila.push(
+                puntosSABER
+            );
+
+
+            actividadesSABER.forEach(
+            actividad => {
+
+                fila.push(
+                    obtenerNota(
+                        estudiante.id,
+                        actividad.id
+                    ) ?? ""
+                );
+
+            });
+
+
+            // ======================================
+            // HACER
+            // ======================================
+
+            const hacerNotas =
+            obtenerNotasCategoria(
+                estudiante.id,
+                actividadesHACER
+            );
+
+
+            const promedioHACER =
+            calcularPromedio(
+                hacerNotas
+            );
+
+
+            const puntosHACER =
+            convertirAPuntos(
+                promedioHACER,
+                LIMITES.HACER
+            );
+
+
+            fila.push(
+                "HACER"
+            );
+
+
+            fila.push(
+                puntosHACER
+            );
+
+
+            actividadesHACER.forEach(
+            actividad => {
+
+                fila.push(
+                    obtenerNota(
+                        estudiante.id,
+                        actividad.id
+                    ) ?? ""
+                );
+
+            });
+
+
+            // ======================================
+            // AUTOEVALUACIÓN
+            // ======================================
+
+            const autoNotas =
+            obtenerNotasCategoria(
+                estudiante.id,
+                actividadesAUTO
+            );
+
+
+            const promedioAUTO =
+            calcularPromedio(
+                autoNotas
+            );
+
+
+            const puntosAUTO =
+            convertirAPuntos(
+                promedioAUTO,
+                LIMITES.AUTOEVALUACION
+            );
+
+
+            fila.push(
+                "AUTOEVALUACIÓN"
+            );
+
+
+            fila.push(
+                puntosAUTO
+            );
+
+
+            actividadesAUTO.forEach(
+            actividad => {
+
+                fila.push(
+                    obtenerNota(
+                        estudiante.id,
+                        actividad.id
+                    ) ?? ""
+                );
+
+            });
+
+
+            // ======================================
+            // NOTAS TRIMESTRALES
+            // ======================================
+
+            fila.push(
+                estudiante.nota_3t ?? ""
+            );
+
+
+            fila.push(
+                estudiante.nota_1t ?? ""
+            );
+
+
+            fila.push(
+                estudiante.nota_2t ?? ""
+            );
+
+
+            fila.push(
+                estudiante.final ?? ""
+            );
+
+
+            filas.push(
+                fila
+            );
+
+        });
+
+
+        // ==========================================
+        // CREAR LIBRO
+        // ==========================================
+
+        const libro =
+        XLSX.utils.book_new();
+
+
+        const hoja =
+        XLSX.utils.aoa_to_sheet(
+            filas
+        );
+
+
+        // ==========================================
+        // ANCHOS
+        // ==========================================
+
+        hoja["!cols"] =
+        filas[0].map(
+            (columna, indice) => {
+
+                if (
+                    indice === 1
+                ) {
+
+                    return {
+                        wch: 35
+                    };
+
+                }
+
+
+                return {
+                    wch: 14
+                };
+
+            }
+        );
+
+
+        // ==========================================
+        // CONGELAR FILAS
+        // ==========================================
+
+        hoja["!freeze"] = {
+            xSplit: 2,
+            ySplit: 2
+        };
+
+
+        // ==========================================
+        // AGREGAR HOJA
+        // ==========================================
+
+        XLSX.utils.book_append_sheet(
+
+            libro,
+
+            hoja,
+
+            String(
+                cursoSeleccionado
+            ).substring(
+                0,
+                31
+            )
+
+        );
+
+
+        // ==========================================
+        // NOMBRE DEL ARCHIVO
+        // ==========================================
+
+        const nombreArchivo =
+
+        "Calificaciones_" +
+
+        cursoSeleccionado +
+
+        "_3er_Trimestre.xlsx";
+
+
+        // ==========================================
+        // DESCARGAR
+        // ==========================================
+
+        XLSX.writeFile(
+
+            libro,
+
+            nombreArchivo
+
+        );
+
+
+        mostrarMensaje(
+
+            "✓ Notas guardadas y Excel exportado correctamente."
+
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        mostrarMensaje(
+
+            "Error al exportar: " +
+            error.message,
+
+            true
+
+        );
+
+    }
+
+}
+
+
+// =================================================
+// OBTENER NOTAS DE CATEGORÍA
+// =================================================
+
+function obtenerNotasCategoria(
+    estudianteId,
+    listaActividades
+) {
+
+    const notas = [];
+
+
+    listaActividades.forEach(
+    actividad => {
+
+        const nota =
+        obtenerNota(
+            estudianteId,
+            actividad.id
+        );
+
+
+        if (
+            nota !== null &&
+            nota !== undefined &&
+            nota !== ""
+        ) {
+
+            notas.push(
+                Number(nota)
+            );
+
+        }
+
+    });
+
+
+    return notas;
+
+}
+
+
+// =================================================
+// OBTENER NOTA
+// =================================================
+
+function obtenerNota(
+    estudianteId,
+    actividadId
+) {
+
+    if (
+        !calificaciones[
+            estudianteId
+        ]
+    ) {
+
+        return null;
+
+    }
+
+
+    const nota =
+    calificaciones[
+        estudianteId
+    ][
+        actividadId
+    ];
+
+
+    return nota === undefined
+        ? null
+        : nota;
+
+}
+
+
+// =================================================
+// CONVERTIR PROMEDIO A PUNTOS
+// =================================================
+
+function convertirAPuntos(
+    promedio,
+    maximo
+) {
+
+    if (
+        !promedio ||
+        promedio <= 0
+    ) {
+
+        return 0;
+
+    }
+
+
+    return Number(
+
+        (
+            promedio /
+            100 *
+            maximo
+
+        ).toFixed(2)
+
+    );
+
+}
+
+
+// =================================================
+// CALCULAR PROMEDIO
 // =================================================
 
 function calcularPromedio(
     valores
 ) {
-
 
     if (
         !valores ||
@@ -2678,7 +3390,6 @@ function mostrarNota(
     nota
 ) {
 
-
     if (
         nota === null ||
         nota === undefined
@@ -2704,7 +3415,6 @@ document.getElementById(
     "input",
     function() {
 
-
         const texto =
         this.value
         .toLowerCase()
@@ -2715,7 +3425,6 @@ document.getElementById(
             "#contenedorActividades tbody tr"
         ).forEach(
         fila => {
-
 
             const nombre =
             fila.querySelector(
@@ -2743,1192 +3452,9 @@ document.getElementById(
             ? ""
             : "none";
 
-
         });
 
     });
-
-
-// =================================================
-// EXPORTAR EXCEL
-// =================================================
-
-async function exportarExcel() {
-
-    try {
-
-        mostrarMensaje(
-            "Preparando archivo Excel..."
-        );
-
-
-        if (
-            typeof XLSX === "undefined"
-        ) {
-
-            alert(
-                "No se pudo cargar la herramienta de Excel. Verifica tu conexión a Internet."
-            );
-
-            return;
-
-        }
-
-
-        // ==========================================
-        // CARGAR TODAS LAS ACTIVIDADES
-        // ==========================================
-
-        const {
-            data: todasActividades,
-            error: errorActividades
-        } = await supabaseClient
-
-        .from("actividades")
-
-        .select(
-            "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
-        )
-
-        .eq(
-            "trimestre",
-            3
-        )
-
-        .order(
-            "orden"
-        );
-
-
-        if (
-            errorActividades
-        ) {
-
-            throw errorActividades;
-
-        }
-
-
-        // ==========================================
-        // CARGAR TODAS LAS CALIFICACIONES
-        // ==========================================
-
-        const idsActividades =
-        (todasActividades || [])
-        .map(
-            a => a.id
-        );
-
-
-        let todasCalificaciones = [];
-
-
-        if (
-            idsActividades.length > 0
-        ) {
-
-            const {
-                data,
-                error
-            } = await supabaseClient
-
-            .from("calificaciones")
-
-            .select(
-                "actividad_id,estudiante_id,nota"
-            )
-
-            .in(
-                "actividad_id",
-                idsActividades
-            );
-
-
-            if (
-                error
-            ) {
-
-                throw error;
-
-            }
-
-
-            todasCalificaciones =
-            data || [];
-
-        }
-
-
-        // ==========================================
-        // CREAR MAPA DE CALIFICACIONES
-        // ==========================================
-
-        const mapaCalificaciones = {};
-
-
-        todasCalificaciones.forEach(
-        cal => {
-
-            const clave =
-            cal.estudiante_id +
-            "_" +
-            cal.actividad_id;
-
-
-            mapaCalificaciones[
-                clave
-            ] =
-            cal.nota;
-
-        });
-
-
-        // ==========================================
-        // OBTENER CURSOS
-        // ==========================================
-
-        const cursos =
-        [...new Set(
-
-            estudiantes
-            .map(
-                e => e.curso
-            )
-            .filter(Boolean)
-
-        )].sort();
-
-
-        if (
-            cursos.length === 0
-        ) {
-
-            alert(
-                "No existen estudiantes para exportar."
-            );
-
-            return;
-
-        }
-
-
-        // ==========================================
-        // LIBRO EXCEL
-        // ==========================================
-
-        const libro =
-        XLSX.utils.book_new();
-
-
-        // ==========================================
-        // CREAR UNA HOJA POR CURSO
-        // ==========================================
-
-        cursos.forEach(
-        curso => {
-
-
-            const estudiantesCurso =
-            estudiantes.filter(
-                e =>
-                e.curso ===
-                curso
-            );
-
-
-            const actividadesCurso =
-            (todasActividades || [])
-            .filter(
-                a =>
-                a.curso ===
-                curso
-            );
-
-
-            const saber =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SABER"
-            );
-
-
-            const hacer =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "HACER"
-            );
-
-
-            const ser =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SER"
-            );
-
-
-            const auto =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "AUTOEVALUACION"
-            );
-
-
-            // ======================================
-            // COLUMNAS
-            // ======================================
-
-            const columnasSaber =
-            [
-                "PROMEDIO"
-            ]
-            .concat(
-                saber.map(
-                    a => a.nombre
-                )
-            );
-
-
-            const columnasHacer =
-            [
-                "PROMEDIO"
-            ]
-            .concat(
-                hacer.map(
-                    a => a.nombre
-                )
-            );
-
-
-            const columnasSer =
-            [
-                "PROMEDIO"
-            ]
-            .concat(
-                ser.map(
-                    a => a.nombre
-                )
-            );
-
-
-            const columnasAuto =
-            [
-                "AUTOEVALUACIÓN"
-            ]
-            .concat(
-                auto.map(
-                    a => a.nombre
-                )
-            );
-
-
-            const totalColumnas =
-                2 +
-                1 +
-                columnasSer.length +
-                columnasSaber.length +
-                columnasHacer.length +
-                columnasAuto.length +
-                1;
-
-
-            // ======================================
-            // FILA 1
-            // ======================================
-
-            const fila1 =
-            Array(
-                totalColumnas
-            ).fill("");
-
-
-            fila1[0] =
-            "Nº";
-
-
-            fila1[1] =
-            "APELLIDOS Y NOMBRES";
-
-
-            let posicion =
-            2;
-
-
-            fila1[posicion] =
-            "SER";
-
-
-            posicion +=
-            columnasSer.length;
-
-
-            fila1[posicion] =
-            "SABER";
-
-
-            posicion +=
-            columnasSaber.length;
-
-
-            fila1[posicion] =
-            "HACER";
-
-
-            posicion +=
-            columnasHacer.length;
-
-
-            fila1[posicion] =
-            "AUTOEVALUACIÓN";
-
-
-            posicion +=
-            columnasAuto.length;
-
-
-            fila1[posicion] =
-            "TOTAL";
-
-
-            // ======================================
-            // FILA 2
-            // ======================================
-
-            const fila2 =
-            Array(
-                totalColumnas
-            ).fill("");
-
-
-            posicion = 2;
-
-
-            fila2[posicion] =
-            "10";
-
-
-            posicion +=
-            columnasSer.length;
-
-
-            fila2[posicion] =
-            "45";
-
-
-            posicion +=
-            columnasSaber.length;
-
-
-            fila2[posicion] =
-            "40";
-
-
-            posicion +=
-            columnasHacer.length;
-
-
-            fila2[posicion] =
-            "5";
-
-
-            // ======================================
-            // FILA 3
-            // ======================================
-
-            const fila3 =
-            Array(
-                totalColumnas
-            ).fill("");
-
-
-            posicion = 2;
-
-
-            columnasSer.forEach(
-            nombre => {
-
-                fila3[posicion] =
-                nombre;
-
-                posicion++;
-
-            });
-
-
-            columnasSaber.forEach(
-            nombre => {
-
-                fila3[posicion] =
-                nombre;
-
-                posicion++;
-
-            });
-
-
-            columnasHacer.forEach(
-            nombre => {
-
-                fila3[posicion] =
-                nombre;
-
-                posicion++;
-
-            });
-
-
-            columnasAuto.forEach(
-            nombre => {
-
-                fila3[posicion] =
-                nombre;
-
-                posicion++;
-
-            });
-
-
-            fila3[posicion] =
-            "TOTAL";
-
-
-            // ======================================
-            // FILAS DE ESTUDIANTES
-            // ======================================
-
-            const datos =
-            [
-                fila1,
-                fila2,
-                fila3
-            ];
-
-
-            estudiantesCurso.forEach(
-            estudiante => {
-
-
-                const fila =
-                Array(
-                    totalColumnas
-                ).fill("");
-
-
-                fila[0] =
-                estudiante.num_lista ??
-                "";
-
-
-                fila[1] =
-                estudiante.nombre ??
-                "";
-
-
-                let col =
-                2;
-
-
-                // ==================================
-                // SER
-                // ==================================
-
-                const notasSer =
-                ser.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                fila[col] =
-                calcularPromedioPonderado(
-                    notasSer,
-                    ser
-                );
-
-
-                col++;
-
-
-                ser.forEach(
-                actividad => {
-
-                    fila[col] =
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    );
-
-                    col++;
-
-                });
-
-
-                // ==================================
-                // SABER
-                // ==================================
-
-                const notasSaber =
-                saber.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                fila[col] =
-                calcularPromedioPonderado(
-                    notasSaber,
-                    saber
-                );
-
-
-                col++;
-
-
-                saber.forEach(
-                actividad => {
-
-                    fila[col] =
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    );
-
-                    col++;
-
-                });
-
-
-                // ==================================
-                // HACER
-                // ==================================
-
-                const notasHacer =
-                hacer.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                fila[col] =
-                calcularPromedioPonderado(
-                    notasHacer,
-                    hacer
-                );
-
-
-                col++;
-
-
-                hacer.forEach(
-                actividad => {
-
-                    fila[col] =
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    );
-
-                    col++;
-
-                });
-
-
-                // ==================================
-                // AUTOEVALUACIÓN
-                // ==================================
-
-                const notasAuto =
-                auto.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                fila[col] =
-                calcularPromedioPonderado(
-                    notasAuto,
-                    auto
-                );
-
-
-                col++;
-
-
-                auto.forEach(
-                actividad => {
-
-                    fila[col] =
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    );
-
-                    col++;
-
-                });
-
-
-                // ==================================
-                // TOTAL 3T
-                // ==================================
-
-                fila[col] =
-                estudiante.nota_3t ??
-                "";
-
-
-                datos.push(
-                    fila
-                );
-
-            });
-
-
-            // ======================================
-            // CREAR HOJA
-            // ======================================
-
-            const hoja =
-            XLSX.utils.aoa_to_sheet(
-                datos
-            );
-
-
-            // ======================================
-            // COMBINAR ENCABEZADOS
-            // ======================================
-
-            const merges = [];
-
-
-            // Nº
-            merges.push({
-                s: {
-                    r: 0,
-                    c: 0
-                },
-                e: {
-                    r: 2,
-                    c: 0
-                }
-            });
-
-
-            // NOMBRE
-            merges.push({
-                s: {
-                    r: 0,
-                    c: 1
-                },
-                e: {
-                    r: 2,
-                    c: 1
-                }
-            });
-
-
-            let inicio =
-            2;
-
-
-            // SER
-            merges.push({
-                s: {
-                    r: 0,
-                    c: inicio
-                },
-                e: {
-                    r: 0,
-                    c: inicio +
-                    columnasSer.length -
-                    1
-                }
-            });
-
-
-            inicio +=
-            columnasSer.length;
-
-
-            // SABER
-            merges.push({
-                s: {
-                    r: 0,
-                    c: inicio
-                },
-                e: {
-                    r: 0,
-                    c: inicio +
-                    columnasSaber.length -
-                    1
-                }
-            });
-
-
-            inicio +=
-            columnasSaber.length;
-
-
-            // HACER
-            merges.push({
-                s: {
-                    r: 0,
-                    c: inicio
-                },
-                e: {
-                    r: 0,
-                    c: inicio +
-                    columnasHacer.length -
-                    1
-                }
-            });
-
-
-            inicio +=
-            columnasHacer.length;
-
-
-            // AUTO
-            merges.push({
-                s: {
-                    r: 0,
-                    c: inicio
-                },
-                e: {
-                    r: 0,
-                    c: inicio +
-                    columnasAuto.length -
-                    1
-                }
-            });
-
-
-            inicio +=
-            columnasAuto.length;
-
-
-            // TOTAL
-            merges.push({
-                s: {
-                    r: 0,
-                    c: inicio
-                },
-                e: {
-                    r: 2,
-                    c: inicio
-                }
-            });
-
-
-            hoja["!merges"] =
-            merges;
-
-
-            // ======================================
-            // ANCHO DE COLUMNAS
-            // ======================================
-
-            hoja["!cols"] =
-            Array(
-                totalColumnas
-            ).fill(null)
-            .map(
-                (
-                    _,
-                    indice
-                ) => {
-
-                    if (
-                        indice === 0
-                    ) {
-
-                        return {
-                            wch: 8
-                        };
-
-                    }
-
-
-                    if (
-                        indice === 1
-                    ) {
-
-                        return {
-                            wch: 32
-                        };
-
-                    }
-
-
-                    return {
-                        wch: 18
-                    };
-
-                }
-            );
-
-
-            // ======================================
-            // ALTURA DE ENCABEZADOS
-            // ======================================
-
-            hoja["!rows"] = [
-
-                {
-                    hpt: 25
-                },
-
-                {
-                    hpt: 22
-                },
-
-                {
-                    hpt: 40
-                }
-
-            ];
-
-
-            // ======================================
-            // ESTILO BÁSICO
-            // ======================================
-
-            const rango =
-            XLSX.utils.decode_range(
-                hoja["!ref"]
-            );
-
-
-            for (
-                let fila =
-                rango.s.r;
-                fila <= rango.e.r;
-                fila++
-            ) {
-
-                for (
-                    let columna =
-                    rango.s.c;
-                    columna <= rango.e.c;
-                    columna++
-                ) {
-
-
-                    const celda =
-                    hoja[
-                        XLSX.utils.encode_cell({
-                            r: fila,
-                            c: columna
-                        })
-                    ];
-
-
-                    if (!celda) {
-
-                        continue;
-
-                    }
-
-
-                    celda.s = {
-
-                        alignment: {
-
-                            horizontal:
-                            "center",
-
-                            vertical:
-                            "center",
-
-                            wrapText:
-                            true
-
-                        },
-
-                        font: {
-
-                            name:
-                            "Arial",
-
-                            sz:
-                            10
-
-                        },
-
-                        border: {
-
-                            top: {
-                                style:
-                                "thin"
-                            },
-
-                            bottom: {
-                                style:
-                                "thin"
-                            },
-
-                            left: {
-                                style:
-                                "thin"
-                            },
-
-                            right: {
-                                style:
-                                "thin"
-                            }
-
-                        }
-
-                    };
-
-                }
-
-            }
-
-
-            // ======================================
-            // NOMBRE
-            // ======================================
-
-            for (
-                let fila = 3;
-                fila <= rango.e.r;
-                fila++
-            ) {
-
-                const celda =
-                hoja[
-                    XLSX.utils.encode_cell({
-                        r: fila,
-                        c: 1
-                    })
-                ];
-
-
-                if (celda) {
-
-                    celda.s =
-                    celda.s || {};
-
-
-                    celda.s.alignment = {
-
-                        horizontal:
-                        "left",
-
-                        vertical:
-                        "center"
-
-                    };
-
-                }
-
-            }
-
-
-            // ======================================
-            // AGREGAR HOJA
-            // ======================================
-
-            let nombreHoja =
-            String(curso)
-            .replace(
-                /[\\\/\?\*\[\]:]/g,
-                ""
-            )
-            .substring(
-                0,
-                31
-            );
-
-
-            if (!nombreHoja) {
-
-                nombreHoja =
-                "Curso";
-
-            }
-
-
-            XLSX.utils.book_append_sheet(
-                libro,
-                hoja,
-                nombreHoja
-            );
-
-        });
-
-
-        // ==========================================
-        // DESCARGAR
-        // ==========================================
-
-        const fecha =
-        new Date()
-        .toISOString()
-        .slice(
-            0,
-            10
-        );
-
-
-        XLSX.writeFile(
-            libro,
-            "Calificaciones_Tercer_Trimestre_" +
-            fecha +
-            ".xlsx"
-        );
-
-
-        mostrarMensaje(
-            "✓ Excel exportado correctamente."
-        );
-
-
-    } catch (error) {
-
-        console.error(error);
-
-
-        mostrarMensaje(
-
-            "Error al exportar Excel: " +
-            error.message,
-
-            true
-
-        );
-
-    }
-
-}
-
-
-// =================================================
-// OBTENER NOTA PARA EXCEL
-// =================================================
-
-function obtenerNotaExcel(
-    estudianteId,
-    actividadId,
-    mapa
-) {
-
-    const clave =
-    estudianteId +
-    "_" +
-    actividadId;
-
-
-    if (
-        mapa[
-            clave
-        ] === undefined ||
-        mapa[
-            clave
-        ] === null
-    ) {
-
-        return "";
-
-    }
-
-
-    return Number(
-        mapa[
-            clave
-        ]
-    );
-
-}
-
-
-// =================================================
-// PROMEDIO PARA EXCEL
-// =================================================
-
-function calcularPromedioPonderado(
-    notas,
-    actividadesLista
-) {
-
-    if (
-        !actividadesLista ||
-        actividadesLista.length === 0
-    ) {
-
-        return "";
-
-    }
-
-
-    const valores =
-    notas.filter(
-        nota =>
-        nota !== "" &&
-        nota !== null &&
-        nota !== undefined &&
-        !isNaN(
-            Number(nota)
-        )
-    );
-
-
-    if (
-        valores.length === 0
-    ) {
-
-        return "";
-
-    }
-
-
-    const suma =
-    valores.reduce(
-        (
-            total,
-            valor
-        ) =>
-        total +
-        Number(valor),
-
-        0
-    );
-
-
-    const promedio =
-    suma /
-    valores.length;
-
-
-    return Number(
-        promedio.toFixed(2)
-    );
-
-}
 
 
 // =================================================
@@ -3955,7 +3481,6 @@ function mostrarMensaje(
     error = false
 ) {
 
-
     const mensaje =
     document.getElementById(
         "mensaje"
@@ -3981,7 +3506,6 @@ function mostrarMensaje(
 function escapeHTML(
     texto
 ) {
-
 
     return String(texto)
 
