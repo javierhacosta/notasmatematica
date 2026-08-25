@@ -52,9 +52,9 @@ h3 {
 }
 
 
-/* ================================
+/* =================================
    FILTROS
-================================ */
+================================= */
 
 .filtros {
     display: flex;
@@ -84,9 +84,9 @@ select {
 }
 
 
-/* ================================
-   CREAR ACTIVIDAD
-================================ */
+/* =================================
+   NUEVA ACTIVIDAD
+================================= */
 
 .nueva-actividad {
     margin-top: 20px;
@@ -98,15 +98,15 @@ select {
 
 .nueva-grid {
     display: grid;
-    grid-template-columns: 1fr 220px auto;
+    grid-template-columns: 1fr 240px auto;
     gap: 15px;
     align-items: end;
 }
 
 
-/* ================================
+/* =================================
    BOTONES
-================================ */
+================================= */
 
 button {
     border: none;
@@ -135,15 +135,31 @@ button:hover {
     color: white;
 }
 
+
+/* BOTÓN - / + */
+
 .boton-ocultar {
-    background: rgba(255,255,255,.2);
+    background: rgba(255,255,255,.20);
     color: white;
     width: 38px;
     height: 34px;
     padding: 0;
-    font-size: 21px;
+    font-size: 22px;
     font-weight: bold;
 }
+
+.boton-ocultar-general {
+    background: #1557a6;
+    color: white;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+
+/* BASURERO */
 
 .boton-eliminar {
     background: #c62828;
@@ -155,9 +171,9 @@ button:hover {
 }
 
 
-/* ================================
+/* =================================
    CATEGORÍAS
-================================ */
+================================= */
 
 .categoria {
     margin-top: 25px;
@@ -201,9 +217,9 @@ button:hover {
 }
 
 
-/* ================================
+/* =================================
    ACTIVIDADES
-================================ */
+================================= */
 
 .actividad {
     margin: 18px;
@@ -239,9 +255,9 @@ button:hover {
 }
 
 
-/* ================================
-   TABLA
-================================ */
+/* =================================
+   TABLAS
+================================= */
 
 .tabla-contenedor {
     overflow-x: auto;
@@ -250,7 +266,7 @@ button:hover {
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 800px;
+    min-width: 700px;
 }
 
 th,
@@ -276,12 +292,33 @@ td.nombre {
 }
 
 
-/* ================================
-   NOTAS GENERALES
-================================ */
+/* =================================
+   CALIFICACIONES GENERALES
+================================= */
 
 .tabla-general {
     margin-top: 30px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.titulo-general {
+    background: #1557a6;
+    color: white;
+
+    padding: 13px 15px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.contenido-general {
+    padding: 0;
 }
 
 .nota-3t {
@@ -294,9 +331,9 @@ td.nombre {
 }
 
 
-/* ================================
+/* =================================
    INFORMACIÓN
-================================ */
+================================= */
 
 .info {
     margin-top: 15px;
@@ -312,18 +349,18 @@ td.nombre {
 }
 
 
-/* ================================
+/* =================================
    UTILIDADES
-================================ */
+================================= */
 
 .oculto {
     display: none !important;
 }
 
 
-/* ================================
+/* =================================
    BOTONES INFERIORES
-================================ */
+================================= */
 
 .botones {
     margin-top: 25px;
@@ -334,9 +371,9 @@ td.nombre {
 }
 
 
-/* ================================
+/* =================================
    RESPONSIVE
-================================ */
+================================= */
 
 @media (max-width: 800px) {
 
@@ -376,9 +413,9 @@ Usuario:
 </div>
 
 
-<!-- ==================================
+<!-- =================================
      FILTROS
-================================== -->
+================================= -->
 
 <div class="filtros">
 
@@ -427,9 +464,9 @@ Selecciona un curso para comenzar.
 </div>
 
 
-<!-- ==================================
+<!-- =================================
      CREAR ACTIVIDAD
-================================== -->
+================================= -->
 
 <div
     id="panelNuevaActividad"
@@ -506,9 +543,9 @@ AUTOEVALUACIÓN — 5 puntos
 </div>
 
 
-<!-- ==================================
+<!-- =================================
      ACTIVIDADES
-================================== -->
+================================= -->
 
 <div
     id="contenedorActividades">
@@ -516,18 +553,38 @@ AUTOEVALUACIÓN — 5 puntos
 </div>
 
 
-<!-- ==================================
-     TABLA GENERAL
-================================== -->
+<!-- =================================
+     CALIFICACIONES DEL CURSO
+================================= -->
 
 <div
     id="tablaGeneral"
     class="tabla-general oculto">
 
 
-<h2>
-Calificaciones del curso
-</h2>
+<div class="titulo-general">
+
+<span>
+📊 Calificaciones del curso
+</span>
+
+
+<button
+    id="botonGeneral"
+    class="boton-ocultar-general"
+    onclick="ocultarTablaGeneral()"
+    title="Ocultar calificaciones">
+
+−
+
+</button>
+
+</div>
+
+
+<div
+    id="contenidoGeneral"
+    class="contenido-general">
 
 
 <div class="tabla-contenedor">
@@ -584,13 +641,14 @@ Final
 
 </div>
 
+</div>
 
 </div>
 
 
-<!-- ==================================
+<!-- =================================
      BOTONES
-================================== -->
+================================= -->
 
 <div class="botones">
 
@@ -667,7 +725,7 @@ let cursoSeleccionado = "";
 
 
 // =====================================================
-// PUNTAJES DE CADA CATEGORÍA
+// PUNTAJES
 // =====================================================
 
 const LIMITES = {
@@ -684,7 +742,7 @@ const LIMITES = {
 
 
 // =====================================================
-// INICIAR SESIÓN
+// SESIÓN
 // =====================================================
 
 async function comprobarSesion() {
@@ -699,10 +757,10 @@ const {
 
 if (!user) {
 
-    window.location.href =
-        "login-docente.html";
+window.location.href =
+    "login-docente.html";
 
-    return;
+return;
 
 }
 
@@ -719,7 +777,7 @@ await cargarEstudiantes();
 
 
 // =====================================================
-// CARGAR ESTUDIANTES
+// ESTUDIANTES
 // =====================================================
 
 async function cargarEstudiantes() {
@@ -761,12 +819,11 @@ data || [];
 
 cargarCursos();
 
-
 }
 
 
 // =====================================================
-// CARGAR CURSOS
+// CURSOS
 // =====================================================
 
 function cargarCursos() {
@@ -790,11 +847,11 @@ Selecciona un curso
 const cursos =
 [...new Set(
 
-    estudiantes
-    .map(
-        e => e.curso
-    )
-    .filter(Boolean)
+estudiantes
+.map(
+    e => e.curso
+)
+.filter(Boolean)
 
 )]
 .sort();
@@ -829,7 +886,7 @@ select.appendChild(
 
 
 // =====================================================
-// CAMBIO DE CURSO
+// CAMBIO CURSO
 // =====================================================
 
 document.getElementById(
@@ -895,7 +952,6 @@ cursoSeleccionado;
 
 await cargarActividades();
 
-
 mostrarTablaGeneral();
 
 
@@ -903,7 +959,7 @@ mostrarTablaGeneral();
 
 
 // =====================================================
-// CARGAR ACTIVIDADES
+// ACTIVIDADES
 // =====================================================
 
 async function cargarActividades() {
@@ -917,7 +973,7 @@ const {
 .from("actividades")
 
 .select(
-    "id,curso,trimestre,categoria,nombre,orden"
+    "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
 )
 
 .eq(
@@ -956,15 +1012,13 @@ data || [];
 
 await cargarCalificaciones();
 
-
 mostrarActividades();
-
 
 }
 
 
 // =====================================================
-// CARGAR CALIFICACIONES
+// CALIFICACIONES
 // =====================================================
 
 async function cargarCalificaciones() {
@@ -1074,7 +1128,6 @@ cal.nota;
 
 
 });
-
 
 }
 
@@ -1193,6 +1246,11 @@ categoria.puntos +
 " puntos";
 
 
+izquierda.appendChild(
+    texto
+);
+
+
 const botonCategoria =
 document.createElement(
     "button"
@@ -1209,11 +1267,6 @@ botonCategoria.textContent =
 
 botonCategoria.title =
 "Ocultar actividades";
-
-
-izquierda.appendChild(
-    texto
-);
 
 
 encabezado.appendChild(
@@ -1240,17 +1293,11 @@ document.createElement(
 lista.forEach(
 actividad => {
 
-
-const bloque =
-crearActividadHTML(
-    actividad
-);
-
-
 contenido.appendChild(
-    bloque
+    crearActividadHTML(
+        actividad
+    )
 );
-
 
 });
 
@@ -1305,8 +1352,6 @@ seccion
 });
 
 
-// Si no hay actividades
-
 if (
     actividades.length === 0
 ) {
@@ -1320,8 +1365,7 @@ para el tercer trimestre.
 
 <br><br>
 
-Puedes crear la primera actividad
-arriba.
+Puedes crear la primera actividad arriba.
 
 </div>
 
@@ -1329,12 +1373,11 @@ arriba.
 
 }
 
-
 }
 
 
 // =====================================================
-// CREAR HTML DE UNA ACTIVIDAD
+// HTML ACTIVIDAD
 // =====================================================
 
 function crearActividadHTML(
@@ -1386,10 +1429,6 @@ botones.className =
 "botones-actividad";
 
 
-// -------------------------------
-// BOTÓN OCULTAR
-// -------------------------------
-
 const botonOcultar =
 document.createElement(
     "button"
@@ -1407,10 +1446,6 @@ botonOcultar.textContent =
 botonOcultar.title =
 "Ocultar estudiantes";
 
-
-// -------------------------------
-// BOTÓN ELIMINAR
-// -------------------------------
 
 const botonEliminar =
 document.createElement(
@@ -1524,12 +1559,6 @@ estudiantesCurso.forEach(
 estudiante => {
 
 
-const fila =
-document.createElement(
-    "tr"
-);
-
-
 let nota = null;
 
 
@@ -1554,14 +1583,22 @@ calificaciones[
 }
 
 
+const fila =
+document.createElement(
+    "tr"
+);
+
+
 fila.innerHTML = `
 
 <td>
+
 ${escapeHTML(
     String(
         estudiante.ci
     )
 )}
+
 </td>
 
 <td class="nombre">
@@ -1637,7 +1674,7 @@ bloque.appendChild(
 
 
 // =====================================================
-// OCULTAR / MOSTRAR
+// OCULTAR
 // =====================================================
 
 botonOcultar.onclick =
@@ -1705,12 +1742,6 @@ function validarNota(
 ) {
 
 
-let valor =
-Number(
-    input.value
-);
-
-
 if (
     input.value === ""
 ) {
@@ -1718,6 +1749,12 @@ if (
 return;
 
 }
+
+
+let valor =
+Number(
+    input.value
+);
 
 
 if (
@@ -1815,7 +1852,17 @@ Math.max(
 
 
 // =====================================================
-// INSERTAR
+// PUNTAJE AUTOMÁTICO
+// =====================================================
+
+const puntajeMaximo =
+LIMITES[
+    categoria
+];
+
+
+// =====================================================
+// INSERTAR ACTIVIDAD
 // =====================================================
 
 const {
@@ -1840,7 +1887,10 @@ const {
         nombre,
 
     orden:
-        orden
+        orden,
+
+    puntaje_maximo:
+        puntajeMaximo
 
 })
 
@@ -1852,9 +1902,12 @@ if (error) {
 console.error(error);
 
 mostrarMensaje(
-    "Error al crear actividad: " +
-    error.message,
-    true
+
+"Error al crear actividad: " +
+error.message,
+
+true
+
 );
 
 return;
@@ -1915,7 +1968,7 @@ mostrarMensaje(
 
 
 // =====================================================
-// PRIMERO BORRAR CALIFICACIONES
+// BORRAR CALIFICACIONES
 // =====================================================
 
 const {
@@ -1943,7 +1996,7 @@ console.error(
 
 mostrarMensaje(
 
-"Error al eliminar las calificaciones: " +
+"Error al eliminar calificaciones: " +
 errorCalificaciones.message,
 
 true
@@ -1956,7 +2009,7 @@ return;
 
 
 // =====================================================
-// DESPUÉS BORRAR ACTIVIDAD
+// BORRAR ACTIVIDAD
 // =====================================================
 
 const {
@@ -1984,7 +2037,7 @@ console.error(
 
 mostrarMensaje(
 
-"Error al eliminar la actividad: " +
+"Error al eliminar actividad: " +
 errorActividad.message,
 
 true
@@ -2008,7 +2061,7 @@ await cargarActividades();
 
 
 // =====================================================
-// MOSTRAR TABLA GENERAL
+// TABLA GENERAL
 // =====================================================
 
 function mostrarTablaGeneral() {
@@ -2136,6 +2189,58 @@ document.getElementById(
 
 
 // =====================================================
+// OCULTAR TABLA GENERAL
+// =====================================================
+
+function ocultarTablaGeneral() {
+
+
+const contenido =
+document.getElementById(
+    "contenidoGeneral"
+);
+
+
+const boton =
+document.getElementById(
+    "botonGeneral"
+);
+
+
+if (
+    contenido.classList.contains(
+        "oculto"
+    )
+) {
+
+contenido.classList.remove(
+    "oculto"
+);
+
+boton.textContent =
+"−";
+
+boton.title =
+"Ocultar calificaciones";
+
+} else {
+
+contenido.classList.add(
+    "oculto"
+);
+
+boton.textContent =
+"+";
+
+boton.title =
+"Mostrar calificaciones";
+
+}
+
+}
+
+
+// =====================================================
 // GUARDAR NOTAS
 // =====================================================
 
@@ -2210,7 +2315,6 @@ Number(
     input.value
 );
 
-
 if (
     nota < 0
 ) {
@@ -2218,7 +2322,6 @@ if (
 nota = 0;
 
 }
-
 
 if (
     nota > 100
@@ -2244,15 +2347,12 @@ registros.push({
 
 });
 
-
 });
 
 
-/*
-===========================================
-GUARDAR CALIFICACIONES
-===========================================
-*/
+// =====================================================
+// GUARDAR
+// =====================================================
 
 const {
     error:
@@ -2296,7 +2396,7 @@ return;
 
 
 // =====================================================
-// CALCULAR NOTA 3T DE CADA ESTUDIANTE
+// CALCULAR NOTA 3T
 // =====================================================
 
 const estudiantesCurso =
@@ -2326,10 +2426,6 @@ const totales = {
 };
 
 
-// =====================================================
-// RECORRER ACTIVIDADES
-// =====================================================
-
 actividades.forEach(
 actividad => {
 
@@ -2342,24 +2438,23 @@ document.querySelector(
 );
 
 
-let nota = null;
-
-
 if (
-    input &&
-    input.value !== ""
+    !input ||
+    input.value === ""
 ) {
 
-nota =
-Number(
-    input.value
-);
+return;
 
 }
 
 
+const nota =
+Number(
+    input.value
+);
+
+
 if (
-    nota !== null &&
     !isNaN(nota)
 ) {
 
@@ -2370,7 +2465,6 @@ totales[
 );
 
 }
-
 
 });
 
@@ -2404,7 +2498,7 @@ calcularPromedio(
 
 
 // =====================================================
-// CONVERTIR A LOS PUNTOS CORRESPONDIENTES
+// CONVERSIÓN
 // =====================================================
 
 const puntosSER =
@@ -2428,7 +2522,7 @@ LIMITES.AUTOEVALUACION;
 
 
 // =====================================================
-// NOTA FINAL 3T
+// NOTA 3T
 // =====================================================
 
 const nota3T =
@@ -2443,7 +2537,7 @@ Math.round(
 
 
 // =====================================================
-// GUARDAR NOTA 3T
+// GUARDAR 3T
 // =====================================================
 
 const {
@@ -2482,12 +2576,11 @@ return;
 
 }
 
-
 }
 
 
 // =====================================================
-// RECARGAR
+// FINALIZAR
 // =====================================================
 
 mostrarMensaje(
@@ -2506,7 +2599,7 @@ await cargarActividades();
 
 
 // =====================================================
-// CALCULAR PROMEDIO
+// PROMEDIO
 // =====================================================
 
 function calcularPromedio(
@@ -2530,8 +2623,10 @@ valores.reduce(
         total,
         valor
     ) =>
+
         total +
         Number(valor),
+
     0
 );
 
@@ -2619,7 +2714,6 @@ coincide
 
 });
 
-
 });
 
 
@@ -2664,7 +2758,6 @@ mensaje.style.color =
 error
     ? "#c62828"
     : "#16803c";
-
 
 }
 
@@ -2716,7 +2809,6 @@ comprobarSesion();
 
 
 </script>
-
 
 </body>
 
