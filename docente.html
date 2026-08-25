@@ -1,3 +1,5 @@
+Código HTML completo
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -97,57 +99,6 @@ select {
     background: #fff8e1;
     border: 1px solid #ffe082;
     border-radius: 8px;
-}
-
-
-/* =====================================================
-   BOTÓN AÑADIR ACTIVIDAD
-===================================================== */
-
-.barra-nueva-actividad {
-
-    margin-top: 18px;
-
-    display: flex;
-
-    justify-content: flex-end;
-
-}
-
-.boton-nueva-actividad {
-
-    background: #1557a6;
-
-    color: white;
-
-    width: 45px;
-
-    height: 42px;
-
-    padding: 0;
-
-    border-radius: 9px;
-
-    font-size: 25px;
-
-    font-weight: bold;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    box-shadow: 0 2px 6px rgba(0,0,0,.15);
-
-}
-
-.boton-nueva-actividad:hover {
-
-    background: #0d47a1;
-
-    transform: scale(1.03);
-
 }
 
 
@@ -264,6 +215,10 @@ select {
     align-items: center;
 
     justify-content: center;
+
+    border: none;
+
+    cursor: pointer;
 
 }
 
@@ -486,6 +441,12 @@ select {
 
     flex-shrink: 0;
 
+    border: none;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+
 }
 
 
@@ -678,7 +639,7 @@ td:first-child {
 
     color: white;
 
-    padding: 13px 15px;
+    padding: 10px 12px;
 
     display: flex;
 
@@ -686,11 +647,76 @@ td:first-child {
 
     align-items: center;
 
-    font-size: 18px;
+    font-size: 17px;
 
     font-weight: bold;
 
 }
+
+
+/* =====================================================
+   ACCIONES JUNTO A CALIFICACIONES
+===================================================== */
+
+.acciones-general {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin-left: auto;
+
+}
+
+
+/* =====================================================
+   BOTÓN + NUEVA ACTIVIDAD
+===================================================== */
+
+.boton-nueva-actividad {
+
+    background: rgba(255,255,255,.20);
+
+    color: white;
+
+    width: 38px;
+
+    height: 34px;
+
+    padding: 0;
+
+    border: none;
+
+    border-radius: 7px;
+
+    font-size: 21px;
+
+    font-weight: bold;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    cursor: pointer;
+
+}
+
+.boton-nueva-actividad:hover {
+
+    background: rgba(255,255,255,.35);
+
+    transform: scale(1.03);
+
+}
+
+
+/* =====================================================
+   BOTÓN GENERAL + / -
+===================================================== */
 
 .boton-general {
 
@@ -704,9 +730,21 @@ td:first-child {
 
     padding: 0;
 
+    border: none;
+
+    border-radius: 7px;
+
     font-size: 22px;
 
     font-weight: bold;
+
+    cursor: pointer;
+
+}
+
+.boton-general:hover {
+
+    background: rgba(255,255,255,.35);
 
 }
 
@@ -738,6 +776,44 @@ td:first-child {
     gap: 12px;
 
     flex-wrap: wrap;
+
+}
+
+.botones button {
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 15px;
+
+    cursor: pointer;
+
+    font-size: 15px;
+
+}
+
+.guardar {
+
+    background: #16803c;
+
+    color: white;
+
+}
+
+.exportar {
+
+    background: #1565c0;
+
+    color: white;
+
+}
+
+.salir {
+
+    background: #c62828;
+
+    color: white;
 
 }
 
@@ -853,9 +929,7 @@ td:first-child {
     }
 
 
-    /* =================================================
-       TABLA EN CELULAR
-    ================================================= */
+    /* TABLA */
 
     .tabla-contenedor {
 
@@ -997,7 +1071,8 @@ td:first-child {
 
     }
 
-    /* MODAL EN CELULAR */
+
+    /* MODAL */
 
     .modal-actividad {
 
@@ -1221,27 +1296,6 @@ Selecciona un curso para comenzar.
 
 
 <!-- =====================================================
-BOTÓN PARA NUEVA ACTIVIDAD
-===================================================== -->
-
-<div
-    id="barraNuevaActividad"
-    class="barra-nueva-actividad oculto">
-
-<button
-    type="button"
-    class="boton-nueva-actividad"
-    onclick="abrirModalActividad()"
-    title="Añadir nueva actividad">
-
-➕
-
-</button>
-
-</div>
-
-
-<!-- =====================================================
 ACTIVIDADES
 ===================================================== -->
 
@@ -1266,19 +1320,37 @@ TABLA GENERAL
 </span>
 
 
+<div class="acciones-general">
+
+<button
+    type="button"
+    class="boton-nueva-actividad"
+    onclick="abrirModalActividad()"
+    title="Añadir nueva actividad">
+
+➕
+
+</button>
+
+
 <button
     id="botonGeneral"
     class="boton-general"
-    onclick="ocultarTablaGeneral()">
+    onclick="ocultarTablaGeneral()"
+    title="Mostrar u ocultar calificaciones">
 
-−
++
 
 </button>
 
 </div>
 
+</div>
 
-<div id="contenidoGeneral">
+
+<div
+    id="contenidoGeneral"
+    class="oculto">
 
 <div class="tabla-contenedor">
 
@@ -1736,16 +1808,7 @@ document.getElementById(
         );
 
 
-        // Ocultar formulario/modal de nueva actividad
-
         cerrarModalActividad();
-
-
-        document.getElementById(
-            "barraNuevaActividad"
-        ).classList.add(
-            "oculto"
-        );
 
 
         actividadesDesbloqueadas.clear();
@@ -1763,20 +1826,12 @@ document.getElementById(
         }
 
 
-        // Mostrar solamente el icono +
-
-        document.getElementById(
-            "barraNuevaActividad"
-        ).classList.remove(
-            "oculto"
-        );
-
+        // No mostrar "Curso seleccionado"
 
         document.getElementById(
             "mensajeCurso"
         ).textContent =
-        "Curso seleccionado: " +
-        cursoSeleccionado;
+        "";
 
 
         await cargarActividades();
@@ -3092,8 +3147,6 @@ async function crearActividad() {
     }
 
 
-    // Limpiar formulario
-
     document.getElementById(
         "nombreActividad"
     ).value = "";
@@ -3103,8 +3156,6 @@ async function crearActividad() {
         "categoriaActividad"
     ).value = "SER";
 
-
-    // Cerrar modal
 
     cerrarModalActividad();
 
@@ -3352,13 +3403,38 @@ function mostrarTablaGeneral() {
     );
 
 
+    // =================================================
+    // CALIFICACIONES MINIMIZADAS AL CARGAR
+    // =================================================
+
+    const contenidoGeneral =
+    document.getElementById(
+        "contenidoGeneral"
+    );
+
+
+    const botonGeneral =
+    document.getElementById(
+        "botonGeneral"
+    );
+
+
+    contenidoGeneral.classList.add(
+        "oculto"
+    );
+
+
+    botonGeneral.textContent =
+    "+";
+
+
     aplicarBusqueda();
 
 }
 
 
 // =====================================================
-// OCULTAR TABLA GENERAL
+// OCULTAR / MOSTRAR TABLA GENERAL
 // =====================================================
 
 function ocultarTablaGeneral() {
@@ -3752,10 +3828,6 @@ async function guardarNotas() {
 
     }
 
-
-    // =================================================
-    // CALCULAR 3T Y FINAL
-    // =================================================
 
     const estudiantesCurso =
     estudiantes.filter(
