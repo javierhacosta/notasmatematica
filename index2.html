@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 
@@ -725,7 +726,7 @@ button:hover {
 
 .detalle-asistencia {
 
-    display: none;
+    display: block;
 
     border-top: 1px solid #ddd;
 
@@ -1342,6 +1343,8 @@ function mostrarResultado(alumno) {
             </div>
 
 
+            <!-- BOTÓN DETALLES ABIERTO -->
+
             <button
 
                 class="boton-detalles"
@@ -1350,16 +1353,18 @@ function mostrarResultado(alumno) {
 
             >
 
-                📚 Ver detalles del 3er trimestre
+                − Ocultar detalles del 3er trimestre
 
             </button>
 
+
+            <!-- DETALLE ABIERTO -->
 
             <div
 
                 id="detalle3T"
 
-                style="display:none"
+                style="display:block"
 
             ></div>
 
@@ -1490,6 +1495,15 @@ function mostrarResultado(alumno) {
 
     `;
 
+
+    /*
+    =================================================
+    CARGAR AUTOMÁTICAMENTE LOS DETALLES
+    =================================================
+    */
+
+    mostrarDetalles();
+
 }
 
 
@@ -1507,21 +1521,70 @@ async function mostrarDetalles() {
         );
 
 
-    if (
-        contenedor.style.display ===
-        "block"
-    ) {
-
-        contenedor.style.display =
-            "none";
+    if (!contenedor) {
 
         return;
 
     }
 
 
+    /*
+    =========================================
+    SI YA ESTÁ ABIERTO, PERMITIR OCULTAR
+    =========================================
+    */
+
+    if (
+        contenedor.style.display ===
+        "block" &&
+        contenedor.innerHTML.trim() !== ""
+    ) {
+
+        contenedor.style.display =
+            "none";
+
+
+        const boton =
+            document.querySelector(
+                ".boton-detalles"
+            );
+
+
+        if (boton) {
+
+            boton.innerHTML =
+                "📚 Ver detalles del 3er trimestre";
+
+        }
+
+
+        return;
+
+    }
+
+
+    /*
+    =========================================
+    MOSTRAR
+    =========================================
+    */
+
     contenedor.style.display =
         "block";
+
+
+    const boton =
+        document.querySelector(
+            ".boton-detalles"
+        );
+
+
+    if (boton) {
+
+        boton.innerHTML =
+            "− Ocultar detalles del 3er trimestre";
+
+    }
 
 
     contenedor.innerHTML =
@@ -1616,13 +1679,6 @@ async function mostrarDetalles() {
 
             `;
 
-
-            /*
-            IMPORTANTE:
-
-            Aunque no existan actividades,
-            se muestra igualmente la asistencia.
-            */
 
             await mostrarAsistenciaEnDetalle();
 
@@ -2053,11 +2109,6 @@ async function mostrarDetalles() {
         `;
 
 
-        /*
-        AUNQUE HAYA ERROR EN ACTIVIDADES,
-        INTENTAMOS MOSTRAR ASISTENCIA.
-        */
-
         await mostrarAsistenciaEnDetalle();
 
     }
@@ -2084,12 +2135,6 @@ async function mostrarAsistenciaEnDetalle() {
 
     }
 
-
-    /*
-    =========================================
-    CONSULTAR ASISTENCIA
-    =========================================
-    */
 
     try {
 
@@ -2194,11 +2239,9 @@ async function mostrarAsistenciaEnDetalle() {
         );
 
 
-        /*
-        =========================================
-        TABLA
-        =========================================
-        */
+        /* =========================================
+           TABLA
+        ========================================= */
 
         let filas = "";
 
@@ -2337,11 +2380,9 @@ async function mostrarAsistenciaEnDetalle() {
         }
 
 
-        /*
-        =========================================
-        GENERAR BLOQUE COMPLETO
-        =========================================
-        */
+        /* =========================================
+           BLOQUE COMPLETO ASISTENCIA
+        ========================================= */
 
         const asistenciaHTML = `
 
@@ -2483,7 +2524,7 @@ async function mostrarAsistenciaEnDetalle() {
                 </div>
 
 
-                <!-- BOTÓN + -->
+                <!-- BOTÓN ABIERTO -->
 
                 <button
 
@@ -2495,16 +2536,21 @@ async function mostrarAsistenciaEnDetalle() {
 
                 >
 
-                    ＋ Ver detalle de asistencia
+                    − Ocultar detalle de asistencia
 
                 </button>
 
 
-                <!-- DETALLE OCULTO -->
+                <!-- DETALLE ABIERTO -->
 
                 <div
+
                     class="detalle-asistencia"
+
                     id="tablaDetalleAsistencia"
+
+                    style="display:block"
+
                 >
 
                     ${contenidoTabla}
@@ -2516,12 +2562,6 @@ async function mostrarAsistenciaEnDetalle() {
 
         `;
 
-
-        /*
-        =========================================
-        AGREGAR AL FINAL DEL DETALLE
-        =========================================
-        */
 
         contenedor.insertAdjacentHTML(
             "beforeend",
@@ -2535,12 +2575,6 @@ async function mostrarAsistenciaEnDetalle() {
 
         console.error(error);
 
-
-        /*
-        SI HAY ERROR, TAMBIÉN MOSTRAR
-        EL RESUMEN PARA QUE EL ESTUDIANTE
-        SEPA QUE EXISTE LA SECCIÓN.
-        */
 
         const asistenciaError = `
 
@@ -2947,3 +2981,4 @@ function escapeHTML(texto) {
 </body>
 
 </html>
+```
