@@ -10,6 +10,10 @@
 
 <title>Panel Docente</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
 <style>
 
 /* =====================================================
@@ -20,540 +24,304 @@
     box-sizing: border-box;
 }
 
-html,
 body {
-    width: 100%;
-    max-width: 100%;
     margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-}
-
-body {
     font-family: Arial, sans-serif;
     background: #f2f5f9;
-    color: #222;
+    color: #263238;
 }
 
-.contenedor {
-    width: 96%;
-    max-width: 1400px;
-    margin: 25px auto;
-    overflow-x: hidden;
-}
-
-.panel {
-    width: 100%;
-    max-width: 100%;
-    background: white;
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0,0,0,.10);
-}
-
-h1 {
-    color: #1557a6;
-    margin-top: 0;
-}
-
-h3 {
-    margin-top: 0;
-}
-
-.usuario {
-    color: #666;
-    margin-bottom: 25px;
-}
-
-
-/* =====================================================
-   FILTROS
-===================================================== */
-
-.filtros {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.filtro {
-    flex: 1;
-    min-width: 220px;
-}
-
-label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 6px;
-}
-
+button,
 input,
 select {
-    width: 100%;
-    max-width: 100%;
-    padding: 11px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 16px;
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
 }
 
 
 /* =====================================================
-   INFORMACIÓN
+   ENCABEZADO
 ===================================================== */
 
-.info {
-    margin-top: 15px;
-    padding: 12px;
-    background: #fff8e1;
-    border: 1px solid #ffe082;
-    border-radius: 8px;
-}
-
-
-/* =====================================================
-   MODAL NUEVA ACTIVIDAD
-===================================================== */
-
-.modal-fondo {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    background: rgba(0,0,0,.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 15px;
-    z-index: 9999;
-    overflow: hidden;
-}
-
-.modal-fondo.oculto {
-    display: none !important;
-}
-
-.modal-actividad {
-    width: 100%;
-    max-width: 560px;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
-    animation: aparecerModal .18s ease-out;
-}
-
-@keyframes aparecerModal {
-
-    from {
-        opacity: 0;
-        transform: scale(.94);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-}
-
-.modal-cabecera {
-    background: #1557a6;
-    color: white;
-    padding: 15px 18px;
+.header {
+    background: #ffffff;
+    padding: 14px 20px;
+    border-bottom: 1px solid #e1e6eb;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 15px;
 }
 
-.modal-cabecera h3 {
-    margin: 0;
-    font-size: 18px;
+.header-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #263238;
 }
 
-.boton-cerrar-modal {
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    background: rgba(255,255,255,.18);
-    color: white;
-    font-size: 23px;
-    border-radius: 7px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-}
-
-.boton-cerrar-modal:hover {
-    background: rgba(255,255,255,.30);
-}
-
-.modal-cuerpo {
-    padding: 20px;
-}
-
-.modal-cuerpo .campo {
-    margin-bottom: 17px;
-}
-
-.modal-cuerpo label {
-    margin-bottom: 7px;
+.header-subtitle {
+    font-size: 13px;
+    color: #78909c;
+    margin-top: 3px;
 }
 
 
 /* =====================================================
-   CATEGORÍAS RADIO
+   CONTENEDOR
 ===================================================== */
 
-.categorias-radio {
-    display: flex;
-    justify-content: center;
-    align-items: stretch;
-    gap: 12px;
-    margin-top: 12px;
-    max-width: 100%;
-}
-
-.radio-categoria {
-    position: relative;
-    flex: 1;
-    max-width: 125px;
-    min-width: 0;
-}
-
-.radio-categoria input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.radio-categoria label {
+.container {
     width: 100%;
-    height: 100%;
-    margin: 0;
-    cursor: pointer;
-    text-align: center;
+    max-width: 1400px;
+    margin: auto;
+    padding: 18px;
+}
 
+
+/* =====================================================
+   BARRA DE CONTROLES
+===================================================== */
+
+.controls {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    margin-bottom: 15px;
+}
+
+.control-group {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    padding: 8px 5px;
-
-    border-radius: 10px;
-    border: none;
-    background: #fafafa;
-
-    transition: all .2s ease;
+    gap: 5px;
 }
 
-.radio-categoria label:hover {
-    transform: translateY(-1px);
-    box-shadow: none;
-}
-
-
-/* =====================================================
-   ICONOS DE CATEGORÍA
-   PEQUEÑOS Y SIN CONTORNOS
-===================================================== */
-
-.icono-categoria {
-    width: 38px;
-    height: 38px;
-
-    margin: 0 auto 3px;
-
-    border-radius: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 24px;
-
-    background: transparent;
-    color: #777;
-
-    opacity: .55;
-    filter: grayscale(100%);
-
-    transition: all .2s ease;
-
-    border: none;
-}
-
-.radio-categoria label:hover .icono-categoria {
-    opacity: .85;
-    transform: scale(1.05);
-}
-
-
-/* =====================================================
-   NOMBRE CATEGORÍA
-===================================================== */
-
-.nombre-categoria {
-    display: none;
-
-    margin-top: 4px;
-
+.control-group label {
+    font-size: 12px;
     font-weight: bold;
-
-    font-size: 11px;
-
-    line-height: 1.2;
-
-    color: #444;
-
-    animation: aparecerNombreCategoria .18s ease-out;
+    color: #607d8b;
 }
 
-.radio-categoria input:checked + label .nombre-categoria {
-    display: block;
+.control-group select,
+.control-group input {
+    height: 40px;
+    border: 1px solid #d7dee5;
+    border-radius: 8px;
+    padding: 0 12px;
+    background: #fff;
+    outline: none;
+    min-width: 210px;
 }
 
-@keyframes aparecerNombreCategoria {
-
-    from {
-        opacity: 0;
-        transform: translateY(-4px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
+.control-group select:focus,
+.control-group input:focus {
+    border-color: #1976d2;
 }
 
 
 /* =====================================================
-   SER
+   BOTONES
 ===================================================== */
 
-.radio-categoria.ser label {
-    border: none;
-    background: #fafafa;
-}
-
-.radio-categoria.ser .icono-categoria {
-    background: transparent;
-    color: #7b1fa2;
-}
-
-.radio-categoria.ser input:checked + label {
-    background: #faf3fc;
-    border: none;
-    box-shadow: none;
-}
-
-.radio-categoria.ser input:checked + label .icono-categoria {
-    background: transparent;
-    color: #7b1fa2;
-
-    opacity: 1;
-    filter: grayscale(0);
-
-    border: none;
-
-    transform: scale(1.08);
-}
-
-.radio-categoria.ser input:checked + label .nombre-categoria {
-    color: #7b1fa2;
-}
-
-
-/* =====================================================
-   SABER
-===================================================== */
-
-.radio-categoria.saber label {
-    border: none;
-    background: #fafafa;
-}
-
-.radio-categoria.saber .icono-categoria {
-    background: transparent;
-    color: #1565c0;
-}
-
-.radio-categoria.saber input:checked + label {
-    background: #f2f8ff;
-    border: none;
-    box-shadow: none;
-}
-
-.radio-categoria.saber input:checked + label .icono-categoria {
-    background: transparent;
-    color: #1565c0;
-
-    opacity: 1;
-    filter: grayscale(0);
-
-    border: none;
-
-    transform: scale(1.08);
-}
-
-.radio-categoria.saber input:checked + label .nombre-categoria {
-    color: #1565c0;
-}
-
-
-/* =====================================================
-   HACER
-===================================================== */
-
-.radio-categoria.hacer label {
-    border: none;
-    background: #fafafa;
-}
-
-.radio-categoria.hacer .icono-categoria {
-    background: transparent;
-    color: #ef6c00;
-}
-
-.radio-categoria.hacer input:checked + label {
-    background: #fff8ef;
-    border: none;
-    box-shadow: none;
-}
-
-.radio-categoria.hacer input:checked + label .icono-categoria {
-    background: transparent;
-    color: #ef6c00;
-
-    opacity: 1;
-    filter: grayscale(0);
-
-    border: none;
-
-    transform: scale(1.08);
-}
-
-.radio-categoria.hacer input:checked + label .nombre-categoria {
-    color: #ef6c00;
-}
-
-
-/* =====================================================
-   AUTOEVALUACIÓN
-===================================================== */
-
-.radio-categoria.auto label {
-    border: none;
-    background: #fafafa;
-}
-
-.radio-categoria.auto .icono-categoria {
-    background: transparent;
-    color: #00838f;
-}
-
-.radio-categoria.auto input:checked + label {
-    background: #effcfb;
-    border: none;
-    box-shadow: none;
-}
-
-.radio-categoria.auto input:checked + label .icono-categoria {
-    background: transparent;
-    color: #00838f;
-
-    opacity: 1;
-    filter: grayscale(0);
-
-    border: none;
-
-    transform: scale(1.08);
-}
-
-.radio-categoria.auto input:checked + label .nombre-categoria {
-    color: #00838f;
-}
-
-
-/* =====================================================
-   BOTONES DEL MODAL
-===================================================== */
-
-.modal-acciones {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.modal-acciones button {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 120px;
-
+.btn {
     border: none;
     border-radius: 8px;
-
-    padding: 10px 15px;
-
-    cursor: pointer;
-
-    font-size: 15px;
+    min-height: 40px;
+    padding: 0 15px;
+    font-weight: bold;
+    transition: .2s;
 }
 
-.boton-cancelar {
-    background: #777;
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-primary {
+    background: #1976d2;
     color: white;
 }
 
-.boton-crear-modal {
-    background: #16803c;
+.btn-success {
+    background: #2e7d32;
+    color: white;
+}
+
+.btn-danger {
+    background: #d32f2f;
+    color: white;
+}
+
+.btn-secondary {
+    background: #eceff1;
+    color: #37474f;
+}
+
+.btn-warning {
+    background: #f9a825;
     color: white;
 }
 
 
 /* =====================================================
-   CATEGORÍAS ACTIVIDADES
+   ENCABEZADO CALIFICACIONES
 ===================================================== */
 
-.categoria {
-    width: 100%;
-    max-width: 100%;
-    margin-top: 25px;
-    border: 1px solid #ddd;
+.course-header {
+    background: #ffffff;
     border-radius: 12px;
-    overflow: hidden;
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
 
-.titulo-categoria {
-    color: white;
-    padding: 13px 15px;
+.course-title {
     font-size: 17px;
     font-weight: bold;
 }
 
-.ser {
-    background: #7b1fa2;
+.course-title span {
+    color: #1976d2;
 }
 
-.saber {
+.course-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+
+/* =====================================================
+   BOTÓN AGREGAR ACTIVIDAD
+===================================================== */
+
+.activity-add-btn {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 8px;
+    background: #1976d2;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    padding: 0;
+    transition: .2s;
+}
+
+.activity-add-btn:hover {
     background: #1565c0;
+    transform: translateY(-1px);
 }
 
-.hacer {
-    background: #ef6c00;
+
+/* =====================================================
+   CONTENEDOR DE ACTIVIDADES
+===================================================== */
+
+.activities-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
-.auto {
-    background: #00838f;
+
+/* =====================================================
+   CATEGORÍA
+===================================================== */
+
+.category-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    overflow: hidden;
+}
+
+.category-header {
+    min-height: 52px;
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #edf0f2;
+}
+
+.category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+
+/* =====================================================
+   ICONOS DE CATEGORÍAS
+   PEQUEÑOS - SIN CONTORNOS
+===================================================== */
+
+.category-icon {
+    width: 27px;
+    height: 27px;
+    min-width: 27px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    line-height: 1;
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+
+/* Iconos diferenciados */
+
+.icon-ser {
+    color: #7e57c2;
+}
+
+.icon-saber {
+    color: #1976d2;
+}
+
+.icon-hacer {
+    color: #ef6c00;
+}
+
+.icon-auto {
+    color: #2e7d32;
+}
+
+
+/* =====================================================
+   BOTÓN OCULTAR CATEGORÍA
+===================================================== */
+
+.category-toggle {
+    border: none;
+    background: transparent;
+    color: #78909c;
+    font-size: 17px;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+.category-toggle:hover {
+    background: #f1f3f4;
 }
 
 
@@ -561,650 +329,326 @@ select {
    ACTIVIDAD
 ===================================================== */
 
-.actividad {
-    width: calc(100% - 36px);
-    max-width: calc(100% - 36px);
-    margin: 18px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    overflow: hidden;
+.activity {
+    border-bottom: 1px solid #edf0f2;
 }
 
+.activity:last-child {
+    border-bottom: none;
+}
 
-/* =====================================================
-   ENCABEZADO ACTIVIDAD
-===================================================== */
-
-.encabezado-actividad {
-    background: #f4f6f8;
-    padding: 10px 12px;
-
+.activity-header {
+    min-height: 46px;
+    padding: 8px 14px;
     display: flex;
     align-items: center;
-
+    justify-content: space-between;
     gap: 10px;
-
-    max-width: 100%;
 }
 
-.izquierda-actividad {
-    display: flex;
-    align-items: center;
-
-    gap: 6px;
-
-    min-width: 0;
+.activity-name {
+    font-size: 14px;
+    font-weight: bold;
+    word-break: break-word;
 }
 
-.derecha-actividad {
-    margin-left: auto;
-
+.activity-actions {
     display: flex;
     align-items: center;
-
-    gap: 6px;
-
+    gap: 4px;
     flex-shrink: 0;
 }
 
-.nombre-actividad {
-    font-weight: bold;
-
-    font-size: 16px;
-
-    min-width: 0;
-
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
     display: flex;
-    align-items: center;
-
-    gap: 5px;
-
-    flex-wrap: wrap;
-}
-
-.puntaje-actividad {
-    font-weight: normal;
-
-    color: #555;
-
-    font-size: 14px;
-}
-
-
-/* =====================================================
-   BOTONES ACTIVIDAD
-===================================================== */
-
-.boton-ocultar,
-.boton-editar,
-.boton-bloquear,
-.boton-eliminar {
-
-    color: white;
-
-    width: 38px;
-    height: 34px;
-
-    padding: 0;
-
-    font-size: 18px;
-
-    font-weight: bold;
-
-    display: flex;
-
     align-items: center;
     justify-content: center;
-
-    flex-shrink: 0;
-
-    border: none;
-
-    border-radius: 6px;
-
-    cursor: pointer;
-}
-
-.boton-editar {
-    background: #1565c0;
-}
-
-.boton-eliminar {
-    background: #c62828;
-}
-
-.boton-ocultar {
-    background: #555;
-}
-
-.boton-bloquear {
-    background: #ef6c00;
-}
-
-
-/* =====================================================
-   CONTENIDO
-===================================================== */
-
-.contenido-actividad {
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
-}
-
-
-/* =====================================================
-   TABLAS
-===================================================== */
-
-.tabla-contenedor {
-    width: 100%;
-    max-width: 100%;
-
-    overflow-x: auto;
-    overflow-y: hidden;
-
-    -webkit-overflow-scrolling: touch;
-}
-
-table {
-    width: 100%;
-
-    border-collapse: collapse;
-
-    table-layout: auto;
-}
-
-th,
-td {
-    border: 1px solid #ddd;
-
-    padding: 8px;
-
-    text-align: center;
-
-    vertical-align: middle;
-}
-
-th {
-    background: #f0f0f0;
-}
-
-td.nombre {
-    text-align: left;
-
-    white-space: normal;
-
-    overflow-wrap: anywhere;
-
-    word-break: normal;
-
-    min-width: 120px;
-
-    line-height: 1.25;
-}
-
-th:first-child,
-td:first-child {
-    width: 45px;
-
-    min-width: 45px;
-}
-
-
-/* =====================================================
-   INPUT NOTAS
-===================================================== */
-
-.nota-input {
-    width: 65px;
-
-    max-width: 100%;
-
-    text-align: center;
-
-    padding: 7px;
-
-    transition: .2s;
-}
-
-.nota-input:disabled {
-    background: #eeeeee;
-
-    color: #555;
-
-    cursor: not-allowed;
-
-    border-color: #ddd;
-}
-
-.nota-input.editable {
-    background: #fffde7;
-
-    border: 2px solid #ef6c00;
-}
-
-
-/* =====================================================
-   TABLA GENERAL
-===================================================== */
-
-.tabla-general {
-    width: 100%;
-    max-width: 100%;
-
-    margin-top: 30px;
-
-    border: 1px solid #ddd;
-
-    border-radius: 12px;
-
-    overflow: hidden;
-}
-
-.titulo-general {
-    background: #1557a6;
-
-    color: white;
-
-    padding: 10px 12px;
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    font-size: 17px;
-
-    font-weight: bold;
-}
-
-.acciones-general {
-    display: flex;
-
-    align-items: center;
-
-    gap: 7px;
-
-    margin-left: auto;
-}
-
-.boton-nueva-actividad {
-    background: rgba(255,255,255,.20);
-
-    color: white;
-
-    width: 38px;
-    height: 34px;
-
-    padding: 0;
-
-    border: none;
-
-    border-radius: 7px;
-
-    font-size: 21px;
-
-    font-weight: bold;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-}
-
-.boton-general {
-    background: rgba(255,255,255,.20);
-
-    color: white;
-
-    width: 38px;
-    height: 34px;
-
-    padding: 0;
-
-    border: none;
-
-    border-radius: 7px;
-
-    font-size: 22px;
-
-    font-weight: bold;
-
-    cursor: pointer;
-}
-
-
-/* =====================================================
-   ASISTENCIA
-===================================================== */
-
-.panel-asistencia {
-    width: 100%;
-    max-width: 100%;
-
-    margin-top: 25px;
-
-    border: 1px solid #ddd;
-
-    border-radius: 12px;
-
-    overflow: hidden;
-}
-
-.titulo-asistencia {
-    background: #37474f;
-
-    color: white;
-
-    padding: 10px 12px;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 10px;
-
-    font-size: 17px;
-
-    font-weight: bold;
-}
-
-.acciones-asistencia {
-    display: flex;
-
-    align-items: center;
-
-    gap: 7px;
-}
-
-.fecha-asistencia {
-    width: 145px;
-
-    padding: 7px 8px;
-
-    border: none;
-
-    border-radius: 6px;
-
-    font-size: 14px;
-
-    background: white;
-
-    color: #222;
-}
-
-
-/* =====================================================
-   BOTÓN GUARDAR ASISTENCIA
-===================================================== */
-
-.boton-guardar-asistencia {
-    border: none;
-
-    border-radius: 7px;
-
-    background: #16803c;
-
-    color: white;
-
-    height: 34px;
-
-    padding: 0 13px;
-
-    font-size: 14px;
-
-    font-weight: bold;
-
-    cursor: pointer;
-
-    white-space: nowrap;
-}
-
-.boton-guardar-asistencia:hover {
-    background: #11652f;
-}
-
-
-/* =====================================================
-   BOTÓN +
-===================================================== */
-
-.boton-asistencia {
-    width: 38px;
-    height: 34px;
-
-    border: none;
-
-    border-radius: 7px;
-
-    background: rgba(255,255,255,.18);
-
-    color: white;
-
-    font-size: 22px;
-
-    font-weight: bold;
-
-    cursor: pointer;
-}
-
-.boton-asistencia:hover {
-    background: rgba(255,255,255,.30);
-}
-
-
-/* =====================================================
-   CONTENIDO
-===================================================== */
-
-.contenido-asistencia {
-    background: white;
-    width: 100%;
-    max-width: 100%;
-}
-
-.contenido-asistencia.oculto {
-    display: none;
-}
-
-
-/* =====================================================
-   TABLA ASISTENCIA
-===================================================== */
-
-.tabla-asistencia {
-    width: 100%;
-}
-
-.tabla-asistencia th {
-    background: #f0f2f3;
-
-    font-size: 13px;
-}
-
-.tabla-asistencia td {
-    padding: 7px 5px;
-}
-
-
-/* =====================================================
-   BOTONES DE ESTADO DE ASISTENCIA
-===================================================== */
-
-.estados-asistencia {
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-    gap: 5px;
-}
-
-.radio-asistencia {
-    position: relative;
-}
-
-.radio-asistencia input {
-    position: absolute;
-
-    opacity: 0;
-
-    pointer-events: none;
-}
-
-.boton-estado {
-    width: 30px;
-    height: 30px;
-
-    border-radius: 50%;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-
-    font-size: 16px;
-
-    opacity: .28;
-
-    filter: grayscale(100%);
-
-    transition: all .18s ease;
-
-    border: 2px solid transparent;
-}
-
-
-/* ASISTENCIA */
-
-.estado-asistio {
-    background: #2e7d32;
-    color: white;
-}
-
-
-/* ATRASO */
-
-.estado-atraso {
-    background: #f9a825;
-    color: white;
-}
-
-
-/* LICENCIA */
-
-.estado-licencia {
-    background: #1565c0;
-    color: white;
-}
-
-
-/* FALTA */
-
-.estado-falta {
-    background: #c62828;
-    color: white;
-}
-
-
-/* SELECCIONADO */
-
-.radio-asistencia input:checked + label .boton-estado {
-    opacity: 1;
-
-    filter: grayscale(0);
-
-    transform: scale(1.08);
-
-    border-color: #222;
-
-    box-shadow:
-        0 2px 7px rgba(0,0,0,.25);
-}
-
-
-/* =====================================================
-   OBSERVACIÓN
-===================================================== */
-
-.observacion-asistencia {
-    width: 100%;
-
-    min-width: 150px;
-
-    padding: 7px;
-
-    border: 1px solid #ccc;
-
-    border-radius: 6px;
-
-    font-size: 13px;
-}
-
-
-/* =====================================================
-   NOTAS FINALES
-===================================================== */
-
-.nota-3t,
-.nota-final {
-    font-weight: bold;
-
-    font-size: 18px;
-}
-
-
-/* =====================================================
-   BOTONES INFERIORES
-===================================================== */
-
-.botones {
-    margin-top: 25px;
-
-    display: flex;
-
-    gap: 12px;
-
-    flex-wrap: wrap;
-}
-
-.botones button {
-    border: none;
-
-    border-radius: 8px;
-
-    padding: 10px 15px;
-
-    cursor: pointer;
-
     font-size: 15px;
 }
 
-.guardar {
-    background: #16803c;
-
-    color: white;
+.icon-btn:hover {
+    background: #eceff1;
 }
 
-.exportar {
-    background: #1565c0;
-
-    color: white;
+.icon-btn.edit {
+    color: #1976d2;
 }
 
-.salir {
-    background: #c62828;
+.icon-btn.lock {
+    color: #ef6c00;
+}
 
+.icon-btn.delete {
+    color: #d32f2f;
+}
+
+
+/* =====================================================
+   TABLA
+===================================================== */
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.grade-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.grade-table th {
+    background: #f7f9fa;
+    color: #607d8b;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 1px solid #e3e8ec;
+}
+
+.grade-table td {
+    padding: 7px 6px;
+    border-bottom: 1px solid #edf0f2;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.grade-table th:first-child,
+.grade-table td:first-child {
+    width: 48px;
+    text-align: center;
+}
+
+.grade-table th:nth-child(2),
+.grade-table td:nth-child(2) {
+    width: 35%;
+    text-align: left;
+}
+
+.grade-table th:nth-child(3),
+.grade-table td:nth-child(3) {
+    width: 100px;
+    text-align: center;
+}
+
+.grade-input {
+    width: 65px;
+    height: 32px;
+    border: 1px solid #d7dee5;
+    border-radius: 6px;
+    text-align: center;
+    outline: none;
+    font-weight: bold;
+}
+
+.grade-input:focus {
+    border-color: #1976d2;
+}
+
+.grade-input:disabled {
+    background: #f1f3f4;
+    color: #78909c;
+}
+
+.student-name {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+
+/* =====================================================
+   PIE DE ACTIVIDAD
+===================================================== */
+
+.activity-footer {
+    padding: 8px 14px;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.activity-info {
+    font-size: 11px;
+    color: #78909c;
+}
+
+.save-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 7px;
+    background: #2e7d32;
     color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.25);
+}
+
+.modal-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid #e9edef;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.modal-close {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    font-size: 22px;
+    color: #607d8b;
+}
+
+.modal-close:hover {
+    background: #eceff1;
+}
+
+.modal-body {
+    padding: 18px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #455a64;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid #d5dce1;
+    border-radius: 8px;
+    padding: 0 12px;
+    outline: none;
+    background: white;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #1976d2;
+}
+
+
+/* =====================================================
+   CATEGORÍAS DEL MODAL
+===================================================== */
+
+.category-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.category-option {
+    position: relative;
+}
+
+.category-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.category-option label {
+    height: 48px;
+    border: 1px solid #dce2e6;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    cursor: pointer;
+    transition: .2s;
+    font-size: 13px;
+    font-weight: bold;
+    color: #455a64;
+}
+
+.category-option label:hover {
+    background: #f7f9fa;
+}
+
+.category-option input:checked + label {
+    border-color: #1976d2;
+    background: #eef6ff;
+    color: #1976d2;
+}
+
+.modal-category-icon {
+    font-size: 17px;
+    width: 23px;
+    text-align: center;
+}
+
+
+/* =====================================================
+   BOTONES MODAL
+===================================================== */
+
+.modal-footer {
+    padding: 14px 18px;
+    border-top: 1px solid #e9edef;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.modal-footer button {
+    min-height: 40px;
+    padding: 0 16px;
 }
 
 
@@ -1212,54 +656,51 @@ td:first-child {
    MENSAJES
 ===================================================== */
 
-.mensaje {
-    position: fixed;
-
-    left: 50%;
-
-    bottom: 22px;
-
-    transform: translateX(-50%);
-
-    z-index: 100000;
-
-    min-width: 280px;
-
-    max-width: 90%;
-
-    padding: 13px 20px;
-
+.message {
+    padding: 14px;
     background: white;
-
-    border: 1px solid #ddd;
-
     border-radius: 10px;
-
-    box-shadow:
-        0 5px 20px rgba(0,0,0,.20);
-
     text-align: center;
-
-    font-weight: bold;
-
-    line-height: 1.4;
-
-    margin: 0;
-
-    display: none;
+    color: #607d8b;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
 }
 
-.mensaje:not(:empty) {
-    display: block;
+.loading {
+    padding: 30px;
+    text-align: center;
+    color: #607d8b;
+}
+
+.empty {
+    padding: 30px;
+    text-align: center;
+    color: #90a4ae;
 }
 
 
 /* =====================================================
-   OCULTO
+   TOAST
 ===================================================== */
 
-.oculto {
-    display: none !important;
+.toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: #263238;
+    color: white;
+    padding: 12px 17px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: .25s;
+    z-index: 2000;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 
@@ -1267,194 +708,130 @@ td:first-child {
    RESPONSIVE
 ===================================================== */
 
-@media (max-width: 800px) {
+@media (max-width: 700px) {
 
-    .panel {
-        padding: 15px;
+    .header {
+        padding: 12px 14px;
     }
 
-    .encabezado-actividad {
+    .header-title {
+        font-size: 18px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    .controls {
+        padding: 11px;
         align-items: stretch;
     }
 
-    .izquierda-actividad {
-        flex: 1;
-
-        min-width: 0;
-    }
-
-    .derecha-actividad {
-        margin-left: auto;
-    }
-
-    .nombre-actividad {
-        font-size: 15px;
-    }
-
-}
-
-
-/* =====================================================
-   CELULARES
-===================================================== */
-
-@media (max-width: 600px) {
-
-    .contenedor {
-        width: 100%;
-        max-width: 100%;
-        margin: 10px auto;
-        overflow-x: hidden;
-    }
-
-    .panel {
-        width: 100%;
-        max-width: 100%;
-        padding: 10px;
-        border-radius: 10px;
-    }
-
-    h1 {
-        font-size: 24px;
-    }
-
-    .encabezado-actividad {
-        flex-wrap: wrap;
-    }
-
-    .izquierda-actividad {
+    .control-group {
         width: 100%;
     }
 
-    .derecha-actividad {
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-
-    /* =================================================
-       MODAL
-    ================================================= */
-
-    .modal-actividad {
-        max-width: 100%;
-    }
-
-    .modal-cuerpo {
-        padding: 16px;
-    }
-
-    .categorias-radio {
-        gap: 5px;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .radio-categoria label {
-        padding: 6px 2px;
-        border-radius: 8px;
-    }
-
-    .icono-categoria {
-        width: 34px;
-        height: 34px;
-        font-size: 22px;
-        margin-bottom: 2px;
-    }
-
-    .nombre-categoria {
-        font-size: 10px;
-    }
-
-
-    /* =================================================
-       TABLA
-    ================================================= */
-
-    .tabla-contenedor {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: auto;
-    }
-
-    table {
+    .control-group select,
+    .control-group input {
         width: 100%;
         min-width: 0;
+    }
+
+    .controls .btn {
+        width: 100%;
+    }
+
+    .course-header {
+        padding: 11px;
+    }
+
+    .course-title {
+        font-size: 14px;
+    }
+
+    .activity-add-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 17px;
+    }
+
+    .category-header {
+        padding: 8px 10px;
+    }
+
+    .category-title {
+        font-size: 14px;
+    }
+
+    .category-icon {
+        width: 25px;
+        min-width: 25px;
+        height: 25px;
+        font-size: 16px;
+    }
+
+    .activity-header {
+        padding: 7px 10px;
+    }
+
+    .activity-name {
+        font-size: 13px;
+    }
+
+    .activity-actions {
+        gap: 1px;
+    }
+
+    .icon-btn {
+        width: 29px;
+        height: 29px;
+        font-size: 14px;
+    }
+
+    /*
+       En celular la tabla ocupa todo el ancho.
+       El nombre puede pasar a varias líneas.
+    */
+
+    .grade-table {
         table-layout: fixed;
     }
 
-    th,
-    td {
-        padding: 6px 4px;
-        font-size: 13px;
+    .grade-table th:first-child,
+    .grade-table td:first-child {
+        width: 38px;
     }
 
-    td.nombre {
+    .grade-table th:nth-child(2),
+    .grade-table td:nth-child(2) {
+        width: auto;
+    }
+
+    .grade-table th:nth-child(3),
+    .grade-table td:nth-child(3) {
+        width: 75px;
+    }
+
+    .grade-input {
+        width: 55px;
+        height: 30px;
+    }
+
+    .student-name {
         white-space: normal;
-        overflow-wrap: anywhere;
+        line-height: 1.2;
     }
 
-    .nota-input {
-        width: 58px;
-        max-width: 100%;
-        padding: 6px 2px;
-        font-size: 14px;
+    .activity-footer {
+        padding: 8px 10px;
     }
 
-
-    /* =================================================
-       ASISTENCIA
-    ================================================= */
-
-    .titulo-asistencia {
-        flex-wrap: wrap;
+    .category-options {
+        grid-template-columns: 1fr;
     }
 
-    .acciones-asistencia {
-        width: 100%;
-        justify-content: flex-end;
-    }
-
-    .fecha-asistencia {
-        width: 135px;
-    }
-
-    .boton-guardar-asistencia {
-        padding: 0 9px;
-        font-size: 13px;
-    }
-
-    .tabla-asistencia {
-        min-width: 620px;
-    }
-
-    .estados-asistencia {
-        gap: 3px;
-    }
-
-    .boton-estado {
-        width: 27px;
-        height: 27px;
-        font-size: 14px;
-    }
-
-
-    /* =================================================
-       MENSAJE
-    ================================================= */
-
-    .mensaje {
-        bottom: 12px;
-
-        min-width: 0;
-
-        width: 92%;
-
-        max-width: 92%;
-
-        padding: 12px 15px;
-
-        font-size: 14px;
+    .modal {
+        max-height: 94vh;
     }
 
 }
@@ -1466,58 +843,57 @@ td:first-child {
 
 @media (max-width: 400px) {
 
-    .panel {
-        padding: 8px;
+    .course-header {
+        flex-wrap: wrap;
     }
 
-    .actividad {
-        width: calc(100% - 20px);
-        max-width: calc(100% - 20px);
-        margin: 10px;
+    .course-actions {
+        margin-left: auto;
     }
 
-    .categorias-radio {
-        gap: 3px;
-    }
-
-    .radio-categoria label {
-        padding: 5px 1px;
-        border-radius: 7px;
-    }
-
-    .icono-categoria {
-        width: 30px;
-        height: 30px;
-        font-size: 19px;
-    }
-
-    .nombre-categoria {
-        font-size: 9px;
-    }
-
-    .boton-estado {
-        width: 25px;
-        height: 25px;
+    .category-title {
         font-size: 13px;
     }
 
-    .fecha-asistencia {
-        width: 120px;
+    .activity-header {
+        align-items: flex-start;
+    }
+
+    .activity-name {
+        max-width: calc(100% - 90px);
+    }
+
+    .grade-table th,
+    .grade-table td {
+        padding: 6px 3px;
+    }
+
+    .grade-table th:nth-child(3),
+    .grade-table td:nth-child(3) {
+        width: 68px;
     }
 
 }
 
 
 /* =====================================================
-   EVITAR DESBORDAMIENTO
+   ESTADOS
 ===================================================== */
 
-th,
-td,
-.nombre-actividad,
-.titulo-categoria,
-.titulo-general {
-    overflow-wrap: anywhere;
+.hidden {
+    display: none !important;
+}
+
+.locked {
+    opacity: .85;
+}
+
+.approved {
+    color: #2e7d32;
+}
+
+.failed {
+    color: #d32f2f;
 }
 
 </style>
@@ -1527,633 +903,633 @@ td,
 
 <body>
 
-<div class="contenedor">
 
-<div class="panel">
+<!-- =====================================================
+     ENCABEZADO
+===================================================== -->
 
-<h1>Panel Docente</h1>
+<header class="header">
 
-<div class="usuario">
+    <div>
+        <div class="header-title">
+            Panel Docente
+        </div>
 
-Usuario:
-<span id="usuario"></span>
+        <div class="header-subtitle">
+            Gestión de actividades y calificaciones
+        </div>
+    </div>
+
+</header>
+
+
+<!-- =====================================================
+     CONTENIDO
+===================================================== -->
+
+<main class="container">
+
+
+    <!-- =================================================
+         CONTROLES
+    ================================================== -->
+
+    <section class="controls">
+
+
+        <!-- CURSO PRIMERO -->
+
+        <div class="control-group">
+
+            <label for="courseSelect">
+                Seleccionar curso
+            </label>
+
+            <select id="courseSelect">
+
+                <option value="">
+                    Seleccionar curso
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- BUSCAR DESPUÉS -->
+
+        <div class="control-group">
+
+            <label for="searchInput">
+                Buscar estudiante
+            </label>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Nombre o número..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <button
+            class="btn btn-secondary"
+            id="clearSearchBtn"
+            type="button"
+        >
+            Limpiar
+        </button>
+
+
+        <button
+            class="btn btn-success"
+            id="exportBtn"
+            type="button"
+        >
+            📊 Exportar
+        </button>
+
+    </section>
+
+
+    <!-- =================================================
+         ENCABEZADO DEL CURSO
+    ================================================== -->
+
+    <section class="course-header">
+
+        <div class="course-title">
+            Calificaciones del curso
+            <span id="selectedCourseName"></span>
+        </div>
+
+        <div class="course-actions">
+
+            <!-- ICONO PARA CREAR ACTIVIDAD -->
+
+            <button
+                type="button"
+                class="activity-add-btn"
+                id="openActivityModal"
+                title="Crear nueva actividad"
+                aria-label="Crear nueva actividad"
+            >
+                📝
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         ACTIVIDADES
+    ================================================== -->
+
+    <section
+        id="activitiesContainer"
+        class="activities-container"
+    >
+
+        <div class="message">
+            Selecciona un curso para mostrar las actividades.
+        </div>
+
+    </section>
+
+
+</main>
+
+
+<!-- =====================================================
+     MODAL CREAR ACTIVIDAD
+===================================================== -->
+
+<div
+    class="modal-overlay"
+    id="activityModal"
+>
+
+    <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+    >
+
+
+        <!-- CABECERA -->
+
+        <div class="modal-header">
+
+            <div
+                class="modal-title"
+                id="modalTitle"
+            >
+                Crear nueva actividad
+            </div>
+
+            <button
+                type="button"
+                class="modal-close"
+                id="closeActivityModal"
+                aria-label="Cerrar"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <!-- CUERPO -->
+
+        <div class="modal-body">
+
+
+            <!-- NOMBRE -->
+
+            <div class="form-group">
+
+                <label for="activityName">
+                    Nombre de la actividad
+                </label>
+
+                <input
+                    type="text"
+                    id="activityName"
+                    placeholder="Ej. Trabajo práctico"
+                    maxlength="100"
+                >
+
+            </div>
+
+
+            <!-- CATEGORÍA -->
+
+            <div class="form-group">
+
+                <label>
+                    Categoría
+                </label>
+
+
+                <div class="category-options">
+
+
+                    <!-- SER -->
+
+                    <div class="category-option">
+
+                        <input
+                            type="radio"
+                            name="activityCategory"
+                            id="catSer"
+                            value="SER"
+                        >
+
+                        <label for="catSer">
+
+                            <span class="modal-category-icon icon-ser">
+                                👤
+                            </span>
+
+                            SER
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- SABER -->
+
+                    <div class="category-option">
+
+                        <input
+                            type="radio"
+                            name="activityCategory"
+                            id="catSaber"
+                            value="SABER"
+                        >
+
+                        <label for="catSaber">
+
+                            <span class="modal-category-icon icon-saber">
+                                💡
+                            </span>
+
+                            SABER
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- HACER -->
+
+                    <div class="category-option">
+
+                        <input
+                            type="radio"
+                            name="activityCategory"
+                            id="catHacer"
+                            value="HACER"
+                        >
+
+                        <label for="catHacer">
+
+                            <span class="modal-category-icon icon-hacer">
+                                🔧
+                            </span>
+
+                            HACER
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- AUTOEVALUACIÓN -->
+
+                    <div class="category-option">
+
+                        <input
+                            type="radio"
+                            name="activityCategory"
+                            id="catAuto"
+                            value="AUTOEVALUACION"
+                        >
+
+                        <label for="catAuto">
+
+                            <span class="modal-category-icon icon-auto">
+                                ✓
+                            </span>
+
+                            AUTOEVALUACIÓN
+
+                        </label>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+            <!-- TRIMESTRE -->
+
+            <div class="form-group">
+
+                <label for="trimesterSelect">
+                    Trimestre
+                </label>
+
+                <select id="trimesterSelect">
+
+                    <option value="3">
+                        Tercer trimestre
+                    </option>
+
+                </select>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- PIE -->
+
+        <div class="modal-footer">
+
+            <button
+                type="button"
+                class="btn btn-secondary"
+                id="cancelActivityBtn"
+            >
+                Cancelar
+            </button>
+
+            <button
+                type="button"
+                class="btn btn-primary"
+                id="saveActivityBtn"
+            >
+                Crear actividad
+            </button>
+
+        </div>
+
+
+    </div>
 
 </div>
 
 
 <!-- =====================================================
-     FILTROS
-===================================================== -->
-
-<div class="filtros">
-
-<div class="filtro">
-
-<label>Curso</label>
-
-<select id="buscarCurso">
-
-<option value="">
-Selecciona un curso
-</option>
-
-</select>
-
-</div>
-
-
-<div class="filtro">
-
-<label>Buscar estudiante</label>
-
-<input
-    type="text"
-    id="buscarNombre"
-    placeholder="Buscar por nombre o Nº de lista..."
->
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     ACTIVIDADES
-===================================================== -->
-
-<div id="contenedorActividades">
-</div>
-
-
-<!-- =====================================================
-     TABLA GENERAL
+     TOAST
 ===================================================== -->
 
 <div
-    id="tablaGeneral"
-    class="tabla-general oculto">
-
-<div class="titulo-general">
-
-<span>
-📊 Calificaciones del curso
-</span>
-
-<div class="acciones-general">
-
-<button
-    type="button"
-    class="boton-nueva-actividad"
-    onclick="abrirModalActividad()"
-    title="Añadir nueva actividad">
-
-📝
-
-</button>
-
-
-<button
-    id="botonGeneral"
-    class="boton-general"
-    onclick="ocultarTablaGeneral()"
-    title="Mostrar u ocultar calificaciones">
-
-+
-
-</button>
-
-</div>
-
-</div>
-
-
-<div
-    id="contenidoGeneral"
-    class="oculto">
-
-<div class="tabla-contenedor">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>Nº</th>
-
-<th>Nombre</th>
-
-<th>Curso</th>
-
-<th>1T</th>
-
-<th>2T</th>
-
-<th>3T</th>
-
-<th>Final</th>
-
-</tr>
-
-</thead>
-
-<tbody id="tablaEstudiantes">
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     ASISTENCIA
-===================================================== -->
-
-<div
-    id="panelAsistencia"
-    class="panel-asistencia oculto">
-
-<div class="titulo-asistencia">
-
-<span>
-🗓️ Asistencia
-</span>
-
-
-<div class="acciones-asistencia">
-
-<input
-    type="date"
-    id="fechaAsistencia"
-    class="fecha-asistencia"
->
-
-
-<button
-    type="button"
-    class="boton-guardar-asistencia"
-    onclick="guardarAsistencia()"
-    title="Guardar asistencia">
-
-💾 Guardar
-
-</button>
-
-
-<button
-    type="button"
-    id="botonAsistencia"
-    class="boton-asistencia"
-    onclick="mostrarOcultarAsistencia()"
-    title="Mostrar asistencia">
-
-+
-
-</button>
-
-</div>
-
-</div>
-
-
-<div
-    id="contenidoAsistencia"
-    class="contenido-asistencia oculto">
-
-<div class="tabla-contenedor">
-
-<table class="tabla-asistencia">
-
-<thead>
-
-<tr>
-
-<th>Nº</th>
-
-<th>Nombre</th>
-
-<th>🟢</th>
-
-<th>🟡</th>
-
-<th>🔵</th>
-
-<th>🔴</th>
-
-<th>Observaciones</th>
-
-</tr>
-
-</thead>
-
-
-<tbody id="tablaAsistencia">
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     BOTONES
-===================================================== -->
-
-<div class="botones">
-
-<button
-    class="guardar"
-    onclick="guardarNotas()">
-
-💾 Guardar notas
-
-</button>
-
-
-<button
-    class="exportar"
-    onclick="exportarExcel()">
-
-📊 Exportar Excel
-
-</button>
-
-
-<button
-    class="salir"
-    onclick="cerrarSesion()">
-
-🚪 Cerrar sesión
-
-</button>
-
-</div>
-
-
-<div
-    id="mensaje"
-    class="mensaje">
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
-     MODAL NUEVA ACTIVIDAD
-===================================================== -->
-
-<div
-    id="modalNuevaActividad"
-    class="modal-fondo oculto"
-    onclick="cerrarModalDesdeFondo(event)">
-
-<div
-    class="modal-actividad"
-    onclick="event.stopPropagation()">
-
-
-<div class="modal-cabecera">
-
-<h3>
-📝 Crear nueva actividad
-</h3>
-
-
-<button
-    type="button"
-    class="boton-cerrar-modal"
-    onclick="cerrarModalActividad()">
-
-×
-
-</button>
-
-</div>
-
-
-<div class="modal-cuerpo">
-
-
-<div class="campo">
-
-<label>
-Nombre de la actividad
-</label>
-
-<input
-    type="text"
-    id="nombreActividad"
-    placeholder="Ej.: Evaluación de números"
-    autocomplete="off"
->
-
-</div>
-
-
-<div class="campo">
-
-<label>
-Categoría
-</label>
-
-
-<div class="categorias-radio">
-
-
-<!-- SER -->
-
-<div class="radio-categoria ser">
-
-<input
-    type="radio"
-    id="categoriaSER"
-    name="categoriaActividad"
-    value="SER"
->
-
-<label for="categoriaSER">
-
-<div class="icono-categoria">
-👥
-</div>
-
-<span class="nombre-categoria">
-SER — 10 puntos
-</span>
-
-</label>
-
-</div>
-
-
-<!-- SABER -->
-
-<div class="radio-categoria saber">
-
-<input
-    type="radio"
-    id="categoriaSABER"
-    name="categoriaActividad"
-    value="SABER"
->
-
-<label for="categoriaSABER">
-
-<div class="icono-categoria">
-📚
-</div>
-
-<span class="nombre-categoria">
-SABER — 45 puntos
-</span>
-
-</label>
-
-</div>
-
-
-<!-- HACER -->
-
-<div class="radio-categoria hacer">
-
-<input
-    type="radio"
-    id="categoriaHACER"
-    name="categoriaActividad"
-    value="HACER"
->
-
-<label for="categoriaHACER">
-
-<div class="icono-categoria">
-🛠️
-</div>
-
-<span class="nombre-categoria">
-HACER — 40 puntos
-</span>
-
-</label>
-
-</div>
-
-
-<!-- AUTOEVALUACIÓN -->
-
-<div class="radio-categoria auto">
-
-<input
-    type="radio"
-    id="categoriaAUTO"
-    name="categoriaActividad"
-    value="AUTOEVALUACION"
->
-
-<label for="categoriaAUTO">
-
-<div class="icono-categoria">
-⭐
-</div>
-
-<span class="nombre-categoria">
-AUTOEVALUACIÓN — 5 puntos
-</span>
-
-</label>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- BOTONES MODAL -->
-
-<div class="modal-acciones">
-
-<button
-    type="button"
-    class="boton-cancelar"
-    onclick="cerrarModalActividad()">
-
-Cancelar
-
-</button>
-
-
-<button
-    type="button"
-    class="boton-crear-modal"
-    onclick="crearActividad()">
-
-📝 Crear actividad
-
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    id="toast"
+    class="toast"
+></div>
 
 
 <script>
 
 /* =====================================================
-   SUPABASE
+   CONFIGURACIÓN SUPABASE
 ===================================================== */
 
-const SUPABASE_URL =
-"https://tecphbbkkmlgahjddcep.supabase.co";
+/*
+   REEMPLAZA ESTOS DOS VALORES POR LOS DE TU PROYECTO.
+*/
 
-const SUPABASE_KEY =
-"sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
+const SUPABASE_URL = "TU_SUPABASE_URL";
+
+const SUPABASE_KEY = "TU_SUPABASE_PUBLISHABLE_KEY";
+
 
 const supabaseClient =
-window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
+    supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
 
 
 /* =====================================================
    VARIABLES
 ===================================================== */
 
-let estudiantes = [];
+let students = [];
 
-let actividades = [];
+let activities = [];
 
-let calificaciones = {};
-
-let cursoSeleccionado = "";
-
-let registrosAsistencia = {};
+let editingActivityId = null;
 
 
 /* =====================================================
-   LIMITES
+   ELEMENTOS
 ===================================================== */
 
-const LIMITES = {
+const courseSelect =
+    document.getElementById("courseSelect");
 
-    SER: 10,
+const searchInput =
+    document.getElementById("searchInput");
 
-    SABER: 45,
+const clearSearchBtn =
+    document.getElementById("clearSearchBtn");
 
-    HACER: 40,
+const exportBtn =
+    document.getElementById("exportBtn");
 
-    AUTOEVALUACION: 5
+const selectedCourseName =
+    document.getElementById("selectedCourseName");
 
-};
+const activitiesContainer =
+    document.getElementById("activitiesContainer");
+
+const activityModal =
+    document.getElementById("activityModal");
+
+const openActivityModal =
+    document.getElementById("openActivityModal");
+
+const closeActivityModal =
+    document.getElementById("closeActivityModal");
+
+const cancelActivityBtn =
+    document.getElementById("cancelActivityBtn");
+
+const saveActivityBtn =
+    document.getElementById("saveActivityBtn");
+
+const activityName =
+    document.getElementById("activityName");
+
+const toast =
+    document.getElementById("toast");
 
 
 /* =====================================================
-   ESTADO BLOQUEO
+   MOSTRAR MENSAJE
 ===================================================== */
 
-const actividadesDesbloqueadas =
-new Set();
+function showToast(message) {
 
+    toast.textContent = message;
 
-/* =====================================================
-   TEMPORIZADOR
-===================================================== */
+    toast.classList.add("show");
 
-let temporizadorMensaje = null;
+    setTimeout(() => {
 
+        toast.classList.remove("show");
 
-/* =====================================================
-   SESIÓN
-===================================================== */
-
-async function comprobarSesion() {
-
-    const {
-        data: {
-            user
-        }
-    } =
-    await supabaseClient.auth.getUser();
-
-
-    if (!user) {
-
-        window.location.href =
-        "login-docente.html";
-
-        return;
-
-    }
-
-
-    document.getElementById(
-        "usuario"
-    ).textContent =
-    user.email;
-
-
-    establecerFechaActual();
-
-    await cargarEstudiantes();
+    }, 2500);
 
 }
 
 
 /* =====================================================
-   FECHA ACTUAL
+   ESCAPAR HTML
 ===================================================== */
 
-function establecerFechaActual() {
+function escapeHtml(value) {
 
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    );
+    if (value === null || value === undefined) {
+        return "";
+    }
 
-    const hoy =
-    new Date();
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
-    const año =
-    hoy.getFullYear();
+}
 
-    const mes =
-    String(
-        hoy.getMonth() + 1
-    ).padStart(
-        2,
-        "0"
-    );
 
-    const dia =
-    String(
-        hoy.getDate()
-    ).padStart(
-        2,
-        "0"
-    );
+/* =====================================================
+   ICONO CATEGORÍA
+===================================================== */
 
-    fecha.value =
-    `${año}-${mes}-${dia}`;
+function getCategoryIcon(category) {
+
+    switch (category) {
+
+        case "SER":
+            return `
+                <span class="category-icon icon-ser">
+                    👤
+                </span>
+            `;
+
+        case "SABER":
+            return `
+                <span class="category-icon icon-saber">
+                    💡
+                </span>
+            `;
+
+        case "HACER":
+            return `
+                <span class="category-icon icon-hacer">
+                    🔧
+                </span>
+            `;
+
+        case "AUTOEVALUACION":
+            return `
+                <span class="category-icon icon-auto">
+                    ✓
+                </span>
+            `;
+
+        default:
+            return `
+                <span class="category-icon">
+                    •
+                </span>
+            `;
+    }
+
+}
+
+
+/* =====================================================
+   NOMBRE CATEGORÍA
+===================================================== */
+
+function getCategoryName(category) {
+
+    switch (category) {
+
+        case "SER":
+            return "SER";
+
+        case "SABER":
+            return "SABER";
+
+        case "HACER":
+            return "HACER";
+
+        case "AUTOEVALUACION":
+            return "AUTOEVALUACIÓN";
+
+        default:
+            return category;
+    }
+
+}
+
+
+/* =====================================================
+   CARGAR CURSOS
+===================================================== */
+
+async function loadCourses() {
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("matematica")
+            .select("curso")
+            .order("curso");
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        const courses = [
+            ...new Set(
+                (data || [])
+                    .map(item => item.curso)
+                    .filter(Boolean)
+            )
+        ];
+
+
+        courseSelect.innerHTML = `
+            <option value="">
+                Seleccionar curso
+            </option>
+        `;
+
+
+        courses.forEach(course => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = course;
+
+            option.textContent = course;
+
+            courseSelect.appendChild(option);
+
+        });
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "No se pudieron cargar los cursos."
+        );
+
+    }
 
 }
 
@@ -2162,1050 +1538,158 @@ function establecerFechaActual() {
    CARGAR ESTUDIANTES
 ===================================================== */
 
-async function cargarEstudiantes() {
+async function loadStudents(course) {
 
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("matematica")
-    .select(
-        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
-    )
-    .order("curso")
-    .order("num_lista");
+    if (!course) {
+
+        students = [];
+
+        return;
+
+    }
 
 
-    if (error) {
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("matematica")
+            .select("*")
+            .eq("curso", course)
+            .order("nombre");
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        students = data || [];
+
+
+    } catch (error) {
 
         console.error(error);
 
-        mostrarMensaje(
-            "Error al cargar estudiantes: " +
-            error.message,
-            true
+        students = [];
+
+        showToast(
+            "No se pudieron cargar los estudiantes."
         );
-
-        return;
-
-    }
-
-
-    estudiantes =
-    data || [];
-
-
-    cargarCursos();
-
-}
-
-
-/* =====================================================
-   CURSOS
-===================================================== */
-
-function cargarCursos() {
-
-    const select =
-    document.getElementById(
-        "buscarCurso"
-    );
-
-    const valorAnterior =
-    select.value;
-
-    select.innerHTML = `
-
-        <option value="">
-            Selecciona un curso
-        </option>
-
-    `;
-
-    const cursos =
-    [...new Set(
-
-        estudiantes
-        .map(e => e.curso)
-        .filter(Boolean)
-
-    )].sort();
-
-
-    cursos.forEach(
-    curso => {
-
-        const opcion =
-        document.createElement(
-            "option"
-        );
-
-        opcion.value =
-        curso;
-
-        opcion.textContent =
-        curso;
-
-        select.appendChild(
-            opcion
-        );
-
-    });
-
-
-    if (
-        valorAnterior &&
-        cursos.includes(
-            valorAnterior
-        )
-    ) {
-
-        select.value =
-        valorAnterior;
 
     }
 
 }
-
-
-/* =====================================================
-   CAMBIO DE CURSO
-===================================================== */
-
-document.getElementById(
-    "buscarCurso"
-).addEventListener(
-    "change",
-    async function() {
-
-        cursoSeleccionado =
-        this.value;
-
-
-        document.getElementById(
-            "contenedorActividades"
-        ).innerHTML = "";
-
-
-        document.getElementById(
-            "tablaEstudiantes"
-        ).innerHTML = "";
-
-
-        document.getElementById(
-            "tablaGeneral"
-        ).classList.add(
-            "oculto"
-        );
-
-
-        document.getElementById(
-            "panelAsistencia"
-        ).classList.add(
-            "oculto"
-        );
-
-
-        cerrarModalActividad();
-
-
-        actividadesDesbloqueadas.clear();
-
-
-        if (!cursoSeleccionado) {
-            return;
-        }
-
-
-        await cargarActividades();
-
-        mostrarTablaGeneral();
-
-        mostrarPanelAsistencia();
-
-        await cargarAsistencia();
-
-        aplicarBusqueda();
-
-    }
-);
-
-
-/* =====================================================
-   PANEL ASISTENCIA
-===================================================== */
-
-function mostrarPanelAsistencia() {
-
-    document.getElementById(
-        "panelAsistencia"
-    ).classList.remove(
-        "oculto"
-    );
-
-
-    document.getElementById(
-        "contenidoAsistencia"
-    ).classList.add(
-        "oculto"
-    );
-
-
-    document.getElementById(
-        "botonAsistencia"
-    ).textContent =
-    "+";
-
-}
-
-
-/* =====================================================
-   MOSTRAR / OCULTAR ASISTENCIA
-===================================================== */
-
-function mostrarOcultarAsistencia() {
-
-    const contenido =
-    document.getElementById(
-        "contenidoAsistencia"
-    );
-
-    const boton =
-    document.getElementById(
-        "botonAsistencia"
-    );
-
-
-    if (
-        contenido.classList.contains(
-            "oculto"
-        )
-    ) {
-
-        contenido.classList.remove(
-            "oculto"
-        );
-
-        boton.textContent =
-        "−";
-
-        boton.title =
-        "Ocultar asistencia";
-
-    }
-
-    else {
-
-        contenido.classList.add(
-            "oculto"
-        );
-
-        boton.textContent =
-        "+";
-
-        boton.title =
-        "Mostrar asistencia";
-
-    }
-
-}
-
-
-/* =====================================================
-   CAMBIO DE FECHA
-===================================================== */
-
-document.getElementById(
-    "fechaAsistencia"
-).addEventListener(
-    "change",
-    async function() {
-
-        if (!cursoSeleccionado) {
-            return;
-        }
-
-        await cargarAsistencia();
-
-    }
-);
-
-
-/* =====================================================
-   CARGAR ASISTENCIA
-===================================================== */
-
-async function cargarAsistencia() {
-
-    registrosAsistencia = {};
-
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
-
-
-    if (!fecha) {
-        return;
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
-
-
-    if (
-        ids.length === 0
-    ) {
-
-        mostrarTablaAsistencia();
-
-        return;
-
-    }
-
-
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .select(
-        "id,estudiante_id,fecha,estado,observacion"
-    )
-    .eq(
-        "fecha",
-        fecha
-    )
-    .in(
-        "estudiante_id",
-        ids
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al cargar asistencia: " +
-            error.message,
-            true
-        );
-
-        mostrarTablaAsistencia();
-
-        return;
-
-    }
-
-
-    (data || []).forEach(
-    registro => {
-
-        registrosAsistencia[
-            registro.estudiante_id
-        ] = {
-
-            estado:
-            registro.estado,
-
-            observacion:
-            registro.observacion || ""
-
-        };
-
-    });
-
-
-    mostrarTablaAsistencia();
-
-}
-
-
-/* =====================================================
-   MOSTRAR TABLA ASISTENCIA
-===================================================== */
-
-function mostrarTablaAsistencia() {
-
-    const tbody =
-    document.getElementById(
-        "tablaAsistencia"
-    );
-
-
-    tbody.innerHTML = "";
-
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const registro =
-        registrosAsistencia[
-            estudiante.id
-        ] || {};
-
-
-        const estado =
-        registro.estado || "";
-
-
-        const observacion =
-        registro.observacion || "";
-
-
-        const fila =
-        document.createElement(
-            "tr"
-        );
-
-
-        fila.innerHTML = `
-
-            <td>
-                ${escapeHTML(
-                    String(
-                        estudiante.num_lista ?? ""
-                    )
-                )}
-            </td>
-
-            <td class="nombre">
-                ${escapeHTML(
-                    estudiante.nombre
-                )}
-            </td>
-
-            <td>
-
-                <div class="estados-asistencia">
-
-                    <div class="radio-asistencia">
-
-                        <input
-                            type="radio"
-                            name="asistencia-${estudiante.id}"
-                            id="asistio-${estudiante.id}"
-                            value="asistio"
-                            ${
-                                estado === "asistio"
-                                ? "checked"
-                                : ""
-                            }
-                        >
-
-                        <label
-                            for="asistio-${estudiante.id}"
-                            title="Asistencia"
-                        >
-
-                            <span class="boton-estado estado-asistio">
-                                ✓
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </td>
-
-
-            <td>
-
-                <div class="estados-asistencia">
-
-                    <div class="radio-asistencia">
-
-                        <input
-                            type="radio"
-                            name="asistencia-${estudiante.id}"
-                            id="atraso-${estudiante.id}"
-                            value="atraso"
-                            ${
-                                estado === "atraso"
-                                ? "checked"
-                                : ""
-                            }
-                        >
-
-                        <label
-                            for="atraso-${estudiante.id}"
-                            title="Atraso"
-                        >
-
-                            <span class="boton-estado estado-atraso">
-                                ⏰
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </td>
-
-
-            <td>
-
-                <div class="estados-asistencia">
-
-                    <div class="radio-asistencia">
-
-                        <input
-                            type="radio"
-                            name="asistencia-${estudiante.id}"
-                            id="licencia-${estudiante.id}"
-                            value="licencia"
-                            ${
-                                estado === "licencia"
-                                ? "checked"
-                                : ""
-                            }
-                        >
-
-                        <label
-                            for="licencia-${estudiante.id}"
-                            title="Falta con licencia"
-                        >
-
-                            <span class="boton-estado estado-licencia">
-                                📄
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </td>
-
-
-            <td>
-
-                <div class="estados-asistencia">
-
-                    <div class="radio-asistencia">
-
-                        <input
-                            type="radio"
-                            name="asistencia-${estudiante.id}"
-                            id="falta-${estudiante.id}"
-                            value="falta"
-                            ${
-                                estado === "falta"
-                                ? "checked"
-                                : ""
-                            }
-                        >
-
-                        <label
-                            for="falta-${estudiante.id}"
-                            title="Falta sin licencia"
-                        >
-
-                            <span class="boton-estado estado-falta">
-                                ✕
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-            </td>
-
-
-            <td>
-
-                <input
-                    type="text"
-                    class="observacion-asistencia"
-                    data-estudiante="${estudiante.id}"
-                    value="${escapeHTML(
-                        observacion
-                    )}"
-                    placeholder="Observación..."
-                >
-
-            </td>
-
-        `;
-
-
-        tbody.appendChild(
-            fila
-        );
-
-    });
-
-}
-
-
-/* =====================================================
-   GUARDAR ASISTENCIA
-===================================================== */
-
-async function guardarAsistencia() {
-
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return false;
-
-    }
-
-
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
-
-
-    if (!fecha) {
-
-        alert(
-            "Selecciona una fecha."
-        );
-
-        return false;
-
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    if (
-        estudiantesCurso.length === 0
-    ) {
-
-        alert(
-            "No existen estudiantes en este curso."
-        );
-
-        return false;
-
-    }
-
-
-    mostrarMensaje(
-        "Guardando asistencia..."
-    );
-
-
-    const registros = [];
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const seleccionado =
-        document.querySelector(
-            `input[name="asistencia-${estudiante.id}"]:checked`
-        );
-
-
-        const observacion =
-        document.querySelector(
-            `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
-        );
-
-
-        let estado = null;
-
-
-        if (seleccionado) {
-
-            estado =
-            seleccionado.value;
-
-        }
-
-
-        registros.push({
-
-            estudiante_id:
-            estudiante.id,
-
-            fecha:
-            fecha,
-
-            estado:
-            estado || "asistio",
-
-            observacion:
-            observacion
-            ? observacion.value.trim()
-            : null
-
-        });
-
-    });
-
-
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .upsert(
-        registros,
-        {
-            onConflict:
-            "estudiante_id,fecha"
-        }
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al guardar asistencia: " +
-            error.message,
-            true
-        );
-
-        return false;
-
-    }
-
-
-    mostrarMensaje(
-        "✓ Asistencia guardada correctamente."
-    );
-
-
-    await cargarAsistencia();
-
-    return true;
-
-}
-
-
-/* =====================================================
-   MODAL NUEVA ACTIVIDAD
-===================================================== */
-
-function abrirModalActividad() {
-
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return;
-
-    }
-
-
-    const modal =
-    document.getElementById(
-        "modalNuevaActividad"
-    );
-
-
-    modal.classList.remove(
-        "oculto"
-    );
-
-
-    document.getElementById(
-        "nombreActividad"
-    ).value = "";
-
-
-    document
-    .querySelectorAll(
-        'input[name="categoriaActividad"]'
-    )
-    .forEach(
-        radio => {
-
-            radio.checked =
-            false;
-
-        }
-    );
-
-
-    setTimeout(
-    function() {
-
-        document.getElementById(
-            "nombreActividad"
-        ).focus();
-
-    }, 100);
-
-}
-
-
-/* =====================================================
-   CERRAR MODAL
-===================================================== */
-
-function cerrarModalActividad() {
-
-    const modal =
-    document.getElementById(
-        "modalNuevaActividad"
-    );
-
-
-    if (!modal) {
-        return;
-    }
-
-
-    modal.classList.add(
-        "oculto"
-    );
-
-}
-
-
-/* =====================================================
-   CERRAR MODAL FONDO
-===================================================== */
-
-function cerrarModalDesdeFondo(
-    event
-) {
-
-    if (
-        event.target.id ===
-        "modalNuevaActividad"
-    ) {
-
-        cerrarModalActividad();
-
-    }
-
-}
-
-
-/* =====================================================
-   ESC
-===================================================== */
-
-document.addEventListener(
-    "keydown",
-    function(event) {
-
-        if (
-            event.key === "Escape"
-        ) {
-
-            cerrarModalActividad();
-
-        }
-
-    }
-);
 
 
 /* =====================================================
    CARGAR ACTIVIDADES
 ===================================================== */
 
-async function cargarActividades() {
+async function loadActivities(course) {
 
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("actividades")
-    .select(
-        "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
-    )
-    .eq(
-        "curso",
-        cursoSeleccionado
-    )
-    .eq(
-        "trimestre",
-        3
-    )
-    .order(
-        "orden"
-    );
+    activitiesContainer.innerHTML = `
+        <div class="loading">
+            Cargando actividades...
+        </div>
+    `;
 
 
-    if (error) {
+    /*
+       IMPORTANTE:
+
+       Esta consulta supone que existe una tabla
+       llamada "actividades" con campos similares a:
+
+       id
+       nombre
+       categoria
+       trimestre
+       curso
+
+       Si tu tabla tiene otro nombre, cambia
+       "actividades" por el nombre correspondiente.
+    */
+
+
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("actividades")
+            .select("*")
+            .eq("curso", course)
+            .eq("trimestre", 3)
+            .order("id");
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        activities = data || [];
+
+
+        renderActivities();
+
+    } catch (error) {
 
         console.error(error);
 
-        mostrarMensaje(
-            "Error al cargar actividades: " +
-            error.message,
-            true
-        );
 
-        return;
+        activities = [];
+
+
+        activitiesContainer.innerHTML = `
+            <div class="message">
+                No se encontraron actividades para este curso.
+                <br><br>
+                Puedes crear una nueva actividad usando el botón 📝.
+            </div>
+        `;
 
     }
-
-
-    actividades =
-    data || [];
-
-
-    await cargarCalificaciones();
-
-    mostrarActividades();
 
 }
 
 
 /* =====================================================
-   CARGAR CALIFICACIONES
+   FILTRAR ESTUDIANTES
 ===================================================== */
 
-async function cargarCalificaciones() {
+function getFilteredStudents() {
 
-    calificaciones = {};
+    const search =
+        searchInput.value
+            .trim()
+            .toLowerCase();
 
 
-    if (
-        actividades.length === 0
-    ) {
-        return;
+    if (!search) {
+        return students;
     }
 
 
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
+    return students.filter(student => {
+
+        const name =
+            String(student.nombre || "")
+                .toLowerCase();
+
+        const ci =
+            String(student.ci || "")
+                .toLowerCase();
 
 
-    const idsEstudiantes =
-    estudiantesCurso.map(
-        e => e.id
-    );
-
-
-    const idsActividades =
-    actividades.map(
-        a => a.id
-    );
-
-
-    if (
-        idsEstudiantes.length === 0 ||
-        idsActividades.length === 0
-    ) {
-        return;
-    }
-
-
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("calificaciones")
-    .select(
-        "id,actividad_id,estudiante_id,nota"
-    )
-    .in(
-        "actividad_id",
-        idsActividades
-    )
-    .in(
-        "estudiante_id",
-        idsEstudiantes
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al cargar calificaciones: " +
-            error.message,
-            true
+        return (
+            name.includes(search) ||
+            ci.includes(search)
         );
-
-        return;
-
-    }
-
-
-    (data || []).forEach(
-    cal => {
-
-        if (
-            !calificaciones[
-                cal.estudiante_id
-            ]
-        ) {
-
-            calificaciones[
-                cal.estudiante_id
-            ] = {};
-
-        }
-
-
-        calificaciones[
-            cal.estudiante_id
-        ][
-            cal.actividad_id
-        ] =
-        cal.nota;
 
     });
 
@@ -3213,3002 +1697,374 @@ async function cargarCalificaciones() {
 
 
 /* =====================================================
-   MOSTRAR ACTIVIDADES
+   RENDERIZAR ACTIVIDADES
 ===================================================== */
 
-function mostrarActividades() {
+function renderActivities() {
 
-    const contenedor =
-    document.getElementById(
-        "contenedorActividades"
-    );
+    if (!courseSelect.value) {
+
+        activitiesContainer.innerHTML = `
+            <div class="message">
+                Selecciona un curso para mostrar las actividades.
+            </div>
+        `;
+
+        return;
+
+    }
 
 
-    contenedor.innerHTML = "";
+    if (!activities.length) {
+
+        activitiesContainer.innerHTML = `
+            <div class="empty">
+                No hay actividades creadas para este curso.
+                <br><br>
+                Presiona 📝 para crear una actividad.
+            </div>
+        `;
+
+        return;
+
+    }
 
 
-    const categorias = [
-
-        {
-            codigo: "SER",
-            nombre: "SER — 10 puntos",
-            clase: "ser"
-        },
-
-        {
-            codigo: "SABER",
-            nombre: "SABER — 45 puntos",
-            clase: "saber"
-        },
-
-        {
-            codigo: "HACER",
-            nombre: "HACER — 40 puntos",
-            clase: "hacer"
-        },
-
-        {
-            codigo: "AUTOEVALUACION",
-            nombre: "AUTOEVALUACIÓN — 5 puntos",
-            clase: "auto"
-        }
-
+    const categories = [
+        "SER",
+        "SABER",
+        "HACER",
+        "AUTOEVALUACION"
     ];
 
 
-    categorias.forEach(
-    categoria => {
-
-        const lista =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            categoria.codigo
-        );
+    const filteredStudents =
+        getFilteredStudents();
 
 
-        if (
-            lista.length === 0
-        ) {
+    let html = "";
+
+
+    categories.forEach(category => {
+
+        const categoryActivities =
+            activities.filter(
+                activity =>
+                    activity.categoria === category
+            );
+
+
+        if (!categoryActivities.length) {
             return;
         }
 
 
-        const seccion =
-        document.createElement(
-            "div"
-        );
+        html += `
+
+            <div class="category-card">
+
+                <div class="category-header">
+
+                    <div class="category-title">
+
+                        ${getCategoryIcon(category)}
+
+                        <span>
+                            ${getCategoryName(category)}
+                        </span>
+
+                    </div>
+
+                    <button
+                        class="category-toggle"
+                        type="button"
+                        onclick="toggleCategory(this)"
+                        title="Mostrar/Ocultar"
+                    >
+                        ▲
+                    </button>
+
+                </div>
 
 
-        seccion.className =
-        "categoria";
+                <div class="category-content">
+        `;
 
 
-        const encabezado =
-        document.createElement(
-            "div"
-        );
+        categoryActivities.forEach(activity => {
 
-
-        encabezado.className =
-        "titulo-categoria " +
-        categoria.clase;
-
-
-        encabezado.textContent =
-        categoria.nombre;
-
-
-        seccion.appendChild(
-            encabezado
-        );
-
-
-        lista.forEach(
-        actividad => {
-
-            seccion.appendChild(
-                crearActividadHTML(
-                    actividad
-                )
+            html += renderActivity(
+                activity,
+                filteredStudents
             );
 
         });
 
 
-        contenedor.appendChild(
-            seccion
-        );
+        html += `
 
-    });
-
-
-    if (
-        actividades.length === 0
-    ) {
-
-        contenedor.innerHTML = `
-
-            <div class="info">
-
-            Este curso todavía no tiene actividades
-            para el tercer trimestre.
+                </div>
 
             </div>
 
         `;
 
-    }
+    });
+
+
+    activitiesContainer.innerHTML =
+        html ||
+        `
+            <div class="empty">
+                No hay actividades disponibles.
+            </div>
+        `;
 
 }
 
 
 /* =====================================================
-   CREAR HTML ACTIVIDAD
+   RENDERIZAR ACTIVIDAD
 ===================================================== */
 
-function crearActividadHTML(
-    actividad
-) {
+function renderActivity(activity, filteredStudents) {
 
-    const bloque =
-    document.createElement(
-        "div"
-    );
+    const locked =
+        activity.bloqueada === true;
 
 
-    bloque.className =
-    "actividad";
+    let rows = "";
 
 
-    const encabezado =
-    document.createElement(
-        "div"
-    );
+    filteredStudents.forEach((student, index) => {
 
+        const grade =
+            getActivityGrade(
+                student,
+                activity.id
+            );
 
-    encabezado.className =
-    "encabezado-actividad";
 
+        rows += `
 
-    const izquierda =
-    document.createElement(
-        "div"
-    );
+            <tr>
 
+                <td>
+                    ${index + 1}
+                </td>
 
-    izquierda.className =
-    "izquierda-actividad";
+                <td class="student-name">
+                    ${escapeHtml(student.nombre)}
+                </td>
 
+                <td>
+                    ${escapeHtml(student.ci || "")}
+                </td>
 
-    const botonEditar =
-    document.createElement(
-        "button"
-    );
+                <td>
 
+                    <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        class="grade-input"
+                        data-student-id="${student.id}"
+                        data-activity-id="${activity.id}"
+                        value="${grade}"
+                        ${locked ? "disabled" : ""}
+                        onchange="markChanged(this)"
+                    >
 
-    botonEditar.className =
-    "boton-editar";
+                </td>
 
-
-    botonEditar.textContent =
-    "✏️";
-
-
-    botonEditar.title =
-    "Editar nombre de actividad";
-
-
-    const botonEliminar =
-    document.createElement(
-        "button"
-    );
-
-
-    botonEliminar.className =
-    "boton-eliminar";
-
-
-    botonEliminar.textContent =
-    "🗑️";
-
-
-    botonEliminar.title =
-    "Eliminar actividad";
-
-
-    const nombre =
-    document.createElement(
-        "div"
-    );
-
-
-    nombre.className =
-    "nombre-actividad";
-
-
-    let puntajeMaximo =
-    Number(
-        actividad.puntaje_maximo
-    );
-
-
-    if (
-        !puntajeMaximo ||
-        puntajeMaximo <= 0
-    ) {
-
-        puntajeMaximo =
-        LIMITES[
-            actividad.categoria
-        ];
-
-    }
-
-
-    nombre.innerHTML = `
-
-        <span
-            id="nombre-actividad-${actividad.id}">
-
-            ${escapeHTML(
-                actividad.nombre
-            )}
-
-        </span>
-
-        <span class="puntaje-actividad">
-
-            — máximo ${puntajeMaximo} puntos
-
-        </span>
-
-    `;
-
-
-    izquierda.appendChild(
-        botonEditar
-    );
-
-
-    izquierda.appendChild(
-        botonEliminar
-    );
-
-
-    izquierda.appendChild(
-        nombre
-    );
-
-
-    const derecha =
-    document.createElement(
-        "div"
-    );
-
-
-    derecha.className =
-    "derecha-actividad";
-
-
-    const botonOcultar =
-    document.createElement(
-        "button"
-    );
-
-
-    botonOcultar.className =
-    "boton-ocultar";
-
-
-    botonOcultar.textContent =
-    "+";
-
-
-    botonOcultar.title =
-    "Mostrar estudiantes";
-
-
-    const botonBloquear =
-    document.createElement(
-        "button"
-    );
-
-
-    botonBloquear.className =
-    "boton-bloquear";
-
-
-    botonBloquear.textContent =
-    "🔒";
-
-
-    botonBloquear.title =
-    "Desbloquear notas";
-
-
-    derecha.appendChild(
-        botonOcultar
-    );
-
-
-    derecha.appendChild(
-        botonBloquear
-    );
-
-
-    encabezado.appendChild(
-        izquierda
-    );
-
-
-    encabezado.appendChild(
-        derecha
-    );
-
-
-    bloque.appendChild(
-        encabezado
-    );
-
-
-    const contenido =
-    document.createElement(
-        "div"
-    );
-
-
-    contenido.className =
-    "contenido-actividad oculto";
-
-
-    const tablaContenedor =
-    document.createElement(
-        "div"
-    );
-
-
-    tablaContenedor.className =
-    "tabla-contenedor";
-
-
-    const tabla =
-    document.createElement(
-        "table"
-    );
-
-
-    tabla.innerHTML = `
-
-        <thead>
-
-        <tr>
-
-        <th>Nº</th>
-
-        <th>Nombre</th>
-
-        <th>Nota / ${puntajeMaximo}</th>
-
-        </tr>
-
-        </thead>
-
-        <tbody></tbody>
-
-    `;
-
-
-    const tbody =
-    tabla.querySelector(
-        "tbody"
-    );
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        let nota = null;
-
-
-        if (
-            calificaciones[
-                estudiante.id
-            ] &&
-            calificaciones[
-                estudiante.id
-            ][
-                actividad.id
-            ] !== undefined
-        ) {
-
-            nota =
-            calificaciones[
-                estudiante.id
-            ][
-                actividad.id
-            ];
-
-        }
-
-
-        const fila =
-        document.createElement(
-            "tr"
-        );
-
-
-        fila.innerHTML = `
-
-            <td>
-
-            ${escapeHTML(
-                String(
-                    estudiante.num_lista ?? ""
-                )
-            )}
-
-            </td>
-
-
-            <td class="nombre">
-
-            ${escapeHTML(
-                estudiante.nombre
-            )}
-
-            </td>
-
-
-            <td>
-
-            <input
-
-            class="nota-input"
-
-            type="number"
-
-            min="0"
-
-            max="${puntajeMaximo}"
-
-            step="0.01"
-
-            value="${
-                nota === null
-                ? ""
-                : nota
-            }"
-
-            data-estudiante="${
-                estudiante.id
-            }"
-
-            data-actividad="${
-                actividad.id
-            }"
-
-            data-maximo="${
-                puntajeMaximo
-            }"
-
-            disabled
-
-            oninput="validarNota(this)"
-
-            >
-
-            </td>
+            </tr>
 
         `;
-
-
-        tbody.appendChild(
-            fila
-        );
 
     });
 
 
-    tablaContenedor.appendChild(
-        tabla
-    );
+    return `
 
+        <div
+            class="activity ${locked ? "locked" : ""}"
+            data-activity="${activity.id}"
+        >
 
-    contenido.appendChild(
-        tablaContenedor
-    );
 
+            <div class="activity-header">
 
-    bloque.appendChild(
-        contenido
-    );
+                <div class="activity-name">
 
+                    ${escapeHtml(activity.nombre)}
 
-    botonOcultar.onclick =
-    function() {
+                    ${locked ? " 🔒" : ""}
 
-        if (
-            contenido.classList.contains(
-                "oculto"
-            )
-        ) {
+                </div>
 
-            contenido.classList.remove(
-                "oculto"
-            );
 
+                <div class="activity-actions">
 
-            botonOcultar.textContent =
-            "−";
 
+                    <button
+                        type="button"
+                        class="icon-btn edit"
+                        title="Editar actividad"
+                        onclick="editActivity('${activity.id}')"
+                    >
+                        ✏️
+                    </button>
 
-            botonOcultar.title =
-            "Ocultar estudiantes";
 
-        }
+                    <button
+                        type="button"
+                        class="icon-btn lock"
+                        title="${locked ? "Desbloquear" : "Bloquear"} actividad"
+                        onclick="toggleActivityLock('${activity.id}', ${!locked})"
+                    >
+                        ${locked ? "🔓" : "🔒"}
+                    </button>
 
-        else {
 
-            contenido.classList.add(
-                "oculto"
-            );
+                    <button
+                        type="button"
+                        class="icon-btn delete"
+                        title="Eliminar actividad"
+                        onclick="deleteActivity('${activity.id}')"
+                    >
+                        🗑️
+                    </button>
 
 
-            botonOcultar.textContent =
-            "+";
+                </div>
 
+            </div>
 
-            botonOcultar.title =
-            "Mostrar estudiantes";
 
-        }
+            <div class="table-wrapper">
 
-    };
+                <table class="grade-table">
 
+                    <thead>
 
-    botonEditar.onclick =
-    function() {
+                        <tr>
 
-        editarNombreActividad(
-            actividad
-        );
+                            <th>
+                                Nº
+                            </th>
 
-    };
+                            <th>
+                                Nombre
+                            </th>
 
+                            <th>
+                                CI
+                            </th>
 
-    botonBloquear.onclick =
-    function() {
+                            <th>
+                                Nota
+                            </th>
 
-        const desbloqueada =
-        actividadesDesbloqueadas.has(
-            actividad.id
-        );
+                        </tr>
 
+                    </thead>
 
-        const inputs =
-        bloque.querySelectorAll(
-            ".nota-input"
-        );
+                    <tbody>
 
+                        ${
+                            rows ||
+                            `
+                                <tr>
+                                    <td
+                                        colspan="4"
+                                        style="text-align:center"
+                                    >
+                                        No hay estudiantes.
+                                    </td>
+                                </tr>
+                            `
+                        }
 
-        if (desbloqueada) {
+                    </tbody>
 
-            inputs.forEach(
-            input => {
+                </table>
 
-                input.disabled =
-                true;
+            </div>
 
-                input.classList.remove(
-                    "editable"
-                );
 
-            });
+            <div class="activity-footer">
 
+                <div class="activity-info">
 
-            actividadesDesbloqueadas.delete(
-                actividad.id
-            );
+                    ${filteredStudents.length}
+                    estudiante(s)
 
+                </div>
 
-            botonBloquear.textContent =
-            "🔒";
 
+                ${
+                    locked
+                    ?
+                    `
+                        <span class="activity-info">
+                            Actividad bloqueada
+                        </span>
+                    `
+                    :
+                    `
+                        <button
+                            type="button"
+                            class="save-btn"
+                            onclick="saveActivityGrades('${activity.id}')"
+                        >
+                            💾 Guardar notas
+                        </button>
+                    `
+                }
 
-            botonBloquear.title =
-            "Desbloquear notas";
+            </div>
 
 
-            mostrarMensaje(
-                "🔒 Notas bloqueadas: " +
-                actividad.nombre
-            );
+        </div>
 
-        }
-
-        else {
-
-            inputs.forEach(
-            input => {
-
-                input.disabled =
-                false;
-
-                input.classList.add(
-                    "editable"
-                );
-
-            });
-
-
-            actividadesDesbloqueadas.add(
-                actividad.id
-            );
-
-
-            botonBloquear.textContent =
-            "🔓";
-
-
-            botonBloquear.title =
-            "Bloquear notas";
-
-
-            mostrarMensaje(
-                "🔓 Notas desbloqueadas: " +
-                actividad.nombre
-            );
-
-        }
-
-    };
-
-
-    botonEliminar.onclick =
-    function() {
-
-        eliminarActividad(
-            actividad
-        );
-
-    };
-
-
-    return bloque;
+    `;
 
 }
 
 
 /* =====================================================
-   EDITAR NOMBRE
+   OBTENER NOTA
 ===================================================== */
 
-async function editarNombreActividad(
-    actividad
-) {
+function getActivityGrade(student, activityId) {
 
-    const nuevoNombre =
-    prompt(
-        "Escribe el nuevo nombre de la actividad:",
-        actividad.nombre
-    );
+    /*
+       Si utilizas una tabla independiente para las notas
+       de actividades, adapta esta función a esa estructura.
 
+       Esta versión busca primero una propiedad dinámica
+       con el ID de la actividad.
+    */
 
-    if (
-        nuevoNombre === null
-    ) {
-        return;
-    }
 
-
-    const nombre =
-    nuevoNombre.trim();
-
-
-    if (!nombre) {
-
-        alert(
-            "El nombre no puede estar vacío."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        nombre === actividad.nombre
-    ) {
-        return;
-    }
-
-
-    mostrarMensaje(
-        "Actualizando nombre..."
-    );
-
-
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("actividades")
-    .update({
-
-        nombre:
-        nombre
-
-    })
-    .eq(
-        "id",
-        actividad.id
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al cambiar el nombre: " +
-            error.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    actividad.nombre =
-    nombre;
-
-
-    const elemento =
-    document.getElementById(
-        "nombre-actividad-" +
-        actividad.id
-    );
-
-
-    if (elemento) {
-
-        elemento.textContent =
-        nombre;
-
-    }
-
-
-    mostrarMensaje(
-        "✓ Nombre actualizado correctamente."
-    );
-
-}
-
-
-/* =====================================================
-   VALIDAR NOTA
-===================================================== */
-
-function validarNota(input) {
-
-    if (
-        input.value === ""
-    ) {
-        return true;
-    }
-
-
-    const valor =
-    Number(
-        input.value
-    );
-
-
-    const maximo =
-    Number(
-        input.dataset.maximo
-    );
-
-
-    if (
-        valor < 0
-    ) {
-
-        alert(
-            "La nota no puede ser menor que 0."
-        );
-
-
-        input.value = "";
-
-
-        return false;
-
-    }
-
-
-    if (
-        valor > maximo
-    ) {
-
-        alert(
-
-            "⚠️ NOTA NO VÁLIDA\n\n" +
-
-            "La actividad \"" +
-
-            obtenerNombreActividad(
-                input.dataset.actividad
-            ) +
-
-            "\" tiene un máximo de " +
-
-            maximo +
-
-            " puntos."
-
-        );
-
-
-        input.value = "";
-
-        input.focus();
-
-
-        return false;
-
-    }
-
-
-    return true;
-
-}
-
-
-/* =====================================================
-   OBTENER NOMBRE ACTIVIDAD
-===================================================== */
-
-function obtenerNombreActividad(
-    id
-) {
-
-    const actividad =
-    actividades.find(
-        a =>
-        String(a.id) ===
-        String(id)
-    );
-
-
-    return actividad
-        ? actividad.nombre
-        : "esta actividad";
-
-}
-
-
-/* =====================================================
-   CREAR ACTIVIDAD
-===================================================== */
-
-async function crearActividad() {
-
-    if (
-        !cursoSeleccionado
-    ) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return;
-
-    }
-
-
-    const nombre =
-    document.getElementById(
-        "nombreActividad"
-    ).value.trim();
-
-
-    const radioCategoria =
-    document.querySelector(
-        'input[name="categoriaActividad"]:checked'
-    );
-
-
-    if (!nombre) {
-
-        alert(
-            "Escribe el nombre de la actividad."
-        );
-
-
-        document.getElementById(
-            "nombreActividad"
-        ).focus();
-
-
-        return;
-
-    }
-
-
-    if (!radioCategoria) {
-
-        alert(
-            "Selecciona una categoría: SER, SABER, HACER o AUTOEVALUACIÓN."
-        );
-
-
-        return;
-
-    }
-
-
-    const categoria =
-    radioCategoria.value;
-
-
-    mostrarMensaje(
-        "Creando actividad..."
-    );
-
-
-    let orden = 1;
-
-
-    if (
-        actividades.length > 0
-    ) {
-
-        orden =
-        Math.max(
-
-            ...actividades.map(
-                a =>
-                Number(
-                    a.orden || 0
-                )
-            )
-
-        ) + 1;
-
-    }
-
-
-    const puntajeMaximo =
-    LIMITES[
-        categoria
+    const possibleKeys = [
+        `actividad_${activityId}`,
+        `activity_${activityId}`,
+        String(activityId)
     ];
 
 
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("actividades")
-    .insert({
-
-        curso:
-        cursoSeleccionado,
-
-        trimestre:
-        3,
-
-        categoria:
-        categoria,
-
-        nombre:
-        nombre,
-
-        orden:
-        orden,
-
-        puntaje_maximo:
-        puntajeMaximo
-
-    });
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al crear actividad: " +
-            error.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    cerrarModalActividad();
-
-
-    mostrarMensaje(
-        "✓ Actividad creada correctamente."
-    );
-
-
-    await cargarActividades();
-
-    aplicarBusqueda();
-
-}
-
-
-/* =====================================================
-   ELIMINAR ACTIVIDAD
-===================================================== */
-
-async function eliminarActividad(
-    actividad
-) {
-
-    const confirmar =
-    confirm(
-
-        "¿Está seguro de eliminar esta actividad?\n\n" +
-
-        "Actividad: " +
-        actividad.nombre +
-
-        "\n\nTambién se eliminarán todas las " +
-
-        "calificaciones de esta actividad."
-
-    );
-
-
-    if (!confirmar) {
-        return;
-    }
-
-
-    mostrarMensaje(
-        "Eliminando actividad..."
-    );
-
-
-    const {
-        error:
-        errorCalificaciones
-    } =
-    await supabaseClient
-    .from("calificaciones")
-    .delete()
-    .eq(
-        "actividad_id",
-        actividad.id
-    );
-
-
-    if (errorCalificaciones) {
-
-        mostrarMensaje(
-            "Error al eliminar calificaciones: " +
-            errorCalificaciones.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    const {
-        error:
-        errorActividad
-    } =
-    await supabaseClient
-    .from("actividades")
-    .delete()
-    .eq(
-        "id",
-        actividad.id
-    );
-
-
-    if (errorActividad) {
-
-        mostrarMensaje(
-            "Error al eliminar actividad: " +
-            errorActividad.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    actividadesDesbloqueadas.delete(
-        actividad.id
-    );
-
-
-    mostrarMensaje(
-        "✓ Actividad eliminada correctamente."
-    );
-
-
-    await cargarActividades();
-
-    mostrarTablaGeneral();
-
-    aplicarBusqueda();
-
-}
-
-
-/* =====================================================
-   TABLA GENERAL
-===================================================== */
-
-function mostrarTablaGeneral() {
-
-    const tabla =
-    document.getElementById(
-        "tablaEstudiantes"
-    );
-
-
-    tabla.innerHTML = "";
-
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const fila =
-        document.createElement(
-            "tr"
-        );
-
-
-        fila.innerHTML = `
-
-            <td>
-
-            ${escapeHTML(
-                String(
-                    estudiante.num_lista ?? ""
-                )
-            )}
-
-            </td>
-
-
-            <td class="nombre">
-
-            ${escapeHTML(
-                estudiante.nombre
-            )}
-
-            </td>
-
-
-            <td>
-
-            ${escapeHTML(
-                estudiante.curso
-            )}
-
-            </td>
-
-
-            <td>
-
-            ${mostrarNota(
-                estudiante.nota_1t
-            )}
-
-            </td>
-
-
-            <td>
-
-            ${mostrarNota(
-                estudiante.nota_2t
-            )}
-
-            </td>
-
-
-            <td
-                id="nota3t-${estudiante.id}"
-                class="nota-3t">
-
-            ${mostrarNota(
-                estudiante.nota_3t
-            )}
-
-            </td>
-
-
-            <td
-                id="final-${estudiante.id}"
-                class="nota-final">
-
-            ${mostrarNota(
-                estudiante.final
-            )}
-
-            </td>
-
-        `;
-
-
-        tabla.appendChild(
-            fila
-        );
-
-    });
-
-
-    document.getElementById(
-        "tablaGeneral"
-    ).classList.remove(
-        "oculto"
-    );
-
-
-    const contenidoGeneral =
-    document.getElementById(
-        "contenidoGeneral"
-    );
-
-
-    const botonGeneral =
-    document.getElementById(
-        "botonGeneral"
-    );
-
-
-    contenidoGeneral.classList.add(
-        "oculto"
-    );
-
-
-    botonGeneral.textContent =
-    "+";
-
-
-    aplicarBusqueda();
-
-}
-
-
-/* =====================================================
-   TABLA GENERAL + / -
-===================================================== */
-
-function ocultarTablaGeneral() {
-
-    const contenido =
-    document.getElementById(
-        "contenidoGeneral"
-    );
-
-
-    const boton =
-    document.getElementById(
-        "botonGeneral"
-    );
-
-
-    if (
-        contenido.classList.contains(
-            "oculto"
-        )
-    ) {
-
-        contenido.classList.remove(
-            "oculto"
-        );
-
-
-        boton.textContent =
-        "−";
-
-    }
-
-    else {
-
-        contenido.classList.add(
-            "oculto"
-        );
-
-
-        boton.textContent =
-        "+";
-
-    }
-
-}
-
-
-/* =====================================================
-   BÚSQUEDA
-===================================================== */
-
-document.getElementById(
-    "buscarNombre"
-).addEventListener(
-    "input",
-    aplicarBusqueda
-);
-
-
-function aplicarBusqueda() {
-
-    const campo =
-    document.getElementById(
-        "buscarNombre"
-    );
-
-
-    if (!campo) {
-        return;
-    }
-
-
-    const texto =
-    campo.value
-    .toLowerCase()
-    .trim();
-
-
-    document.querySelectorAll(
-        "#contenedorActividades tbody tr"
-    ).forEach(
-    fila => {
-
-        const celdas =
-        fila.querySelectorAll(
-            "td"
-        );
-
+    for (const key of possibleKeys) {
 
         if (
-            celdas.length === 0
-        ) {
-            return;
-        }
-
-
-        const numero =
-        celdas[0]
-        ? celdas[0]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const nombre =
-        celdas[1]
-        ? celdas[1]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const coincide =
-
-            texto === "" ||
-
-            nombre.includes(
-                texto
-            ) ||
-
-            numero.includes(
-                texto
-            );
-
-
-        fila.style.display =
-        coincide
-        ? ""
-        : "none";
-
-    });
-
-
-    document.querySelectorAll(
-        "#tablaEstudiantes tr"
-    ).forEach(
-    fila => {
-
-        const celdas =
-        fila.querySelectorAll(
-            "td"
-        );
-
-
-        if (
-            celdas.length === 0
-        ) {
-            return;
-        }
-
-
-        const numero =
-        celdas[0]
-        ? celdas[0]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const nombre =
-        celdas[1]
-        ? celdas[1]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const coincide =
-
-            texto === "" ||
-
-            nombre.includes(
-                texto
-            ) ||
-
-            numero.includes(
-                texto
-            );
-
-
-        fila.style.display =
-        coincide
-        ? ""
-        : "none";
-
-    });
-
-
-    document.querySelectorAll(
-        "#tablaAsistencia tr"
-    ).forEach(
-    fila => {
-
-        const celdas =
-        fila.querySelectorAll(
-            "td"
-        );
-
-
-        if (
-            celdas.length === 0
-        ) {
-            return;
-        }
-
-
-        const numero =
-        celdas[0]
-        ? celdas[0]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const nombre =
-        celdas[1]
-        ? celdas[1]
-            .textContent
-            .toLowerCase()
-            .trim()
-        : "";
-
-
-        const coincide =
-
-            texto === "" ||
-
-            nombre.includes(
-                texto
-            ) ||
-
-            numero.includes(
-                texto
-            );
-
-
-        fila.style.display =
-        coincide
-        ? ""
-        : "none";
-
-    });
-
-}
-
-
-/* =====================================================
-   GUARDAR NOTAS
-===================================================== */
-
-async function guardarNotas() {
-
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return false;
-
-    }
-
-
-    if (
-        actividades.length === 0
-    ) {
-
-        alert(
-            "Este curso no tiene actividades."
-        );
-
-        return false;
-
-    }
-
-
-    const inputs =
-    document.querySelectorAll(
-        ".nota-input"
-    );
-
-
-    for (
-        const input of inputs
-    ) {
-
-        if (
-            input.value === ""
-        ) {
-            continue;
-        }
-
-
-        const valor =
-        Number(
-            input.value
-        );
-
-
-        const maximo =
-        Number(
-            input.dataset.maximo
-        );
-
-
-        if (
-            valor < 0 ||
-            valor > maximo
+            student[key] !== undefined &&
+            student[key] !== null
         ) {
 
-            alert(
-
-                "⚠️ Hay una nota inválida.\n\n" +
-
-                "Actividad: " +
-
-                obtenerNombreActividad(
-                    input.dataset.actividad
-                ) +
-
-                "\nMáximo permitido: " +
-
-                maximo
-
-            );
-
-
-            return false;
+            return student[key];
 
         }
-
-    }
-
-
-    mostrarMensaje(
-        "Guardando calificaciones..."
-    );
-
-
-    const registros = [];
-
-
-    inputs.forEach(
-    input => {
-
-        const estudianteId =
-        Number(
-            input.dataset.estudiante
-        );
-
-
-        const actividadId =
-        Number(
-            input.dataset.actividad
-        );
-
-
-        let nota = null;
-
-
-        if (
-            input.value !== ""
-        ) {
-
-            nota =
-            Number(
-                input.value
-            );
-
-        }
-
-
-        registros.push({
-
-            actividad_id:
-            actividadId,
-
-            estudiante_id:
-            estudianteId,
-
-            nota:
-            nota
-
-        });
-
-    });
-
-
-    if (
-        registros.length > 0
-    ) {
-
-        const {
-            error:
-            errorCalificaciones
-        } =
-        await supabaseClient
-        .from("calificaciones")
-        .upsert(
-            registros,
-            {
-                onConflict:
-                "actividad_id,estudiante_id"
-            }
-        );
-
-
-        if (errorCalificaciones) {
-
-            console.error(
-                errorCalificaciones
-            );
-
-
-            mostrarMensaje(
-
-                "Error al guardar calificaciones: " +
-
-                errorCalificaciones.message,
-
-                true
-
-            );
-
-
-            return false;
-
-        }
-
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    for (
-        const estudiante
-        of estudiantesCurso
-    ) {
-
-        const actividadesSER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "SER"
-        );
-
-
-        const actividadesSABER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "SABER"
-        );
-
-
-        const actividadesHACER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "HACER"
-        );
-
-
-        const actividadesAUTO =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "AUTOEVALUACION"
-        );
-
-
-        const puntosSER =
-        calcularPuntosCategoria(
-            estudiante.id,
-            actividadesSER,
-            LIMITES.SER
-        );
-
-
-        const puntosSABER =
-        calcularPuntosCategoria(
-            estudiante.id,
-            actividadesSABER,
-            LIMITES.SABER
-        );
-
-
-        const puntosHACER =
-        calcularPuntosCategoria(
-            estudiante.id,
-            actividadesHACER,
-            LIMITES.HACER
-        );
-
-
-        const puntosAUTO =
-        calcularPuntosCategoria(
-            estudiante.id,
-            actividadesAUTO,
-            LIMITES.AUTOEVALUACION
-        );
-
-
-        const nota3T =
-        redondear(
-
-            puntosSER +
-            puntosSABER +
-            puntosHACER +
-            puntosAUTO
-
-        );
-
-
-        const nota1T =
-        convertirNumero(
-            estudiante.nota_1t
-        );
-
-
-        const nota2T =
-        convertirNumero(
-            estudiante.nota_2t
-        );
-
-
-        let notaFinal = null;
-
-
-        if (
-            nota1T !== null &&
-            nota2T !== null &&
-            nota3T !== null
-        ) {
-
-            notaFinal =
-            redondear(
-
-                (
-                    nota1T +
-                    nota2T +
-                    nota3T
-                ) / 3
-
-            );
-
-        }
-
-
-        const {
-            error
-        } =
-        await supabaseClient
-        .from("matematica")
-        .update({
-
-            nota_3t:
-            nota3T,
-
-            final:
-            notaFinal
-
-        })
-        .eq(
-            "id",
-            estudiante.id
-        );
-
-
-        if (error) {
-
-            console.error(error);
-
-
-            mostrarMensaje(
-
-                "Error al actualizar notas de " +
-
-                estudiante.nombre +
-
-                ": " +
-
-                error.message,
-
-                true
-
-            );
-
-
-            return false;
-
-        }
-
-    }
-
-
-    mostrarMensaje(
-
-        "✓ Calificaciones, 3T y FINAL guardados correctamente."
-
-    );
-
-
-    await cargarEstudiantes();
-
-    await cargarActividades();
-
-    mostrarTablaGeneral();
-
-    await cargarAsistencia();
-
-    aplicarBusqueda();
-
-
-    return true;
-
-}
-
-
-/* =====================================================
-   CALCULAR PUNTOS
-===================================================== */
-
-function calcularPuntosCategoria(
-
-    estudianteId,
-    actividadesLista,
-    limiteCategoria
-
-) {
-
-    if (
-        !actividadesLista ||
-        actividadesLista.length === 0
-    ) {
-
-        return 0;
-
-    }
-
-
-    let sumaNotas = 0;
-
-    let sumaMaximos = 0;
-
-
-    actividadesLista.forEach(
-    actividad => {
-
-        const input =
-        document.querySelector(
-
-            `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividad.id}"]`
-
-        );
-
-
-        if (
-            !input ||
-            input.value === ""
-        ) {
-
-            return;
-
-        }
-
-
-        const nota =
-        Number(
-            input.value
-        );
-
-
-        const maximo =
-        Number(
-            input.dataset.maximo
-        );
-
-
-        if (
-            isNaN(nota) ||
-            isNaN(maximo) ||
-            maximo <= 0
-        ) {
-
-            return;
-
-        }
-
-
-        sumaNotas +=
-        nota;
-
-
-        sumaMaximos +=
-        maximo;
-
-    });
-
-
-    if (
-        sumaMaximos === 0
-    ) {
-
-        return 0;
-
-    }
-
-
-    return (
-
-        sumaNotas /
-        sumaMaximos
-
-    ) *
-    limiteCategoria;
-
-}
-
-
-/* =====================================================
-   REDONDEAR
-===================================================== */
-
-function redondear(
-    numero
-) {
-
-    if (
-        numero === null ||
-        numero === undefined ||
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return Math.round(
-        Number(numero)
-    );
-
-}
-
-
-/* =====================================================
-   CONVERTIR
-===================================================== */
-
-function convertirNumero(
-    valor
-) {
-
-    if (
-        valor === null ||
-        valor === undefined ||
-        valor === ""
-    ) {
-
-        return null;
-
-    }
-
-
-    const numero =
-    Number(
-        valor
-    );
-
-
-    if (
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return numero;
-
-}
-
-
-/* =====================================================
-   MOSTRAR NOTA
-===================================================== */
-
-function mostrarNota(
-    nota
-) {
-
-    if (
-        nota === null ||
-        nota === undefined ||
-        nota === ""
-    ) {
-
-        return "";
-
-    }
-
-
-    return Math.round(
-        Number(nota)
-    );
-
-}
-
-
-/* =====================================================
-   EXPORTAR EXCEL
-===================================================== */
-
-async function exportarExcel() {
-
-    try {
-
-        const guardado =
-        await guardarNotas();
-
-
-        if (
-            guardado === false
-        ) {
-
-            return;
-
-        }
-
-
-        mostrarMensaje(
-            "Preparando archivo Excel..."
-        );
-
-
-        if (
-            typeof XLSX === "undefined"
-        ) {
-
-            mostrarMensaje(
-                "Error: no se pudo cargar la herramienta de Excel.",
-                true
-            );
-
-            return;
-
-        }
-
-
-        const {
-            data:
-            todasActividades,
-            error:
-            errorActividades
-        } =
-        await supabaseClient
-        .from("actividades")
-        .select(
-            "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
-        )
-        .eq(
-            "trimestre",
-            3
-        )
-        .order(
-            "orden"
-        );
-
-
-        if (errorActividades) {
-            throw errorActividades;
-        }
-
-
-        const idsActividades =
-        (todasActividades || [])
-        .map(
-            a => a.id
-        );
-
-
-        let todasCalificaciones = [];
-
-
-        if (
-            idsActividades.length > 0
-        ) {
-
-            const {
-                data,
-                error
-            } =
-            await supabaseClient
-            .from("calificaciones")
-            .select(
-                "actividad_id,estudiante_id,nota"
-            )
-            .in(
-                "actividad_id",
-                idsActividades
-            );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            todasCalificaciones =
-            data || [];
-
-        }
-
-
-        const mapaCalificaciones = {};
-
-
-        todasCalificaciones.forEach(
-        cal => {
-
-            const clave =
-            cal.estudiante_id +
-            "_" +
-            cal.actividad_id;
-
-
-            mapaCalificaciones[
-                clave
-            ] =
-            cal.nota;
-
-        });
-
-
-        const idsEstudiantes =
-        estudiantes.map(
-            e => e.id
-        );
-
-
-        let todasAsistencias = [];
-
-
-        if (
-            idsEstudiantes.length > 0
-        ) {
-
-            const {
-                data:
-                asistencias,
-                error:
-                errorAsistencia
-            } =
-            await supabaseClient
-            .from("asistencia")
-            .select(
-                "estudiante_id,fecha,estado,observacion"
-            )
-            .in(
-                "estudiante_id",
-                idsEstudiantes
-            )
-            .order(
-                "fecha",
-                {
-                    ascending: true
-                }
-            );
-
-
-            if (errorAsistencia) {
-                throw errorAsistencia;
-            }
-
-
-            todasAsistencias =
-            asistencias || [];
-
-        }
-
-
-        const mapaAsistencia = {};
-
-
-        todasAsistencias.forEach(
-        registro => {
-
-            const estudianteId =
-            registro.estudiante_id;
-
-
-            if (
-                !mapaAsistencia[
-                    estudianteId
-                ]
-            ) {
-
-                mapaAsistencia[
-                    estudianteId
-                ] = {};
-
-            }
-
-
-            mapaAsistencia[
-                estudianteId
-            ][
-                registro.fecha
-            ] =
-            registro.estado || "";
-
-        });
-
-
-        const mapaObservaciones = {};
-
-
-        todasAsistencias.forEach(
-        registro => {
-
-            if (
-                !registro.observacion ||
-                !registro.observacion.trim()
-            ) {
-
-                return;
-
-            }
-
-
-            const estudianteId =
-            registro.estudiante_id;
-
-
-            if (
-                !mapaObservaciones[
-                    estudianteId
-                ]
-            ) {
-
-                mapaObservaciones[
-                    estudianteId
-                ] = [];
-
-            }
-
-
-            mapaObservaciones[
-                estudianteId
-            ].push(
-
-                formatearFechaExcel(
-                    registro.fecha
-                ) +
-
-                ": " +
-
-                registro.observacion.trim()
-
-            );
-
-        });
-
-
-        const cursos =
-        [...new Set(
-
-            estudiantes
-            .map(
-                e => e.curso
-            )
-            .filter(Boolean)
-
-        )].sort();
-
-
-        const libro =
-        XLSX.utils.book_new();
-
-
-        cursos.forEach(
-        curso => {
-
-            const estudiantesCurso =
-            estudiantes.filter(
-                e =>
-                e.curso ===
-                curso
-            );
-
-
-            const idsEstudiantesCurso =
-            estudiantesCurso.map(
-                e => e.id
-            );
-
-
-            const asistenciasCurso =
-            todasAsistencias.filter(
-                registro =>
-                idsEstudiantesCurso.includes(
-                    registro.estudiante_id
-                )
-            );
-
-
-            const fechasAsistenciaCurso =
-            [
-                ...new Set(
-
-                    asistenciasCurso
-                    .map(
-                        registro =>
-                        registro.fecha
-                    )
-                    .filter(Boolean)
-
-                )
-            ]
-            .sort();
-
-
-            const actividadesCurso =
-            (todasActividades || [])
-            .filter(
-                a =>
-                a.curso ===
-                curso
-            );
-
-
-            const ser =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SER"
-            );
-
-
-            const saber =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SABER"
-            );
-
-
-            const hacer =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "HACER"
-            );
-
-
-            const auto =
-            actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "AUTOEVALUACION"
-            );
-
-
-            const columnas = [
-
-                "Nº LISTA",
-
-                "NOMBRE",
-
-                ...fechasAsistenciaCurso.map(
-                    fecha =>
-                    formatearFechaExcel(
-                        fecha
-                    )
-                ),
-
-                "TOTAL A",
-
-                "TOTAL R",
-
-                "TOTAL L",
-
-                "TOTAL F",
-
-                "OBSERVACIONES",
-
-                ...ser.map(
-                    a => a.nombre
-                ),
-
-                "PROMEDIO SER",
-
-                ...saber.map(
-                    a => a.nombre
-                ),
-
-                "PROMEDIO SABER",
-
-                ...hacer.map(
-                    a => a.nombre
-                ),
-
-                "PROMEDIO HACER",
-
-                "AUTOEVALUACIÓN",
-
-                "NOTA 3T",
-
-                "NOTA FINAL"
-
-            ];
-
-
-            const datos = [];
-
-
-            datos.push(
-                columnas
-            );
-
-
-            estudiantesCurso.forEach(
-            estudiante => {
-
-                const fila = [];
-
-
-                fila.push(
-                    estudiante.num_lista ??
-                    ""
-                );
-
-
-                fila.push(
-                    estudiante.nombre ??
-                    ""
-                );
-
-
-                fechasAsistenciaCurso.forEach(
-                fecha => {
-
-                    const estado =
-                    mapaAsistencia[
-                        estudiante.id
-                    ] &&
-                    mapaAsistencia[
-                        estudiante.id
-                    ][
-                        fecha
-                    ];
-
-
-                    fila.push(
-                        convertirEstadoAsistencia(
-                            estado
-                        )
-                    );
-
-                });
-
-
-                const totales =
-                calcularTotalesAsistencia(
-
-                    estudiante.id,
-
-                    asistenciasCurso
-
-                );
-
-
-                fila.push(
-                    totales.A
-                );
-
-
-                fila.push(
-                    totales.R
-                );
-
-
-                fila.push(
-                    totales.L
-                );
-
-
-                fila.push(
-                    totales.F
-                );
-
-
-                const observaciones =
-                mapaObservaciones[
-                    estudiante.id
-                ] || [];
-
-
-                fila.push(
-                    observaciones.join(
-                        " | "
-                    )
-                );
-
-
-                const notasSer =
-                ser.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                ser.forEach(
-                actividad => {
-
-                    fila.push(
-                        obtenerNotaExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                });
-
-
-                fila.push(
-                    calcularPromedioPonderado(
-                        notasSer,
-                        ser
-                    )
-                );
-
-
-                const notasSaber =
-                saber.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                saber.forEach(
-                actividad => {
-
-                    fila.push(
-                        obtenerNotaExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                });
-
-
-                fila.push(
-                    calcularPromedioPonderado(
-                        notasSaber,
-                        saber
-                    )
-                );
-
-
-                const notasHacer =
-                hacer.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                hacer.forEach(
-                actividad => {
-
-                    fila.push(
-                        obtenerNotaExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                });
-
-
-                fila.push(
-                    calcularPromedioPonderado(
-                        notasHacer,
-                        hacer
-                    )
-                );
-
-
-                const notasAuto =
-                auto.map(
-                    actividad =>
-                    obtenerNotaExcel(
-                        estudiante.id,
-                        actividad.id,
-                        mapaCalificaciones
-                    )
-                );
-
-
-                fila.push(
-                    calcularPromedioPonderado(
-                        notasAuto,
-                        auto
-                    )
-                );
-
-
-                fila.push(
-
-                    estudiante.nota_3t === null ||
-                    estudiante.nota_3t === undefined
-
-                    ? ""
-
-                    : Math.round(
-                        Number(
-                            estudiante.nota_3t
-                        )
-                    )
-
-                );
-
-
-                fila.push(
-
-                    estudiante.final === null ||
-                    estudiante.final === undefined
-
-                    ? ""
-
-                    : Math.round(
-                        Number(
-                            estudiante.final
-                        )
-                    )
-
-                );
-
-
-                datos.push(
-                    fila
-                );
-
-            });
-
-
-            const hoja =
-            XLSX.utils.aoa_to_sheet(
-                datos
-            );
-
-
-            hoja["!freeze"] = {
-
-                xSplit: 2,
-
-                ySplit: 1
-
-            };
-
-
-            hoja["!cols"] =
-            columnas.map(
-            (nombre, indice) => {
-
-                if (
-                    indice === 0
-                ) {
-
-                    return {
-                        wch: 10
-                    };
-
-                }
-
-
-                if (
-                    indice === 1
-                ) {
-
-                    return {
-                        wch: 32
-                    };
-
-                }
-
-
-                if (
-                    indice >= 2 &&
-                    indice <
-                    2 +
-                    fechasAsistenciaCurso.length
-                ) {
-
-                    return {
-                        wch: 13
-                    };
-
-                }
-
-
-                const inicioTotales =
-                2 +
-                fechasAsistenciaCurso.length;
-
-
-                if (
-                    indice >=
-                    inicioTotales &&
-
-                    indice <
-                    inicioTotales + 4
-                ) {
-
-                    return {
-                        wch: 12
-                    };
-
-                }
-
-
-                if (
-                    indice ===
-                    inicioTotales + 4
-                ) {
-
-                    return {
-                        wch: 45
-                    };
-
-                }
-
-
-                return {
-                    wch: 20
-                };
-
-            });
-
-
-            let nombreHoja =
-            String(curso)
-            .replace(
-                /[\\\/\?\*\[\]:]/g,
-                ""
-            )
-            .substring(
-                0,
-                31
-            );
-
-
-            if (!nombreHoja) {
-
-                nombreHoja =
-                "Curso";
-
-            }
-
-
-            XLSX.utils.book_append_sheet(
-
-                libro,
-
-                hoja,
-
-                nombreHoja
-
-            );
-
-        });
-
-
-        const fecha =
-        new Date()
-        .toISOString()
-        .slice(
-            0,
-            10
-        );
-
-
-        XLSX.writeFile(
-
-            libro,
-
-            "Calificaciones_Tercer_Trimestre_" +
-            fecha +
-            ".xlsx"
-
-        );
-
-
-        mostrarMensaje(
-            "✓ Excel exportado correctamente."
-        );
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-
-        mostrarMensaje(
-
-            "Error al exportar Excel: " +
-            error.message,
-
-            true
-
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   CONVERTIR ESTADO A LETRA
-===================================================== */
-
-function convertirEstadoAsistencia(
-    estado
-) {
-
-    if (!estado) {
-        return "";
-    }
-
-
-    const valor =
-    String(
-        estado
-    )
-    .toLowerCase()
-    .trim();
-
-
-    if (
-        valor === "asistio"
-    ) {
-
-        return "A";
-
-    }
-
-
-    if (
-        valor === "atraso"
-    ) {
-
-        return "R";
-
-    }
-
-
-    if (
-        valor === "licencia"
-    ) {
-
-        return "L";
-
-    }
-
-
-    if (
-        valor === "falta"
-    ) {
-
-        return "F";
 
     }
 
@@ -6219,399 +2075,836 @@ function convertirEstadoAsistencia(
 
 
 /* =====================================================
-   CALCULAR TOTALES ASISTENCIA
+   MARCAR CAMBIO
 ===================================================== */
 
-function calcularTotalesAsistencia(
+function markChanged(input) {
 
-    estudianteId,
+    input.dataset.changed = "true";
 
-    asistencias
+    input.style.borderColor =
+        "#1976d2";
 
-) {
-
-    const totales = {
-
-        A: 0,
-
-        R: 0,
-
-        L: 0,
-
-        F: 0
-
-    };
+}
 
 
-    asistencias
-    .filter(
-        registro =>
-        String(
-            registro.estudiante_id
-        ) ===
-        String(
-            estudianteId
-        )
-    )
-    .forEach(
-    registro => {
+/* =====================================================
+   GUARDAR NOTAS
+===================================================== */
 
-        const letra =
-        convertirEstadoAsistencia(
-            registro.estado
+async function saveActivityGrades(activityId) {
+
+    const inputs =
+        document.querySelectorAll(
+            `.grade-input[data-activity-id="${activityId}"]`
         );
 
 
-        if (
-            letra === "A"
-        ) {
+    if (!inputs.length) {
+        return;
+    }
 
-            totales.A++;
+
+    try {
+
+        /*
+           Aquí se pueden guardar las notas
+           en una tabla independiente de actividades.
+
+           Estructura recomendada:
+
+           calificaciones_actividades
+
+           id
+           actividad_id
+           estudiante_id
+           nota
+        */
+
+
+        for (const input of inputs) {
+
+            if (
+                input.dataset.changed !== "true"
+            ) {
+                continue;
+            }
+
+
+            const studentId =
+                input.dataset.studentId;
+
+
+            const value =
+                input.value === ""
+                ? null
+                : Number(input.value);
+
+
+            const {
+                error
+            } = await supabaseClient
+                .from("calificaciones_actividades")
+                .upsert(
+                    {
+                        actividad_id:
+                            activityId,
+
+                        estudiante_id:
+                            studentId,
+
+                        nota:
+                            value
+                    },
+                    {
+                        onConflict:
+                            "actividad_id,estudiante_id"
+                    }
+                );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            input.dataset.changed =
+                "false";
+
+            input.style.borderColor =
+                "#d7dee5";
 
         }
 
-        else if (
-            letra === "R"
-        ) {
 
-            totales.R++;
+        showToast(
+            "Notas guardadas correctamente."
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "No se pudieron guardar las notas."
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   CREAR ACTIVIDAD
+===================================================== */
+
+async function createActivity() {
+
+    const name =
+        activityName.value.trim();
+
+
+    const categoryElement =
+        document.querySelector(
+            'input[name="activityCategory"]:checked'
+        );
+
+
+    if (!name) {
+
+        showToast(
+            "Escribe el nombre de la actividad."
+        );
+
+        activityName.focus();
+
+        return;
+
+    }
+
+
+    if (!categoryElement) {
+
+        showToast(
+            "Selecciona una categoría."
+        );
+
+        return;
+
+    }
+
+
+    const category =
+        categoryElement.value;
+
+
+    const course =
+        courseSelect.value;
+
+
+    if (!course) {
+
+        showToast(
+            "Primero selecciona un curso."
+        );
+
+        closeModal();
+
+        return;
+
+    }
+
+
+    saveActivityBtn.disabled =
+        true;
+
+
+    saveActivityBtn.textContent =
+        "Guardando...";
+
+
+    try {
+
+        let result;
+
+
+        if (editingActivityId) {
+
+            result =
+                await supabaseClient
+                    .from("actividades")
+                    .update({
+                        nombre: name,
+                        categoria: category
+                    })
+                    .eq(
+                        "id",
+                        editingActivityId
+                    );
+
+        } else {
+
+            result =
+                await supabaseClient
+                    .from("actividades")
+                    .insert({
+                        nombre: name,
+                        categoria: category,
+                        trimestre: 3,
+                        curso: course,
+                        bloqueada: false
+                    });
 
         }
 
-        else if (
-            letra === "L"
-        ) {
 
-            totales.L++;
-
+        if (result.error) {
+            throw result.error;
         }
 
-        else if (
-            letra === "F"
-        ) {
 
-            totales.F++;
+        showToast(
+            editingActivityId
+            ? "Actividad actualizada."
+            : "Actividad creada correctamente."
+        );
 
+
+        closeModal();
+
+
+        await loadActivities(course);
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "No se pudo guardar la actividad."
+        );
+
+    } finally {
+
+        saveActivityBtn.disabled =
+            false;
+
+        saveActivityBtn.textContent =
+            editingActivityId
+            ? "Guardar cambios"
+            : "Crear actividad";
+
+    }
+
+}
+
+
+/* =====================================================
+   EDITAR ACTIVIDAD
+===================================================== */
+
+window.editActivity =
+async function(id) {
+
+    const activity =
+        activities.find(
+            item =>
+                String(item.id) === String(id)
+        );
+
+
+    if (!activity) {
+        return;
+    }
+
+
+    editingActivityId =
+        activity.id;
+
+
+    activityName.value =
+        activity.nombre || "";
+
+
+    const radio =
+        document.querySelector(
+            `input[name="activityCategory"][value="${activity.categoria}"]`
+        );
+
+
+    if (radio) {
+        radio.checked = true;
+    }
+
+
+    document.getElementById(
+        "modalTitle"
+    ).textContent =
+        "Editar actividad";
+
+
+    saveActivityBtn.textContent =
+        "Guardar cambios";
+
+
+    openModal();
+
+};
+
+
+/* =====================================================
+   ELIMINAR ACTIVIDAD
+===================================================== */
+
+window.deleteActivity =
+async function(id) {
+
+    const activity =
+        activities.find(
+            item =>
+                String(item.id) === String(id)
+        );
+
+
+    if (!activity) {
+        return;
+    }
+
+
+    const confirmDelete =
+        confirm(
+            `¿Eliminar la actividad "${activity.nombre}"?`
+        );
+
+
+    if (!confirmDelete) {
+        return;
+    }
+
+
+    try {
+
+        const {
+            error
+        } = await supabaseClient
+            .from("actividades")
+            .delete()
+            .eq("id", id);
+
+
+        if (error) {
+            throw error;
         }
+
+
+        showToast(
+            "Actividad eliminada."
+        );
+
+
+        await loadActivities(
+            courseSelect.value
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "No se pudo eliminar la actividad."
+        );
+
+    }
+
+};
+
+
+/* =====================================================
+   BLOQUEAR / DESBLOQUEAR
+===================================================== */
+
+window.toggleActivityLock =
+async function(id, newState) {
+
+    try {
+
+        const {
+            error
+        } = await supabaseClient
+            .from("actividades")
+            .update({
+                bloqueada: newState
+            })
+            .eq("id", id);
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        showToast(
+            newState
+            ? "Actividad bloqueada."
+            : "Actividad desbloqueada."
+        );
+
+
+        await loadActivities(
+            courseSelect.value
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showToast(
+            "No se pudo cambiar el estado."
+        );
+
+    }
+
+};
+
+
+/* =====================================================
+   MOSTRAR / OCULTAR CATEGORÍA
+===================================================== */
+
+window.toggleCategory =
+function(button) {
+
+    const card =
+        button.closest(
+            ".category-card"
+        );
+
+
+    const content =
+        card.querySelector(
+            ".category-content"
+        );
+
+
+    if (
+        content.style.display ===
+        "none"
+    ) {
+
+        content.style.display =
+            "";
+
+        button.textContent =
+            "▲";
+
+    } else {
+
+        content.style.display =
+            "none";
+
+        button.textContent =
+            "▼";
+
+    }
+
+};
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+function openModal() {
+
+    activityModal.classList.add(
+        "active"
+    );
+
+    setTimeout(() => {
+
+        activityName.focus();
+
+    }, 100);
+
+}
+
+
+function closeModal() {
+
+    activityModal.classList.remove(
+        "active"
+    );
+
+
+    editingActivityId =
+        null;
+
+
+    activityName.value =
+        "";
+
+
+    document.querySelectorAll(
+        'input[name="activityCategory"]'
+    ).forEach(input => {
+
+        input.checked =
+            false;
 
     });
 
 
-    return totales;
+    document.getElementById(
+        "modalTitle"
+    ).textContent =
+        "Crear nueva actividad";
+
+
+    saveActivityBtn.textContent =
+        "Crear actividad";
 
 }
 
 
 /* =====================================================
-   FORMATEAR FECHA EXCEL
+   EVENTOS MODAL
 ===================================================== */
 
-function formatearFechaExcel(
-    fecha
-) {
+openActivityModal.addEventListener(
+    "click",
+    () => {
 
-    if (!fecha) {
-        return "";
-    }
+        if (!courseSelect.value) {
 
-
-    const partes =
-    String(
-        fecha
-    ).split("-");
-
-
-    if (
-        partes.length === 3
-    ) {
-
-        return (
-
-            partes[2] +
-            "/" +
-            partes[1] +
-            "/" +
-            partes[0]
-
-        );
-
-    }
-
-
-    return String(
-        fecha
-    );
-
-}
-
-
-/* =====================================================
-   NOTA EXCEL
-===================================================== */
-
-function obtenerNotaExcel(
-
-    estudianteId,
-    actividadId,
-    mapa
-
-) {
-
-    const clave =
-    estudianteId +
-    "_" +
-    actividadId;
-
-
-    if (
-        mapa[clave] === undefined ||
-        mapa[clave] === null
-    ) {
-
-        return "";
-
-    }
-
-
-    return Number(
-        mapa[clave]
-    );
-
-}
-
-
-/* =====================================================
-   PROMEDIO EXCEL
-===================================================== */
-
-function calcularPromedioPonderado(
-
-    notas,
-    actividadesLista
-
-) {
-
-    if (
-        !actividadesLista ||
-        actividadesLista.length === 0
-    ) {
-
-        return "";
-
-    }
-
-
-    let suma = 0;
-
-    let maximos = 0;
-
-
-    notas.forEach(
-    (nota, indice) => {
-
-        if (
-            nota === "" ||
-            nota === null ||
-            nota === undefined
-        ) {
+            showToast(
+                "Primero selecciona un curso."
+            );
 
             return;
 
         }
 
 
-        const actividad =
-        actividadesLista[
-            indice
-        ];
+        openModal();
+
+    }
+);
 
 
-        const maximo =
-        Number(
+closeActivityModal.addEventListener(
+    "click",
+    closeModal
+);
 
-            actividad.puntaje_maximo ||
 
-            LIMITES[
-                actividad.categoria
-            ]
+cancelActivityBtn.addEventListener(
+    "click",
+    closeModal
+);
 
+
+activityModal.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target ===
+            activityModal
+        ) {
+
+            closeModal();
+
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Escape" &&
+            activityModal.classList.contains(
+                "active"
+            )
+        ) {
+
+            closeModal();
+
+        }
+
+    }
+);
+
+
+saveActivityBtn.addEventListener(
+    "click",
+    createActivity
+);
+
+
+/* =====================================================
+   CAMBIO DE CURSO
+===================================================== */
+
+courseSelect.addEventListener(
+    "change",
+    async function() {
+
+        const course =
+            this.value;
+
+
+        selectedCourseName.textContent =
+            course
+            ? `— ${course}`
+            : "";
+
+
+        searchInput.value =
+            "";
+
+
+        if (!course) {
+
+            activities = [];
+
+            students = [];
+
+            renderActivities();
+
+            return;
+
+        }
+
+
+        activitiesContainer.innerHTML = `
+            <div class="loading">
+                Cargando...
+            </div>
+        `;
+
+
+        await loadStudents(
+            course
         );
 
 
-        suma +=
-        Number(nota);
-
-
-        maximos +=
-        maximo;
-
-    });
-
-
-    if (
-        maximos === 0
-    ) {
-
-        return "";
-
-    }
-
-
-    const limite =
-    LIMITES[
-        actividadesLista[0]
-        .categoria
-    ];
-
-
-    return Math.round(
-
-        suma /
-        maximos *
-        limite
-
-    );
-
-}
-
-
-/* =====================================================
-   CERRAR SESIÓN
-===================================================== */
-
-async function cerrarSesion() {
-
-    await supabaseClient.auth.signOut();
-
-    window.location.href =
-    "login-docente.html";
-
-}
-
-
-/* =====================================================
-   MENSAJES
-===================================================== */
-
-function mostrarMensaje(
-
-    texto,
-    error = false
-
-) {
-
-    const mensaje =
-    document.getElementById(
-        "mensaje"
-    );
-
-
-    if (!mensaje) {
-        return;
-    }
-
-
-    if (temporizadorMensaje) {
-
-        clearTimeout(
-            temporizadorMensaje
+        await loadActivities(
+            course
         );
 
-        temporizadorMensaje =
-        null;
+    }
+);
+
+
+/* =====================================================
+   BUSCAR
+===================================================== */
+
+searchInput.addEventListener(
+    "input",
+    () => {
+
+        if (
+            courseSelect.value
+        ) {
+
+            renderActivities();
+
+        }
 
     }
+);
 
 
-    mensaje.textContent =
-    texto;
+/* =====================================================
+   LIMPIAR BÚSQUEDA
+===================================================== */
+
+clearSearchBtn.addEventListener(
+    "click",
+    () => {
+
+        searchInput.value =
+            "";
+
+        renderActivities();
+
+    }
+);
 
 
-    mensaje.style.color =
-    error
-    ? "#c62828"
-    : "#16803c";
+/* =====================================================
+   EXPORTAR A EXCEL
+===================================================== */
+
+exportBtn.addEventListener(
+    "click",
+    () => {
+
+        if (!courseSelect.value) {
+
+            showToast(
+                "Primero selecciona un curso."
+            );
+
+            return;
+
+        }
 
 
-    mensaje.style.borderColor =
-    error
-    ? "#ef9a9a"
-    : "#a5d6a7";
+        if (!students.length) {
+
+            showToast(
+                "No hay estudiantes para exportar."
+            );
+
+            return;
+
+        }
 
 
-    mensaje.style.background =
-    error
-    ? "#fff5f5"
-    : "#f5fff6";
+        const rows = [];
 
 
-    mensaje.style.display =
-    "block";
+        students.forEach(
+            (student, index) => {
+
+                const row = {
+
+                    "Nº":
+                        index + 1,
+
+                    "Nombre":
+                        student.nombre || "",
+
+                    "CI":
+                        student.ci || "",
+
+                    "Curso":
+                        student.curso || ""
+
+                };
 
 
-    temporizadorMensaje =
-    setTimeout(
-    function() {
+                activities.forEach(
+                    activity => {
 
-        mensaje.textContent =
-        "";
+                        row[
+                            `${activity.categoria} - ${activity.nombre}`
+                        ] =
+                            getActivityGrade(
+                                student,
+                                activity.id
+                            );
 
-        mensaje.style.display =
-        "none";
+                    }
+                );
 
-        temporizadorMensaje =
-        null;
 
-    },
-    4000
-    );
+                rows.push(row);
+
+            }
+        );
+
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(
+                rows
+            );
+
+
+        const workbook =
+            XLSX.utils.book_new();
+
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Calificaciones"
+        );
+
+
+        const safeCourse =
+            courseSelect.value
+                .replace(
+                    /[\\/:*?"<>|]/g,
+                    "_"
+                );
+
+
+        XLSX.writeFile(
+            workbook,
+            `Calificaciones_${safeCourse}.xlsx`
+        );
+
+
+        showToast(
+            "Excel exportado correctamente."
+        );
+
+    }
+);
+
+
+/* =====================================================
+   INICIO
+===================================================== */
+
+async function init() {
+
+    await loadCourses();
 
 }
 
 
-/* =====================================================
-   ESCAPAR HTML
-===================================================== */
-
-function escapeHTML(
-    texto
-) {
-
-    return String(texto)
-
-    .replace(
-        /&/g,
-        "&amp;"
-    )
-
-    .replace(
-        /</g,
-        "&lt;"
-    )
-
-    .replace(
-        />/g,
-        "&gt;"
-    )
-
-    .replace(
-        /"/g,
-        "&quot;"
-    )
-
-    .replace(
-        /'/g,
-        "&#039;"
-    );
-
-}
-
-
-/* =====================================================
-   INICIAR
-===================================================== */
-
-comprobarSesion();
+init();
 
 </script>
 
