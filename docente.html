@@ -260,6 +260,7 @@ select {
 
 /* =====================================================
    ICONOS DE CATEGORÍA
+   PEQUEÑOS Y SIN CONTORNOS
 ===================================================== */
 
 .icono-categoria {
@@ -355,9 +356,12 @@ select {
 .radio-categoria.ser input:checked + label .icono-categoria {
     background: transparent;
     color: #7b1fa2;
+
     opacity: 1;
     filter: grayscale(0);
+
     border: none;
+
     transform: scale(1.08);
 }
 
@@ -389,9 +393,12 @@ select {
 .radio-categoria.saber input:checked + label .icono-categoria {
     background: transparent;
     color: #1565c0;
+
     opacity: 1;
     filter: grayscale(0);
+
     border: none;
+
     transform: scale(1.08);
 }
 
@@ -423,9 +430,12 @@ select {
 .radio-categoria.hacer input:checked + label .icono-categoria {
     background: transparent;
     color: #ef6c00;
+
     opacity: 1;
     filter: grayscale(0);
+
     border: none;
+
     transform: scale(1.08);
 }
 
@@ -457,9 +467,12 @@ select {
 .radio-categoria.auto input:checked + label .icono-categoria {
     background: transparent;
     color: #00838f;
+
     opacity: 1;
     filter: grayscale(0);
+
     border: none;
+
     transform: scale(1.08);
 }
 
@@ -908,14 +921,7 @@ td:first-child {
     align-items: center;
 
     gap: 7px;
-
-    flex-wrap: wrap;
 }
-
-
-/* =====================================================
-   FECHA ACTUAL
-===================================================== */
 
 .fecha-asistencia {
     width: 145px;
@@ -931,34 +937,6 @@ td:first-child {
     background: white;
 
     color: #222;
-}
-
-
-/* =====================================================
-   NUEVO: MENÚ FECHAS GUARDADAS
-===================================================== */
-
-.fechas-guardadas {
-    width: 175px;
-
-    padding: 7px 8px;
-
-    border: none;
-
-    border-radius: 6px;
-
-    font-size: 14px;
-
-    background: white;
-
-    color: #222;
-
-    cursor: pointer;
-}
-
-.fechas-guardadas:focus,
-.fecha-asistencia:focus {
-    outline: 2px solid #90caf9;
 }
 
 
@@ -1441,10 +1419,6 @@ td:first-child {
         width: 135px;
     }
 
-    .fechas-guardadas {
-        width: 155px;
-    }
-
     .boton-guardar-asistencia {
         padding: 0 9px;
         font-size: 13px;
@@ -1529,10 +1503,6 @@ td:first-child {
 
     .fecha-asistencia {
         width: 120px;
-    }
-
-    .fechas-guardadas {
-        width: 140px;
     }
 
 }
@@ -1716,31 +1686,11 @@ Selecciona un curso
 
 <div class="acciones-asistencia">
 
-
-<!-- FECHA PARA REGISTRAR -->
-
 <input
     type="date"
     id="fechaAsistencia"
     class="fecha-asistencia"
-    title="Fecha de asistencia"
 >
-
-
-<!-- =================================================
-     NUEVO MENÚ DE FECHAS GUARDADAS
-================================================== -->
-
-<select
-    id="fechasGuardadas"
-    class="fechas-guardadas"
-    title="Seleccionar una fecha guardada">
-
-<option value="">
-📅 Fechas guardadas
-</option>
-
-</select>
 
 
 <button
@@ -2374,15 +2324,6 @@ document.getElementById(
 
         mostrarPanelAsistencia();
 
-
-        /* ==============================================
-           NUEVO:
-           CARGAR LAS FECHAS GUARDADAS DEL CURSO
-        ============================================== */
-
-        await cargarFechasAsistencia();
-
-
         await cargarAsistencia();
 
         aplicarBusqueda();
@@ -2472,257 +2413,7 @@ function mostrarOcultarAsistencia() {
 
 
 /* =====================================================
-   NUEVO:
-   CARGAR FECHAS GUARDADAS DEL CURSO
-===================================================== */
-
-async function cargarFechasAsistencia() {
-
-    const select =
-    document.getElementById(
-        "fechasGuardadas"
-    );
-
-
-    if (!select) {
-        return;
-    }
-
-
-    /* Reiniciar menú */
-
-    select.innerHTML = `
-
-        <option value="">
-            📅 Fechas guardadas
-        </option>
-
-    `;
-
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
-
-
-    if (
-        ids.length === 0
-    ) {
-        return;
-    }
-
-
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .select(
-        "fecha"
-    )
-    .in(
-        "estudiante_id",
-        ids
-    )
-    .order(
-        "fecha",
-        {
-            ascending: false
-        }
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al cargar fechas de asistencia: " +
-            error.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    /* ==============================================
-       ELIMINAR FECHAS DUPLICADAS
-    ============================================== */
-
-    const fechas =
-    [
-        ...new Set(
-
-            (data || [])
-            .map(
-                registro =>
-                registro.fecha
-            )
-            .filter(Boolean)
-
-        )
-    ];
-
-
-    fechas.forEach(
-    fecha => {
-
-        const opcion =
-        document.createElement(
-            "option"
-        );
-
-
-        opcion.value =
-        fecha;
-
-
-        opcion.textContent =
-        formatearFechaVisible(
-            fecha
-        );
-
-
-        select.appendChild(
-            opcion
-        );
-
-    });
-
-}
-
-
-/* =====================================================
-   NUEVO:
-   FORMATEAR FECHA PARA MOSTRAR
-===================================================== */
-
-function formatearFechaVisible(
-    fecha
-) {
-
-    if (!fecha) {
-        return "";
-    }
-
-
-    const partes =
-    String(
-        fecha
-    ).split("-");
-
-
-    if (
-        partes.length === 3
-    ) {
-
-        return (
-
-            partes[2] +
-            "/" +
-            partes[1] +
-            "/" +
-            partes[0]
-
-        );
-
-    }
-
-
-    return String(
-        fecha
-    );
-
-}
-
-
-/* =====================================================
-   NUEVO:
-   SELECCIONAR FECHA GUARDADA
-===================================================== */
-
-document.getElementById(
-    "fechasGuardadas"
-).addEventListener(
-    "change",
-    async function() {
-
-        const fecha =
-        this.value;
-
-
-        if (!fecha) {
-            return;
-        }
-
-
-        /* Colocar la fecha seleccionada
-           en el campo de fecha */
-
-        document.getElementById(
-            "fechaAsistencia"
-        ).value =
-        fecha;
-
-
-        /* Mostrar automáticamente
-           el contenido */
-
-        const contenido =
-        document.getElementById(
-            "contenidoAsistencia"
-        );
-
-        const boton =
-        document.getElementById(
-            "botonAsistencia"
-        );
-
-
-        contenido.classList.remove(
-            "oculto"
-        );
-
-
-        boton.textContent =
-        "−";
-
-
-        boton.title =
-        "Ocultar asistencia";
-
-
-        /* Cargar los estudiantes
-           de esa fecha */
-
-        await cargarAsistencia();
-
-
-        aplicarBusqueda();
-
-    }
-);
-
-
-/* =====================================================
-   CAMBIO DE FECHA MANUAL
+   CAMBIO DE FECHA
 ===================================================== */
 
 document.getElementById(
@@ -2734,26 +2425,6 @@ document.getElementById(
         if (!cursoSeleccionado) {
             return;
         }
-
-
-        /*
-         * Si se cambia manualmente la fecha,
-         * quitamos la selección del menú
-         * hasta comprobar si existe.
-         */
-
-        const select =
-        document.getElementById(
-            "fechasGuardadas"
-        );
-
-
-        if (select) {
-
-            select.value = "";
-
-        }
-
 
         await cargarAsistencia();
 
@@ -3251,27 +2922,7 @@ async function guardarAsistencia() {
     );
 
 
-    /*
-     * Actualizar el menú de fechas
-     * después de guardar.
-     */
-
-    await cargarFechasAsistencia();
-
-
-    /*
-     * Seleccionar nuevamente
-     * la fecha recién guardada.
-     */
-
-    document.getElementById(
-        "fechasGuardadas"
-    ).value =
-    fecha;
-
-
     await cargarAsistencia();
-
 
     return true;
 
@@ -3316,12 +2967,13 @@ function abrirModalActividad() {
         'input[name="categoriaActividad"]'
     )
     .forEach(
-    radio => {
+        radio => {
 
-        radio.checked =
-        false;
+            radio.checked =
+            false;
 
-    });
+        }
+    );
 
 
     setTimeout(
@@ -5476,8 +5128,6 @@ async function guardarNotas() {
     await cargarActividades();
 
     mostrarTablaGeneral();
-
-    await cargarFechasAsistencia();
 
     await cargarAsistencia();
 
