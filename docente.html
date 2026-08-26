@@ -10,6 +10,7 @@
 
 <title>Panel Docente</title>
 
+
 <style>
 
 /* =====================================================
@@ -78,8 +79,7 @@ label {
 }
 
 input,
-select,
-textarea {
+select {
     width: 100%;
     padding: 11px;
     border: 1px solid #ccc;
@@ -102,7 +102,7 @@ textarea {
 
 
 /* =====================================================
-   MODAL
+   MODAL NUEVA ACTIVIDAD
 ===================================================== */
 
 .modal-fondo {
@@ -122,7 +122,7 @@ textarea {
 
 .modal-actividad {
     width: 100%;
-    max-width: 550px;
+    max-width: 560px;
     background: white;
     border-radius: 14px;
     box-shadow: 0 10px 35px rgba(0,0,0,.30);
@@ -173,30 +173,39 @@ textarea {
     cursor: pointer;
 }
 
+.boton-cerrar-modal:hover {
+    background: rgba(255,255,255,.30);
+}
+
 .modal-cuerpo {
     padding: 20px;
 }
 
 .modal-cuerpo .campo {
-    margin-bottom: 20px;
+    margin-bottom: 17px;
+}
+
+.modal-cuerpo label {
+    margin-bottom: 7px;
 }
 
 
 /* =====================================================
-   RADIO BUTTONS DE CATEGORÍAS
+   CATEGORÍAS RADIO
 ===================================================== */
 
 .categorias-radio {
     display: flex;
     justify-content: center;
-    align-items: stretch;
-    gap: 10px;
-    width: 100%;
+    align-items: flex-start;
+    gap: 15px;
+    margin-top: 10px;
 }
 
 .radio-categoria {
-    flex: 1;
     position: relative;
+    flex: 1;
+    max-width: 110px;
 }
 
 .radio-categoria input {
@@ -206,84 +215,101 @@ textarea {
 }
 
 .radio-categoria label {
+    width: 100%;
     margin: 0;
-    height: 75px;
-    border: 2px solid #ddd;
-    border-radius: 12px;
-    background: #f7f7f7;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
     cursor: pointer;
-    transition: .2s;
-    color: #777;
-}
-
-.radio-icono {
-    font-size: 25px;
-    line-height: 1;
-    margin-bottom: 5px;
-    opacity: .45;
-}
-
-.radio-nombre {
-    font-size: 12px;
-    font-weight: bold;
-    display: none;
     text-align: center;
 }
 
-.radio-categoria input:checked + label {
-    transform: translateY(-2px);
-    background: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+.icono-categoria {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: #e8e8e8;
+    color: #777;
+    opacity: .55;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 27px;
+    transition: all .2s ease;
+    border: 3px solid transparent;
 }
 
-.radio-categoria input:checked + label .radio-icono {
+.nombre-categoria {
+    display: none;
+    margin-top: 7px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+
+/* SER */
+
+.radio-categoria.ser input:checked + label .icono-categoria {
+    background: #7b1fa2;
+    color: white;
     opacity: 1;
+    border-color: #4a1262;
+    transform: scale(1.08);
 }
 
-.radio-categoria input:checked + label .radio-nombre {
+
+/* SABER */
+
+.radio-categoria.saber input:checked + label .icono-categoria {
+    background: #1565c0;
+    color: white;
+    opacity: 1;
+    border-color: #0d3f78;
+    transform: scale(1.08);
+}
+
+
+/* HACER */
+
+.radio-categoria.hacer input:checked + label .icono-categoria {
+    background: #ef6c00;
+    color: white;
+    opacity: 1;
+    border-color: #a94800;
+    transform: scale(1.08);
+}
+
+
+/* AUTO */
+
+.radio-categoria.auto input:checked + label .icono-categoria {
+    background: #00838f;
+    color: white;
+    opacity: 1;
+    border-color: #00545b;
+    transform: scale(1.08);
+}
+
+
+.radio-categoria input:checked + label .nombre-categoria {
     display: block;
 }
 
 
-/* COLORES */
-
-.radio-ser input:checked + label {
-    border-color: #7b1fa2;
-    color: #7b1fa2;
-}
-
-.radio-saber input:checked + label {
-    border-color: #1565c0;
-    color: #1565c0;
-}
-
-.radio-hacer input:checked + label {
-    border-color: #ef6c00;
-    color: #ef6c00;
-}
-
-.radio-auto input:checked + label {
-    border-color: #00838f;
-    color: #00838f;
-}
-
-
 /* =====================================================
-   BOTONES MODAL
+   BOTONES DEL MODAL
 ===================================================== */
 
 .modal-acciones {
     display: flex;
+    flex-direction: row;
     justify-content: flex-end;
+    align-items: center;
     gap: 10px;
     margin-top: 20px;
 }
 
 .modal-acciones button {
+    flex: 0 0 auto;
+    width: auto;
     min-width: 120px;
     border: none;
     border-radius: 8px;
@@ -304,7 +330,7 @@ textarea {
 
 
 /* =====================================================
-   CATEGORÍAS
+   CATEGORÍAS ACTIVIDADES
 ===================================================== */
 
 .categoria {
@@ -348,6 +374,11 @@ textarea {
     border-radius: 10px;
     overflow: hidden;
 }
+
+
+/* =====================================================
+   ENCABEZADO ACTIVIDAD
+===================================================== */
 
 .encabezado-actividad {
     background: #f4f6f8;
@@ -431,12 +462,17 @@ textarea {
 
 
 /* =====================================================
-   CONTENIDO / TABLAS
+   CONTENIDO
 ===================================================== */
 
 .contenido-actividad {
     padding: 0;
 }
+
+
+/* =====================================================
+   TABLAS
+===================================================== */
 
 .tabla-contenedor {
     width: 100%;
@@ -467,6 +503,7 @@ td.nombre {
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
+    word-break: normal;
     min-width: 120px;
     line-height: 1.25;
 }
@@ -479,7 +516,7 @@ td:first-child {
 
 
 /* =====================================================
-   NOTAS
+   INPUT NOTAS
 ===================================================== */
 
 .nota-input {
@@ -500,12 +537,6 @@ td:first-child {
 .nota-input.editable {
     background: #fffde7;
     border: 2px solid #ef6c00;
-}
-
-.nota-3t,
-.nota-final {
-    font-weight: bold;
-    font-size: 18px;
 }
 
 
@@ -538,9 +569,7 @@ td:first-child {
     margin-left: auto;
 }
 
-.boton-nueva-actividad,
-.boton-general {
-
+.boton-nueva-actividad {
     background: rgba(255,255,255,.20);
     color: white;
     width: 38px;
@@ -556,92 +585,128 @@ td:first-child {
     cursor: pointer;
 }
 
+.boton-general {
+    background: rgba(255,255,255,.20);
+    color: white;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
 
 /* =====================================================
    ASISTENCIA
 ===================================================== */
 
-.asistencia {
-    margin-top: 30px;
+.panel-asistencia {
+    margin-top: 25px;
     border: 1px solid #ddd;
     border-radius: 12px;
     overflow: hidden;
 }
 
 .titulo-asistencia {
-    background: #455a64;
+    background: #37474f;
     color: white;
     padding: 10px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
     font-size: 17px;
     font-weight: bold;
 }
 
-.asistencia-controles {
+.acciones-asistencia {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: auto;
+    gap: 7px;
 }
 
 .fecha-asistencia {
     width: 145px;
-    padding: 7px 9px;
+    padding: 7px 8px;
     border: none;
     border-radius: 6px;
     font-size: 14px;
+    background: white;
+    color: #222;
 }
 
+
+/* BOTÓN GUARDAR ASISTENCIA */
+
 .boton-guardar-asistencia {
-    height: 34px;
-    padding: 0 12px;
     border: none;
     border-radius: 7px;
     background: #16803c;
     color: white;
-    cursor: pointer;
+    height: 34px;
+    padding: 0 13px;
     font-size: 14px;
     font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
-.boton-abrir-asistencia {
+.boton-guardar-asistencia:hover {
+    background: #11652f;
+}
+
+
+/* BOTÓN + */
+
+.boton-asistencia {
     width: 38px;
     height: 34px;
     border: none;
     border-radius: 7px;
-    background: rgba(255,255,255,.20);
+    background: rgba(255,255,255,.18);
     color: white;
     font-size: 22px;
+    font-weight: bold;
     cursor: pointer;
 }
 
+.boton-asistencia:hover {
+    background: rgba(255,255,255,.30);
+}
+
+
+/* CONTENIDO */
+
 .contenido-asistencia {
-    padding: 0;
+    background: white;
 }
 
-.fila-asistencia {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.contenido-asistencia.oculto {
+    display: none;
 }
 
-.nombre-asistencia {
-    flex: 1;
-    text-align: left;
-    min-width: 0;
+
+/* TABLA ASISTENCIA */
+
+.tabla-asistencia {
+    width: 100%;
 }
 
-.numero-asistencia {
-    width: 40px;
-    text-align: center;
-    flex-shrink: 0;
+.tabla-asistencia th {
+    background: #f0f2f3;
+    font-size: 13px;
+}
+
+.tabla-asistencia td {
+    padding: 7px 5px;
 }
 
 
 /* =====================================================
-   BOTONES DE ASISTENCIA
+   BOTONES DE ESTADO DE ASISTENCIA
 ===================================================== */
 
 .estados-asistencia {
@@ -649,63 +714,74 @@ td:first-child {
     justify-content: center;
     align-items: center;
     gap: 5px;
-    flex-shrink: 0;
 }
 
-.estado-asistencia {
-    width: 28px;
-    height: 28px;
+.radio-asistencia {
+    position: relative;
+}
+
+.radio-asistencia input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.boton-estado {
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    border: none;
-    background: #e5e5e5;
-    opacity: .45;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
     cursor: pointer;
-    transition: .18s;
-    filter: grayscale(70%);
+    font-size: 16px;
+    opacity: .28;
+    filter: grayscale(100%);
+    transition: all .18s ease;
+    border: 2px solid transparent;
 }
 
-.estado-asistencia:hover {
-    opacity: .75;
-    transform: scale(1.05);
+
+/* ASISTENCIA */
+
+.estado-asistio {
+    background: #2e7d32;
+    color: white;
 }
 
-.estado-asistencia.seleccionado {
+
+/* ATRASO */
+
+.estado-atraso {
+    background: #f9a825;
+    color: white;
+}
+
+
+/* LICENCIA */
+
+.estado-licencia {
+    background: #1565c0;
+    color: white;
+}
+
+
+/* FALTA */
+
+.estado-falta {
+    background: #c62828;
+    color: white;
+}
+
+
+/* SELECCIONADO */
+
+.radio-asistencia input:checked + label .boton-estado {
     opacity: 1;
     filter: grayscale(0);
     transform: scale(1.08);
-    box-shadow: 0 0 0 2px rgba(0,0,0,.10);
-}
-
-
-/* COLORES AL SELECCIONAR */
-
-.estado-asistencia[data-estado="ASISTENCIA"].seleccionado {
-    background: #c8e6c9;
-    color: #16803c;
-}
-
-.estado-asistencia[data-estado="ATRASO"].seleccionado {
-    background: #fff3cd;
-    color: #e69500;
-}
-
-.estado-asistencia[data-estado="LICENCIA"].seleccionado {
-    background: #dbeafe;
-    color: #1565c0;
-}
-
-.estado-asistencia[data-estado="FALTA"].seleccionado {
-    background: #ffcdd2;
-    color: #c62828;
-}
-
-.estado-asistencia[data-estado="OBSERVACION"].seleccionado {
-    background: #e0e0e0;
-    color: #555;
+    border-color: #222;
+    box-shadow: 0 2px 7px rgba(0,0,0,.25);
 }
 
 
@@ -714,9 +790,23 @@ td:first-child {
 ===================================================== */
 
 .observacion-asistencia {
-    width: 180px;
+    width: 100%;
+    min-width: 150px;
     padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
     font-size: 13px;
+}
+
+
+/* =====================================================
+   NOTAS FINALES
+===================================================== */
+
+.nota-3t,
+.nota-final {
+    font-weight: bold;
+    font-size: 18px;
 }
 
 
@@ -779,21 +869,21 @@ td:first-child {
         padding: 15px;
     }
 
-    .fila-asistencia {
-        flex-wrap: wrap;
+    .encabezado-actividad {
+        align-items: stretch;
     }
 
-    .nombre-asistencia {
-        width: calc(100% - 50px);
+    .izquierda-actividad {
+        flex: 1;
+        min-width: 0;
     }
 
-    .estados-asistencia {
-        width: 100%;
-        justify-content: flex-end;
+    .derecha-actividad {
+        margin-left: auto;
     }
 
-    .observacion-asistencia {
-        width: 100%;
+    .nombre-actividad {
+        font-size: 15px;
     }
 
 }
@@ -819,22 +909,6 @@ td:first-child {
         font-size: 24px;
     }
 
-    .categorias-radio {
-        gap: 6px;
-    }
-
-    .radio-categoria label {
-        height: 65px;
-    }
-
-    .radio-icono {
-        font-size: 22px;
-    }
-
-    .radio-nombre {
-        font-size: 10px;
-    }
-
     .encabezado-actividad {
         flex-wrap: wrap;
     }
@@ -848,13 +922,43 @@ td:first-child {
         justify-content: flex-end;
     }
 
-    .modal-acciones {
-        flex-direction: row;
+
+    /* MODAL */
+
+    .modal-actividad {
+        max-width: 100%;
     }
 
-    .modal-acciones button {
-        flex: 1;
+    .modal-cuerpo {
+        padding: 16px;
+    }
+
+    .categorias-radio {
+        gap: 8px;
+    }
+
+    .icono-categoria {
+        width: 52px;
+        height: 52px;
+        font-size: 24px;
+    }
+
+    .nombre-categoria {
+        font-size: 12px;
+    }
+
+
+    /* TABLA */
+
+    .tabla-contenedor {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
         min-width: 0;
+        table-layout: fixed;
     }
 
     th,
@@ -863,29 +967,48 @@ td:first-child {
         font-size: 13px;
     }
 
+    td.nombre {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
     .nota-input {
         width: 58px;
+        max-width: 100%;
+        padding: 6px 2px;
+        font-size: 14px;
     }
+
+
+    /* ASISTENCIA */
 
     .titulo-asistencia {
         flex-wrap: wrap;
-        gap: 8px;
     }
 
-    .asistencia-controles {
+    .acciones-asistencia {
         width: 100%;
-        margin-left: 0;
+        justify-content: flex-end;
     }
 
     .fecha-asistencia {
-        flex: 1;
+        width: 135px;
     }
 
     .boton-guardar-asistencia {
-        flex: 0 0 auto;
+        padding: 0 9px;
+        font-size: 13px;
     }
 
-    .estado-asistencia {
+    .tabla-asistencia {
+        min-width: 620px;
+    }
+
+    .estados-asistencia {
+        gap: 3px;
+    }
+
+    .boton-estado {
         width: 27px;
         height: 27px;
         font-size: 14px;
@@ -895,24 +1018,34 @@ td:first-child {
 
 
 /* =====================================================
-   CELULARES PEQUEÑOS
+   CELULARES MUY PEQUEÑOS
 ===================================================== */
 
 @media (max-width: 400px) {
+
+    .panel {
+        padding: 8px;
+    }
+
+    .actividad {
+        margin: 10px;
+    }
 
     .categorias-radio {
         gap: 4px;
     }
 
-    .radio-categoria label {
-        height: 60px;
+    .icono-categoria {
+        width: 46px;
+        height: 46px;
+        font-size: 21px;
     }
 
-    .radio-icono {
-        font-size: 20px;
+    .nombre-categoria {
+        font-size: 11px;
     }
 
-    .estado-asistencia {
+    .boton-estado {
         width: 25px;
         height: 25px;
         font-size: 13px;
@@ -995,7 +1128,8 @@ Selecciona un curso
      ACTIVIDADES
 ===================================================== -->
 
-<div id="contenedorActividades"></div>
+<div id="contenedorActividades">
+</div>
 
 
 <!-- =====================================================
@@ -1053,18 +1187,25 @@ Selecciona un curso
 <tr>
 
 <th>Nº</th>
+
 <th>Nombre</th>
+
 <th>Curso</th>
+
 <th>1T</th>
+
 <th>2T</th>
+
 <th>3T</th>
+
 <th>Final</th>
 
 </tr>
 
 </thead>
 
-<tbody id="tablaEstudiantes"></tbody>
+<tbody id="tablaEstudiantes">
+</tbody>
 
 </table>
 
@@ -1080,16 +1221,17 @@ Selecciona un curso
 ===================================================== -->
 
 <div
-    id="asistencia"
-    class="asistencia oculto">
+    id="panelAsistencia"
+    class="panel-asistencia oculto">
 
 <div class="titulo-asistencia">
 
 <span>
-🧑‍🏫 Asistencia
+🗓️ Asistencia
 </span>
 
-<div class="asistencia-controles">
+
+<div class="acciones-asistencia">
 
 <input
     type="date"
@@ -1097,19 +1239,22 @@ Selecciona un curso
     class="fecha-asistencia"
 >
 
+
 <button
     type="button"
     class="boton-guardar-asistencia"
-    onclick="guardarAsistencia()">
+    onclick="guardarAsistencia()"
+    title="Guardar asistencia">
 
 💾 Guardar
 
 </button>
 
+
 <button
     type="button"
-    id="botonAbrirAsistencia"
-    class="boton-abrir-asistencia"
+    id="botonAsistencia"
+    class="boton-asistencia"
     onclick="mostrarOcultarAsistencia()"
     title="Mostrar asistencia">
 
@@ -1128,7 +1273,7 @@ Selecciona un curso
 
 <div class="tabla-contenedor">
 
-<table>
+<table class="tabla-asistencia">
 
 <thead>
 
@@ -1136,17 +1281,26 @@ Selecciona un curso
 
 <th>Nº</th>
 
-<th>Estudiante</th>
+<th>Nombre</th>
 
-<th>Estado</th>
+<th>🟢</th>
 
-<th>Observación</th>
+<th>🟡</th>
+
+<th>🔵</th>
+
+<th>🔴</th>
+
+<th>Observaciones</th>
 
 </tr>
 
 </thead>
 
-<tbody id="tablaAsistencia"></tbody>
+
+<tbody id="tablaAsistencia">
+
+</tbody>
 
 </table>
 
@@ -1261,23 +1415,25 @@ Categoría
 <div class="categorias-radio">
 
 
-<div class="radio-categoria radio-ser">
+<!-- SER -->
+
+<div class="radio-categoria ser">
 
 <input
     type="radio"
-    name="categoriaActividad"
     id="categoriaSER"
+    name="categoriaActividad"
     value="SER"
 >
 
 <label for="categoriaSER">
 
-<span class="radio-icono">
+<div class="icono-categoria">
 ❤️
-</span>
+</div>
 
-<span class="radio-nombre">
-SER · 10 puntos
+<span class="nombre-categoria">
+SER — 10 puntos
 </span>
 
 </label>
@@ -1285,23 +1441,25 @@ SER · 10 puntos
 </div>
 
 
-<div class="radio-categoria radio-saber">
+<!-- SABER -->
+
+<div class="radio-categoria saber">
 
 <input
     type="radio"
-    name="categoriaActividad"
     id="categoriaSABER"
+    name="categoriaActividad"
     value="SABER"
 >
 
 <label for="categoriaSABER">
 
-<span class="radio-icono">
+<div class="icono-categoria">
 🧠
-</span>
+</div>
 
-<span class="radio-nombre">
-SABER · 45 puntos
+<span class="nombre-categoria">
+SABER — 45 puntos
 </span>
 
 </label>
@@ -1309,23 +1467,25 @@ SABER · 45 puntos
 </div>
 
 
-<div class="radio-categoria radio-hacer">
+<!-- HACER -->
+
+<div class="radio-categoria hacer">
 
 <input
     type="radio"
-    name="categoriaActividad"
     id="categoriaHACER"
+    name="categoriaActividad"
     value="HACER"
 >
 
 <label for="categoriaHACER">
 
-<span class="radio-icono">
-🔧
-</span>
+<div class="icono-categoria">
+🛠️
+</div>
 
-<span class="radio-nombre">
-HACER · 40 puntos
+<span class="nombre-categoria">
+HACER — 40 puntos
 </span>
 
 </label>
@@ -1333,23 +1493,25 @@ HACER · 40 puntos
 </div>
 
 
-<div class="radio-categoria radio-auto">
+<!-- AUTOEVALUACION -->
+
+<div class="radio-categoria auto">
 
 <input
     type="radio"
-    name="categoriaActividad"
     id="categoriaAUTO"
+    name="categoriaActividad"
     value="AUTOEVALUACION"
 >
 
 <label for="categoriaAUTO">
 
-<span class="radio-icono">
+<div class="icono-categoria">
 ⭐
-</span>
+</div>
 
-<span class="radio-nombre">
-AUTOEVALUACIÓN · 5 puntos
+<span class="nombre-categoria">
+AUTOEVALUACIÓN — 5 puntos
 </span>
 
 </label>
@@ -1425,11 +1587,9 @@ let actividades = [];
 
 let calificaciones = {};
 
-let asistenciaDatos = {};
-
 let cursoSeleccionado = "";
 
-let fechaAsistenciaActual = "";
+let registrosAsistencia = {};
 
 
 /* =====================================================
@@ -1439,30 +1599,18 @@ let fechaAsistenciaActual = "";
 const LIMITES = {
 
     SER: 10,
+
     SABER: 45,
+
     HACER: 40,
+
     AUTOEVALUACION: 5
 
 };
 
 
 /* =====================================================
-   ESTADOS ASISTENCIA
-===================================================== */
-
-const ESTADOS_ASISTENCIA = {
-
-    ASISTENCIA: "ASISTENCIA",
-    ATRASO: "ATRASO",
-    LICENCIA: "LICENCIA",
-    FALTA: "FALTA",
-    OBSERVACION: "OBSERVACION"
-
-};
-
-
-/* =====================================================
-   DESBLOQUEO
+   ESTADO BLOQUEO
 ===================================================== */
 
 const actividadesDesbloqueadas =
@@ -1512,16 +1660,19 @@ async function comprobarSesion() {
 
 function establecerFechaActual() {
 
-    const input =
+    const fecha =
     document.getElementById(
         "fechaAsistencia"
     );
 
+
     const hoy =
     new Date();
 
+
     const año =
     hoy.getFullYear();
+
 
     const mes =
     String(
@@ -1531,6 +1682,7 @@ function establecerFechaActual() {
         "0"
     );
 
+
     const dia =
     String(
         hoy.getDate()
@@ -1539,7 +1691,8 @@ function establecerFechaActual() {
         "0"
     );
 
-    input.value =
+
+    fecha.value =
     `${año}-${mes}-${dia}`;
 
 }
@@ -1631,11 +1784,14 @@ function cargarCursos() {
             "option"
         );
 
+
         opcion.value =
         curso;
 
+
         opcion.textContent =
         curso;
+
 
         select.appendChild(
             opcion
@@ -1660,7 +1816,7 @@ function cargarCursos() {
 
 
 /* =====================================================
-   CAMBIO CURSO
+   CAMBIO DE CURSO
 ===================================================== */
 
 document.getElementById(
@@ -1691,16 +1847,16 @@ document.getElementById(
 
 
         document.getElementById(
-            "asistencia"
+            "panelAsistencia"
         ).classList.add(
             "oculto"
         );
 
 
-        actividadesDesbloqueadas.clear();
-
-
         cerrarModalActividad();
+
+
+        actividadesDesbloqueadas.clear();
 
 
         if (!cursoSeleccionado) {
@@ -1712,11 +1868,15 @@ document.getElementById(
 
         await cargarActividades();
 
+
         mostrarTablaGeneral();
+
+
+        mostrarPanelAsistencia();
+
 
         await cargarAsistencia();
 
-        mostrarAsistencia();
 
         aplicarBusqueda();
 
@@ -1725,7 +1885,622 @@ document.getElementById(
 
 
 /* =====================================================
-   MODAL
+   PANEL ASISTENCIA
+===================================================== */
+
+function mostrarPanelAsistencia() {
+
+    document.getElementById(
+        "panelAsistencia"
+    ).classList.remove(
+        "oculto"
+    );
+
+
+    document.getElementById(
+        "contenidoAsistencia"
+    ).classList.add(
+        "oculto"
+    );
+
+
+    document.getElementById(
+        "botonAsistencia"
+    ).textContent =
+    "+";
+
+}
+
+
+/* =====================================================
+   MOSTRAR / OCULTAR ASISTENCIA
+===================================================== */
+
+function mostrarOcultarAsistencia() {
+
+    const contenido =
+    document.getElementById(
+        "contenidoAsistencia"
+    );
+
+
+    const boton =
+    document.getElementById(
+        "botonAsistencia"
+    );
+
+
+    if (
+        contenido.classList.contains(
+            "oculto"
+        )
+    ) {
+
+        contenido.classList.remove(
+            "oculto"
+        );
+
+
+        boton.textContent =
+        "−";
+
+
+        boton.title =
+        "Ocultar asistencia";
+
+    }
+
+    else {
+
+        contenido.classList.add(
+            "oculto"
+        );
+
+
+        boton.textContent =
+        "+";
+
+
+        boton.title =
+        "Mostrar asistencia";
+
+    }
+
+}
+
+
+/* =====================================================
+   CAMBIO DE FECHA
+===================================================== */
+
+document.getElementById(
+    "fechaAsistencia"
+).addEventListener(
+    "change",
+    async function() {
+
+        if (!cursoSeleccionado) {
+
+            return;
+
+        }
+
+
+        await cargarAsistencia();
+
+    }
+);
+
+
+/* =====================================================
+   CARGAR ASISTENCIA
+===================================================== */
+
+async function cargarAsistencia() {
+
+    registrosAsistencia = {};
+
+
+    if (!cursoSeleccionado) {
+
+        return;
+
+    }
+
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    ).value;
+
+
+    if (!fecha) {
+
+        return;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    const ids =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+
+    if (
+        ids.length === 0
+    ) {
+
+        mostrarTablaAsistencia();
+
+        return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .select(
+        "id,estudiante_id,fecha,estado,observacion"
+    )
+    .eq(
+        "fecha",
+        fecha
+    )
+    .in(
+        "estudiante_id",
+        ids
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al cargar asistencia: " +
+            error.message,
+            true
+        );
+
+        mostrarTablaAsistencia();
+
+        return;
+
+    }
+
+
+    (data || []).forEach(
+    registro => {
+
+        registrosAsistencia[
+            registro.estudiante_id
+        ] = {
+
+            estado:
+            registro.estado,
+
+            observacion:
+            registro.observacion || ""
+
+        };
+
+    });
+
+
+    mostrarTablaAsistencia();
+
+}
+
+
+/* =====================================================
+   MOSTRAR TABLA ASISTENCIA
+===================================================== */
+
+function mostrarTablaAsistencia() {
+
+    const tbody =
+    document.getElementById(
+        "tablaAsistencia"
+    );
+
+
+    tbody.innerHTML = "";
+
+
+    if (!cursoSeleccionado) {
+
+        return;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    estudiantesCurso.forEach(
+    estudiante => {
+
+        const registro =
+        registrosAsistencia[
+            estudiante.id
+        ] || {};
+
+
+        const estado =
+        registro.estado || "";
+
+
+        const observacion =
+        registro.observacion || "";
+
+
+        const fila =
+        document.createElement(
+            "tr"
+        );
+
+
+        fila.innerHTML = `
+
+            <td>
+                ${escapeHTML(
+                    String(
+                        estudiante.num_lista ?? ""
+                    )
+                )}
+            </td>
+
+
+            <td class="nombre">
+                ${escapeHTML(
+                    estudiante.nombre
+                )}
+            </td>
+
+
+            <td>
+
+                <div class="estados-asistencia">
+
+                    <div class="radio-asistencia">
+
+                        <input
+                            type="radio"
+                            name="asistencia-${estudiante.id}"
+                            id="asistio-${estudiante.id}"
+                            value="asistio"
+                            ${
+                                estado === "asistio"
+                                ? "checked"
+                                : ""
+                            }
+                        >
+
+                        <label
+                            for="asistio-${estudiante.id}"
+                            title="Asistencia"
+                        >
+
+                            <span class="boton-estado estado-asistio">
+                                ✓
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <div class="estados-asistencia">
+
+                    <div class="radio-asistencia">
+
+                        <input
+                            type="radio"
+                            name="asistencia-${estudiante.id}"
+                            id="atraso-${estudiante.id}"
+                            value="atraso"
+                            ${
+                                estado === "atraso"
+                                ? "checked"
+                                : ""
+                            }
+                        >
+
+                        <label
+                            for="atraso-${estudiante.id}"
+                            title="Atraso"
+                        >
+
+                            <span class="boton-estado estado-atraso">
+                                ⏰
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <div class="estados-asistencia">
+
+                    <div class="radio-asistencia">
+
+                        <input
+                            type="radio"
+                            name="asistencia-${estudiante.id}"
+                            id="licencia-${estudiante.id}"
+                            value="licencia"
+                            ${
+                                estado === "licencia"
+                                ? "checked"
+                                : ""
+                            }
+                        >
+
+                        <label
+                            for="licencia-${estudiante.id}"
+                            title="Falta con licencia"
+                        >
+
+                            <span class="boton-estado estado-licencia">
+                                📄
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <div class="estados-asistencia">
+
+                    <div class="radio-asistencia">
+
+                        <input
+                            type="radio"
+                            name="asistencia-${estudiante.id}"
+                            id="falta-${estudiante.id}"
+                            value="falta"
+                            ${
+                                estado === "falta"
+                                ? "checked"
+                                : ""
+                            }
+                        >
+
+                        <label
+                            for="falta-${estudiante.id}"
+                            title="Falta sin licencia"
+                        >
+
+                            <span class="boton-estado estado-falta">
+                                ✕
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+            </td>
+
+
+            <td>
+
+                <input
+                    type="text"
+                    class="observacion-asistencia"
+                    data-estudiante="${estudiante.id}"
+                    value="${escapeHTML(
+                        observacion
+                    )}"
+                    placeholder="Observación..."
+                >
+
+            </td>
+
+        `;
+
+
+        tbody.appendChild(
+            fila
+        );
+
+    });
+
+}
+
+
+/* =====================================================
+   GUARDAR ASISTENCIA
+===================================================== */
+
+async function guardarAsistencia() {
+
+    if (!cursoSeleccionado) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return false;
+
+    }
+
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    ).value;
+
+
+    if (!fecha) {
+
+        alert(
+            "Selecciona una fecha."
+        );
+
+        return false;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    if (
+        estudiantesCurso.length === 0
+    ) {
+
+        alert(
+            "No existen estudiantes en este curso."
+        );
+
+        return false;
+
+    }
+
+
+    mostrarMensaje(
+        "Guardando asistencia..."
+    );
+
+
+    const registros = [];
+
+
+    estudiantesCurso.forEach(
+    estudiante => {
+
+        const seleccionado =
+        document.querySelector(
+            `input[name="asistencia-${estudiante.id}"]:checked`
+        );
+
+
+        const observacion =
+        document.querySelector(
+            `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
+        );
+
+
+        let estado =
+        null;
+
+
+        if (seleccionado) {
+
+            estado =
+            seleccionado.value;
+
+        }
+
+
+        registros.push({
+
+            estudiante_id:
+            estudiante.id,
+
+            fecha:
+            fecha,
+
+            estado:
+            estado || "asistio",
+
+            observacion:
+            observacion
+            ? observacion.value.trim()
+            : null
+
+        });
+
+    });
+
+
+    const {
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .upsert(
+        registros,
+        {
+            onConflict:
+            "estudiante_id,fecha"
+        }
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al guardar asistencia: " +
+            error.message,
+            true
+        );
+
+        return false;
+
+    }
+
+
+    mostrarMensaje(
+        "✓ Asistencia guardada correctamente."
+    );
+
+
+    await cargarAsistencia();
+
+
+    return true;
+
+}
+
+
+/* =====================================================
+   MODAL NUEVA ACTIVIDAD
 ===================================================== */
 
 function abrirModalActividad() {
@@ -1765,24 +2540,29 @@ function abrirModalActividad() {
     )
     .forEach(
         radio => {
-            radio.checked = false;
+
+            radio.checked =
+            false;
+
         }
     );
 
 
     setTimeout(
-    () => {
+    function() {
 
         document.getElementById(
             "nombreActividad"
         ).focus();
 
-    },
-    100
-    );
+    }, 100);
 
 }
 
+
+/* =====================================================
+   CERRAR MODAL
+===================================================== */
 
 function cerrarModalActividad() {
 
@@ -1806,6 +2586,10 @@ function cerrarModalActividad() {
 }
 
 
+/* =====================================================
+   CERRAR MODAL FONDO
+===================================================== */
+
 function cerrarModalDesdeFondo(
     event
 ) {
@@ -1821,6 +2605,10 @@ function cerrarModalDesdeFondo(
 
 }
 
+
+/* =====================================================
+   ESC
+===================================================== */
 
 document.addEventListener(
     "keydown",
@@ -1839,7 +2627,7 @@ document.addEventListener(
 
 
 /* =====================================================
-   ACTIVIDADES
+   CARGAR ACTIVIDADES
 ===================================================== */
 
 async function cargarActividades() {
@@ -1868,6 +2656,8 @@ async function cargarActividades() {
 
     if (error) {
 
+        console.error(error);
+
         mostrarMensaje(
             "Error al cargar actividades: " +
             error.message,
@@ -1885,10 +2675,15 @@ async function cargarActividades() {
 
     await cargarCalificaciones();
 
+
     mostrarActividades();
 
 }
 
+
+/* =====================================================
+   CARGAR CALIFICACIONES
+===================================================== */
 
 async function cargarCalificaciones() {
 
@@ -1956,6 +2751,12 @@ async function cargarCalificaciones() {
     if (error) {
 
         console.error(error);
+
+        mostrarMensaje(
+            "Error al cargar calificaciones: " +
+            error.message,
+            true
+        );
 
         return;
 
@@ -2059,6 +2860,7 @@ function mostrarActividades() {
             "div"
         );
 
+
         seccion.className =
         "categoria";
 
@@ -2068,9 +2870,11 @@ function mostrarActividades() {
             "div"
         );
 
+
         encabezado.className =
         "titulo-categoria " +
         categoria.clase;
+
 
         encabezado.textContent =
         categoria.nombre;
@@ -2121,7 +2925,7 @@ function mostrarActividades() {
 
 
 /* =====================================================
-   HTML ACTIVIDAD
+   CREAR HTML ACTIVIDAD
 ===================================================== */
 
 function crearActividadHTML(
@@ -2133,6 +2937,7 @@ function crearActividadHTML(
         "div"
     );
 
+
     bloque.className =
     "actividad";
 
@@ -2141,6 +2946,7 @@ function crearActividadHTML(
     document.createElement(
         "div"
     );
+
 
     encabezado.className =
     "encabezado-actividad";
@@ -2151,6 +2957,7 @@ function crearActividadHTML(
         "div"
     );
 
+
     izquierda.className =
     "izquierda-actividad";
 
@@ -2160,11 +2967,17 @@ function crearActividadHTML(
         "button"
     );
 
+
     botonEditar.className =
     "boton-editar";
 
+
     botonEditar.textContent =
     "✏️";
+
+
+    botonEditar.title =
+    "Editar nombre de actividad";
 
 
     const botonEliminar =
@@ -2172,17 +2985,24 @@ function crearActividadHTML(
         "button"
     );
 
+
     botonEliminar.className =
     "boton-eliminar";
 
+
     botonEliminar.textContent =
     "🗑️";
+
+
+    botonEliminar.title =
+    "Eliminar actividad";
 
 
     const nombre =
     document.createElement(
         "div"
     );
+
 
     nombre.className =
     "nombre-actividad";
@@ -2209,12 +3029,19 @@ function crearActividadHTML(
 
     nombre.innerHTML = `
 
-        <span id="nombre-actividad-${actividad.id}">
-        ${escapeHTML(actividad.nombre)}
+        <span
+            id="nombre-actividad-${actividad.id}">
+
+            ${escapeHTML(
+                actividad.nombre
+            )}
+
         </span>
 
         <span class="puntaje-actividad">
-        — máximo ${puntajeMaximo} puntos
+
+            — máximo ${puntajeMaximo} puntos
+
         </span>
 
     `;
@@ -2224,9 +3051,11 @@ function crearActividadHTML(
         botonEditar
     );
 
+
     izquierda.appendChild(
         botonEliminar
     );
+
 
     izquierda.appendChild(
         nombre
@@ -2238,6 +3067,7 @@ function crearActividadHTML(
         "div"
     );
 
+
     derecha.className =
     "derecha-actividad";
 
@@ -2247,11 +3077,17 @@ function crearActividadHTML(
         "button"
     );
 
+
     botonOcultar.className =
     "boton-ocultar";
 
+
     botonOcultar.textContent =
     "+";
+
+
+    botonOcultar.title =
+    "Mostrar estudiantes";
 
 
     const botonBloquear =
@@ -2259,16 +3095,23 @@ function crearActividadHTML(
         "button"
     );
 
+
     botonBloquear.className =
     "boton-bloquear";
+
 
     botonBloquear.textContent =
     "🔒";
 
 
+    botonBloquear.title =
+    "Desbloquear notas";
+
+
     derecha.appendChild(
         botonOcultar
     );
+
 
     derecha.appendChild(
         botonBloquear
@@ -2278,6 +3121,7 @@ function crearActividadHTML(
     encabezado.appendChild(
         izquierda
     );
+
 
     encabezado.appendChild(
         derecha
@@ -2294,6 +3138,7 @@ function crearActividadHTML(
         "div"
     );
 
+
     contenido.className =
     "contenido-actividad oculto";
 
@@ -2302,6 +3147,7 @@ function crearActividadHTML(
     document.createElement(
         "div"
     );
+
 
     tablaContenedor.className =
     "tabla-contenedor";
@@ -2320,7 +3166,9 @@ function crearActividadHTML(
         <tr>
 
         <th>Nº</th>
+
         <th>Nombre</th>
+
         <th>Nota / ${puntajeMaximo}</th>
 
         </tr>
@@ -2338,13 +3186,15 @@ function crearActividadHTML(
     );
 
 
-    estudiantes
-    .filter(
+    const estudiantesCurso =
+    estudiantes.filter(
         e =>
         e.curso ===
         cursoSeleccionado
-    )
-    .forEach(
+    );
+
+
+    estudiantesCurso.forEach(
     estudiante => {
 
         let nota = null;
@@ -2380,43 +3230,59 @@ function crearActividadHTML(
         fila.innerHTML = `
 
             <td>
+
             ${escapeHTML(
                 String(
                     estudiante.num_lista ?? ""
                 )
             )}
+
             </td>
 
             <td class="nombre">
+
             ${escapeHTML(
                 estudiante.nombre
             )}
+
             </td>
 
             <td>
 
             <input
-                class="nota-input"
-                type="number"
-                min="0"
-                max="${puntajeMaximo}"
-                step="0.01"
-                value="${
-                    nota === null
-                    ? ""
-                    : nota
-                }"
-                data-estudiante="${
-                    estudiante.id
-                }"
-                data-actividad="${
-                    actividad.id
-                }"
-                data-maximo="${
-                    puntajeMaximo
-                }"
-                disabled
-                oninput="validarNota(this)"
+
+            class="nota-input"
+
+            type="number"
+
+            min="0"
+
+            max="${puntajeMaximo}"
+
+            step="0.01"
+
+            value="${
+                nota === null
+                ? ""
+                : nota
+            }"
+
+            data-estudiante="${
+                estudiante.id
+            }"
+
+            data-actividad="${
+                actividad.id
+            }"
+
+            data-maximo="${
+                puntajeMaximo
+            }"
+
+            disabled
+
+            oninput="validarNota(this)"
+
             >
 
             </td>
@@ -2435,9 +3301,11 @@ function crearActividadHTML(
         tabla
     );
 
+
     contenido.appendChild(
         tablaContenedor
     );
+
 
     bloque.appendChild(
         contenido
@@ -2457,8 +3325,13 @@ function crearActividadHTML(
                 "oculto"
             );
 
+
             botonOcultar.textContent =
             "−";
+
+
+            botonOcultar.title =
+            "Ocultar estudiantes";
 
         }
 
@@ -2468,8 +3341,13 @@ function crearActividadHTML(
                 "oculto"
             );
 
+
             botonOcultar.textContent =
             "+";
+
+
+            botonOcultar.title =
+            "Mostrar estudiantes";
 
         }
 
@@ -2477,17 +3355,13 @@ function crearActividadHTML(
 
 
     botonEditar.onclick =
-    () =>
-    editarNombreActividad(
-        actividad
-    );
+    function() {
 
+        editarNombreActividad(
+            actividad
+        );
 
-    botonEliminar.onclick =
-    () =>
-    eliminarActividad(
-        actividad
-    );
+    };
 
 
     botonBloquear.onclick =
@@ -2505,41 +3379,85 @@ function crearActividadHTML(
         );
 
 
-        inputs.forEach(
-        input => {
-
-            input.disabled =
-            desbloqueada;
-
-            input.classList.toggle(
-                "editable",
-                !desbloqueada
-            );
-
-        });
-
-
         if (desbloqueada) {
+
+            inputs.forEach(
+            input => {
+
+                input.disabled =
+                true;
+
+                input.classList.remove(
+                    "editable"
+                );
+
+            });
+
 
             actividadesDesbloqueadas.delete(
                 actividad.id
             );
 
+
             botonBloquear.textContent =
             "🔒";
+
+
+            botonBloquear.title =
+            "Desbloquear notas";
+
+
+            mostrarMensaje(
+                "🔒 Notas bloqueadas: " +
+                actividad.nombre
+            );
 
         }
 
         else {
 
+            inputs.forEach(
+            input => {
+
+                input.disabled =
+                false;
+
+                input.classList.add(
+                    "editable"
+                );
+
+            });
+
+
             actividadesDesbloqueadas.add(
                 actividad.id
             );
 
+
             botonBloquear.textContent =
             "🔓";
 
+
+            botonBloquear.title =
+            "Bloquear notas";
+
+
+            mostrarMensaje(
+                "🔓 Notas desbloqueadas: " +
+                actividad.nombre
+            );
+
         }
+
+    };
+
+
+    botonEliminar.onclick =
+    function() {
+
+        eliminarActividad(
+            actividad
+        );
 
     };
 
@@ -2550,138 +3468,7 @@ function crearActividadHTML(
 
 
 /* =====================================================
-   CREAR ACTIVIDAD
-===================================================== */
-
-async function crearActividad() {
-
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return;
-
-    }
-
-
-    const nombre =
-    document.getElementById(
-        "nombreActividad"
-    ).value.trim();
-
-
-    const radio =
-    document.querySelector(
-        'input[name="categoriaActividad"]:checked'
-    );
-
-
-    if (!nombre) {
-
-        alert(
-            "Escribe el nombre de la actividad."
-        );
-
-        return;
-
-    }
-
-
-    if (!radio) {
-
-        alert(
-            "Selecciona una categoría: SER, SABER, HACER o AUTOEVALUACIÓN."
-        );
-
-        return;
-
-    }
-
-
-    const categoria =
-    radio.value;
-
-
-    let orden = 1;
-
-
-    if (
-        actividades.length > 0
-    ) {
-
-        orden =
-        Math.max(
-            ...actividades.map(
-                a =>
-                Number(
-                    a.orden || 0
-                )
-            )
-        ) + 1;
-
-    }
-
-
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("actividades")
-    .insert({
-
-        curso:
-        cursoSeleccionado,
-
-        trimestre:
-        3,
-
-        categoria:
-        categoria,
-
-        nombre:
-        nombre,
-
-        orden:
-        orden,
-
-        puntaje_maximo:
-        LIMITES[categoria]
-
-    });
-
-
-    if (error) {
-
-        mostrarMensaje(
-            "Error al crear actividad: " +
-            error.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    cerrarModalActividad();
-
-
-    mostrarMensaje(
-        "✓ Actividad creada correctamente."
-    );
-
-
-    await cargarActividades();
-
-    aplicarBusqueda();
-
-}
-
-
-/* =====================================================
-   EDITAR ACTIVIDAD
+   EDITAR NOMBRE
 ===================================================== */
 
 async function editarNombreActividad(
@@ -2690,7 +3477,7 @@ async function editarNombreActividad(
 
     const nuevoNombre =
     prompt(
-        "Escribe el nuevo nombre:",
+        "Escribe el nuevo nombre de la actividad:",
         actividad.nombre
     );
 
@@ -2719,13 +3506,30 @@ async function editarNombreActividad(
     }
 
 
+    if (
+        nombre === actividad.nombre
+    ) {
+
+        return;
+
+    }
+
+
+    mostrarMensaje(
+        "Actualizando nombre..."
+    );
+
+
     const {
         error
     } =
     await supabaseClient
     .from("actividades")
     .update({
-        nombre: nombre
+
+        nombre:
+        nombre
+
     })
     .eq(
         "id",
@@ -2735,8 +3539,12 @@ async function editarNombreActividad(
 
     if (error) {
 
-        alert(
-            error.message
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al cambiar el nombre: " +
+            error.message,
+            true
         );
 
         return;
@@ -2762,68 +3570,10 @@ async function editarNombreActividad(
 
     }
 
-}
 
-
-/* =====================================================
-   ELIMINAR ACTIVIDAD
-===================================================== */
-
-async function eliminarActividad(
-    actividad
-) {
-
-    if (
-        !confirm(
-            "¿Eliminar la actividad \"" +
-            actividad.nombre +
-            "\"?\n\nTambién se eliminarán sus calificaciones."
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    await supabaseClient
-    .from("calificaciones")
-    .delete()
-    .eq(
-        "actividad_id",
-        actividad.id
+    mostrarMensaje(
+        "✓ Nombre actualizado correctamente."
     );
-
-
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("actividades")
-    .delete()
-    .eq(
-        "id",
-        actividad.id
-    );
-
-
-    if (error) {
-
-        alert(
-            error.message
-        );
-
-        return;
-
-    }
-
-
-    actividadesDesbloqueadas.delete(
-        actividad.id
-    );
-
-
-    await cargarActividades();
 
 }
 
@@ -2838,7 +3588,7 @@ function validarNota(input) {
         input.value === ""
     ) {
 
-        return;
+        return true;
 
     }
 
@@ -2856,19 +3606,342 @@ function validarNota(input) {
 
 
     if (
-        valor < 0 ||
+        valor < 0
+    ) {
+
+        alert(
+            "La nota no puede ser menor que 0."
+        );
+
+
+        input.value = "";
+
+
+        return false;
+
+    }
+
+
+    if (
         valor > maximo
     ) {
 
         alert(
-            "La nota debe estar entre 0 y " +
+
+            "⚠️ NOTA NO VÁLIDA\n\n" +
+
+            "La actividad \"" +
+
+            obtenerNombreActividad(
+                input.dataset.actividad
+            ) +
+
+            "\" tiene un máximo de " +
+
             maximo +
+
             " puntos."
+
         );
+
 
         input.value = "";
 
+
+        input.focus();
+
+
+        return false;
+
     }
+
+
+    return true;
+
+}
+
+
+/* =====================================================
+   OBTENER NOMBRE ACTIVIDAD
+===================================================== */
+
+function obtenerNombreActividad(
+    id
+) {
+
+    const actividad =
+    actividades.find(
+        a =>
+        String(a.id) ===
+        String(id)
+    );
+
+
+    return actividad
+        ? actividad.nombre
+        : "esta actividad";
+
+}
+
+
+/* =====================================================
+   CREAR ACTIVIDAD
+===================================================== */
+
+async function crearActividad() {
+
+    if (
+        !cursoSeleccionado
+    ) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return;
+
+    }
+
+
+    const nombre =
+    document.getElementById(
+        "nombreActividad"
+    ).value.trim();
+
+
+    const radioCategoria =
+    document.querySelector(
+        'input[name="categoriaActividad"]:checked'
+    );
+
+
+    if (!nombre) {
+
+        alert(
+            "Escribe el nombre de la actividad."
+        );
+
+
+        document.getElementById(
+            "nombreActividad"
+        ).focus();
+
+
+        return;
+
+    }
+
+
+    if (!radioCategoria) {
+
+        alert(
+            "Selecciona una categoría: SER, SABER, HACER o AUTOEVALUACIÓN."
+        );
+
+        return;
+
+    }
+
+
+    const categoria =
+    radioCategoria.value;
+
+
+    mostrarMensaje(
+        "Creando actividad..."
+    );
+
+
+    let orden = 1;
+
+
+    if (
+        actividades.length > 0
+    ) {
+
+        orden =
+        Math.max(
+
+            ...actividades.map(
+                a =>
+                Number(
+                    a.orden || 0
+                )
+            )
+
+        ) + 1;
+
+    }
+
+
+    const puntajeMaximo =
+    LIMITES[
+        categoria
+    ];
+
+
+    const {
+        error
+    } =
+    await supabaseClient
+    .from("actividades")
+    .insert({
+
+        curso:
+        cursoSeleccionado,
+
+        trimestre:
+        3,
+
+        categoria:
+        categoria,
+
+        nombre:
+        nombre,
+
+        orden:
+        orden,
+
+        puntaje_maximo:
+        puntajeMaximo
+
+    });
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al crear actividad: " +
+            error.message,
+            true
+        );
+
+        return;
+
+    }
+
+
+    cerrarModalActividad();
+
+
+    mostrarMensaje(
+        "✓ Actividad creada correctamente."
+    );
+
+
+    await cargarActividades();
+
+
+    aplicarBusqueda();
+
+}
+
+
+/* =====================================================
+   ELIMINAR ACTIVIDAD
+===================================================== */
+
+async function eliminarActividad(
+    actividad
+) {
+
+    const confirmar =
+    confirm(
+
+        "¿Está seguro de eliminar esta actividad?\n\n" +
+
+        "Actividad: " +
+        actividad.nombre +
+
+        "\n\nTambién se eliminarán todas las " +
+        "calificaciones de esta actividad."
+
+    );
+
+
+    if (!confirmar) {
+
+        return;
+
+    }
+
+
+    mostrarMensaje(
+        "Eliminando actividad..."
+    );
+
+
+    const {
+        error:
+        errorCalificaciones
+    } =
+    await supabaseClient
+    .from("calificaciones")
+    .delete()
+    .eq(
+        "actividad_id",
+        actividad.id
+    );
+
+
+    if (errorCalificaciones) {
+
+        mostrarMensaje(
+            "Error al eliminar calificaciones: " +
+            errorCalificaciones.message,
+            true
+        );
+
+        return;
+
+    }
+
+
+    const {
+        error:
+        errorActividad
+    } =
+    await supabaseClient
+    .from("actividades")
+    .delete()
+    .eq(
+        "id",
+        actividad.id
+    );
+
+
+    if (errorActividad) {
+
+        mostrarMensaje(
+            "Error al eliminar actividad: " +
+            errorActividad.message,
+            true
+        );
+
+        return;
+
+    }
+
+
+    actividadesDesbloqueadas.delete(
+        actividad.id
+    );
+
+
+    mostrarMensaje(
+        "✓ Actividad eliminada correctamente."
+    );
+
+
+    await cargarActividades();
+
+
+    mostrarTablaGeneral();
+
+
+    aplicarBusqueda();
 
 }
 
@@ -2888,13 +3961,22 @@ function mostrarTablaGeneral() {
     tabla.innerHTML = "";
 
 
-    estudiantes
-    .filter(
+    if (!cursoSeleccionado) {
+
+        return;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
         e =>
         e.curso ===
         cursoSeleccionado
-    )
-    .forEach(
+    );
+
+
+    estudiantesCurso.forEach(
     estudiante => {
 
         const fila =
@@ -2906,35 +3988,45 @@ function mostrarTablaGeneral() {
         fila.innerHTML = `
 
             <td>
+
             ${escapeHTML(
                 String(
                     estudiante.num_lista ?? ""
                 )
             )}
+
             </td>
 
             <td class="nombre">
+
             ${escapeHTML(
                 estudiante.nombre
             )}
+
             </td>
 
             <td>
+
             ${escapeHTML(
                 estudiante.curso
             )}
+
             </td>
 
             <td>
+
             ${mostrarNota(
                 estudiante.nota_1t
             )}
+
             </td>
 
             <td>
+
             ${mostrarNota(
                 estudiante.nota_2t
             )}
+
             </td>
 
             <td
@@ -2973,8 +4065,36 @@ function mostrarTablaGeneral() {
         "oculto"
     );
 
+
+    const contenidoGeneral =
+    document.getElementById(
+        "contenidoGeneral"
+    );
+
+
+    const botonGeneral =
+    document.getElementById(
+        "botonGeneral"
+    );
+
+
+    contenidoGeneral.classList.add(
+        "oculto"
+    );
+
+
+    botonGeneral.textContent =
+    "+";
+
+
+    aplicarBusqueda();
+
 }
 
+
+/* =====================================================
+   TABLA GENERAL + / -
+===================================================== */
 
 function ocultarTablaGeneral() {
 
@@ -2982,6 +4102,7 @@ function ocultarTablaGeneral() {
     document.getElementById(
         "contenidoGeneral"
     );
+
 
     const boton =
     document.getElementById(
@@ -2999,6 +4120,7 @@ function ocultarTablaGeneral() {
             "oculto"
         );
 
+
         boton.textContent =
         "−";
 
@@ -3010,597 +4132,11 @@ function ocultarTablaGeneral() {
             "oculto"
         );
 
+
         boton.textContent =
         "+";
 
     }
-
-}
-
-
-/* =====================================================
-   ASISTENCIA
-===================================================== */
-
-async function cargarAsistencia() {
-
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
-
-
-    if (!fecha) {
-
-        return;
-
-    }
-
-
-    fechaAsistenciaActual =
-    fecha;
-
-
-    asistenciaDatos = {};
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
-
-
-    if (
-        ids.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .select(
-        "id,curso,fecha,estudiante_id,estado,observacion"
-    )
-    .eq(
-        "curso",
-        cursoSeleccionado
-    )
-    .eq(
-        "fecha",
-        fecha
-    )
-    .in(
-        "estudiante_id",
-        ids
-    );
-
-
-    if (error) {
-
-        console.error(
-            "Error asistencia:",
-            error
-        );
-
-        return;
-
-    }
-
-
-    (data || []).forEach(
-    registro => {
-
-        asistenciaDatos[
-            registro.estudiante_id
-        ] = {
-
-            estado:
-            registro.estado,
-
-            observacion:
-            registro.observacion || ""
-
-        };
-
-    });
-
-}
-
-
-/* =====================================================
-   MOSTRAR ASISTENCIA
-===================================================== */
-
-function mostrarAsistencia() {
-
-    if (!cursoSeleccionado) {
-
-        return;
-
-    }
-
-
-    const contenedor =
-    document.getElementById(
-        "tablaAsistencia"
-    );
-
-
-    contenedor.innerHTML = "";
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const registro =
-        asistenciaDatos[
-            estudiante.id
-        ] || {};
-
-
-        const fila =
-        document.createElement(
-            "tr"
-        );
-
-
-        const estado =
-        registro.estado || "";
-
-
-        const observacion =
-        registro.observacion || "";
-
-
-        fila.innerHTML = `
-
-            <td>
-            ${escapeHTML(
-                String(
-                    estudiante.num_lista ?? ""
-                )
-            )}
-            </td>
-
-            <td class="nombre">
-            ${escapeHTML(
-                estudiante.nombre
-            )}
-            </td>
-
-            <td>
-
-            <div class="estados-asistencia">
-
-                <button
-                    type="button"
-                    class="estado-asistencia ${
-                        estado === "ASISTENCIA"
-                        ? "seleccionado"
-                        : ""
-                    }"
-                    data-estado="ASISTENCIA"
-                    title="Asistencia"
-                    onclick="seleccionarEstado(this, ${estudiante.id})">
-
-                    ✅
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="estado-asistencia ${
-                        estado === "ATRASO"
-                        ? "seleccionado"
-                        : ""
-                    }"
-                    data-estado="ATRASO"
-                    title="Atraso"
-                    onclick="seleccionarEstado(this, ${estudiante.id})">
-
-                    ⏰
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="estado-asistencia ${
-                        estado === "LICENCIA"
-                        ? "seleccionado"
-                        : ""
-                    }"
-                    data-estado="LICENCIA"
-                    title="Falta con licencia"
-                    onclick="seleccionarEstado(this, ${estudiante.id})">
-
-                    📄
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="estado-asistencia ${
-                        estado === "FALTA"
-                        ? "seleccionado"
-                        : ""
-                    }"
-                    data-estado="FALTA"
-                    title="Falta sin licencia"
-                    onclick="seleccionarEstado(this, ${estudiante.id})">
-
-                    ❌
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="estado-asistencia ${
-                        estado === "OBSERVACION"
-                        ? "seleccionado"
-                        : ""
-                    }"
-                    data-estado="OBSERVACION"
-                    title="Observación"
-                    onclick="seleccionarEstado(this, ${estudiante.id})">
-
-                    📝
-
-                </button>
-
-            </div>
-
-            </td>
-
-            <td>
-
-            <input
-                type="text"
-                class="observacion-asistencia"
-                placeholder="Observación..."
-                value="${escapeHTML(
-                    observacion
-                )}"
-                data-estudiante-observacion="${estudiante.id}"
-            >
-
-            </td>
-
-        `;
-
-
-        contenedor.appendChild(
-            fila
-        );
-
-    });
-
-
-    document.getElementById(
-        "asistencia"
-    ).classList.remove(
-        "oculto"
-    );
-
-}
-
-
-/* =====================================================
-   SELECCIONAR ESTADO
-===================================================== */
-
-function seleccionarEstado(
-    boton,
-    estudianteId
-) {
-
-    const contenedor =
-    boton.closest(
-        ".estados-asistencia"
-    );
-
-
-    contenedor
-    .querySelectorAll(
-        ".estado-asistencia"
-    )
-    .forEach(
-        b =>
-        b.classList.remove(
-            "seleccionado"
-        )
-    );
-
-
-    boton.classList.add(
-        "seleccionado"
-    );
-
-
-    const estado =
-    boton.dataset.estado;
-
-
-    if (
-        !asistenciaDatos[
-            estudianteId
-        ]
-    ) {
-
-        asistenciaDatos[
-            estudianteId
-        ] = {};
-
-    }
-
-
-    asistenciaDatos[
-        estudianteId
-    ].estado =
-    estado;
-
-}
-
-
-/* =====================================================
-   MOSTRAR / OCULTAR ASISTENCIA
-===================================================== */
-
-function mostrarOcultarAsistencia() {
-
-    const contenido =
-    document.getElementById(
-        "contenidoAsistencia"
-    );
-
-    const boton =
-    document.getElementById(
-        "botonAbrirAsistencia"
-    );
-
-
-    if (
-        contenido.classList.contains(
-            "oculto"
-        )
-    ) {
-
-        contenido.classList.remove(
-            "oculto"
-        );
-
-        boton.textContent =
-        "−";
-
-        boton.title =
-        "Ocultar asistencia";
-
-    }
-
-    else {
-
-        contenido.classList.add(
-            "oculto"
-        );
-
-        boton.textContent =
-        "+";
-
-        boton.title =
-        "Mostrar asistencia";
-
-    }
-
-}
-
-
-/* =====================================================
-   CAMBIO DE FECHA
-===================================================== */
-
-document.getElementById(
-    "fechaAsistencia"
-).addEventListener(
-    "change",
-    async function() {
-
-        if (!cursoSeleccionado) {
-
-            return;
-
-        }
-
-
-        await cargarAsistencia();
-
-        mostrarAsistencia();
-
-    }
-);
-
-
-/* =====================================================
-   GUARDAR ASISTENCIA
-===================================================== */
-
-async function guardarAsistencia() {
-
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
-        return;
-
-    }
-
-
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
-
-
-    if (!fecha) {
-
-        alert(
-            "Selecciona una fecha."
-        );
-
-        return;
-
-    }
-
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
-
-
-    if (
-        estudiantesCurso.length === 0
-    ) {
-
-        return;
-
-    }
-
-
-    mostrarMensaje(
-        "Guardando asistencia..."
-    );
-
-
-    const registros = [];
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const dato =
-        asistenciaDatos[
-            estudiante.id
-        ] || {};
-
-
-        const input =
-        document.querySelector(
-            `[data-estudiante-observacion="${estudiante.id}"]`
-        );
-
-
-        const observacion =
-        input
-        ? input.value.trim()
-        : "";
-
-
-        if (
-            !dato.estado
-        ) {
-
-            return;
-
-        }
-
-
-        registros.push({
-
-            curso:
-            cursoSeleccionado,
-
-            fecha:
-            fecha,
-
-            estudiante_id:
-            estudiante.id,
-
-            estado:
-            dato.estado,
-
-            observacion:
-            observacion
-
-        });
-
-    });
-
-
-    if (
-        registros.length === 0
-    ) {
-
-        alert(
-            "Selecciona al menos un estado de asistencia."
-        );
-
-        return;
-
-    }
-
-
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .upsert(
-        registros,
-        {
-            onConflict:
-            "curso,fecha,estudiante_id"
-        }
-    );
-
-
-    if (error) {
-
-        console.error(error);
-
-        mostrarMensaje(
-            "Error al guardar asistencia: " +
-            error.message,
-            true
-        );
-
-        return;
-
-    }
-
-
-    mostrarMensaje(
-        "✓ Asistencia guardada correctamente."
-    );
 
 }
 
@@ -3619,11 +4155,21 @@ document.getElementById(
 
 function aplicarBusqueda() {
 
-    const texto =
+    const campo =
     document.getElementById(
         "buscarNombre"
-    )
-    .value
+    );
+
+
+    if (!campo) {
+
+        return;
+
+    }
+
+
+    const texto =
+    campo.value
     .toLowerCase()
     .trim();
 
@@ -3640,7 +4186,7 @@ function aplicarBusqueda() {
 
 
         if (
-            celdas.length < 2
+            celdas.length === 0
         ) {
 
             return;
@@ -3650,24 +4196,37 @@ function aplicarBusqueda() {
 
         const numero =
         celdas[0]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[0]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
 
 
         const nombre =
         celdas[1]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[1]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
+
+
+        const coincide =
+
+            texto === "" ||
+
+            nombre.includes(
+                texto
+            ) ||
+
+            numero.includes(
+                texto
+            );
 
 
         fila.style.display =
-        (
-            texto === "" ||
-            nombre.includes(texto) ||
-            numero.includes(texto)
-        )
+        coincide
         ? ""
         : "none";
 
@@ -3686,7 +4245,7 @@ function aplicarBusqueda() {
 
 
         if (
-            celdas.length < 2
+            celdas.length === 0
         ) {
 
             return;
@@ -3696,24 +4255,37 @@ function aplicarBusqueda() {
 
         const numero =
         celdas[0]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[0]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
 
 
         const nombre =
         celdas[1]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[1]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
+
+
+        const coincide =
+
+            texto === "" ||
+
+            nombre.includes(
+                texto
+            ) ||
+
+            numero.includes(
+                texto
+            );
 
 
         fila.style.display =
-        (
-            texto === "" ||
-            nombre.includes(texto) ||
-            numero.includes(texto)
-        )
+        coincide
         ? ""
         : "none";
 
@@ -3732,7 +4304,7 @@ function aplicarBusqueda() {
 
 
         if (
-            celdas.length < 2
+            celdas.length === 0
         ) {
 
             return;
@@ -3742,24 +4314,37 @@ function aplicarBusqueda() {
 
         const numero =
         celdas[0]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[0]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
 
 
         const nombre =
         celdas[1]
-        .textContent
-        .toLowerCase()
-        .trim();
+        ? celdas[1]
+            .textContent
+            .toLowerCase()
+            .trim()
+        : "";
+
+
+        const coincide =
+
+            texto === "" ||
+
+            nombre.includes(
+                texto
+            ) ||
+
+            numero.includes(
+                texto
+            );
 
 
         fila.style.display =
-        (
-            texto === "" ||
-            nombre.includes(texto) ||
-            numero.includes(texto)
-        )
+        coincide
         ? ""
         : "none";
 
@@ -3785,9 +4370,81 @@ async function guardarNotas() {
     }
 
 
+    if (
+        actividades.length === 0
+    ) {
+
+        alert(
+            "Este curso no tiene actividades."
+        );
+
+        return false;
+
+    }
+
+
     const inputs =
     document.querySelectorAll(
         ".nota-input"
+    );
+
+
+    for (
+        const input of inputs
+    ) {
+
+        if (
+            input.value === ""
+        ) {
+
+            continue;
+
+        }
+
+
+        const valor =
+        Number(
+            input.value
+        );
+
+
+        const maximo =
+        Number(
+            input.dataset.maximo
+        );
+
+
+        if (
+            valor < 0 ||
+            valor > maximo
+        ) {
+
+            alert(
+
+                "⚠️ Hay una nota inválida.\n\n" +
+
+                "Actividad: " +
+
+                obtenerNombreActividad(
+                    input.dataset.actividad
+                ) +
+
+                "\nMáximo permitido: " +
+
+                maximo
+
+            );
+
+
+            return false;
+
+        }
+
+    }
+
+
+    mostrarMensaje(
+        "Guardando calificaciones..."
     );
 
 
@@ -3797,24 +4454,43 @@ async function guardarNotas() {
     inputs.forEach(
     input => {
 
+        const estudianteId =
+        Number(
+            input.dataset.estudiante
+        );
+
+
+        const actividadId =
+        Number(
+            input.dataset.actividad
+        );
+
+
+        let nota = null;
+
+
+        if (
+            input.value !== ""
+        ) {
+
+            nota =
+            Number(
+                input.value
+            );
+
+        }
+
+
         registros.push({
 
             actividad_id:
-            Number(
-                input.dataset.actividad
-            ),
+            actividadId,
 
             estudiante_id:
-            Number(
-                input.dataset.estudiante
-            ),
+            estudianteId,
 
             nota:
-            input.value === ""
-            ? null
-            : Number(
-                input.value
-            )
+            nota
 
         });
 
@@ -3826,7 +4502,8 @@ async function guardarNotas() {
     ) {
 
         const {
-            error
+            error:
+            errorCalificaciones
         } =
         await supabaseClient
         .from("calificaciones")
@@ -3839,13 +4516,193 @@ async function guardarNotas() {
         );
 
 
-        if (error) {
+        if (errorCalificaciones) {
+
+            console.error(
+                errorCalificaciones
+            );
+
 
             mostrarMensaje(
-                "Error al guardar notas: " +
-                error.message,
+
+                "Error al guardar calificaciones: " +
+
+                errorCalificaciones.message,
+
                 true
+
             );
+
+
+            return false;
+
+        }
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    for (
+        const estudiante
+        of estudiantesCurso
+    ) {
+
+        const actividadesSER =
+        actividades.filter(
+            a =>
+            a.categoria ===
+            "SER"
+        );
+
+
+        const actividadesSABER =
+        actividades.filter(
+            a =>
+            a.categoria ===
+            "SABER"
+        );
+
+
+        const actividadesHACER =
+        actividades.filter(
+            a =>
+            a.categoria ===
+            "HACER"
+        );
+
+
+        const actividadesAUTO =
+        actividades.filter(
+            a =>
+            a.categoria ===
+            "AUTOEVALUACION"
+        );
+
+
+        const puntosSER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesSER,
+            LIMITES.SER
+        );
+
+
+        const puntosSABER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesSABER,
+            LIMITES.SABER
+        );
+
+
+        const puntosHACER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesHACER,
+            LIMITES.HACER
+        );
+
+
+        const puntosAUTO =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesAUTO,
+            LIMITES.AUTOEVALUACION
+        );
+
+
+        const nota3T =
+        redondear(
+
+            puntosSER +
+            puntosSABER +
+            puntosHACER +
+            puntosAUTO
+
+        );
+
+
+        const nota1T =
+        convertirNumero(
+            estudiante.nota_1t
+        );
+
+
+        const nota2T =
+        convertirNumero(
+            estudiante.nota_2t
+        );
+
+
+        let notaFinal = null;
+
+
+        if (
+            nota1T !== null &&
+            nota2T !== null &&
+            nota3T !== null
+        ) {
+
+            notaFinal =
+            redondear(
+
+                (
+                    nota1T +
+                    nota2T +
+                    nota3T
+                ) / 3
+
+            );
+
+        }
+
+
+        const {
+            error
+        } =
+        await supabaseClient
+        .from("matematica")
+        .update({
+
+            nota_3t:
+            nota3T,
+
+            final:
+            notaFinal
+
+        })
+        .eq(
+            "id",
+            estudiante.id
+        );
+
+
+        if (error) {
+
+            console.error(error);
+
+
+            mostrarMensaje(
+
+                "Error al actualizar notas de " +
+
+                estudiante.nombre +
+
+                ": " +
+
+                error.message,
+
+                true
+
+            );
+
 
             return false;
 
@@ -3855,8 +4712,19 @@ async function guardarNotas() {
 
 
     mostrarMensaje(
-        "✓ Calificaciones guardadas correctamente."
+        "✓ Calificaciones, 3T y FINAL guardados correctamente."
     );
+
+
+    await cargarEstudiantes();
+
+    await cargarActividades();
+
+    mostrarTablaGeneral();
+
+    await cargarAsistencia();
+
+    aplicarBusqueda();
 
 
     return true;
@@ -3865,7 +4733,171 @@ async function guardarNotas() {
 
 
 /* =====================================================
-   NOTA
+   CALCULAR PUNTOS
+===================================================== */
+
+function calcularPuntosCategoria(
+
+    estudianteId,
+    actividadesLista,
+    limiteCategoria
+
+) {
+
+    if (
+        !actividadesLista ||
+        actividadesLista.length === 0
+    ) {
+
+        return 0;
+
+    }
+
+
+    let sumaNotas = 0;
+
+    let sumaMaximos = 0;
+
+
+    actividadesLista.forEach(
+    actividad => {
+
+        const input =
+        document.querySelector(
+
+            `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividad.id}"]`
+
+        );
+
+
+        if (
+            !input ||
+            input.value === ""
+        ) {
+
+            return;
+
+        }
+
+
+        const nota =
+        Number(
+            input.value
+        );
+
+
+        const maximo =
+        Number(
+            input.dataset.maximo
+        );
+
+
+        if (
+            isNaN(nota) ||
+            isNaN(maximo) ||
+            maximo <= 0
+        ) {
+
+            return;
+
+        }
+
+
+        sumaNotas +=
+        nota;
+
+
+        sumaMaximos +=
+        maximo;
+
+    });
+
+
+    if (
+        sumaMaximos === 0
+    ) {
+
+        return 0;
+
+    }
+
+
+    return (
+        sumaNotas /
+        sumaMaximos
+    ) *
+    limiteCategoria;
+
+}
+
+
+/* =====================================================
+   REDONDEAR
+===================================================== */
+
+function redondear(
+    numero
+) {
+
+    if (
+        numero === null ||
+        numero === undefined ||
+        isNaN(numero)
+    ) {
+
+        return null;
+
+    }
+
+
+    return Math.round(
+        Number(numero)
+    );
+
+}
+
+
+/* =====================================================
+   CONVERTIR
+===================================================== */
+
+function convertirNumero(
+    valor
+) {
+
+    if (
+        valor === null ||
+        valor === undefined ||
+        valor === ""
+    ) {
+
+        return null;
+
+    }
+
+
+    const numero =
+    Number(
+        valor
+    );
+
+
+    if (
+        isNaN(numero)
+    ) {
+
+        return null;
+
+    }
+
+
+    return numero;
+
+}
+
+
+/* =====================================================
+   MOSTRAR NOTA
 ===================================================== */
 
 function mostrarNota(
@@ -3896,97 +4928,664 @@ function mostrarNota(
 
 async function exportarExcel() {
 
-    if (
-        typeof XLSX === "undefined"
-    ) {
+    try {
 
-        alert(
-            "No se pudo cargar Excel."
+        const guardado =
+        await guardarNotas();
+
+
+        if (
+            guardado === false
+        ) {
+
+            return;
+
+        }
+
+
+        mostrarMensaje(
+            "Preparando archivo Excel..."
         );
 
-        return;
+
+        if (
+            typeof XLSX === "undefined"
+        ) {
+
+            alert(
+                "No se pudo cargar la herramienta de Excel."
+            );
+
+            return;
+
+        }
+
+
+        const {
+            data:
+            todasActividades,
+            error:
+            errorActividades
+        } =
+        await supabaseClient
+        .from("actividades")
+        .select(
+            "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
+        )
+        .eq(
+            "trimestre",
+            3
+        )
+        .order(
+            "orden"
+        );
+
+
+        if (errorActividades) {
+
+            throw errorActividades;
+
+        }
+
+
+        const idsActividades =
+        (todasActividades || [])
+        .map(
+            a => a.id
+        );
+
+
+        let todasCalificaciones = [];
+
+
+        if (
+            idsActividades.length > 0
+        ) {
+
+            const {
+                data,
+                error
+            } =
+            await supabaseClient
+            .from("calificaciones")
+            .select(
+                "actividad_id,estudiante_id,nota"
+            )
+            .in(
+                "actividad_id",
+                idsActividades
+            );
+
+
+            if (error) {
+
+                throw error;
+
+            }
+
+
+            todasCalificaciones =
+            data || [];
+
+        }
+
+
+        const mapaCalificaciones = {};
+
+
+        todasCalificaciones.forEach(
+        cal => {
+
+            const clave =
+            cal.estudiante_id +
+            "_" +
+            cal.actividad_id;
+
+
+            mapaCalificaciones[
+                clave
+            ] =
+            cal.nota;
+
+        });
+
+
+        const cursos =
+        [...new Set(
+
+            estudiantes
+            .map(
+                e => e.curso
+            )
+            .filter(Boolean)
+
+        )].sort();
+
+
+        const libro =
+        XLSX.utils.book_new();
+
+
+        cursos.forEach(
+        curso => {
+
+            const estudiantesCurso =
+            estudiantes.filter(
+                e =>
+                e.curso ===
+                curso
+            );
+
+
+            const actividadesCurso =
+            (todasActividades || [])
+            .filter(
+                a =>
+                a.curso ===
+                curso
+            );
+
+
+            const ser =
+            actividadesCurso.filter(
+                a =>
+                a.categoria ===
+                "SER"
+            );
+
+
+            const saber =
+            actividadesCurso.filter(
+                a =>
+                a.categoria ===
+                "SABER"
+            );
+
+
+            const hacer =
+            actividadesCurso.filter(
+                a =>
+                a.categoria ===
+                "HACER"
+            );
+
+
+            const auto =
+            actividadesCurso.filter(
+                a =>
+                a.categoria ===
+                "AUTOEVALUACION"
+            );
+
+
+            const columnas = [
+
+                "Nº LISTA",
+
+                "NOMBRE",
+
+                ...ser.map(
+                    a => a.nombre
+                ),
+
+                "PROMEDIO SER",
+
+                ...saber.map(
+                    a => a.nombre
+                ),
+
+                "PROMEDIO SABER",
+
+                ...hacer.map(
+                    a => a.nombre
+                ),
+
+                "PROMEDIO HACER",
+
+                "AUTOEVALUACIÓN",
+
+                "NOTA 3T",
+
+                "NOTA FINAL"
+
+            ];
+
+
+            const datos = [];
+
+
+            datos.push(
+                columnas
+            );
+
+
+            estudiantesCurso.forEach(
+            estudiante => {
+
+                const fila = [];
+
+
+                fila.push(
+                    estudiante.num_lista ??
+                    ""
+                );
+
+
+                fila.push(
+                    estudiante.nombre ??
+                    ""
+                );
+
+
+                const notasSer =
+                ser.map(
+                    actividad =>
+                    obtenerNotaExcel(
+                        estudiante.id,
+                        actividad.id,
+                        mapaCalificaciones
+                    )
+                );
+
+
+                ser.forEach(
+                actividad => {
+
+                    fila.push(
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                    );
+
+                });
+
+
+                fila.push(
+                    calcularPromedioPonderado(
+                        notasSer,
+                        ser
+                    )
+                );
+
+
+                const notasSaber =
+                saber.map(
+                    actividad =>
+                    obtenerNotaExcel(
+                        estudiante.id,
+                        actividad.id,
+                        mapaCalificaciones
+                    )
+                );
+
+
+                saber.forEach(
+                actividad => {
+
+                    fila.push(
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                    );
+
+                });
+
+
+                fila.push(
+                    calcularPromedioPonderado(
+                        notasSaber,
+                        saber
+                    )
+                );
+
+
+                const notasHacer =
+                hacer.map(
+                    actividad =>
+                    obtenerNotaExcel(
+                        estudiante.id,
+                        actividad.id,
+                        mapaCalificaciones
+                    )
+                );
+
+
+                hacer.forEach(
+                actividad => {
+
+                    fila.push(
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                    );
+
+                });
+
+
+                fila.push(
+                    calcularPromedioPonderado(
+                        notasHacer,
+                        hacer
+                    )
+                );
+
+
+                const notasAuto =
+                auto.map(
+                    actividad =>
+                    obtenerNotaExcel(
+                        estudiante.id,
+                        actividad.id,
+                        mapaCalificaciones
+                    )
+                );
+
+
+                fila.push(
+                    calcularPromedioPonderado(
+                        notasAuto,
+                        auto
+                    )
+                );
+
+
+                fila.push(
+
+                    estudiante.nota_3t === null ||
+                    estudiante.nota_3t === undefined
+
+                    ? ""
+
+                    : Math.round(
+                        Number(
+                            estudiante.nota_3t
+                        )
+                    )
+
+                );
+
+
+                fila.push(
+
+                    estudiante.final === null ||
+                    estudiante.final === undefined
+
+                    ? ""
+
+                    : Math.round(
+                        Number(
+                            estudiante.final
+                        )
+                    )
+
+                );
+
+
+                datos.push(
+                    fila
+                );
+
+            });
+
+
+            const hoja =
+            XLSX.utils.aoa_to_sheet(
+                datos
+            );
+
+
+            hoja["!freeze"] = {
+
+                xSplit: 2,
+
+                ySplit: 1
+
+            };
+
+
+            hoja["!cols"] =
+            columnas.map(
+            (nombre, indice) => {
+
+                if (
+                    indice === 0
+                ) {
+
+                    return {
+                        wch: 10
+                    };
+
+                }
+
+
+                if (
+                    indice === 1
+                ) {
+
+                    return {
+                        wch: 32
+                    };
+
+                }
+
+
+                return {
+                    wch: 20
+                };
+
+            });
+
+
+            let nombreHoja =
+            String(curso)
+            .replace(
+                /[\\\/\?\*\[\]:]/g,
+                ""
+            )
+            .substring(
+                0,
+                31
+            );
+
+
+            if (!nombreHoja) {
+
+                nombreHoja =
+                "Curso";
+
+            }
+
+
+            XLSX.utils.book_append_sheet(
+
+                libro,
+
+                hoja,
+
+                nombreHoja
+
+            );
+
+        });
+
+
+        const fecha =
+        new Date()
+        .toISOString()
+        .slice(
+            0,
+            10
+        );
+
+
+        XLSX.writeFile(
+
+            libro,
+
+            "Calificaciones_Tercer_Trimestre_" +
+            fecha +
+            ".xlsx"
+
+        );
+
+
+        mostrarMensaje(
+            "✓ Excel exportado correctamente."
+        );
+
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+
+        mostrarMensaje(
+
+            "Error al exportar Excel: " +
+            error.message,
+
+            true
+
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   NOTA EXCEL
+===================================================== */
+
+function obtenerNotaExcel(
+
+    estudianteId,
+    actividadId,
+    mapa
+
+) {
+
+    const clave =
+    estudianteId +
+    "_" +
+    actividadId;
+
+
+    if (
+        mapa[clave] === undefined ||
+        mapa[clave] === null
+    ) {
+
+        return "";
 
     }
 
 
-    const datos = [];
+    return Number(
+        mapa[clave]
+    );
+
+}
 
 
-    datos.push([
-        "Nº LISTA",
-        "NOMBRE",
-        "CURSO",
-        "1T",
-        "2T",
-        "3T",
-        "FINAL"
-    ]);
+/* =====================================================
+   PROMEDIO EXCEL
+===================================================== */
+
+function calcularPromedioPonderado(
+
+    notas,
+    actividadesLista
+
+) {
+
+    if (
+        !actividadesLista ||
+        actividadesLista.length === 0
+    ) {
+
+        return "";
+
+    }
 
 
-    estudiantes
-    .filter(
-        e =>
-        !cursoSeleccionado ||
-        e.curso ===
-        cursoSeleccionado
-    )
-    .forEach(
-    e => {
+    let suma = 0;
 
-        datos.push([
+    let maximos = 0;
 
-            e.num_lista ?? "",
 
-            e.nombre ?? "",
+    notas.forEach(
+    (nota, indice) => {
 
-            e.curso ?? "",
+        if (
+            nota === "" ||
+            nota === null ||
+            nota === undefined
+        ) {
 
-            mostrarNota(
-                e.nota_1t
-            ),
+            return;
 
-            mostrarNota(
-                e.nota_2t
-            ),
+        }
 
-            mostrarNota(
-                e.nota_3t
-            ),
 
-            mostrarNota(
-                e.final
-            )
+        const actividad =
+        actividadesLista[
+            indice
+        ];
 
-        ]);
+
+        const maximo =
+        Number(
+
+            actividad.puntaje_maximo ||
+
+            LIMITES[
+                actividad.categoria
+            ]
+
+        );
+
+
+        suma +=
+        Number(nota);
+
+
+        maximos +=
+        maximo;
 
     });
 
 
-    const hoja =
-    XLSX.utils.aoa_to_sheet(
-        datos
-    );
+    if (
+        maximos === 0
+    ) {
+
+        return "";
+
+    }
 
 
-    const libro =
-    XLSX.utils.book_new();
+    const limite =
+    LIMITES[
+        actividadesLista[0]
+        .categoria
+    ];
 
 
-    XLSX.utils.book_append_sheet(
-        libro,
-        hoja,
-        "Calificaciones"
-    );
+    return Math.round(
 
+        suma /
+        maximos *
+        limite
 
-    XLSX.writeFile(
-        libro,
-        "Calificaciones.xlsx"
-    );
-
-
-    mostrarMensaje(
-        "✓ Excel exportado correctamente."
     );
 
 }
@@ -4000,6 +5599,7 @@ async function cerrarSesion() {
 
     await supabaseClient.auth.signOut();
 
+
     window.location.href =
     "login-docente.html";
 
@@ -4011,8 +5611,10 @@ async function cerrarSesion() {
 ===================================================== */
 
 function mostrarMensaje(
+
     texto,
     error = false
+
 ) {
 
     const mensaje =
