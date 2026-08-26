@@ -20,8 +20,16 @@
     box-sizing: border-box;
 }
 
+html,
 body {
+    width: 100%;
+    max-width: 100%;
     margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+body {
     font-family: Arial, sans-serif;
     background: #f2f5f9;
     color: #222;
@@ -31,9 +39,12 @@ body {
     width: 96%;
     max-width: 1400px;
     margin: 25px auto;
+    overflow-x: hidden;
 }
 
 .panel {
+    width: 100%;
+    max-width: 100%;
     background: white;
     padding: 25px;
     border-radius: 15px;
@@ -80,6 +91,7 @@ label {
 input,
 select {
     width: 100%;
+    max-width: 100%;
     padding: 11px;
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -107,12 +119,16 @@ select {
 .modal-fondo {
     position: fixed;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
     background: rgba(0,0,0,.55);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 15px;
     z-index: 9999;
+    overflow: hidden;
 }
 
 .modal-fondo.oculto {
@@ -199,12 +215,14 @@ select {
     align-items: stretch;
     gap: 12px;
     margin-top: 12px;
+    max-width: 100%;
 }
 
 .radio-categoria {
     position: relative;
     flex: 1;
     max-width: 125px;
+    min-width: 0;
 }
 
 .radio-categoria input {
@@ -277,7 +295,6 @@ select {
 
 /* =====================================================
    NOMBRE CATEGORÍA
-   OCULTO HASTA SELECCIONAR
 ===================================================== */
 
 .nombre-categoria {
@@ -511,6 +528,8 @@ select {
 ===================================================== */
 
 .categoria {
+    width: 100%;
+    max-width: 100%;
     margin-top: 25px;
     border: 1px solid #ddd;
     border-radius: 12px;
@@ -546,6 +565,8 @@ select {
 ===================================================== */
 
 .actividad {
+    width: calc(100% - 36px);
+    max-width: calc(100% - 36px);
     margin: 18px;
     border: 1px solid #ddd;
     border-radius: 10px;
@@ -565,6 +586,8 @@ select {
     align-items: center;
 
     gap: 10px;
+
+    max-width: 100%;
 }
 
 .izquierda-actividad {
@@ -668,6 +691,8 @@ select {
 
 .contenido-actividad {
     padding: 0;
+    width: 100%;
+    max-width: 100%;
 }
 
 
@@ -677,6 +702,7 @@ select {
 
 .tabla-contenedor {
     width: 100%;
+    max-width: 100%;
 
     overflow-x: auto;
     overflow-y: hidden;
@@ -767,6 +793,9 @@ td:first-child {
 ===================================================== */
 
 .tabla-general {
+    width: 100%;
+    max-width: 100%;
+
     margin-top: 30px;
 
     border: 1px solid #ddd;
@@ -857,6 +886,9 @@ td:first-child {
 ===================================================== */
 
 .panel-asistencia {
+    width: 100%;
+    max-width: 100%;
+
     margin-top: 25px;
 
     border: 1px solid #ddd;
@@ -970,6 +1002,8 @@ td:first-child {
 
 .contenido-asistencia {
     background: white;
+    width: 100%;
+    max-width: 100%;
 }
 
 .contenido-asistencia.oculto {
@@ -1171,7 +1205,6 @@ td:first-child {
 
 /* =====================================================
    MENSAJES
-   SIEMPRE VISIBLES EN LA PANTALLA
 ===================================================== */
 
 .mensaje {
@@ -1210,9 +1243,6 @@ td:first-child {
 
     display: none;
 }
-
-
-/* Cuando hay texto */
 
 .mensaje:not(:empty) {
     display: block;
@@ -1267,13 +1297,15 @@ td:first-child {
 
     .contenedor {
         width: 100%;
-
+        max-width: 100%;
         margin: 10px auto;
+        overflow-x: hidden;
     }
 
     .panel {
+        width: 100%;
+        max-width: 100%;
         padding: 10px;
-
         border-radius: 10px;
     }
 
@@ -1308,6 +1340,8 @@ td:first-child {
 
     .categorias-radio {
         gap: 7px;
+        width: 100%;
+        max-width: 100%;
     }
 
     .radio-categoria label {
@@ -1331,7 +1365,7 @@ td:first-child {
 
     .tabla-contenedor {
         width: 100%;
-
+        max-width: 100%;
         overflow-x: auto;
     }
 
@@ -1436,6 +1470,8 @@ td:first-child {
     }
 
     .actividad {
+        width: calc(100% - 20px);
+        max-width: calc(100% - 20px);
         margin: 10px;
     }
 
@@ -5318,7 +5354,6 @@ function mostrarNota(
 
 /* =====================================================
    EXPORTAR EXCEL
-   FECHAS SEGÚN CADA CURSO
 ===================================================== */
 
 async function exportarExcel() {
@@ -5357,10 +5392,6 @@ async function exportarExcel() {
         }
 
 
-        /* =================================================
-           CARGAR ACTIVIDADES
-        ================================================= */
-
         const {
             data:
             todasActividades,
@@ -5385,10 +5416,6 @@ async function exportarExcel() {
             throw errorActividades;
         }
 
-
-        /* =================================================
-           CARGAR CALIFICACIONES
-        ================================================= */
 
         const idsActividades =
         (todasActividades || [])
@@ -5450,10 +5477,6 @@ async function exportarExcel() {
         });
 
 
-        /* =================================================
-           CARGAR TODAS LAS ASISTENCIAS
-        ================================================= */
-
         const idsEstudiantes =
         estudiantes.map(
             e => e.id
@@ -5501,10 +5524,6 @@ async function exportarExcel() {
         }
 
 
-        /* =================================================
-           MAPA GENERAL DE ASISTENCIA
-        ================================================= */
-
         const mapaAsistencia = {};
 
 
@@ -5537,10 +5556,6 @@ async function exportarExcel() {
 
         });
 
-
-        /* =================================================
-           MAPA DE OBSERVACIONES
-        ================================================= */
 
         const mapaObservaciones = {};
 
@@ -5592,10 +5607,6 @@ async function exportarExcel() {
         });
 
 
-        /* =================================================
-           CURSOS
-        ================================================= */
-
         const cursos =
         [...new Set(
 
@@ -5612,10 +5623,6 @@ async function exportarExcel() {
         XLSX.utils.book_new();
 
 
-        /* =================================================
-           CREAR UNA HOJA POR CURSO
-        ================================================= */
-
         cursos.forEach(
         curso => {
 
@@ -5626,10 +5633,6 @@ async function exportarExcel() {
                 curso
             );
 
-
-            /* =============================================
-               ASISTENCIAS SOLO DEL CURSO ACTUAL
-            ============================================= */
 
             const idsEstudiantesCurso =
             estudiantesCurso.map(
@@ -5645,13 +5648,6 @@ async function exportarExcel() {
                 )
             );
 
-
-            /* =============================================
-               FECHAS SOLO DEL CURSO ACTUAL
-               
-               Esto evita que las fechas de otro curso
-               aparezcan en esta hoja.
-            ============================================= */
 
             const fechasAsistenciaCurso =
             [
@@ -5710,10 +5706,6 @@ async function exportarExcel() {
             );
 
 
-            /* =============================================
-               COLUMNAS DEL EXCEL
-            ============================================= */
-
             const columnas = [
 
                 "Nº LISTA",
@@ -5767,18 +5759,10 @@ async function exportarExcel() {
             const datos = [];
 
 
-            /* =============================================
-               ENCABEZADO
-            ============================================= */
-
             datos.push(
                 columnas
             );
 
-
-            /* =============================================
-               ESTUDIANTES
-            ============================================= */
 
             estudiantesCurso.forEach(
             estudiante => {
@@ -5786,27 +5770,17 @@ async function exportarExcel() {
                 const fila = [];
 
 
-                /* Nº LISTA */
-
                 fila.push(
                     estudiante.num_lista ??
                     ""
                 );
 
 
-                /* NOMBRE */
-
                 fila.push(
                     estudiante.nombre ??
                     ""
                 );
 
-
-                /* =========================================
-                   ASISTENCIA POR FECHA
-                   SOLO FECHAS DEL CURSO
-                   A / R / L / F
-                ========================================= */
 
                 fechasAsistenciaCurso.forEach(
                 fecha => {
@@ -5830,10 +5804,6 @@ async function exportarExcel() {
 
                 });
 
-
-                /* =========================================
-                   TOTALES
-                ========================================= */
 
                 const totales =
                 calcularTotalesAsistencia(
@@ -5865,10 +5835,6 @@ async function exportarExcel() {
                 );
 
 
-                /* =========================================
-                   OBSERVACIONES
-                ========================================= */
-
                 const observaciones =
                 mapaObservaciones[
                     estudiante.id
@@ -5881,10 +5847,6 @@ async function exportarExcel() {
                     )
                 );
 
-
-                /* =========================================
-                   SER
-                ========================================= */
 
                 const notasSer =
                 ser.map(
@@ -5919,10 +5881,6 @@ async function exportarExcel() {
                 );
 
 
-                /* =========================================
-                   SABER
-                ========================================= */
-
                 const notasSaber =
                 saber.map(
                     actividad =>
@@ -5955,10 +5913,6 @@ async function exportarExcel() {
                     )
                 );
 
-
-                /* =========================================
-                   HACER
-                ========================================= */
 
                 const notasHacer =
                 hacer.map(
@@ -5993,10 +5947,6 @@ async function exportarExcel() {
                 );
 
 
-                /* =========================================
-                   AUTOEVALUACIÓN
-                ========================================= */
-
                 const notasAuto =
                 auto.map(
                     actividad =>
@@ -6016,10 +5966,6 @@ async function exportarExcel() {
                 );
 
 
-                /* =========================================
-                   NOTA 3T
-                ========================================= */
-
                 fila.push(
 
                     estudiante.nota_3t === null ||
@@ -6035,10 +5981,6 @@ async function exportarExcel() {
 
                 );
 
-
-                /* =========================================
-                   NOTA FINAL
-                ========================================= */
 
                 fila.push(
 
@@ -6063,19 +6005,11 @@ async function exportarExcel() {
             });
 
 
-            /* =============================================
-               CREAR HOJA
-            ============================================= */
-
             const hoja =
             XLSX.utils.aoa_to_sheet(
                 datos
             );
 
-
-            /* =============================================
-               CONGELAR Nº Y NOMBRE
-            ============================================= */
 
             hoja["!freeze"] = {
 
@@ -6086,15 +6020,9 @@ async function exportarExcel() {
             };
 
 
-            /* =============================================
-               ANCHOS DE COLUMNAS
-            ============================================= */
-
             hoja["!cols"] =
             columnas.map(
             (nombre, indice) => {
-
-                /* Nº */
 
                 if (
                     indice === 0
@@ -6107,8 +6035,6 @@ async function exportarExcel() {
                 }
 
 
-                /* NOMBRE */
-
                 if (
                     indice === 1
                 ) {
@@ -6119,8 +6045,6 @@ async function exportarExcel() {
 
                 }
 
-
-                /* FECHAS DEL CURSO */
 
                 if (
                     indice >= 2 &&
@@ -6135,8 +6059,6 @@ async function exportarExcel() {
 
                 }
 
-
-                /* TOTALES */
 
                 const inicioTotales =
                 2 +
@@ -6158,8 +6080,6 @@ async function exportarExcel() {
                 }
 
 
-                /* OBSERVACIONES */
-
                 if (
                     indice ===
                     inicioTotales + 4
@@ -6172,18 +6092,12 @@ async function exportarExcel() {
                 }
 
 
-                /* ACTIVIDADES */
-
                 return {
                     wch: 20
                 };
 
             });
 
-
-            /* =============================================
-               NOMBRE DE HOJA
-            ============================================= */
 
             let nombreHoja =
             String(curso)
@@ -6217,10 +6131,6 @@ async function exportarExcel() {
 
         });
 
-
-        /* =================================================
-           FECHA DEL ARCHIVO
-        ================================================= */
 
         const fecha =
         new Date()
@@ -6602,7 +6512,6 @@ async function cerrarSesion() {
 
 /* =====================================================
    MENSAJES
-   SIEMPRE VISIBLES
 ===================================================== */
 
 function mostrarMensaje(
@@ -6643,13 +6552,6 @@ function mostrarMensaje(
     error
     ? "#fff5f5"
     : "#f5fff6";
-
-
-    /*
-       El mensaje utiliza position: fixed,
-       por lo que permanece visible aunque
-       el usuario se desplace por la página.
-    */
 
 }
 
