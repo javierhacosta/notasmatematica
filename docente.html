@@ -4933,74 +4933,41 @@ async function exportarExcel() {
         const guardado =
         await guardarNotas();
 
-
-        if (
-            guardado === false
-        ) {
-
+        if (guardado === false) {
             return;
-
         }
 
+        mostrarMensaje("Preparando archivo Excel...");
 
-        mostrarMensaje(
-            "Preparando archivo Excel..."
-        );
-
-
-        if (
-            typeof XLSX === "undefined"
-        ) {
-
-            alert(
-                "No se pudo cargar la herramienta de Excel."
-            );
-
+        if (typeof XLSX === "undefined") {
+            alert("No se pudo cargar la herramienta de Excel.");
             return;
-
         }
 
-
+        /* ACTIVIDADES */
         const {
-            data:
-            todasActividades,
-            error:
-            errorActividades
+            data: todasActividades,
+            error: errorActividades
         } =
         await supabaseClient
         .from("actividades")
         .select(
             "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
         )
-        .eq(
-            "trimestre",
-            3
-        )
-        .order(
-            "orden"
-        );
-
+        .eq("trimestre", 3)
+        .order("orden");
 
         if (errorActividades) {
-
             throw errorActividades;
-
         }
 
-
+        /* CALIFICACIONES */
         const idsActividades =
-        (todasActividades || [])
-        .map(
-            a => a.id
-        );
-
+        (todasActividades || []).map(a => a.id);
 
         let todasCalificaciones = [];
 
-
-        if (
-            idsActividades.length > 0
-        ) {
+        if (idsActividades.length > 0) {
 
             const {
                 data,
@@ -5008,175 +4975,236 @@ async function exportarExcel() {
             } =
             await supabaseClient
             .from("calificaciones")
-            .select(
-                "actividad_id,estudiante_id,nota"
-            )
-            .in(
-                "actividad_id",
-                idsActividades
-            );
-
+            .select("actividad_id,estudiante_id,nota")
+            .in("actividad_id", idsActividades);
 
             if (error) {
-
                 throw error;
-
             }
 
-
-            todasCalificaciones =
-            data || [];
-
+            todasCalificaciones = data || [];
         }
-
 
         const mapaCalificaciones = {};
 
-
-        todasCalificaciones.forEach(
-        cal => {
+        todasCalificaciones.forEach(cal => {
 
             const clave =
-            cal.estudiante_id +
-            "_" +
-            cal.actividad_id;
+            cal.estudiante_id + "_" + cal.actividad_id;
 
-
-            mapaCalificaciones[
-                clave
-            ] =
-            cal.nota;
+            mapaCalificaciones[clave] = cal.nota;
 
         });
 
+        /* ASISTENCIA */
+        const idsEstudiantes =
+        estudiantes.map(e => e.id).filter(Boolean);
+
+        let todaAsistencia = [];
+
+        if (idsEstudiantes.length > 0) {
+
+            const {
+                data,
+                error
+            } =
+            await supabaseClient
+            .from("asistencia")
+            .select("estudiante_id,fecha,estado")
+            .in("estudiante_id", idsEstudiantes)
+            .order("fecha");
+
+            if (error) {
+                throw error;
+            }
+
+            todaAsistencia = data || [];
+        }
+
+        const codigoAsistencia = {
+            asistio: "A",
+            atraso: "R",
+            licencia: "L",
+            falta: "F"
+        };
+
+        const mapaAsistencia = {};
+
+        todaAsistencia.forEach(registro => {
+
+            const clave =
+            registro.estudiante_id + "_" + registro.fecha;
+
+            mapaAsistencia[clave] =
+            codigoAsistencia[registro.estado] || "";
+
+        });
+
+        /* SOLO CURSOS QUE TIENEN ASISTENCIA */
+        const cursosConAsistencia = new Set();
+
+        todaAsistencia.forEach(registro => {
+
+            const estudiante =
+            estudiantes.find(
+                e => e.id === registro.estudiante_id
+            );
+
+            if (estudiante && estudiante.curso) {
+                cursosConAsistencia.add(estudiante.curso);
+            }
+
+        });
 
         const cursos =
-        [...new Set(
+        [...cursosConAsistencia].sort();
 
-            estudiantes
-            .map(
-                e => e.curso
-            )
-            .filter(Boolean)
+        if (cursos.length === 0) {
 
-        )].sort();
+            alert(
+                "No existen registros de asistencia para exportar."
+            );
 
+            return;
+        }
 
-        const libro =
-        XLSX.utils.book_new();
+        const libro = XLSX.utils.book_new();
 
-
-        cursos.forEach(
-        curso => {
+        cursos.forEach(curso => {
 
             const estudiantesCurso =
             estudiantes.filter(
-                e =>
-                e.curso ===
-                curso
+                e => e.curso === curso
             );
 
+            const idsCurso =
+            new Set(
+                estudiantesCurso.map(e => e.id)
+            );
 
+            /* FECHAS SOLO DE ESTE CURSO */
+            const fechasCurso =
+            [...new Set(
+                todaAsistencia
+                .filter(
+                    registro =>
+                    idsCurso.has(registro.estudiante_id)
+                )
+                .map(
+                    registro => registro.fecha
+                )
+                .filter(Boolean)
+            )].sort();
+
+            /* ACTIVIDADES DEL CURSO */
             const actividadesCurso =
             (todasActividades || [])
             .filter(
-                a =>
-                a.curso ===
-                curso
+                a => a.curso === curso
             );
-
 
             const ser =
             actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SER"
+                a => a.categoria === "SER"
             );
-
 
             const saber =
             actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "SABER"
+                a => a.categoria === "SABER"
             );
-
 
             const hacer =
             actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "HACER"
+                a => a.categoria === "HACER"
             );
-
 
             const auto =
             actividadesCurso.filter(
-                a =>
-                a.categoria ===
-                "AUTOEVALUACION"
+                a => a.categoria === "AUTOEVALUACION"
             );
 
-
+            /*
+             * ORDEN DEL EXCEL:
+             * Nº | NOMBRE | FECHAS | TOTAL A | TOTAL R | TOTAL L | TOTAL F
+             * | ACTIVIDADES | TOTALES DE CATEGORÍA | NOTA 3T | NOTA FINAL
+             */
             const columnas = [
 
                 "Nº LISTA",
-
                 "NOMBRE",
 
-                ...ser.map(
-                    a => a.nombre
+                ...fechasCurso.map(
+                    fecha => formatearFechaExcel(fecha)
                 ),
 
+                "TOTAL A",
+                "TOTAL R",
+                "TOTAL L",
+                "TOTAL F",
+
+                ...ser.map(a => a.nombre),
                 "PROMEDIO SER",
 
-                ...saber.map(
-                    a => a.nombre
-                ),
-
+                ...saber.map(a => a.nombre),
                 "PROMEDIO SABER",
 
-                ...hacer.map(
-                    a => a.nombre
-                ),
-
+                ...hacer.map(a => a.nombre),
                 "PROMEDIO HACER",
 
                 "AUTOEVALUACIÓN",
-
                 "NOTA 3T",
-
                 "NOTA FINAL"
-
             ];
 
-
             const datos = [];
+            datos.push(columnas);
 
-
-            datos.push(
-                columnas
-            );
-
-
-            estudiantesCurso.forEach(
-            estudiante => {
+            estudiantesCurso.forEach(estudiante => {
 
                 const fila = [];
 
-
                 fila.push(
-                    estudiante.num_lista ??
-                    ""
+                    estudiante.num_lista ?? ""
                 );
 
-
                 fila.push(
-                    estudiante.nombre ??
-                    ""
+                    estudiante.nombre ?? ""
                 );
 
+                /* FECHAS DE ASISTENCIA */
+                const totalesAsistencia = {
+                    A: 0,
+                    R: 0,
+                    L: 0,
+                    F: 0
+                };
 
+                fechasCurso.forEach(fecha => {
+
+                    const clave =
+                    estudiante.id + "_" + fecha;
+
+                    const codigo =
+                    mapaAsistencia[clave] || "";
+
+                    fila.push(codigo);
+
+                    if (
+                        codigo &&
+                        totalesAsistencia[codigo] !== undefined
+                    ) {
+                        totalesAsistencia[codigo]++;
+                    }
+
+                });
+
+                /* TOTALES A R L F */
+                fila.push(totalesAsistencia.A);
+                fila.push(totalesAsistencia.R);
+                fila.push(totalesAsistencia.L);
+                fila.push(totalesAsistencia.F);
+
+                /* SER */
                 const notasSer =
                 ser.map(
                     actividad =>
@@ -5187,9 +5215,7 @@ async function exportarExcel() {
                     )
                 );
 
-
-                ser.forEach(
-                actividad => {
+                ser.forEach(actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -5201,7 +5227,6 @@ async function exportarExcel() {
 
                 });
 
-
                 fila.push(
                     calcularPromedioPonderado(
                         notasSer,
@@ -5209,7 +5234,7 @@ async function exportarExcel() {
                     )
                 );
 
-
+                /* SABER */
                 const notasSaber =
                 saber.map(
                     actividad =>
@@ -5220,9 +5245,7 @@ async function exportarExcel() {
                     )
                 );
 
-
-                saber.forEach(
-                actividad => {
+                saber.forEach(actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -5234,7 +5257,6 @@ async function exportarExcel() {
 
                 });
 
-
                 fila.push(
                     calcularPromedioPonderado(
                         notasSaber,
@@ -5242,7 +5264,7 @@ async function exportarExcel() {
                     )
                 );
 
-
+                /* HACER */
                 const notasHacer =
                 hacer.map(
                     actividad =>
@@ -5253,9 +5275,7 @@ async function exportarExcel() {
                     )
                 );
 
-
-                hacer.forEach(
-                actividad => {
+                hacer.forEach(actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -5267,7 +5287,6 @@ async function exportarExcel() {
 
                 });
 
-
                 fila.push(
                     calcularPromedioPonderado(
                         notasHacer,
@@ -5275,7 +5294,7 @@ async function exportarExcel() {
                     )
                 );
 
-
+                /* AUTOEVALUACIÓN */
                 const notasAuto =
                 auto.map(
                     actividad =>
@@ -5286,7 +5305,6 @@ async function exportarExcel() {
                     )
                 );
 
-
                 fila.push(
                     calcularPromedioPonderado(
                         notasAuto,
@@ -5294,93 +5312,77 @@ async function exportarExcel() {
                     )
                 );
 
-
+                /* NOTAS */
                 fila.push(
-
                     estudiante.nota_3t === null ||
                     estudiante.nota_3t === undefined
-
                     ? ""
-
                     : Math.round(
-                        Number(
-                            estudiante.nota_3t
-                        )
+                        Number(estudiante.nota_3t)
                     )
-
                 );
-
 
                 fila.push(
-
                     estudiante.final === null ||
                     estudiante.final === undefined
-
                     ? ""
-
                     : Math.round(
-                        Number(
-                            estudiante.final
-                        )
+                        Number(estudiante.final)
                     )
-
                 );
 
-
-                datos.push(
-                    fila
-                );
+                datos.push(fila);
 
             });
 
-
             const hoja =
-            XLSX.utils.aoa_to_sheet(
-                datos
-            );
-
+            XLSX.utils.aoa_to_sheet(datos);
 
             hoja["!freeze"] = {
-
                 xSplit: 2,
-
                 ySplit: 1
-
             };
-
 
             hoja["!cols"] =
             columnas.map(
             (nombre, indice) => {
 
-                if (
-                    indice === 0
-                ) {
-
-                    return {
-                        wch: 10
-                    };
-
+                if (indice === 0) {
+                    return { wch: 10 };
                 }
 
-
-                if (
-                    indice === 1
-                ) {
-
-                    return {
-                        wch: 32
-                    };
-
+                if (indice === 1) {
+                    return { wch: 32 };
                 }
 
+                if (
+                    indice >= 2 &&
+                    indice < 2 + fechasCurso.length
+                ) {
+                    return { wch: 13 };
+                }
 
-                return {
-                    wch: 20
-                };
+                return { wch: 20 };
 
             });
 
+            if (datos.length > 1) {
+
+                hoja["!autofilter"] = {
+                    ref:
+                    XLSX.utils.encode_range({
+                        s: {
+                            r: 0,
+                            c: 0
+                        },
+                        e: {
+                            r: datos.length - 1,
+                            c: columnas.length - 1
+                        }
+                    })
+                };
+
+            }
 
             let nombreHoja =
             String(curso)
@@ -5388,75 +5390,78 @@ async function exportarExcel() {
                 /[\\\/\?\*\[\]:]/g,
                 ""
             )
-            .substring(
-                0,
-                31
-            );
-
+            .substring(0, 31);
 
             if (!nombreHoja) {
-
-                nombreHoja =
-                "Curso";
-
+                nombreHoja = "Curso";
             }
 
-
             XLSX.utils.book_append_sheet(
-
                 libro,
-
                 hoja,
-
                 nombreHoja
-
             );
 
         });
 
-
         const fecha =
         new Date()
         .toISOString()
-        .slice(
-            0,
-            10
-        );
-
+        .slice(0, 10);
 
         XLSX.writeFile(
-
             libro,
-
-            "Calificaciones_Tercer_Trimestre_" +
+            "Asistencia_y_Calificaciones_Tercer_Trimestre_" +
             fecha +
             ".xlsx"
-
         );
-
 
         mostrarMensaje(
             "✓ Excel exportado correctamente."
         );
 
-
     }
-
     catch (error) {
 
         console.error(error);
 
-
         mostrarMensaje(
-
             "Error al exportar Excel: " +
             error.message,
-
             true
-
         );
 
     }
+
+}
+
+
+/* =====================================================
+   FORMATEAR FECHA PARA EXCEL
+===================================================== */
+
+function formatearFechaExcel(fecha) {
+
+    if (!fecha) {
+        return "";
+    }
+
+    const partes =
+    String(fecha).split("-");
+
+    if (partes.length === 3) {
+
+        return (
+            partes[2] +
+            "/" +
+            partes[1] +
+            "/" +
+            partes[0]
+        );
+
+    }
+
+    return fecha;
 
 }
 
