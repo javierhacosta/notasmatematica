@@ -10,7 +10,7 @@
 
 <title>Panel Docente</title>
 
-<style>
+<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=5iTO7jcikt2Cr36TimOnINGoP7-fzb4D_Vps9ehurTNj4PqN8K6g9g3Tpnaw8nDCfspt73Exx-Q19XTkT431PHoG2BHnvso4mANprG47UUAjbob0sSioRfscv796_KRpG8DYjy2MSoGvDQhtKk7hxRqp72W-dit1S-m9Ix9zw2jSQKSxBEC5mo4GV4PvrkWh4LKJBPaOzJm1enu4Wyy66XiF2e-S_zoYPdqlT4-JUWSpHsd8eZmVgFlAVP4z-53iSQt3wmqjOK_qmnPU57oekif4OrIJkLu2QhvRmZH89pLDPLAotIYpGMeNBLXmK6sRX5cTPyg90VebnDOtMWaxVA" charset="UTF-8"></script><style>
 
 /* =====================================================
    GENERAL
@@ -938,6 +938,41 @@ td:first-child {
    NUEVO: MENÚ FECHAS GUARDADAS
 ===================================================== */
 
+.boton-eliminar-asistencia {
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 7px;
+
+    background: #c62828;
+    color: white;
+
+    font-size: 17px;
+    font-weight: bold;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    flex-shrink: 0;
+
+    transition: background .18s ease, transform .18s ease;
+}
+
+.boton-eliminar-asistencia:hover {
+    background: #a61f1f;
+    transform: scale(1.04);
+}
+
+.boton-eliminar-asistencia:active {
+    transform: scale(.97);
+}
+
+
 .fechas-guardadas {
     width: 175px;
 
@@ -1437,6 +1472,12 @@ td:first-child {
         justify-content: flex-end;
     }
 
+    .boton-eliminar-asistencia {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
     .fecha-asistencia {
         width: 135px;
     }
@@ -1718,6 +1759,15 @@ Selecciona un curso
 
 
 <!-- FECHA PARA REGISTRAR -->
+
+        <button
+            type="button"
+            id="botonEliminarAsistencia"
+            class="boton-eliminar-asistencia"
+            onclick="eliminarAsistenciaFecha()"
+            title="Borrar asistencia de la fecha seleccionada"
+            aria-label="Borrar asistencia de la fecha seleccionada"
+        >🗑️</button>
 
 <input
     type="date"
@@ -3271,6 +3321,153 @@ async function guardarAsistencia() {
 
 
     await cargarAsistencia();
+
+
+    return true;
+
+}
+
+
+/* =====================================================
+   MODAL NUEVA ACTIVIDAD
+===================================================== */
+
+/* =====================================================
+   ELIMINAR ASISTENCIA DE LA FECHA SELECCIONADA
+===================================================== */
+
+async function eliminarAsistenciaFecha() {
+
+    if (!cursoSeleccionado) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return false;
+
+    }
+
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    ).value;
+
+
+    if (!fecha) {
+
+        alert(
+            "Selecciona una fecha."
+        );
+
+        return false;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    const ids =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+
+    if (ids.length === 0) {
+
+        alert(
+            "No existen estudiantes en este curso."
+        );
+
+        return false;
+
+    }
+
+
+    const confirmar =
+    confirm(
+
+        "¿Está seguro de borrar toda la asistencia " +
+        "de la fecha " +
+        formatearFechaVisible(fecha) +
+        "?\n\n" +
+        "Se eliminarán los registros de asistencia " +
+        "de todos los estudiantes de este curso para esa fecha."
+
+    );
+
+
+    if (!confirmar) {
+        return false;
+    }
+
+
+    mostrarMensaje(
+        "Borrando asistencia..."
+    );
+
+
+    const {
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .delete()
+    .eq(
+        "fecha",
+        fecha
+    )
+    .in(
+        "estudiante_id",
+        ids
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al borrar asistencia: " +
+            error.message,
+            true
+        );
+
+        return false;
+
+    }
+
+
+    registrosAsistencia = {};
+
+
+    const select =
+    document.getElementById(
+        "fechasGuardadas"
+    );
+
+
+    if (select) {
+        select.value = "";
+    }
+
+
+    await cargarFechasAsistencia();
+    await cargarAsistencia();
+
+
+    mostrarMensaje(
+        "✓ Asistencia de " +
+        formatearFechaVisible(fecha) +
+        " eliminada correctamente."
+    );
 
 
     return true;
