@@ -1171,13 +1171,57 @@ td:first-child {
 
 /* =====================================================
    MENSAJES
+   SIEMPRE VISIBLES EN LA PANTALLA
 ===================================================== */
 
 .mensaje {
-    margin-top: 15px;
+    position: fixed;
+
+    left: 50%;
+
+    bottom: 22px;
+
+    transform: translateX(-50%);
+
+    z-index: 100000;
+
+    min-width: 280px;
+
+    max-width: 90%;
+
+    padding: 13px 20px;
+
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 5px 20px rgba(0,0,0,.20);
+
+    text-align: center;
 
     font-weight: bold;
+
+    line-height: 1.4;
+
+    margin: 0;
+
+    display: none;
 }
+
+
+/* Cuando hay texto */
+
+.mensaje:not(:empty) {
+    display: block;
+}
+
+
+/* =====================================================
+   OCULTO
+===================================================== */
 
 .oculto {
     display: none !important;
@@ -1357,6 +1401,23 @@ td:first-child {
         width: 27px;
 
         height: 27px;
+
+        font-size: 14px;
+    }
+
+
+    /* MENSAJE */
+
+    .mensaje {
+        bottom: 12px;
+
+        min-width: 0;
+
+        width: 92%;
+
+        max-width: 92%;
+
+        padding: 12px 15px;
 
         font-size: 14px;
     }
@@ -5257,7 +5318,7 @@ function mostrarNota(
 
 /* =====================================================
    EXPORTAR EXCEL
-   ASISTENCIA DESPUÉS DEL NOMBRE
+   FECHAS SEGÚN CADA CURSO
 ===================================================== */
 
 async function exportarExcel() {
@@ -5286,8 +5347,9 @@ async function exportarExcel() {
             typeof XLSX === "undefined"
         ) {
 
-            alert(
-                "No se pudo cargar la herramienta de Excel."
+            mostrarMensaje(
+                "Error: no se pudo cargar la herramienta de Excel.",
+                true
             );
 
             return;
@@ -5440,28 +5502,7 @@ async function exportarExcel() {
 
 
         /* =================================================
-           OBTENER TODAS LAS FECHAS
-           SOLO DE LOS REGISTROS EXISTENTES
-        ================================================= */
-
-        const fechasAsistencia =
-        [
-            ...new Set(
-
-                todasAsistencias
-                .map(
-                    registro =>
-                    registro.fecha
-                )
-                .filter(Boolean)
-
-            )
-        ]
-        .sort();
-
-
-        /* =================================================
-           MAPA DE ASISTENCIA
+           MAPA GENERAL DE ASISTENCIA
         ================================================= */
 
         const mapaAsistencia = {};
@@ -5586,6 +5627,48 @@ async function exportarExcel() {
             );
 
 
+            /* =============================================
+               ASISTENCIAS SOLO DEL CURSO ACTUAL
+            ============================================= */
+
+            const idsEstudiantesCurso =
+            estudiantesCurso.map(
+                e => e.id
+            );
+
+
+            const asistenciasCurso =
+            todasAsistencias.filter(
+                registro =>
+                idsEstudiantesCurso.includes(
+                    registro.estudiante_id
+                )
+            );
+
+
+            /* =============================================
+               FECHAS SOLO DEL CURSO ACTUAL
+               
+               Esto evita que las fechas de otro curso
+               aparezcan en esta hoja.
+            ============================================= */
+
+            const fechasAsistenciaCurso =
+            [
+                ...new Set(
+
+                    asistenciasCurso
+                    .map(
+                        registro =>
+                        registro.fecha
+                    )
+                    .filter(Boolean)
+
+                )
+            ]
+            .sort();
+
+
             const actividadesCurso =
             (todasActividades || [])
             .filter(
@@ -5637,7 +5720,7 @@ async function exportarExcel() {
 
                 "NOMBRE",
 
-                ...fechasAsistencia.map(
+                ...fechasAsistenciaCurso.map(
                     fecha =>
                     formatearFechaExcel(
                         fecha
@@ -5721,10 +5804,11 @@ async function exportarExcel() {
 
                 /* =========================================
                    ASISTENCIA POR FECHA
+                   SOLO FECHAS DEL CURSO
                    A / R / L / F
                 ========================================= */
 
-                fechasAsistencia.forEach(
+                fechasAsistenciaCurso.forEach(
                 fecha => {
 
                     const estado =
@@ -5756,7 +5840,7 @@ async function exportarExcel() {
 
                     estudiante.id,
 
-                    todasAsistencias
+                    asistenciasCurso
 
                 );
 
@@ -6036,13 +6120,13 @@ async function exportarExcel() {
                 }
 
 
-                /* FECHAS */
+                /* FECHAS DEL CURSO */
 
                 if (
                     indice >= 2 &&
                     indice <
                     2 +
-                    fechasAsistencia.length
+                    fechasAsistenciaCurso.length
                 ) {
 
                     return {
@@ -6056,7 +6140,7 @@ async function exportarExcel() {
 
                 const inicioTotales =
                 2 +
-                fechasAsistencia.length;
+                fechasAsistenciaCurso.length;
 
 
                 if (
@@ -6518,6 +6602,7 @@ async function cerrarSesion() {
 
 /* =====================================================
    MENSAJES
+   SIEMPRE VISIBLES
 ===================================================== */
 
 function mostrarMensaje(
@@ -6533,6 +6618,11 @@ function mostrarMensaje(
     );
 
 
+    if (!mensaje) {
+        return;
+    }
+
+
     mensaje.textContent =
     texto;
 
@@ -6541,6 +6631,25 @@ function mostrarMensaje(
     error
     ? "#c62828"
     : "#16803c";
+
+
+    mensaje.style.borderColor =
+    error
+    ? "#ef9a9a"
+    : "#a5d6a7";
+
+
+    mensaje.style.background =
+    error
+    ? "#fff5f5"
+    : "#f5fff6";
+
+
+    /*
+       El mensaje utiliza position: fixed,
+       por lo que permanece visible aunque
+       el usuario se desplace por la página.
+    */
 
 }
 
