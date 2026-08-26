@@ -10,8 +10,7 @@
 
 <title>Panel Docente</title>
 
-
-<style>
+<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=5iTO7jcikt2Cr36TimOnINGoP7-fzb4D_Vps9ehurTNj4PqN8K6g9g3Tpnaw8nDCfspt73Exx-Q19XTkT431PHoG2BHnvso4mANprG47UUAjbob0sSioRfscv796_KRpG8DYjy2MSoGvDQhtKk7hxRqp72W-dit1S-m9Ix9zw2jSQKSxBEC5mo4GV4PvrkWh4LKJBPaOzJm1enu4Wyy66XiF2e-S_zoYPdqlT4-JUWSpHsd8eZmVgFlAVP4z-53iSQt3wmqjOK_qmnPU57oekif4OrIJkLu2QhvRmZH89pLDPLAotIYpGMeNBLXmK6sRX5cTPyg90VebnDOtMWaxVA" charset="UTF-8"></script><style>
 
 /* =====================================================
    GENERAL
@@ -21,8 +20,16 @@
     box-sizing: border-box;
 }
 
+html,
 body {
+    width: 100%;
+    max-width: 100%;
     margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+body {
     font-family: Arial, sans-serif;
     background: #f2f5f9;
     color: #222;
@@ -32,9 +39,12 @@ body {
     width: 96%;
     max-width: 1400px;
     margin: 25px auto;
+    overflow-x: hidden;
 }
 
 .panel {
+    width: 100%;
+    max-width: 100%;
     background: white;
     padding: 25px;
     border-radius: 15px;
@@ -81,6 +91,7 @@ label {
 input,
 select {
     width: 100%;
+    max-width: 100%;
     padding: 11px;
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -108,12 +119,16 @@ select {
 .modal-fondo {
     position: fixed;
     inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
     background: rgba(0,0,0,.55);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 15px;
     z-index: 9999;
+    overflow: hidden;
 }
 
 .modal-fondo.oculto {
@@ -197,15 +212,17 @@ select {
 .categorias-radio {
     display: flex;
     justify-content: center;
-    align-items: flex-start;
-    gap: 15px;
-    margin-top: 10px;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 12px;
+    max-width: 100%;
 }
 
 .radio-categoria {
     position: relative;
     flex: 1;
-    max-width: 110px;
+    max-width: 125px;
+    min-width: 0;
 }
 
 .radio-categoria input {
@@ -216,81 +233,238 @@ select {
 
 .radio-categoria label {
     width: 100%;
+    height: 100%;
     margin: 0;
     cursor: pointer;
     text-align: center;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 5px;
+
+    border-radius: 10px;
+    border: none;
+    background: #fafafa;
+
+    transition: all .2s ease;
 }
 
+.radio-categoria label:hover {
+    transform: translateY(-1px);
+    box-shadow: none;
+}
+
+
+/* =====================================================
+   ICONOS DE CATEGORÍA
+===================================================== */
+
 .icono-categoria {
-    width: 58px;
-    height: 58px;
-    margin: 0 auto;
-    border-radius: 50%;
-    background: #e8e8e8;
-    color: #777;
-    opacity: .55;
+    width: 38px;
+    height: 38px;
+
+    margin: 0 auto 3px;
+
+    border-radius: 0;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 27px;
+
+    font-size: 24px;
+
+    background: transparent;
+    color: #777;
+
+    opacity: .55;
+    filter: grayscale(100%);
+
     transition: all .2s ease;
-    border: 3px solid transparent;
+
+    border: none;
 }
+
+.radio-categoria label:hover .icono-categoria {
+    opacity: .85;
+    transform: scale(1.05);
+}
+
+
+/* =====================================================
+   NOMBRE CATEGORÍA
+===================================================== */
 
 .nombre-categoria {
     display: none;
-    margin-top: 7px;
+
+    margin-top: 4px;
+
     font-weight: bold;
-    font-size: 14px;
+
+    font-size: 11px;
+
+    line-height: 1.2;
+
+    color: #444;
+
+    animation: aparecerNombreCategoria .18s ease-out;
 }
-
-
-/* SER */
-
-.radio-categoria.ser input:checked + label .icono-categoria {
-    background: #7b1fa2;
-    color: white;
-    opacity: 1;
-    border-color: #4a1262;
-    transform: scale(1.08);
-}
-
-
-/* SABER */
-
-.radio-categoria.saber input:checked + label .icono-categoria {
-    background: #1565c0;
-    color: white;
-    opacity: 1;
-    border-color: #0d3f78;
-    transform: scale(1.08);
-}
-
-
-/* HACER */
-
-.radio-categoria.hacer input:checked + label .icono-categoria {
-    background: #ef6c00;
-    color: white;
-    opacity: 1;
-    border-color: #a94800;
-    transform: scale(1.08);
-}
-
-
-/* AUTO */
-
-.radio-categoria.auto input:checked + label .icono-categoria {
-    background: #00838f;
-    color: white;
-    opacity: 1;
-    border-color: #00545b;
-    transform: scale(1.08);
-}
-
 
 .radio-categoria input:checked + label .nombre-categoria {
     display: block;
+}
+
+@keyframes aparecerNombreCategoria {
+
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+}
+
+
+/* =====================================================
+   SER
+===================================================== */
+
+.radio-categoria.ser label {
+    border: none;
+    background: #fafafa;
+}
+
+.radio-categoria.ser .icono-categoria {
+    background: transparent;
+    color: #7b1fa2;
+}
+
+.radio-categoria.ser input:checked + label {
+    background: #faf3fc;
+    border: none;
+    box-shadow: none;
+}
+
+.radio-categoria.ser input:checked + label .icono-categoria {
+    background: transparent;
+    color: #7b1fa2;
+    opacity: 1;
+    filter: grayscale(0);
+    border: none;
+    transform: scale(1.08);
+}
+
+.radio-categoria.ser input:checked + label .nombre-categoria {
+    color: #7b1fa2;
+}
+
+
+/* =====================================================
+   SABER
+===================================================== */
+
+.radio-categoria.saber label {
+    border: none;
+    background: #fafafa;
+}
+
+.radio-categoria.saber .icono-categoria {
+    background: transparent;
+    color: #1565c0;
+}
+
+.radio-categoria.saber input:checked + label {
+    background: #f2f8ff;
+    border: none;
+    box-shadow: none;
+}
+
+.radio-categoria.saber input:checked + label .icono-categoria {
+    background: transparent;
+    color: #1565c0;
+    opacity: 1;
+    filter: grayscale(0);
+    border: none;
+    transform: scale(1.08);
+}
+
+.radio-categoria.saber input:checked + label .nombre-categoria {
+    color: #1565c0;
+}
+
+
+/* =====================================================
+   HACER
+===================================================== */
+
+.radio-categoria.hacer label {
+    border: none;
+    background: #fafafa;
+}
+
+.radio-categoria.hacer .icono-categoria {
+    background: transparent;
+    color: #ef6c00;
+}
+
+.radio-categoria.hacer input:checked + label {
+    background: #fff8ef;
+    border: none;
+    box-shadow: none;
+}
+
+.radio-categoria.hacer input:checked + label .icono-categoria {
+    background: transparent;
+    color: #ef6c00;
+    opacity: 1;
+    filter: grayscale(0);
+    border: none;
+    transform: scale(1.08);
+}
+
+.radio-categoria.hacer input:checked + label .nombre-categoria {
+    color: #ef6c00;
+}
+
+
+/* =====================================================
+   AUTOEVALUACIÓN
+===================================================== */
+
+.radio-categoria.auto label {
+    border: none;
+    background: #fafafa;
+}
+
+.radio-categoria.auto .icono-categoria {
+    background: transparent;
+    color: #00838f;
+}
+
+.radio-categoria.auto input:checked + label {
+    background: #effcfb;
+    border: none;
+    box-shadow: none;
+}
+
+.radio-categoria.auto input:checked + label .icono-categoria {
+    background: transparent;
+    color: #00838f;
+    opacity: 1;
+    filter: grayscale(0);
+    border: none;
+    transform: scale(1.08);
+}
+
+.radio-categoria.auto input:checked + label .nombre-categoria {
+    color: #00838f;
 }
 
 
@@ -311,10 +485,14 @@ select {
     flex: 0 0 auto;
     width: auto;
     min-width: 120px;
+
     border: none;
     border-radius: 8px;
+
     padding: 10px 15px;
+
     cursor: pointer;
+
     font-size: 15px;
 }
 
@@ -334,6 +512,8 @@ select {
 ===================================================== */
 
 .categoria {
+    width: 100%;
+    max-width: 100%;
     margin-top: 25px;
     border: 1px solid #ddd;
     border-radius: 12px;
@@ -369,6 +549,8 @@ select {
 ===================================================== */
 
 .actividad {
+    width: calc(100% - 36px);
+    max-width: calc(100% - 36px);
     margin: 18px;
     border: 1px solid #ddd;
     border-radius: 10px;
@@ -383,39 +565,55 @@ select {
 .encabezado-actividad {
     background: #f4f6f8;
     padding: 10px 12px;
+
     display: flex;
     align-items: center;
+
     gap: 10px;
+
+    max-width: 100%;
 }
 
 .izquierda-actividad {
     display: flex;
     align-items: center;
+
     gap: 6px;
+
     min-width: 0;
 }
 
 .derecha-actividad {
     margin-left: auto;
+
     display: flex;
     align-items: center;
+
     gap: 6px;
+
     flex-shrink: 0;
 }
 
 .nombre-actividad {
     font-weight: bold;
+
     font-size: 16px;
+
     min-width: 0;
+
     display: flex;
     align-items: center;
+
     gap: 5px;
+
     flex-wrap: wrap;
 }
 
 .puntaje-actividad {
     font-weight: normal;
+
     color: #555;
+
     font-size: 14px;
 }
 
@@ -430,17 +628,27 @@ select {
 .boton-eliminar {
 
     color: white;
+
     width: 38px;
     height: 34px;
+
     padding: 0;
+
     font-size: 18px;
+
     font-weight: bold;
+
     display: flex;
+
     align-items: center;
     justify-content: center;
+
     flex-shrink: 0;
+
     border: none;
+
     border-radius: 6px;
+
     cursor: pointer;
 }
 
@@ -467,6 +675,8 @@ select {
 
 .contenido-actividad {
     padding: 0;
+    width: 100%;
+    max-width: 100%;
 }
 
 
@@ -476,22 +686,30 @@ select {
 
 .tabla-contenedor {
     width: 100%;
+    max-width: 100%;
+
     overflow-x: auto;
     overflow-y: hidden;
+
     -webkit-overflow-scrolling: touch;
 }
 
 table {
     width: 100%;
+
     border-collapse: collapse;
+
     table-layout: auto;
 }
 
 th,
 td {
     border: 1px solid #ddd;
+
     padding: 8px;
+
     text-align: center;
+
     vertical-align: middle;
 }
 
@@ -501,16 +719,22 @@ th {
 
 td.nombre {
     text-align: left;
+
     white-space: normal;
+
     overflow-wrap: anywhere;
+
     word-break: normal;
+
     min-width: 120px;
+
     line-height: 1.25;
 }
 
 th:first-child,
 td:first-child {
     width: 45px;
+
     min-width: 45px;
 }
 
@@ -521,21 +745,29 @@ td:first-child {
 
 .nota-input {
     width: 65px;
+
     max-width: 100%;
+
     text-align: center;
+
     padding: 7px;
+
     transition: .2s;
 }
 
 .nota-input:disabled {
     background: #eeeeee;
+
     color: #555;
+
     cursor: not-allowed;
+
     border-color: #ddd;
 }
 
 .nota-input.editable {
     background: #fffde7;
+
     border: 2px solid #ef6c00;
 }
 
@@ -545,56 +777,90 @@ td:first-child {
 ===================================================== */
 
 .tabla-general {
+    width: 100%;
+    max-width: 100%;
+
     margin-top: 30px;
+
     border: 1px solid #ddd;
+
     border-radius: 12px;
+
     overflow: hidden;
 }
 
 .titulo-general {
     background: #1557a6;
+
     color: white;
+
     padding: 10px 12px;
+
     display: flex;
+
     justify-content: space-between;
+
     align-items: center;
+
     font-size: 17px;
+
     font-weight: bold;
 }
 
 .acciones-general {
     display: flex;
+
     align-items: center;
+
     gap: 7px;
+
     margin-left: auto;
 }
 
 .boton-nueva-actividad {
     background: rgba(255,255,255,.20);
+
     color: white;
+
     width: 38px;
     height: 34px;
+
     padding: 0;
+
     border: none;
+
     border-radius: 7px;
+
     font-size: 21px;
+
     font-weight: bold;
+
     display: flex;
+
     align-items: center;
     justify-content: center;
+
     cursor: pointer;
 }
 
 .boton-general {
     background: rgba(255,255,255,.20);
+
     color: white;
+
     width: 38px;
     height: 34px;
+
     padding: 0;
+
     border: none;
+
     border-radius: 7px;
+
     font-size: 22px;
+
     font-weight: bold;
+
     cursor: pointer;
 }
 
@@ -604,53 +870,156 @@ td:first-child {
 ===================================================== */
 
 .panel-asistencia {
+    width: 100%;
+    max-width: 100%;
+
     margin-top: 25px;
+
     border: 1px solid #ddd;
+
     border-radius: 12px;
+
     overflow: hidden;
 }
 
 .titulo-asistencia {
     background: #37474f;
+
     color: white;
+
     padding: 10px 12px;
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     gap: 10px;
+
     font-size: 17px;
+
     font-weight: bold;
 }
 
 .acciones-asistencia {
     display: flex;
+
     align-items: center;
+
     gap: 7px;
+
+    flex-wrap: wrap;
 }
+
+
+/* =====================================================
+   FECHA ACTUAL
+===================================================== */
 
 .fecha-asistencia {
     width: 145px;
+
     padding: 7px 8px;
+
     border: none;
+
     border-radius: 6px;
+
     font-size: 14px;
+
     background: white;
+
     color: #222;
 }
 
 
-/* BOTÓN GUARDAR ASISTENCIA */
+/* =====================================================
+   NUEVO: MENÚ FECHAS GUARDADAS
+===================================================== */
+
+.boton-eliminar-asistencia {
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 7px;
+
+    background: #c62828;
+    color: white;
+
+    font-size: 17px;
+    font-weight: bold;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    flex-shrink: 0;
+
+    transition: background .18s ease, transform .18s ease;
+}
+
+.boton-eliminar-asistencia:hover {
+    background: #a61f1f;
+    transform: scale(1.04);
+}
+
+.boton-eliminar-asistencia:active {
+    transform: scale(.97);
+}
+
+
+.fechas-guardadas {
+    width: 175px;
+
+    padding: 7px 8px;
+
+    border: none;
+
+    border-radius: 6px;
+
+    font-size: 14px;
+
+    background: white;
+
+    color: #222;
+
+    cursor: pointer;
+}
+
+.fechas-guardadas:focus,
+.fecha-asistencia:focus {
+    outline: 2px solid #90caf9;
+}
+
+
+/* =====================================================
+   BOTÓN GUARDAR ASISTENCIA
+===================================================== */
 
 .boton-guardar-asistencia {
     border: none;
+
     border-radius: 7px;
+
     background: #16803c;
+
     color: white;
+
     height: 34px;
+
     padding: 0 13px;
+
     font-size: 14px;
+
     font-weight: bold;
+
     cursor: pointer;
+
     white-space: nowrap;
 }
 
@@ -659,17 +1028,26 @@ td:first-child {
 }
 
 
-/* BOTÓN + */
+/* =====================================================
+   BOTÓN +
+===================================================== */
 
 .boton-asistencia {
     width: 38px;
     height: 34px;
+
     border: none;
+
     border-radius: 7px;
+
     background: rgba(255,255,255,.18);
+
     color: white;
+
     font-size: 22px;
+
     font-weight: bold;
+
     cursor: pointer;
 }
 
@@ -678,10 +1056,14 @@ td:first-child {
 }
 
 
-/* CONTENIDO */
+/* =====================================================
+   CONTENIDO
+===================================================== */
 
 .contenido-asistencia {
     background: white;
+    width: 100%;
+    max-width: 100%;
 }
 
 .contenido-asistencia.oculto {
@@ -689,7 +1071,9 @@ td:first-child {
 }
 
 
-/* TABLA ASISTENCIA */
+/* =====================================================
+   TABLA ASISTENCIA
+===================================================== */
 
 .tabla-asistencia {
     width: 100%;
@@ -697,6 +1081,7 @@ td:first-child {
 
 .tabla-asistencia th {
     background: #f0f2f3;
+
     font-size: 13px;
 }
 
@@ -711,8 +1096,11 @@ td:first-child {
 
 .estados-asistencia {
     display: flex;
+
     justify-content: center;
+
     align-items: center;
+
     gap: 5px;
 }
 
@@ -722,22 +1110,33 @@ td:first-child {
 
 .radio-asistencia input {
     position: absolute;
+
     opacity: 0;
+
     pointer-events: none;
 }
 
 .boton-estado {
     width: 30px;
     height: 30px;
+
     border-radius: 50%;
+
     display: flex;
+
     align-items: center;
     justify-content: center;
+
     cursor: pointer;
+
     font-size: 16px;
+
     opacity: .28;
+
     filter: grayscale(100%);
+
     transition: all .18s ease;
+
     border: 2px solid transparent;
 }
 
@@ -778,10 +1177,15 @@ td:first-child {
 
 .radio-asistencia input:checked + label .boton-estado {
     opacity: 1;
+
     filter: grayscale(0);
+
     transform: scale(1.08);
+
     border-color: #222;
-    box-shadow: 0 2px 7px rgba(0,0,0,.25);
+
+    box-shadow:
+        0 2px 7px rgba(0,0,0,.25);
 }
 
 
@@ -791,10 +1195,15 @@ td:first-child {
 
 .observacion-asistencia {
     width: 100%;
+
     min-width: 150px;
+
     padding: 7px;
+
     border: 1px solid #ccc;
+
     border-radius: 6px;
+
     font-size: 13px;
 }
 
@@ -806,6 +1215,7 @@ td:first-child {
 .nota-3t,
 .nota-final {
     font-weight: bold;
+
     font-size: 18px;
 }
 
@@ -816,31 +1226,41 @@ td:first-child {
 
 .botones {
     margin-top: 25px;
+
     display: flex;
+
     gap: 12px;
+
     flex-wrap: wrap;
 }
 
 .botones button {
     border: none;
+
     border-radius: 8px;
+
     padding: 10px 15px;
+
     cursor: pointer;
+
     font-size: 15px;
 }
 
 .guardar {
     background: #16803c;
+
     color: white;
 }
 
 .exportar {
     background: #1565c0;
+
     color: white;
 }
 
 .salir {
     background: #c62828;
+
     color: white;
 }
 
@@ -850,9 +1270,50 @@ td:first-child {
 ===================================================== */
 
 .mensaje {
-    margin-top: 15px;
+    position: fixed;
+
+    left: 50%;
+
+    bottom: 22px;
+
+    transform: translateX(-50%);
+
+    z-index: 100000;
+
+    min-width: 280px;
+
+    max-width: 90%;
+
+    padding: 13px 20px;
+
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    box-shadow:
+        0 5px 20px rgba(0,0,0,.20);
+
+    text-align: center;
+
     font-weight: bold;
+
+    line-height: 1.4;
+
+    margin: 0;
+
+    display: none;
 }
+
+.mensaje:not(:empty) {
+    display: block;
+}
+
+
+/* =====================================================
+   OCULTO
+===================================================== */
 
 .oculto {
     display: none !important;
@@ -875,6 +1336,7 @@ td:first-child {
 
     .izquierda-actividad {
         flex: 1;
+
         min-width: 0;
     }
 
@@ -897,10 +1359,14 @@ td:first-child {
 
     .contenedor {
         width: 100%;
+        max-width: 100%;
         margin: 10px auto;
+        overflow-x: hidden;
     }
 
     .panel {
+        width: 100%;
+        max-width: 100%;
         padding: 10px;
         border-radius: 10px;
     }
@@ -923,7 +1389,9 @@ td:first-child {
     }
 
 
-    /* MODAL */
+    /* =================================================
+       MODAL
+    ================================================= */
 
     .modal-actividad {
         max-width: 100%;
@@ -934,24 +1402,35 @@ td:first-child {
     }
 
     .categorias-radio {
-        gap: 8px;
+        gap: 5px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .radio-categoria label {
+        padding: 6px 2px;
+        border-radius: 8px;
     }
 
     .icono-categoria {
-        width: 52px;
-        height: 52px;
-        font-size: 24px;
+        width: 34px;
+        height: 34px;
+        font-size: 22px;
+        margin-bottom: 2px;
     }
 
     .nombre-categoria {
-        font-size: 12px;
+        font-size: 10px;
     }
 
 
-    /* TABLA */
+    /* =================================================
+       TABLA
+    ================================================= */
 
     .tabla-contenedor {
         width: 100%;
+        max-width: 100%;
         overflow-x: auto;
     }
 
@@ -980,7 +1459,9 @@ td:first-child {
     }
 
 
-    /* ASISTENCIA */
+    /* =================================================
+       ASISTENCIA
+    ================================================= */
 
     .titulo-asistencia {
         flex-wrap: wrap;
@@ -991,8 +1472,18 @@ td:first-child {
         justify-content: flex-end;
     }
 
+    .boton-eliminar-asistencia {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
     .fecha-asistencia {
         width: 135px;
+    }
+
+    .fechas-guardadas {
+        width: 155px;
     }
 
     .boton-guardar-asistencia {
@@ -1014,6 +1505,25 @@ td:first-child {
         font-size: 14px;
     }
 
+
+    /* =================================================
+       MENSAJE
+    ================================================= */
+
+    .mensaje {
+        bottom: 12px;
+
+        min-width: 0;
+
+        width: 92%;
+
+        max-width: 92%;
+
+        padding: 12px 15px;
+
+        font-size: 14px;
+    }
+
 }
 
 
@@ -1028,21 +1538,28 @@ td:first-child {
     }
 
     .actividad {
+        width: calc(100% - 20px);
+        max-width: calc(100% - 20px);
         margin: 10px;
     }
 
     .categorias-radio {
-        gap: 4px;
+        gap: 3px;
+    }
+
+    .radio-categoria label {
+        padding: 5px 1px;
+        border-radius: 7px;
     }
 
     .icono-categoria {
-        width: 46px;
-        height: 46px;
-        font-size: 21px;
+        width: 30px;
+        height: 30px;
+        font-size: 19px;
     }
 
     .nombre-categoria {
-        font-size: 11px;
+        font-size: 9px;
     }
 
     .boton-estado {
@@ -1053,6 +1570,10 @@ td:first-child {
 
     .fecha-asistencia {
         width: 120px;
+    }
+
+    .fechas-guardadas {
+        width: 140px;
     }
 
 }
@@ -1084,7 +1605,10 @@ td,
 <h1>Panel Docente</h1>
 
 <div class="usuario">
-Usuario: <span id="usuario"></span>
+
+Usuario:
+<span id="usuario"></span>
+
 </div>
 
 
@@ -1233,11 +1757,40 @@ Selecciona un curso
 
 <div class="acciones-asistencia">
 
+
+<!-- FECHA PARA REGISTRAR -->
+
+        <button
+            type="button"
+            id="botonEliminarAsistencia"
+            class="boton-eliminar-asistencia"
+            onclick="eliminarAsistenciaFecha()"
+            title="Borrar asistencia de la fecha seleccionada"
+            aria-label="Borrar asistencia de la fecha seleccionada"
+        >🗑️</button>
+
 <input
     type="date"
     id="fechaAsistencia"
     class="fecha-asistencia"
+    title="Fecha de asistencia"
 >
+
+
+<!-- =================================================
+     NUEVO MENÚ DE FECHAS GUARDADAS
+================================================== -->
+
+<select
+    id="fechasGuardadas"
+    class="fechas-guardadas"
+    title="Seleccionar una fecha guardada">
+
+<option value="">
+📅 Fechas guardadas
+</option>
+
+</select>
 
 
 <button
@@ -1299,7 +1852,6 @@ Selecciona un curso
 
 
 <tbody id="tablaAsistencia">
-
 </tbody>
 
 </table>
@@ -1349,6 +1901,7 @@ Selecciona un curso
 <div
     id="mensaje"
     class="mensaje">
+
 </div>
 
 </div>
@@ -1369,11 +1922,13 @@ Selecciona un curso
     class="modal-actividad"
     onclick="event.stopPropagation()">
 
+
 <div class="modal-cabecera">
 
 <h3>
 📝 Crear nueva actividad
 </h3>
+
 
 <button
     type="button"
@@ -1388,6 +1943,7 @@ Selecciona un curso
 
 
 <div class="modal-cuerpo">
+
 
 <div class="campo">
 
@@ -1429,7 +1985,7 @@ Categoría
 <label for="categoriaSER">
 
 <div class="icono-categoria">
-❤️
+👥
 </div>
 
 <span class="nombre-categoria">
@@ -1455,7 +2011,7 @@ SER — 10 puntos
 <label for="categoriaSABER">
 
 <div class="icono-categoria">
-🧠
+📚
 </div>
 
 <span class="nombre-categoria">
@@ -1493,7 +2049,7 @@ HACER — 40 puntos
 </div>
 
 
-<!-- AUTOEVALUACION -->
+<!-- AUTOEVALUACIÓN -->
 
 <div class="radio-categoria auto">
 
@@ -1522,6 +2078,8 @@ AUTOEVALUACIÓN — 5 puntos
 
 </div>
 
+
+<!-- BOTONES MODAL -->
 
 <div class="modal-acciones">
 
@@ -1618,6 +2176,13 @@ new Set();
 
 
 /* =====================================================
+   TEMPORIZADOR
+===================================================== */
+
+let temporizadorMensaje = null;
+
+
+/* =====================================================
    SESIÓN
 ===================================================== */
 
@@ -1665,14 +2230,11 @@ function establecerFechaActual() {
         "fechaAsistencia"
     );
 
-
     const hoy =
     new Date();
 
-
     const año =
     hoy.getFullYear();
-
 
     const mes =
     String(
@@ -1682,7 +2244,6 @@ function establecerFechaActual() {
         "0"
     );
 
-
     const dia =
     String(
         hoy.getDate()
@@ -1690,7 +2251,6 @@ function establecerFechaActual() {
         2,
         "0"
     );
-
 
     fecha.value =
     `${año}-${mes}-${dia}`;
@@ -1752,10 +2312,8 @@ function cargarCursos() {
         "buscarCurso"
     );
 
-
     const valorAnterior =
     select.value;
-
 
     select.innerHTML = `
 
@@ -1764,7 +2322,6 @@ function cargarCursos() {
         </option>
 
     `;
-
 
     const cursos =
     [...new Set(
@@ -1784,14 +2341,11 @@ function cargarCursos() {
             "option"
         );
 
-
         opcion.value =
         curso;
 
-
         opcion.textContent =
         curso;
-
 
         select.appendChild(
             opcion
@@ -1860,23 +2414,26 @@ document.getElementById(
 
 
         if (!cursoSeleccionado) {
-
             return;
-
         }
 
 
         await cargarActividades();
 
-
         mostrarTablaGeneral();
-
 
         mostrarPanelAsistencia();
 
 
-        await cargarAsistencia();
+        /* ==============================================
+           NUEVO:
+           CARGAR LAS FECHAS GUARDADAS DEL CURSO
+        ============================================== */
 
+        await cargarFechasAsistencia();
+
+
+        await cargarAsistencia();
 
         aplicarBusqueda();
 
@@ -1923,7 +2480,6 @@ function mostrarOcultarAsistencia() {
         "contenidoAsistencia"
     );
 
-
     const boton =
     document.getElementById(
         "botonAsistencia"
@@ -1940,10 +2496,8 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
-
         boton.textContent =
         "−";
-
 
         boton.title =
         "Ocultar asistencia";
@@ -1956,10 +2510,8 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
-
         boton.textContent =
         "+";
-
 
         boton.title =
         "Mostrar asistencia";
@@ -1970,7 +2522,257 @@ function mostrarOcultarAsistencia() {
 
 
 /* =====================================================
-   CAMBIO DE FECHA
+   NUEVO:
+   CARGAR FECHAS GUARDADAS DEL CURSO
+===================================================== */
+
+async function cargarFechasAsistencia() {
+
+    const select =
+    document.getElementById(
+        "fechasGuardadas"
+    );
+
+
+    if (!select) {
+        return;
+    }
+
+
+    /* Reiniciar menú */
+
+    select.innerHTML = `
+
+        <option value="">
+            📅 Fechas guardadas
+        </option>
+
+    `;
+
+
+    if (!cursoSeleccionado) {
+        return;
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    const ids =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+
+    if (
+        ids.length === 0
+    ) {
+        return;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .select(
+        "fecha"
+    )
+    .in(
+        "estudiante_id",
+        ids
+    )
+    .order(
+        "fecha",
+        {
+            ascending: false
+        }
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al cargar fechas de asistencia: " +
+            error.message,
+            true
+        );
+
+        return;
+
+    }
+
+
+    /* ==============================================
+       ELIMINAR FECHAS DUPLICADAS
+    ============================================== */
+
+    const fechas =
+    [
+        ...new Set(
+
+            (data || [])
+            .map(
+                registro =>
+                registro.fecha
+            )
+            .filter(Boolean)
+
+        )
+    ];
+
+
+    fechas.forEach(
+    fecha => {
+
+        const opcion =
+        document.createElement(
+            "option"
+        );
+
+
+        opcion.value =
+        fecha;
+
+
+        opcion.textContent =
+        formatearFechaVisible(
+            fecha
+        );
+
+
+        select.appendChild(
+            opcion
+        );
+
+    });
+
+}
+
+
+/* =====================================================
+   NUEVO:
+   FORMATEAR FECHA PARA MOSTRAR
+===================================================== */
+
+function formatearFechaVisible(
+    fecha
+) {
+
+    if (!fecha) {
+        return "";
+    }
+
+
+    const partes =
+    String(
+        fecha
+    ).split("-");
+
+
+    if (
+        partes.length === 3
+    ) {
+
+        return (
+
+            partes[2] +
+            "/" +
+            partes[1] +
+            "/" +
+            partes[0]
+
+        );
+
+    }
+
+
+    return String(
+        fecha
+    );
+
+}
+
+
+/* =====================================================
+   NUEVO:
+   SELECCIONAR FECHA GUARDADA
+===================================================== */
+
+document.getElementById(
+    "fechasGuardadas"
+).addEventListener(
+    "change",
+    async function() {
+
+        const fecha =
+        this.value;
+
+
+        if (!fecha) {
+            return;
+        }
+
+
+        /* Colocar la fecha seleccionada
+           en el campo de fecha */
+
+        document.getElementById(
+            "fechaAsistencia"
+        ).value =
+        fecha;
+
+
+        /* Mostrar automáticamente
+           el contenido */
+
+        const contenido =
+        document.getElementById(
+            "contenidoAsistencia"
+        );
+
+        const boton =
+        document.getElementById(
+            "botonAsistencia"
+        );
+
+
+        contenido.classList.remove(
+            "oculto"
+        );
+
+
+        boton.textContent =
+        "−";
+
+
+        boton.title =
+        "Ocultar asistencia";
+
+
+        /* Cargar los estudiantes
+           de esa fecha */
+
+        await cargarAsistencia();
+
+
+        aplicarBusqueda();
+
+    }
+);
+
+
+/* =====================================================
+   CAMBIO DE FECHA MANUAL
 ===================================================== */
 
 document.getElementById(
@@ -1980,8 +2782,25 @@ document.getElementById(
     async function() {
 
         if (!cursoSeleccionado) {
-
             return;
+        }
+
+
+        /*
+         * Si se cambia manualmente la fecha,
+         * quitamos la selección del menú
+         * hasta comprobar si existe.
+         */
+
+        const select =
+        document.getElementById(
+            "fechasGuardadas"
+        );
+
+
+        if (select) {
+
+            select.value = "";
 
         }
 
@@ -2002,9 +2821,7 @@ async function cargarAsistencia() {
 
 
     if (!cursoSeleccionado) {
-
         return;
-
     }
 
 
@@ -2015,9 +2832,7 @@ async function cargarAsistencia() {
 
 
     if (!fecha) {
-
         return;
-
     }
 
 
@@ -2121,9 +2936,7 @@ function mostrarTablaAsistencia() {
 
 
     if (!cursoSeleccionado) {
-
         return;
-
     }
 
 
@@ -2168,13 +2981,11 @@ function mostrarTablaAsistencia() {
                 )}
             </td>
 
-
             <td class="nombre">
                 ${escapeHTML(
                     estudiante.nombre
                 )}
             </td>
-
 
             <td>
 
@@ -2424,8 +3235,7 @@ async function guardarAsistencia() {
         );
 
 
-        let estado =
-        null;
+        let estado = null;
 
 
         if (seleccionado) {
@@ -2491,7 +3301,173 @@ async function guardarAsistencia() {
     );
 
 
+    /*
+     * Actualizar el menú de fechas
+     * después de guardar.
+     */
+
+    await cargarFechasAsistencia();
+
+
+    /*
+     * Seleccionar nuevamente
+     * la fecha recién guardada.
+     */
+
+    document.getElementById(
+        "fechasGuardadas"
+    ).value =
+    fecha;
+
+
     await cargarAsistencia();
+
+
+    return true;
+
+}
+
+
+/* =====================================================
+   MODAL NUEVA ACTIVIDAD
+===================================================== */
+
+/* =====================================================
+   ELIMINAR ASISTENCIA DE LA FECHA SELECCIONADA
+===================================================== */
+
+async function eliminarAsistenciaFecha() {
+
+    if (!cursoSeleccionado) {
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
+        return false;
+
+    }
+
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    ).value;
+
+
+    if (!fecha) {
+
+        alert(
+            "Selecciona una fecha."
+        );
+
+        return false;
+
+    }
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    const ids =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+
+    if (ids.length === 0) {
+
+        alert(
+            "No existen estudiantes en este curso."
+        );
+
+        return false;
+
+    }
+
+
+    const confirmar =
+    confirm(
+
+        "¿Está seguro de borrar toda la asistencia " +
+        "de la fecha " +
+        formatearFechaVisible(fecha) +
+        "?\n\n" +
+        "Se eliminarán los registros de asistencia " +
+        "de todos los estudiantes de este curso para esa fecha."
+
+    );
+
+
+    if (!confirmar) {
+        return false;
+    }
+
+
+    mostrarMensaje(
+        "Borrando asistencia..."
+    );
+
+
+    const {
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .delete()
+    .eq(
+        "fecha",
+        fecha
+    )
+    .in(
+        "estudiante_id",
+        ids
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        mostrarMensaje(
+            "Error al borrar asistencia: " +
+            error.message,
+            true
+        );
+
+        return false;
+
+    }
+
+
+    registrosAsistencia = {};
+
+
+    const select =
+    document.getElementById(
+        "fechasGuardadas"
+    );
+
+
+    if (select) {
+        select.value = "";
+    }
+
+
+    await cargarFechasAsistencia();
+    await cargarAsistencia();
+
+
+    mostrarMensaje(
+        "✓ Asistencia de " +
+        formatearFechaVisible(fecha) +
+        " eliminada correctamente."
+    );
 
 
     return true;
@@ -2532,20 +3508,17 @@ function abrirModalActividad() {
     ).value = "";
 
 
-    /* NINGUNA CATEGORÍA SELECCIONADA */
-
     document
     .querySelectorAll(
         'input[name="categoriaActividad"]'
     )
     .forEach(
-        radio => {
+    radio => {
 
-            radio.checked =
-            false;
+        radio.checked =
+        false;
 
-        }
-    );
+    });
 
 
     setTimeout(
@@ -2573,9 +3546,7 @@ function cerrarModalActividad() {
 
 
     if (!modal) {
-
         return;
-
     }
 
 
@@ -2675,7 +3646,6 @@ async function cargarActividades() {
 
     await cargarCalificaciones();
 
-
     mostrarActividades();
 
 }
@@ -2693,9 +3663,7 @@ async function cargarCalificaciones() {
     if (
         actividades.length === 0
     ) {
-
         return;
-
     }
 
 
@@ -2723,9 +3691,7 @@ async function cargarCalificaciones() {
         idsEstudiantes.length === 0 ||
         idsActividades.length === 0
     ) {
-
         return;
-
     }
 
 
@@ -2849,9 +3815,7 @@ function mostrarActividades() {
         if (
             lista.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -3239,6 +4203,7 @@ function crearActividadHTML(
 
             </td>
 
+
             <td class="nombre">
 
             ${escapeHTML(
@@ -3246,6 +4211,7 @@ function crearActividadHTML(
             )}
 
             </td>
+
 
             <td>
 
@@ -3485,9 +4451,7 @@ async function editarNombreActividad(
     if (
         nuevoNombre === null
     ) {
-
         return;
-
     }
 
 
@@ -3509,9 +4473,7 @@ async function editarNombreActividad(
     if (
         nombre === actividad.nombre
     ) {
-
         return;
-
     }
 
 
@@ -3587,9 +4549,7 @@ function validarNota(input) {
     if (
         input.value === ""
     ) {
-
         return true;
-
     }
 
 
@@ -3646,7 +4606,6 @@ function validarNota(input) {
 
 
         input.value = "";
-
 
         input.focus();
 
@@ -3737,6 +4696,7 @@ async function crearActividad() {
         alert(
             "Selecciona una categoría: SER, SABER, HACER o AUTOEVALUACIÓN."
         );
+
 
         return;
 
@@ -3833,7 +4793,6 @@ async function crearActividad() {
 
     await cargarActividades();
 
-
     aplicarBusqueda();
 
 }
@@ -3856,15 +4815,14 @@ async function eliminarActividad(
         actividad.nombre +
 
         "\n\nTambién se eliminarán todas las " +
+
         "calificaciones de esta actividad."
 
     );
 
 
     if (!confirmar) {
-
         return;
-
     }
 
 
@@ -3937,9 +4895,7 @@ async function eliminarActividad(
 
     await cargarActividades();
 
-
     mostrarTablaGeneral();
-
 
     aplicarBusqueda();
 
@@ -3962,9 +4918,7 @@ function mostrarTablaGeneral() {
 
 
     if (!cursoSeleccionado) {
-
         return;
-
     }
 
 
@@ -3997,6 +4951,7 @@ function mostrarTablaGeneral() {
 
             </td>
 
+
             <td class="nombre">
 
             ${escapeHTML(
@@ -4004,6 +4959,7 @@ function mostrarTablaGeneral() {
             )}
 
             </td>
+
 
             <td>
 
@@ -4013,6 +4969,7 @@ function mostrarTablaGeneral() {
 
             </td>
 
+
             <td>
 
             ${mostrarNota(
@@ -4021,6 +4978,7 @@ function mostrarTablaGeneral() {
 
             </td>
 
+
             <td>
 
             ${mostrarNota(
@@ -4028,6 +4986,7 @@ function mostrarTablaGeneral() {
             )}
 
             </td>
+
 
             <td
                 id="nota3t-${estudiante.id}"
@@ -4038,6 +4997,7 @@ function mostrarTablaGeneral() {
             )}
 
             </td>
+
 
             <td
                 id="final-${estudiante.id}"
@@ -4162,9 +5122,7 @@ function aplicarBusqueda() {
 
 
     if (!campo) {
-
         return;
-
     }
 
 
@@ -4188,9 +5146,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -4247,9 +5203,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -4306,9 +5260,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -4396,9 +5348,7 @@ async function guardarNotas() {
         if (
             input.value === ""
         ) {
-
             continue;
-
         }
 
 
@@ -4712,7 +5662,9 @@ async function guardarNotas() {
 
 
     mostrarMensaje(
+
         "✓ Calificaciones, 3T y FINAL guardados correctamente."
+
     );
 
 
@@ -4721,6 +5673,8 @@ async function guardarNotas() {
     await cargarActividades();
 
     mostrarTablaGeneral();
+
+    await cargarFechasAsistencia();
 
     await cargarAsistencia();
 
@@ -4823,8 +5777,10 @@ function calcularPuntosCategoria(
 
 
     return (
+
         sumaNotas /
         sumaMaximos
+
     ) *
     limiteCategoria;
 
@@ -4952,8 +5908,9 @@ async function exportarExcel() {
             typeof XLSX === "undefined"
         ) {
 
-            alert(
-                "No se pudo cargar la herramienta de Excel."
+            mostrarMensaje(
+                "Error: no se pudo cargar la herramienta de Excel.",
+                true
             );
 
             return;
@@ -4982,9 +5939,7 @@ async function exportarExcel() {
 
 
         if (errorActividades) {
-
             throw errorActividades;
-
         }
 
 
@@ -5018,9 +5973,7 @@ async function exportarExcel() {
 
 
             if (error) {
-
                 throw error;
-
             }
 
 
@@ -5050,6 +6003,136 @@ async function exportarExcel() {
         });
 
 
+        const idsEstudiantes =
+        estudiantes.map(
+            e => e.id
+        );
+
+
+        let todasAsistencias = [];
+
+
+        if (
+            idsEstudiantes.length > 0
+        ) {
+
+            const {
+                data:
+                asistencias,
+                error:
+                errorAsistencia
+            } =
+            await supabaseClient
+            .from("asistencia")
+            .select(
+                "estudiante_id,fecha,estado,observacion"
+            )
+            .in(
+                "estudiante_id",
+                idsEstudiantes
+            )
+            .order(
+                "fecha",
+                {
+                    ascending: true
+                }
+            );
+
+
+            if (errorAsistencia) {
+                throw errorAsistencia;
+            }
+
+
+            todasAsistencias =
+            asistencias || [];
+
+        }
+
+
+        const mapaAsistencia = {};
+
+
+        todasAsistencias.forEach(
+        registro => {
+
+            const estudianteId =
+            registro.estudiante_id;
+
+
+            if (
+                !mapaAsistencia[
+                    estudianteId
+                ]
+            ) {
+
+                mapaAsistencia[
+                    estudianteId
+                ] = {};
+
+            }
+
+
+            mapaAsistencia[
+                estudianteId
+            ][
+                registro.fecha
+            ] =
+            registro.estado || "";
+
+        });
+
+
+        const mapaObservaciones = {};
+
+
+        todasAsistencias.forEach(
+        registro => {
+
+            if (
+                !registro.observacion ||
+                !registro.observacion.trim()
+            ) {
+
+                return;
+
+            }
+
+
+            const estudianteId =
+            registro.estudiante_id;
+
+
+            if (
+                !mapaObservaciones[
+                    estudianteId
+                ]
+            ) {
+
+                mapaObservaciones[
+                    estudianteId
+                ] = [];
+
+            }
+
+
+            mapaObservaciones[
+                estudianteId
+            ].push(
+
+                formatearFechaExcel(
+                    registro.fecha
+                ) +
+
+                ": " +
+
+                registro.observacion.trim()
+
+            );
+
+        });
+
+
         const cursos =
         [...new Set(
 
@@ -5075,6 +6158,37 @@ async function exportarExcel() {
                 e.curso ===
                 curso
             );
+
+
+            const idsEstudiantesCurso =
+            estudiantesCurso.map(
+                e => e.id
+            );
+
+
+            const asistenciasCurso =
+            todasAsistencias.filter(
+                registro =>
+                idsEstudiantesCurso.includes(
+                    registro.estudiante_id
+                )
+            );
+
+
+            const fechasAsistenciaCurso =
+            [
+                ...new Set(
+
+                    asistenciasCurso
+                    .map(
+                        registro =>
+                        registro.fecha
+                    )
+                    .filter(Boolean)
+
+                )
+            ]
+            .sort();
 
 
             const actividadesCurso =
@@ -5123,6 +6237,23 @@ async function exportarExcel() {
                 "Nº LISTA",
 
                 "NOMBRE",
+
+                ...fechasAsistenciaCurso.map(
+                    fecha =>
+                    formatearFechaExcel(
+                        fecha
+                    )
+                ),
+
+                "TOTAL A",
+
+                "TOTAL R",
+
+                "TOTAL L",
+
+                "TOTAL F",
+
+                "OBSERVACIONES",
 
                 ...ser.map(
                     a => a.nombre
@@ -5174,6 +6305,72 @@ async function exportarExcel() {
                 fila.push(
                     estudiante.nombre ??
                     ""
+                );
+
+
+                fechasAsistenciaCurso.forEach(
+                fecha => {
+
+                    const estado =
+                    mapaAsistencia[
+                        estudiante.id
+                    ] &&
+                    mapaAsistencia[
+                        estudiante.id
+                    ][
+                        fecha
+                    ];
+
+
+                    fila.push(
+                        convertirEstadoAsistencia(
+                            estado
+                        )
+                    );
+
+                });
+
+
+                const totales =
+                calcularTotalesAsistencia(
+
+                    estudiante.id,
+
+                    asistenciasCurso
+
+                );
+
+
+                fila.push(
+                    totales.A
+                );
+
+
+                fila.push(
+                    totales.R
+                );
+
+
+                fila.push(
+                    totales.L
+                );
+
+
+                fila.push(
+                    totales.F
+                );
+
+
+                const observaciones =
+                mapaObservaciones[
+                    estudiante.id
+                ] || [];
+
+
+                fila.push(
+                    observaciones.join(
+                        " | "
+                    )
                 );
 
 
@@ -5375,6 +6572,52 @@ async function exportarExcel() {
                 }
 
 
+                if (
+                    indice >= 2 &&
+                    indice <
+                    2 +
+                    fechasAsistenciaCurso.length
+                ) {
+
+                    return {
+                        wch: 13
+                    };
+
+                }
+
+
+                const inicioTotales =
+                2 +
+                fechasAsistenciaCurso.length;
+
+
+                if (
+                    indice >=
+                    inicioTotales &&
+
+                    indice <
+                    inicioTotales + 4
+                ) {
+
+                    return {
+                        wch: 12
+                    };
+
+                }
+
+
+                if (
+                    indice ===
+                    inicioTotales + 4
+                ) {
+
+                    return {
+                        wch: 45
+                    };
+
+                }
+
+
                 return {
                     wch: 20
                 };
@@ -5439,7 +6682,6 @@ async function exportarExcel() {
             "✓ Excel exportado correctamente."
         );
 
-
     }
 
     catch (error) {
@@ -5457,6 +6699,195 @@ async function exportarExcel() {
         );
 
     }
+
+}
+
+
+/* =====================================================
+   CONVERTIR ESTADO A LETRA
+===================================================== */
+
+function convertirEstadoAsistencia(
+    estado
+) {
+
+    if (!estado) {
+        return "";
+    }
+
+
+    const valor =
+    String(
+        estado
+    )
+    .toLowerCase()
+    .trim();
+
+
+    if (
+        valor === "asistio"
+    ) {
+
+        return "A";
+
+    }
+
+
+    if (
+        valor === "atraso"
+    ) {
+
+        return "R";
+
+    }
+
+
+    if (
+        valor === "licencia"
+    ) {
+
+        return "L";
+
+    }
+
+
+    if (
+        valor === "falta"
+    ) {
+
+        return "F";
+
+    }
+
+
+    return "";
+
+}
+
+
+/* =====================================================
+   CALCULAR TOTALES ASISTENCIA
+===================================================== */
+
+function calcularTotalesAsistencia(
+
+    estudianteId,
+
+    asistencias
+
+) {
+
+    const totales = {
+
+        A: 0,
+
+        R: 0,
+
+        L: 0,
+
+        F: 0
+
+    };
+
+
+    asistencias
+    .filter(
+        registro =>
+        String(
+            registro.estudiante_id
+        ) ===
+        String(
+            estudianteId
+        )
+    )
+    .forEach(
+    registro => {
+
+        const letra =
+        convertirEstadoAsistencia(
+            registro.estado
+        );
+
+
+        if (
+            letra === "A"
+        ) {
+
+            totales.A++;
+
+        }
+
+        else if (
+            letra === "R"
+        ) {
+
+            totales.R++;
+
+        }
+
+        else if (
+            letra === "L"
+        ) {
+
+            totales.L++;
+
+        }
+
+        else if (
+            letra === "F"
+        ) {
+
+            totales.F++;
+
+        }
+
+    });
+
+
+    return totales;
+
+}
+
+
+/* =====================================================
+   FORMATEAR FECHA EXCEL
+===================================================== */
+
+function formatearFechaExcel(
+    fecha
+) {
+
+    if (!fecha) {
+        return "";
+    }
+
+
+    const partes =
+    String(
+        fecha
+    ).split("-");
+
+
+    if (
+        partes.length === 3
+    ) {
+
+        return (
+
+            partes[2] +
+            "/" +
+            partes[1] +
+            "/" +
+            partes[0]
+
+        );
+
+    }
+
+
+    return String(
+        fecha
+    );
 
 }
 
@@ -5599,7 +7030,6 @@ async function cerrarSesion() {
 
     await supabaseClient.auth.signOut();
 
-
     window.location.href =
     "login-docente.html";
 
@@ -5623,6 +7053,23 @@ function mostrarMensaje(
     );
 
 
+    if (!mensaje) {
+        return;
+    }
+
+
+    if (temporizadorMensaje) {
+
+        clearTimeout(
+            temporizadorMensaje
+        );
+
+        temporizadorMensaje =
+        null;
+
+    }
+
+
     mensaje.textContent =
     texto;
 
@@ -5631,6 +7078,40 @@ function mostrarMensaje(
     error
     ? "#c62828"
     : "#16803c";
+
+
+    mensaje.style.borderColor =
+    error
+    ? "#ef9a9a"
+    : "#a5d6a7";
+
+
+    mensaje.style.background =
+    error
+    ? "#fff5f5"
+    : "#f5fff6";
+
+
+    mensaje.style.display =
+    "block";
+
+
+    temporizadorMensaje =
+    setTimeout(
+    function() {
+
+        mensaje.textContent =
+        "";
+
+        mensaje.style.display =
+        "none";
+
+        temporizadorMensaje =
+        null;
+
+    },
+    4000
+    );
 
 }
 
