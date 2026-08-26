@@ -594,7 +594,7 @@ button:hover {
 
     font-size: 13px;
 
-    padding: 12px 15px 5px;
+    padding: 12px 15px 8px;
 
     line-height: 1.5;
 }
@@ -633,7 +633,7 @@ button:hover {
 
 .asistencia-card .icono {
 
-    font-size: 20px;
+    font-size: 19px;
 
     display: block;
 
@@ -653,7 +653,7 @@ button:hover {
 
 .asistencia-card .texto {
 
-    font-size: 10px;
+    font-size: 9px;
 
     color: #666;
 
@@ -675,21 +675,29 @@ button:hover {
 }
 
 
-.asistencia-falta {
-
-    color: #c62828;
-}
-
-
 .asistencia-licencia {
 
     color: #1565c0;
 }
 
 
+.asistencia-falta {
+
+    color: #c62828;
+}
+
+
 /* =================================================
    TABLA ASISTENCIA
 ================================================= */
+
+.tabla-asistencia-contenedor {
+
+    width: 100%;
+
+    overflow-x: auto;
+}
+
 
 .tabla-asistencia {
 
@@ -698,8 +706,6 @@ button:hover {
     border-collapse: collapse;
 
     font-size: 13px;
-
-    margin-top: 5px;
 }
 
 
@@ -728,6 +734,18 @@ button:hover {
     border-bottom: 1px solid #eee;
 
     text-align: center;
+
+    vertical-align: middle;
+}
+
+
+.tabla-asistencia td.observacion {
+
+    text-align: left;
+
+    color: #666;
+
+    font-size: 12px;
 }
 
 
@@ -767,19 +785,19 @@ button:hover {
 }
 
 
-.estado-falta {
-
-    background: #ffebee;
-
-    color: #c62828;
-}
-
-
 .estado-licencia {
 
     background: #e3f2fd;
 
     color: #1565c0;
+}
+
+
+.estado-falta {
+
+    background: #ffebee;
+
+    color: #c62828;
 }
 
 
@@ -925,7 +943,7 @@ button:hover {
 
     .tabla-asistencia {
 
-        font-size: 12px;
+        font-size: 11px;
 
     }
 
@@ -1043,6 +1061,15 @@ const SUPABASE_KEY =
 
 
 let alumnoActual = null;
+
+
+/* =================================================
+   FECHAS DEL 3ER TRIMESTRE
+================================================= */
+
+const INICIO_3T = "2026-08-01";
+
+const FIN_3T = "2026-12-31";
 
 
 /* =================================================
@@ -1767,24 +1794,6 @@ async function mostrarDetalles() {
                     : null;
 
 
-                const puntos =
-
-                    cantidad > 0
-
-                    ? (promedio / 100) * limite
-
-                    : 0;
-
-
-                const puntosMostrados =
-
-                    cantidad > 0
-
-                    ? Math.round(puntos)
-
-                    : null;
-
-
                 html += `
 
                     <div class="categoria">
@@ -1945,7 +1954,7 @@ async function mostrarDetalles() {
 
 
                 <!-- =====================================
-                     ASISTENCIA 3ER TRIMESTRE
+                     ASISTENCIA
                 ====================================== -->
 
                 <div id="asistencia3T">
@@ -2003,7 +2012,7 @@ async function mostrarDetalles() {
 
 
 /* =================================================
-   CARGAR ASISTENCIA 3ER TRIMESTRE
+   CARGAR ASISTENCIA DEL 3ER TRIMESTRE
 ================================================= */
 
 async function cargarAsistencia3T() {
@@ -2016,11 +2025,31 @@ async function cargarAsistencia3T() {
 
 
     if (!contenedor) {
+
         return;
+
     }
 
 
     try {
+
+
+        /*
+        =================================================
+        IMPORTANTE
+
+        NO se modifica la base de datos.
+
+        Se utilizan solamente:
+
+        estudiante_id
+        fecha
+        estado
+        observacion
+
+        Y el filtro de fechas se realiza desde HTML.
+        =================================================
+        */
 
 
         const respuesta =
@@ -2030,9 +2059,11 @@ async function cargarAsistencia3T() {
 
                 `estudiante_id=eq.${alumnoActual.id}` +
 
-                `&trimestre=eq.3` +
+                `&fecha=gte.${INICIO_3T}` +
 
-                `&select=id,fecha,estado` +
+                `&fecha=lte.${FIN_3T}` +
+
+                `&select=id,fecha,estado,observacion` +
 
                 `&order=fecha.desc`,
 
@@ -2075,20 +2106,21 @@ async function cargarAsistencia3T() {
 
 
         /* =========================================
-           CONTAR ESTADOS
+           CONTADORES
         ========================================= */
 
         let presentes = 0;
 
         let atrasos = 0;
 
-        let faltas = 0;
-
         let licencias = 0;
+
+        let faltas = 0;
 
 
         asistencias.forEach(
             asistencia => {
+
 
                 const estado =
                     normalizarEstado(
@@ -2097,7 +2129,7 @@ async function cargarAsistencia3T() {
 
 
                 if (
-                    estado === "presente"
+                    estado === "asistio"
                 ) {
 
                     presentes++;
@@ -2113,18 +2145,18 @@ async function cargarAsistencia3T() {
                 }
 
                 else if (
-                    estado === "falta"
-                ) {
-
-                    faltas++;
-
-                }
-
-                else if (
                     estado === "licencia"
                 ) {
 
                     licencias++;
+
+                }
+
+                else if (
+                    estado === "falta"
+                ) {
+
+                    faltas++;
 
                 }
 
@@ -2150,6 +2182,15 @@ async function cargarAsistencia3T() {
 
                     </div>
 
+
+                    <div class="asistencia-descripcion">
+
+                        Del ${formatearFecha(INICIO_3T)}
+                        al ${formatearFecha(FIN_3T)}
+
+                    </div>
+
+
                     <div class="asistencia-vacia">
 
                         Todavía no hay registros
@@ -2167,7 +2208,7 @@ async function cargarAsistencia3T() {
 
 
         /* =========================================
-           CONSTRUIR TABLA
+           GENERAR FILAS
         ========================================= */
 
         let filas = "";
@@ -2187,6 +2228,17 @@ async function cargarAsistencia3T() {
                     obtenerEstadoAsistencia(
                         estado
                     );
+
+
+                const observacion =
+
+                    asistencia.observacion
+
+                    ? escapeHTML(
+                        asistencia.observacion
+                    )
+
+                    : "—";
 
 
                 filas += `
@@ -2210,9 +2262,17 @@ async function cargarAsistencia3T() {
                             ">
 
                                 ${informacion.icono}
+
                                 ${informacion.nombre}
 
                             </span>
+
+                        </td>
+
+
+                        <td class="observacion">
+
+                            ${observacion}
 
                         </td>
 
@@ -2225,12 +2285,13 @@ async function cargarAsistencia3T() {
 
 
         /* =========================================
-           HTML FINAL
+           MOSTRAR TABLA
         ========================================= */
 
         contenedor.innerHTML = `
 
             <div class="asistencia-box">
+
 
                 <div class="asistencia-titulo">
 
@@ -2254,14 +2315,12 @@ async function cargarAsistencia3T() {
 
                     <div class="asistencia-card">
 
-                        <span class="
-                            icono
-                            asistencia-presente
-                        ">
+                        <span class="icono">
 
                             🟢
 
                         </span>
+
 
                         <span class="
                             cantidad
@@ -2272,9 +2331,10 @@ async function cargarAsistencia3T() {
 
                         </span>
 
+
                         <span class="texto">
 
-                            PRESENTES
+                            ASISTENCIAS
 
                         </span>
 
@@ -2283,14 +2343,12 @@ async function cargarAsistencia3T() {
 
                     <div class="asistencia-card">
 
-                        <span class="
-                            icono
-                            asistencia-atraso
-                        ">
+                        <span class="icono">
 
                             🟡
 
                         </span>
+
 
                         <span class="
                             cantidad
@@ -2300,6 +2358,7 @@ async function cargarAsistencia3T() {
                             ${atrasos}
 
                         </span>
+
 
                         <span class="texto">
 
@@ -2312,43 +2371,12 @@ async function cargarAsistencia3T() {
 
                     <div class="asistencia-card">
 
-                        <span class="
-                            icono
-                            asistencia-falta
-                        ">
-
-                            🔴
-
-                        </span>
-
-                        <span class="
-                            cantidad
-                            asistencia-falta
-                        ">
-
-                            ${faltas}
-
-                        </span>
-
-                        <span class="texto">
-
-                            FALTAS
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="
-                            icono
-                            asistencia-licencia
-                        ">
+                        <span class="icono">
 
                             🔵
 
                         </span>
+
 
                         <span class="
                             cantidad
@@ -2359,9 +2387,38 @@ async function cargarAsistencia3T() {
 
                         </span>
 
+
                         <span class="texto">
 
-                            LICENCIAS
+                            CON LICENCIA
+
+                        </span>
+
+                    </div>
+
+
+                    <div class="asistencia-card">
+
+                        <span class="icono">
+
+                            🔴
+
+                        </span>
+
+
+                        <span class="
+                            cantidad
+                            asistencia-falta
+                        ">
+
+                            ${faltas}
+
+                        </span>
+
+
+                        <span class="texto">
+
+                            SIN LICENCIA
 
                         </span>
 
@@ -2373,36 +2430,50 @@ async function cargarAsistencia3T() {
 
                 <!-- TABLA -->
 
-                <table class="tabla-asistencia">
+                <div class="tabla-asistencia-contenedor">
 
-                    <thead>
-
-                        <tr>
-
-                            <th>
-
-                                📅 Fecha
-
-                            </th>
-
-                            <th>
-
-                                📌 Asistencia
-
-                            </th>
-
-                        </tr>
-
-                    </thead>
+                    <table class="tabla-asistencia">
 
 
-                    <tbody>
+                        <thead>
 
-                        ${filas}
+                            <tr>
 
-                    </tbody>
+                                <th>
 
-                </table>
+                                    📅 Fecha
+
+                                </th>
+
+
+                                <th>
+
+                                    Estado
+
+                                </th>
+
+
+                                <th>
+
+                                    Observación
+
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            ${filas}
+
+                        </tbody>
+
+
+                    </table>
+
+                </div>
 
 
             </div>
@@ -2478,7 +2549,7 @@ function normalizarEstado(estado) {
 
 
 /* =================================================
-   INFORMACIÓN DEL ESTADO
+   ESTADOS DE ASISTENCIA
 ================================================= */
 
 function obtenerEstadoAsistencia(estado) {
@@ -2487,13 +2558,11 @@ function obtenerEstadoAsistencia(estado) {
     switch (estado) {
 
 
-        case "presente":
-
-        case "p":
+        case "asistio":
 
             return {
 
-                nombre: "Presente",
+                nombre: "Asistencia",
 
                 icono: "🟢",
 
@@ -2503,10 +2572,6 @@ function obtenerEstadoAsistencia(estado) {
 
 
         case "atraso":
-
-        case "a":
-
-        case "tarde":
 
             return {
 
@@ -2519,36 +2584,28 @@ function obtenerEstadoAsistencia(estado) {
             };
 
 
-        case "falta":
-
-        case "f":
-
-        case "ausente":
-
-            return {
-
-                nombre: "Falta",
-
-                icono: "🔴",
-
-                clase: "estado-falta"
-
-            };
-
-
         case "licencia":
 
-        case "l":
-
-        case "justificada":
-
             return {
 
-                nombre: "Licencia",
+                nombre: "Falta con licencia",
 
                 icono: "🔵",
 
                 clase: "estado-licencia"
+
+            };
+
+
+        case "falta":
+
+            return {
+
+                nombre: "Falta sin licencia",
+
+                icono: "🔴",
+
+                clase: "estado-falta"
 
             };
 
