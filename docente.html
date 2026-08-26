@@ -628,6 +628,17 @@ td:first-child {
     gap: 7px;
 }
 
+.lista-fechas-asistencia {
+    width: 145px;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    color: #222;
+    cursor: pointer;
+}
+
 .fecha-asistencia {
     width: 145px;
     padding: 7px 8px;
@@ -636,6 +647,25 @@ td:first-child {
     font-size: 14px;
     background: white;
     color: #222;
+}
+
+.boton-eliminar-fecha-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #c62828;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.boton-eliminar-fecha-asistencia:hover {
+    background: #a91f1f;
 }
 
 
@@ -1233,12 +1263,30 @@ Selecciona un curso
 
 <div class="acciones-asistencia">
 
+<select
+    id="listaFechasAsistencia"
+    class="lista-fechas-asistencia"
+    onchange="seleccionarFechaAsistencia()"
+    title="Fechas con asistencia del curso"
+>
+    <option value="">Fechas guardadas</option>
+</select>
+
 <input
     type="date"
     id="fechaAsistencia"
     class="fecha-asistencia"
 >
 
+<button
+    type="button"
+    id="botonEliminarFechaAsistencia"
+    class="boton-eliminar-fecha-asistencia"
+    onclick="eliminarFechaAsistencia()"
+    title="Eliminar la asistencia de esta fecha del curso"
+>
+    🗑️
+</button>
 
 <button
     type="button"
@@ -1875,6 +1923,9 @@ document.getElementById(
         mostrarPanelAsistencia();
 
 
+        await cargarFechasAsistencia();
+
+
         await cargarAsistencia();
 
 
@@ -1965,6 +2016,166 @@ function mostrarOcultarAsistencia() {
         "Mostrar asistencia";
 
     }
+
+}
+
+
+/* =====================================================
+   FECHAS DE ASISTENCIA DEL CURSO
+===================================================== */
+
+async function cargarFechasAsistencia() {
+
+    const select =
+    document.getElementById(
+        "listaFechasAsistencia"
+    );
+
+    if (!select) {
+        return;
+    }
+
+    select.innerHTML = `
+        <option value="">Fechas guardadas</option>
+    `;
+
+    if (!cursoSeleccionado) {
+        return;
+    }
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
+    const ids = estudiantesCurso.map(
+        e => e.id
+    );
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .select("fecha")
+    .in("estudiante_id", ids)
+    .order("fecha", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        mostrarMensaje(
+            "Error al cargar las fechas de asistencia: " +
+            error.message,
+            true
+        );
+        return;
+    }
+
+    const fechas = [...new Set(
+        (data || []).map(r => r.fecha).filter(Boolean)
+    )];
+
+    fechas.forEach(fecha => {
+        const opcion =
+        document.createElement("option");
+
+        opcion.value = fecha;
+        opcion.textContent = fecha;
+        select.appendChild(opcion);
+    });
+
+}
+
+function seleccionarFechaAsistencia() {
+
+    const select =
+    document.getElementById(
+        "listaFechasAsistencia"
+    );
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    );
+
+    if (!select.value) {
+        return;
+    }
+
+    fecha.value = select.value;
+    cargarAsistencia();
+
+}
+
+async function eliminarFechaAsistencia() {
+
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    ).value;
+
+    if (!fecha) {
+        alert("Selecciona una fecha de asistencia.");
+        return;
+    }
+
+    const confirmar = confirm(
+        `¿Deseas eliminar toda la asistencia del curso "${cursoSeleccionado}" correspondiente al ${fecha}?\n\nEsta acción eliminará los registros de todos los estudiantes de esa fecha.`
+    );
+
+    if (!confirmar) {
+        return;
+    }
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
+    const ids = estudiantesCurso.map(
+        e => e.id
+    );
+
+    if (ids.length === 0) {
+        return;
+    }
+
+    mostrarMensaje("Eliminando asistencia...");
+
+    const { error } =
+    await supabaseClient
+    .from("asistencia")
+    .delete()
+    .eq("fecha", fecha)
+    .in("estudiante_id", ids);
+
+    if (error) {
+        console.error(error);
+        mostrarMensaje(
+            "Error al eliminar asistencia: " +
+            error.message,
+            true
+        );
+        return;
+    }
+
+    establecerFechaActual();
+    await cargarFechasAsistencia();
+    await cargarAsistencia();
+
+    mostrarMensaje(
+        "✓ Asistencia de la fecha eliminada correctamente."
+    );
 
 }
 
@@ -2489,6 +2700,10 @@ async function guardarAsistencia() {
     mostrarMensaje(
         "✓ Asistencia guardada correctamente."
     );
+
+
+    await cargarFechasAsistencia();
+    document.getElementById("listaFechasAsistencia").value = fecha;
 
 
     await cargarAsistencia();
