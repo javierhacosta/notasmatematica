@@ -688,8 +688,50 @@ button:hover {
 
 
 /* =================================================
-   TABLA ASISTENCIA
+   BOTÓN VER ASISTENCIA
 ================================================= */
+
+.boton-asistencia {
+
+    width: calc(100% - 24px);
+
+    margin: 5px 12px 12px;
+
+    padding: 11px;
+
+    background: #455a64;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 9px;
+
+    font-size: 14px;
+
+    cursor: pointer;
+}
+
+
+.boton-asistencia:hover {
+
+    background: #263238;
+}
+
+
+/* =================================================
+   DETALLE ASISTENCIA
+================================================= */
+
+.detalle-asistencia {
+
+    display: none;
+
+    border-top: 1px solid #ddd;
+
+    padding-bottom: 5px;
+}
+
 
 .tabla-asistencia-contenedor {
 
@@ -718,8 +760,6 @@ button:hover {
     font-weight: bold;
 
     padding: 10px 5px;
-
-    border-top: 1px solid #ddd;
 
     border-bottom: 1px solid #ddd;
 
@@ -1543,6 +1583,10 @@ async function mostrarDetalles() {
             await respuesta.json();
 
 
+        /* =========================================
+           SI NO HAY ACTIVIDADES
+        ========================================= */
+
         if (
             actividades.length === 0
         ) {
@@ -1557,15 +1601,30 @@ async function mostrarDetalles() {
 
                     </div>
 
-                    <p>
+                    <p style="
+                        text-align:center;
+                        color:#666;
+                        line-height:1.5;
+                    ">
 
-                        Todavía no hay actividades registradas.
+                        Todavía no hay actividades
+                        registradas.
 
                     </p>
 
                 </div>
 
             `;
+
+
+            /*
+            IMPORTANTE:
+
+            Aunque no existan actividades,
+            se muestra igualmente la asistencia.
+            */
+
+            await mostrarAsistenciaEnDetalle();
 
             return;
 
@@ -1953,21 +2012,6 @@ async function mostrarDetalles() {
                 </div>
 
 
-                <!-- =====================================
-                     ASISTENCIA
-                ====================================== -->
-
-                <div id="asistencia3T">
-
-                    <div class="cargando">
-
-                        Cargando asistencia...
-
-                    </div>
-
-                </div>
-
-
             </div>
 
         `;
@@ -1977,11 +2021,13 @@ async function mostrarDetalles() {
             html;
 
 
-        /* =========================================
-           CARGAR ASISTENCIA
-        ========================================= */
+        /*
+        =========================================
+        ASISTENCIA INDEPENDIENTE
+        =========================================
+        */
 
-        await cargarAsistencia3T();
+        await mostrarAsistenciaEnDetalle();
 
     }
 
@@ -2006,21 +2052,29 @@ async function mostrarDetalles() {
 
         `;
 
+
+        /*
+        AUNQUE HAYA ERROR EN ACTIVIDADES,
+        INTENTAMOS MOSTRAR ASISTENCIA.
+        */
+
+        await mostrarAsistenciaEnDetalle();
+
     }
 
 }
 
 
 /* =================================================
-   CARGAR ASISTENCIA DEL 3ER TRIMESTRE
+   MOSTRAR ASISTENCIA
 ================================================= */
 
-async function cargarAsistencia3T() {
+async function mostrarAsistenciaEnDetalle() {
 
 
     const contenedor =
         document.getElementById(
-            "asistencia3T"
+            "detalle3T"
         );
 
 
@@ -2031,25 +2085,13 @@ async function cargarAsistencia3T() {
     }
 
 
+    /*
+    =========================================
+    CONSULTAR ASISTENCIA
+    =========================================
+    */
+
     try {
-
-
-        /*
-        =================================================
-        IMPORTANTE
-
-        NO se modifica la base de datos.
-
-        Se utilizan solamente:
-
-        estudiante_id
-        fecha
-        estado
-        observacion
-
-        Y el filtro de fechas se realiza desde HTML.
-        =================================================
-        */
 
 
         const respuesta =
@@ -2086,16 +2128,8 @@ async function cargarAsistencia3T() {
 
         if (!respuesta.ok) {
 
-            const texto =
-                await respuesta.text();
-
-            console.error(
-                "Error asistencia:",
-                texto
-            );
-
             throw new Error(
-                "No se pudo consultar asistencia"
+                "Error asistencia"
             );
 
         }
@@ -2104,10 +2138,6 @@ async function cargarAsistencia3T() {
         const asistencias =
             await respuesta.json();
 
-
-        /* =========================================
-           CONTADORES
-        ========================================= */
 
         let presentes = 0;
 
@@ -2164,52 +2194,11 @@ async function cargarAsistencia3T() {
         );
 
 
-        /* =========================================
-           SIN REGISTROS
-        ========================================= */
-
-        if (
-            asistencias.length === 0
-        ) {
-
-            contenedor.innerHTML = `
-
-                <div class="asistencia-box">
-
-                    <div class="asistencia-titulo">
-
-                        🗓️ Asistencia del 3er Trimestre
-
-                    </div>
-
-
-                    <div class="asistencia-descripcion">
-
-                        Del ${formatearFecha(INICIO_3T)}
-                        al ${formatearFecha(FIN_3T)}
-
-                    </div>
-
-
-                    <div class="asistencia-vacia">
-
-                        Todavía no hay registros
-                        de asistencia para este trimestre.
-
-                    </div>
-
-                </div>
-
-            `;
-
-            return;
-
-        }
-
-
-        /* =========================================
-           GENERAR FILAS
-        ========================================= */
+        /*
+        =========================================
+        TABLA
+        =========================================
+        */
 
         let filas = "";
 
@@ -2284,11 +2273,77 @@ async function cargarAsistencia3T() {
         );
 
 
-        /* =========================================
-           MOSTRAR TABLA
-        ========================================= */
+        let contenidoTabla = "";
 
-        contenedor.innerHTML = `
+
+        if (
+            asistencias.length === 0
+        ) {
+
+            contenidoTabla = `
+
+                <div class="asistencia-vacia">
+
+                    Todavía no hay registros
+                    de asistencia.
+
+                </div>
+
+            `;
+
+        }
+
+        else {
+
+            contenidoTabla = `
+
+                <div class="tabla-asistencia-contenedor">
+
+                    <table class="tabla-asistencia">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    📅 Fecha
+                                </th>
+
+                                <th>
+                                    Estado
+                                </th>
+
+                                <th>
+                                    Observación
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            ${filas}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            `;
+
+        }
+
+
+        /*
+        =========================================
+        GENERAR BLOQUE COMPLETO
+        =========================================
+        */
+
+        const asistenciaHTML = `
 
             <div class="asistencia-box">
 
@@ -2302,8 +2357,8 @@ async function cargarAsistencia3T() {
 
                 <div class="asistencia-descripcion">
 
-                    Aquí puedes consultar tu asistencia
-                    registrada durante el tercer trimestre.
+                    Resumen de tu asistencia
+                    durante el tercer trimestre.
 
                 </div>
 
@@ -2428,50 +2483,31 @@ async function cargarAsistencia3T() {
                 </div>
 
 
-                <!-- TABLA -->
+                <!-- BOTÓN + -->
 
-                <div class="tabla-asistencia-contenedor">
+                <button
 
-                    <table class="tabla-asistencia">
+                    type="button"
 
+                    class="boton-asistencia"
 
-                        <thead>
+                    onclick="alternarDetalleAsistencia(this)"
 
-                            <tr>
+                >
 
-                                <th>
+                    ＋ Ver detalle de asistencia
 
-                                    📅 Fecha
-
-                                </th>
-
-
-                                <th>
-
-                                    Estado
-
-                                </th>
+                </button>
 
 
-                                <th>
+                <!-- DETALLE OCULTO -->
 
-                                    Observación
+                <div
+                    class="detalle-asistencia"
+                    id="tablaDetalleAsistencia"
+                >
 
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            ${filas}
-
-                        </tbody>
-
-
-                    </table>
+                    ${contenidoTabla}
 
                 </div>
 
@@ -2479,6 +2515,18 @@ async function cargarAsistencia3T() {
             </div>
 
         `;
+
+
+        /*
+        =========================================
+        AGREGAR AL FINAL DEL DETALLE
+        =========================================
+        */
+
+        contenedor.insertAdjacentHTML(
+            "beforeend",
+            asistenciaHTML
+        );
 
     }
 
@@ -2488,9 +2536,16 @@ async function cargarAsistencia3T() {
         console.error(error);
 
 
-        contenedor.innerHTML = `
+        /*
+        SI HAY ERROR, TAMBIÉN MOSTRAR
+        EL RESUMEN PARA QUE EL ESTUDIANTE
+        SEPA QUE EXISTE LA SECCIÓN.
+        */
+
+        const asistenciaError = `
 
             <div class="asistencia-box">
+
 
                 <div class="asistencia-titulo">
 
@@ -2499,16 +2554,140 @@ async function cargarAsistencia3T() {
                 </div>
 
 
-                <div class="asistencia-vacia"
-                     style="color:#c62828;">
+                <div class="asistencia-resumen">
 
-                    No se pudo cargar la asistencia.
+
+                    <div class="asistencia-card">
+
+                        <span class="icono">🟢</span>
+
+                        <span class="
+                            cantidad
+                            asistencia-presente
+                        ">0</span>
+
+                        <span class="texto">
+                            ASISTENCIAS
+                        </span>
+
+                    </div>
+
+
+                    <div class="asistencia-card">
+
+                        <span class="icono">🟡</span>
+
+                        <span class="
+                            cantidad
+                            asistencia-atraso
+                        ">0</span>
+
+                        <span class="texto">
+                            ATRASOS
+                        </span>
+
+                    </div>
+
+
+                    <div class="asistencia-card">
+
+                        <span class="icono">🔵</span>
+
+                        <span class="
+                            cantidad
+                            asistencia-licencia
+                        ">0</span>
+
+                        <span class="texto">
+                            CON LICENCIA
+                        </span>
+
+                    </div>
+
+
+                    <div class="asistencia-card">
+
+                        <span class="icono">🔴</span>
+
+                        <span class="
+                            cantidad
+                            asistencia-falta
+                        ">0</span>
+
+                        <span class="texto">
+                            SIN LICENCIA
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
+                <div class="asistencia-vacia">
+
+                    No se pudo cargar el detalle
+                    de asistencia.
 
                 </div>
 
             </div>
 
         `;
+
+
+        contenedor.insertAdjacentHTML(
+            "beforeend",
+            asistenciaError
+        );
+
+    }
+
+}
+
+
+/* =================================================
+   MOSTRAR / OCULTAR TABLA ASISTENCIA
+================================================= */
+
+function alternarDetalleAsistencia(boton) {
+
+
+    const tabla =
+        document.getElementById(
+            "tablaDetalleAsistencia"
+        );
+
+
+    if (!tabla) {
+
+        return;
+
+    }
+
+
+    if (
+        tabla.style.display ===
+        "block"
+    ) {
+
+        tabla.style.display =
+            "none";
+
+
+        boton.innerHTML =
+            "＋ Ver detalle de asistencia";
+
+    }
+
+    else {
+
+        tabla.style.display =
+            "block";
+
+
+        boton.innerHTML =
+            "− Ocultar detalle de asistencia";
 
     }
 
