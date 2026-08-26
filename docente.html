@@ -2080,6 +2080,13 @@ new Set();
 
 
 /* =====================================================
+   TEMPORIZADOR DE MENSAJES
+===================================================== */
+
+let temporizadorMensaje = null;
+
+
+/* =====================================================
    SESIÓN
 ===================================================== */
 
@@ -6532,6 +6539,19 @@ function mostrarMensaje(
     }
 
 
+    /* Cancelar cualquier temporizador anterior */
+    if (temporizadorMensaje) {
+
+        clearTimeout(
+            temporizadorMensaje
+        );
+
+        temporizadorMensaje =
+        null;
+
+    }
+
+
     mensaje.textContent =
     texto;
 
@@ -6552,6 +6572,30 @@ function mostrarMensaje(
     error
     ? "#fff5f5"
     : "#f5fff6";
+
+
+    /* Mostrar inmediatamente */
+    mensaje.style.display =
+    "block";
+
+
+    /* Desaparecer después de 4 segundos */
+    temporizadorMensaje =
+    setTimeout(
+    function() {
+
+        mensaje.textContent =
+        "";
+
+        mensaje.style.display =
+        "none";
+
+        temporizadorMensaje =
+        null;
+
+    },
+    4000
+    );
 
 }
 
