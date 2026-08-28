@@ -930,16 +930,11 @@ td:first-child {
 
 @media (max-width: 600px) {
 
-/* =====================================================
-   ASISTENCIA - CELULAR
-===================================================== */
-
 .titulo-asistencia {
     flex-wrap: wrap;
     align-items: flex-start;
 }
 
-/* CONTENEDOR DE CONTROLES */
 .acciones-asistencia {
     width: 100%;
     display: grid;
@@ -948,14 +943,12 @@ td:first-child {
     align-items: center;
 }
 
-/* MENÚ DE FECHAS ARRIBA */
 .lista-fechas-asistencia {
     grid-column: 1 / -1;
     grid-row: 1;
     width: 100%;
 }
 
-/* FECHA DEBAJO DEL MENÚ */
 .fecha-asistencia {
     grid-column: 1;
     grid-row: 2;
@@ -963,13 +956,11 @@ td:first-child {
     min-width: 0;
 }
 
-/* BOTÓN ELIMINAR */
 .boton-eliminar-fecha-asistencia {
     grid-column: 2;
     grid-row: 2;
 }
 
-/* GUARDAR */
 .boton-guardar-asistencia {
     grid-column: 3;
     grid-row: 2;
@@ -977,7 +968,6 @@ td:first-child {
     font-size: 13px;
 }
 
-/* BOTÓN MOSTRAR / OCULTAR */
 .boton-asistencia {
     grid-column: 1 / -1;
     grid-row: 3;
@@ -1011,9 +1001,6 @@ td:first-child {
         justify-content: flex-end;
     }
 
-
-    /* MODAL */
-
     .modal-actividad {
         max-width: 100%;
     }
@@ -1035,9 +1022,6 @@ td:first-child {
     .nombre-categoria {
         font-size: 12px;
     }
-
-
-    /* TABLA */
 
     .tabla-contenedor {
         width: 100%;
@@ -1079,9 +1063,6 @@ td:first-child {
         padding: 6px 2px;
         font-size: 14px;
     }
-
-
-    /* ASISTENCIA */
 
     .titulo-asistencia {
         flex-wrap: wrap;
@@ -1521,7 +1502,7 @@ Nombre de la actividad
 
 
 <!-- =====================================================
-     NUEVO: FECHA DE LA ACTIVIDAD
+     FECHA DE LA ACTIVIDAD
 ===================================================== -->
 
 <div class="campo">
@@ -1832,7 +1813,7 @@ function establecerFechaActual() {
 
 
 /* =====================================================
-   NUEVO: FECHA ACTUAL ACTIVIDAD
+   FECHA ACTUAL ACTIVIDAD
 ===================================================== */
 
 function establecerFechaActividadActual() {
@@ -2881,14 +2862,8 @@ function abrirModalActividad() {
     ).value = "";
 
 
-    /* =================================================
-       NUEVO: ESTABLECER FECHA ACTUAL
-    ================================================= */
-
     establecerFechaActividadActual();
 
-
-    /* NINGUNA CATEGORÍA SELECCIONADA */
 
     document
     .querySelectorAll(
@@ -2995,7 +2970,7 @@ async function cargarActividades() {
     await supabaseClient
     .from("actividades")
     .select(
-        "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
+        "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
     )
     .eq(
         "curso",
@@ -3281,6 +3256,41 @@ function mostrarActividades() {
 
 
 /* =====================================================
+   FORMATEAR FECHA DE ACTIVIDAD
+===================================================== */
+
+function formatearFechaActividad(fecha) {
+
+    if (!fecha) {
+
+        return "Fecha no registrada";
+
+    }
+
+
+    const partes =
+    String(fecha).split("-");
+
+
+    if (partes.length === 3) {
+
+        return (
+            partes[2] +
+            "/" +
+            partes[1] +
+            "/" +
+            partes[0]
+        );
+
+    }
+
+
+    return fecha;
+
+}
+
+
+/* =====================================================
    CREAR HTML ACTIVIDAD
 ===================================================== */
 
@@ -3333,7 +3343,7 @@ function crearActividadHTML(
 
 
     botonEditar.title =
-    "Editar nombre de actividad";
+    "Editar nombre y fecha de actividad";
 
 
     const botonEliminar =
@@ -3390,6 +3400,18 @@ function crearActividadHTML(
 
             ${escapeHTML(
                 actividad.nombre
+            )}
+
+        </span>
+
+        <span
+            id="fecha-actividad-${actividad.id}"
+            class="puntaje-actividad">
+
+            — ${escapeHTML(
+                formatearFechaActividad(
+                    actividad.fecha
+                )
             )}
 
         </span>
@@ -3824,7 +3846,7 @@ function crearActividadHTML(
 
 
 /* =====================================================
-   EDITAR NOMBRE
+   EDITAR NOMBRE Y FECHA
 ===================================================== */
 
 async function editarNombreActividad(
@@ -3862,8 +3884,65 @@ async function editarNombreActividad(
     }
 
 
+    const fechaActual =
+    actividad.fecha || "";
+
+
+    const nuevaFecha =
+    prompt(
+        "Escribe la nueva fecha de la actividad (AAAA-MM-DD):",
+        fechaActual
+    );
+
+
     if (
-        nombre === actividad.nombre
+        nuevaFecha === null
+    ) {
+
+        return;
+
+    }
+
+
+    const fecha =
+    nuevaFecha.trim();
+
+
+    if (!fecha) {
+
+        alert(
+            "La fecha no puede estar vacía."
+        );
+
+        return;
+
+    }
+
+
+    /* =================================================
+       VALIDAR FORMATO
+    ================================================= */
+
+    const fechaValida =
+    /^\d{4}-\d{2}-\d{2}$/.test(
+        fecha
+    );
+
+
+    if (!fechaValida) {
+
+        alert(
+            "La fecha debe tener el formato AAAA-MM-DD.\n\nEjemplo: 28/08/2026 se escribe como 2026-08-28."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        nombre === actividad.nombre &&
+        fecha === fechaActual
     ) {
 
         return;
@@ -3872,7 +3951,7 @@ async function editarNombreActividad(
 
 
     mostrarMensaje(
-        "Actualizando nombre..."
+        "Actualizando actividad..."
     );
 
 
@@ -3884,7 +3963,10 @@ async function editarNombreActividad(
     .update({
 
         nombre:
-        nombre
+        nombre,
+
+        fecha:
+        fecha
 
     })
     .eq(
@@ -3898,7 +3980,7 @@ async function editarNombreActividad(
         console.error(error);
 
         alert(
-            "Error al cambiar el nombre: " +
+            "Error al actualizar la actividad: " +
             error.message,
             true
         );
@@ -3912,23 +3994,53 @@ async function editarNombreActividad(
     nombre;
 
 
-    const elemento =
+    actividad.fecha =
+    fecha;
+
+
+    /* =================================================
+       ACTUALIZAR NOMBRE
+    ================================================= */
+
+    const elementoNombre =
     document.getElementById(
         "nombre-actividad-" +
         actividad.id
     );
 
 
-    if (elemento) {
+    if (elementoNombre) {
 
-        elemento.textContent =
+        elementoNombre.textContent =
         nombre;
 
     }
 
 
+    /* =================================================
+       ACTUALIZAR FECHA
+    ================================================= */
+
+    const elementoFecha =
+    document.getElementById(
+        "fecha-actividad-" +
+        actividad.id
+    );
+
+
+    if (elementoFecha) {
+
+        elementoFecha.textContent =
+        "— " +
+        formatearFechaActividad(
+            fecha
+        );
+
+    }
+
+
     mostrarMensaje(
-        "✓ Nombre actualizado correctamente."
+        "✓ Actividad actualizada correctamente."
     );
 
 }
@@ -4094,10 +4206,6 @@ async function crearActividad() {
     }
 
 
-    /* =================================================
-       NUEVO: VALIDAR FECHA
-    ================================================= */
-
     if (!fechaActividad) {
 
         alert(
@@ -4182,7 +4290,6 @@ async function crearActividad() {
         nombre:
         nombre,
 
-        /* NUEVO: GUARDAR FECHA */
         fecha:
         fechaActividad,
 
@@ -5339,7 +5446,7 @@ async function exportarExcel() {
         await supabaseClient
         .from("actividades")
         .select(
-            "id,curso,trimestre,categoria,nombre,orden,puntaje_maximo"
+            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
         )
         .eq("trimestre", 3)
         .order("orden");
@@ -5510,11 +5617,6 @@ async function exportarExcel() {
                 a => a.categoria === "AUTOEVALUACION"
             );
 
-            /*
-             * ORDEN DEL EXCEL:
-             * Nº | NOMBRE | FECHAS | TOTAL A | TOTAL R | TOTAL L | TOTAL F
-             * | ACTIVIDADES | TOTALES DE CATEGORÍA | NOTA 3T | NOTA FINAL
-             */
             const columnas = [
 
                 "Nº LISTA",
@@ -5558,7 +5660,6 @@ async function exportarExcel() {
                     estudiante.nombre ?? ""
                 );
 
-                /* FECHAS DE ASISTENCIA */
                 const totalesAsistencia = {
                     A: 0,
                     R: 0,
@@ -5585,7 +5686,6 @@ async function exportarExcel() {
 
                 });
 
-                /* TOTALES A R L F */
                 fila.push(totalesAsistencia.A);
                 fila.push(totalesAsistencia.R);
                 fila.push(totalesAsistencia.L);
