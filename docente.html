@@ -1249,6 +1249,25 @@ td,
     transform: scale(.95);
 }
 
+/* =====================================================
+   PROGRESO DE GUARDADO
+===================================================== */
+
+.progreso-guardar {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 34px;
+    text-align: center;
+}
+
+.guardando {
+    opacity: .75;
+    cursor: wait !important;
+    pointer-events: none;
+}
+
 </style>
 
 </head>
@@ -1369,6 +1388,8 @@ Selecciona un curso
 
 <th>Nombre</th>
 
+<th>Curso</th>
+
 <th>1T</th>
 
 <th>2T</th>
@@ -1437,11 +1458,13 @@ Selecciona un curso
 
 <button
     type="button"
+    id="botonGuardarAsistencia"
     class="boton-guardar-asistencia"
     onclick="guardarAsistencia()"
     title="Guardar asistencia">
 
 💾 Guardar
+<span class="progreso-guardar" id="progresoAsistencia">0%</span>
 
 </button>
 
@@ -1505,11 +1528,12 @@ Selecciona un curso
 
 <button
     type="button"
+    id="botonGuardarAsistenciaTabla"
     class="boton-guardar-tabla"
     onclick="guardarAsistencia()"
     title="Guardar asistencia">
 
-    💾
+    💾 <span class="progreso-guardar" id="progresoAsistenciaTabla">0%</span>
 
 </button>
 
@@ -1535,10 +1559,12 @@ Selecciona un curso
 <div class="botones">
 
 <button
-    class="guardar"
+    id="botonGuardarNotas"
+    class="guardar boton-guardar-notas"
     onclick="guardarNotas()">
 
 💾 Guardar notas
+<span id="progresoNotas" class="progreso-guardar progreso-notas">0%</span>
 
 </button>
 
@@ -2796,6 +2822,48 @@ function mostrarTablaAsistencia() {
 
 
 /* =====================================================
+   PROGRESO DE GUARDADO
+===================================================== */
+
+function actualizarProgresoGuardado(tipo, porcentaje, activo = true) {
+
+    const elementos = tipo === "notas"
+        ? Array.from(
+            document.querySelectorAll(".progreso-notas")
+          )
+        : [
+            document.getElementById("progresoAsistencia"),
+            document.getElementById("progresoAsistenciaTabla")
+          ];
+
+    elementos.forEach(elemento => {
+        if (elemento) {
+            elemento.textContent = porcentaje + "%";
+        }
+    });
+
+    const botones = tipo === "notas"
+        ? Array.from(
+            document.querySelectorAll(".boton-guardar-notas")
+          )
+        : [
+            document.getElementById("botonGuardarAsistencia"),
+            document.getElementById("botonGuardarAsistenciaTabla")
+          ];
+
+    botones.forEach(boton => {
+        if (boton) {
+            if (activo) {
+                boton.classList.add("guardando");
+            } else {
+                boton.classList.remove("guardando");
+            }
+        }
+    });
+}
+
+
+/* =====================================================
    GUARDAR ASISTENCIA
 ===================================================== */
 
@@ -2850,8 +2918,10 @@ async function guardarAsistencia() {
     }
 
 
+    actualizarProgresoGuardado("asistencia", 0, true);
+
     mostrarMensaje(
-        "Guardando asistencia..."
+        "Guardando asistencia... 0%"
     );
 
 
@@ -2934,6 +3004,12 @@ async function guardarAsistencia() {
 
     }
 
+
+    actualizarProgresoGuardado("asistencia", 100, false);
+
+    mostrarMensaje(
+        "✓ Asistencia guardada correctamente."
+    );
 
     alert(
         "✓ Asistencia guardada correctamente."
@@ -3823,11 +3899,11 @@ function crearActividadHTML(
 
         <button
             type="button"
-            class="boton-guardar-tabla"
+            class="boton-guardar-tabla boton-guardar-notas"
             onclick="guardarNotas()"
             title="Guardar notas">
 
-            💾
+            💾 <span class="progreso-guardar progreso-notas">0%</span>
 
         </button>
 
@@ -5078,8 +5154,10 @@ async function guardarNotas() {
     }
 
 
+    actualizarProgresoGuardado("notas", 0, true);
+
     mostrarMensaje(
-        "Guardando calificaciones..."
+        "Guardando calificaciones... 0%"
     );
 
 
@@ -5175,6 +5253,8 @@ async function guardarNotas() {
 
     }
 
+
+    actualizarProgresoGuardado("notas", 50, true);
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -5323,6 +5403,7 @@ async function guardarNotas() {
 
             console.error(error);
 
+            actualizarProgresoGuardado("notas", 0, false);
 
             alert(
 
@@ -5343,11 +5424,27 @@ async function guardarNotas() {
 
         }
 
+        const totalEstudiantes = estudiantesCurso.length || 1;
+        const indiceEstudiante = estudiantesCurso.indexOf(estudiante) + 1;
+        const porcentaje = 50 + Math.round((indiceEstudiante / totalEstudiantes) * 50);
+
+        actualizarProgresoGuardado("notas", porcentaje, true);
+
+        mostrarMensaje(
+            "Guardando calificaciones... " + porcentaje + "%"
+        );
+
     }
 
 
+    actualizarProgresoGuardado("notas", 100, false);
+
+    mostrarMensaje(
+        "✓ Calificaciones guardadas correctamente."
+    );
+
     alert(
-        "✓ Calificaciones guardados correctamente."
+        "✓ Calificaciones guardadas correctamente."
     );
 
 
