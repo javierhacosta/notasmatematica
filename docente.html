@@ -984,13 +984,6 @@ td:first-child {
     width: 100%;
 }
 
-
-
-
-
-
-
-
     .contenedor {
         width: 100%;
         margin: 10px auto;
@@ -1051,11 +1044,11 @@ td:first-child {
         overflow-x: auto;
     }
 
- table {
-    width: 100%;
-    min-width: 600px;
-    table-layout: auto;
-}
+    table {
+        width: 100%;
+        min-width: 600px;
+        table-layout: auto;
+    }
 
     th,
     td {
@@ -1063,27 +1056,22 @@ td:first-child {
         font-size: 13px;
     }
 
+    td.nombre {
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
 
+        width: 130px;
+        min-width: 130px;
+        max-width: 130px;
 
-td.nombre {
-    text-align: left;
-    white-space: normal;
-    overflow-wrap: break-word;
-    word-break: normal;
+        line-height: 1.2;
+        vertical-align: middle;
 
-    width: 130px;
-    min-width: 130px;
-    max-width: 130px;
-
-    line-height: 1.2;
-    vertical-align: middle;
-
-    /* Sin cuadro interno */
-    display: table-cell;
-    overflow: visible;
-}
-
-
+        display: table-cell;
+        overflow: visible;
+    }
 
     .nota-input {
         width: 58px;
@@ -1532,6 +1520,24 @@ Nombre de la actividad
 </div>
 
 
+<!-- =====================================================
+     NUEVO: FECHA DE LA ACTIVIDAD
+===================================================== -->
+
+<div class="campo">
+
+<label>
+Fecha de la actividad
+</label>
+
+<input
+    type="date"
+    id="fechaActividad"
+>
+
+</div>
+
+
 <div class="campo">
 
 <label>
@@ -1791,6 +1797,55 @@ function establecerFechaActual() {
     document.getElementById(
         "fechaAsistencia"
     );
+
+
+    const hoy =
+    new Date();
+
+
+    const año =
+    hoy.getFullYear();
+
+
+    const mes =
+    String(
+        hoy.getMonth() + 1
+    ).padStart(
+        2,
+        "0"
+    );
+
+
+    const dia =
+    String(
+        hoy.getDate()
+    ).padStart(
+        2,
+        "0"
+    );
+
+
+    fecha.value =
+    `${año}-${mes}-${dia}`;
+
+}
+
+
+/* =====================================================
+   NUEVO: FECHA ACTUAL ACTIVIDAD
+===================================================== */
+
+function establecerFechaActividadActual() {
+
+    const fecha =
+    document.getElementById(
+        "fechaActividad"
+    );
+
+
+    if (!fecha) {
+        return;
+    }
 
 
     const hoy =
@@ -2824,6 +2879,13 @@ function abrirModalActividad() {
     document.getElementById(
         "nombreActividad"
     ).value = "";
+
+
+    /* =================================================
+       NUEVO: ESTABLECER FECHA ACTUAL
+    ================================================= */
+
+    establecerFechaActividadActual();
 
 
     /* NINGUNA CATEGORÍA SELECCIONADA */
@@ -4003,6 +4065,12 @@ async function crearActividad() {
     ).value.trim();
 
 
+    const fechaActividad =
+    document.getElementById(
+        "fechaActividad"
+    ).value;
+
+
     const radioCategoria =
     document.querySelector(
         'input[name="categoriaActividad"]:checked'
@@ -4018,6 +4086,27 @@ async function crearActividad() {
 
         document.getElementById(
             "nombreActividad"
+        ).focus();
+
+
+        return;
+
+    }
+
+
+    /* =================================================
+       NUEVO: VALIDAR FECHA
+    ================================================= */
+
+    if (!fechaActividad) {
+
+        alert(
+            "Selecciona la fecha de la actividad."
+        );
+
+
+        document.getElementById(
+            "fechaActividad"
         ).focus();
 
 
@@ -4092,6 +4181,10 @@ async function crearActividad() {
 
         nombre:
         nombre,
+
+        /* NUEVO: GUARDAR FECHA */
+        fecha:
+        fechaActividad,
 
         orden:
         orden,
