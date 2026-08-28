@@ -8,7 +8,7 @@
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0">
 
-<title>Panel Docente.</title>
+<title>Panel Docente</title>
 
 
 <style>
@@ -6076,23 +6076,40 @@ async function exportarExcel() {
 
             });
 
-            if (datos.length > 1) {
+/* =====================================================
+   GIRAR TEXTO DE LA FILA 1 HACIA ARRIBA
+===================================================== */
 
-                hoja["!autofilter"] = {
-                    ref:
-                    XLSX.utils.encode_range({
-                        s: {
-                            r: 0,
-                            c: 0
-                        },
-                        e: {
-                            r: datos.length - 1,
-                            c: columnas.length - 1
-                        }
-                    })
-                };
+for (
+    let columna = 0;
+    columna < columnas.length;
+    columna++
+) {
 
+    const celda =
+    XLSX.utils.encode_cell({
+        r: 0,
+        c: columna
+    });
+
+    if (hoja[celda]) {
+
+        hoja[celda].s = {
+
+            alignment: {
+                textRotation: 90,
+                vertical: "center",
+                horizontal: "center",
+                wrapText: true
             }
+
+        };
+
+    }
+
+}
+
+
 
             let nombreHoja =
             String(curso)
