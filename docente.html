@@ -5443,10 +5443,6 @@ async function guardarNotas() {
         "✓ Calificaciones guardadas correctamente."
     );
 
-    alert(
-        "✓ Calificaciones guardadas correctamente."
-    );
-
 
     await cargarEstudiantes();
 
@@ -6341,17 +6337,69 @@ function mostrarMensaje(
         "mensaje"
     );
 
+    if (!mensaje) {
+        return;
+    }
 
     mensaje.textContent =
     texto;
-
 
     mensaje.style.color =
     error
     ? "#c62828"
     : "#16803c";
 
+    mensaje.style.display =
+    "block";
+
+    /* Cancelar temporizador anterior */
+    if (mensaje._temporizador) {
+        clearTimeout(
+            mensaje._temporizador
+        );
+    }
+
+    /*
+       Los mensajes finales desaparecen
+       automáticamente después de 3 segundos.
+    */
+    if (
+        texto.includes(
+            "guardadas correctamente"
+        ) ||
+        texto.includes(
+            "guardada correctamente"
+        ) ||
+        texto.includes(
+            "actualizada correctamente"
+        ) ||
+        texto.includes(
+            "creada correctamente"
+        ) ||
+        texto.includes(
+            "eliminada correctamente"
+        ) ||
+        texto.includes(
+            "exportado correctamente"
+        )
+    ) {
+
+        mensaje._temporizador =
+        setTimeout(
+        function() {
+
+            mensaje.textContent =
+            "";
+
+            mensaje.style.display =
+            "none";
+
+        }, 3000);
+
+    }
+
 }
+
 
 
 /* =====================================================
