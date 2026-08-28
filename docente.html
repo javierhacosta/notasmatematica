@@ -1253,20 +1253,82 @@ td,
    PROGRESO DE GUARDADO
 ===================================================== */
 
-.progreso-guardar {
-    display: inline-block;
-    margin-left: 5px;
-    font-size: 12px;
-    font-weight: bold;
-    min-width: 34px;
-    text-align: center;
+/* =====================================================
+   PROGRESO DE GUARDADO
+===================================================== */
+
+function actualizarProgresoGuardado(tipo, porcentaje, activo = true) {
+
+    const elementos = tipo === "notas"
+        ? Array.from(
+            document.querySelectorAll(".progreso-notas")
+          )
+        : [
+            document.getElementById("progresoAsistencia"),
+            document.getElementById("progresoAsistenciaTabla")
+          ];
+
+    elementos.forEach(elemento => {
+
+        if (elemento) {
+
+            /*
+               No mostrar 0% ni 100%.
+               El porcentaje solo se muestra
+               mientras el guardado está en proceso.
+            */
+
+            if (
+                activo &&
+                porcentaje > 0 &&
+                porcentaje < 100
+            ) {
+
+                elemento.textContent =
+                    porcentaje + "%";
+
+            } else {
+
+                elemento.textContent = "";
+
+            }
+
+        }
+
+    });
+
+
+    const botones = tipo === "notas"
+        ? Array.from(
+            document.querySelectorAll(".boton-guardar-notas")
+          )
+        : [
+            document.getElementById("botonGuardarAsistencia"),
+            document.getElementById("botonGuardarAsistenciaTabla")
+          ];
+
+
+    botones.forEach(boton => {
+
+        if (boton) {
+
+            if (activo) {
+
+                boton.classList.add("guardando");
+
+            } else {
+
+                boton.classList.remove("guardando");
+
+            }
+
+        }
+
+    });
+
 }
 
-.guardando {
-    opacity: .75;
-    cursor: wait !important;
-    pointer-events: none;
-}
+
 
 </style>
 
@@ -1464,7 +1526,7 @@ Selecciona un curso
     title="Guardar asistencia">
 
 💾 Guardar
-<span class="progreso-guardar" id="progresoAsistencia"></span>
+<span class="progreso-guardar" id="progresoAsistencia">0%</span>
 
 </button>
 
@@ -1533,7 +1595,7 @@ Selecciona un curso
     onclick="guardarAsistencia()"
     title="Guardar asistencia">
 
-    💾 <span class="progreso-guardar" id="progresoAsistenciaTabla"></span>
+    💾 <span class="progreso-guardar" id="progresoAsistenciaTabla">0%</span>
 
 </button>
 
@@ -1564,7 +1626,7 @@ Selecciona un curso
     onclick="guardarNotas()">
 
 💾 Guardar notas
-<span id="progresoNotas" class="progreso-guardar progreso-notas"></span>
+<span id="progresoNotas" class="progreso-guardar progreso-notas">0%</span>
 
 </button>
 
