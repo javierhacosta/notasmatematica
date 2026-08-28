@@ -1034,12 +1034,6 @@ td:first-child {
         table-layout: auto;
     }
 
-    th,
-    td {
-        padding: 6px 4px;
-        font-size: 13px;
-    }
-
     td.nombre {
         text-align: left;
         white-space: normal;
@@ -1156,13 +1150,14 @@ td,
 
 #contenedorActividades table {
     width: 100%;
-    table-layout: auto;
+    table-layout: fixed;
 }
 
 #contenedorActividades table th:first-child,
 #contenedorActividades table td:first-child {
-    width: 1%;
+    width: 45px;
     min-width: 45px;
+    max-width: 45px;
     white-space: nowrap;
 }
 
@@ -1173,15 +1168,48 @@ td,
     max-width: 130px;
 }
 
+/* =====================================================
+   CORRECCIÓN: NOMBRE EN MÁXIMO 2 LÍNEAS
+===================================================== */
+
+#contenedorActividades table td.nombre {
+    text-align: left;
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+    padding: 6px 8px;
+    vertical-align: middle;
+}
+
+#contenedorActividades table td.nombre .nombre-dos-lineas {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+    max-height: 2.4em;
+}
+
+
+/* =====================================================
+   COLUMNA NOTA
+===================================================== */
+
 #contenedorActividades table th:nth-child(3),
 #contenedorActividades table td:nth-child(3) {
-    width: 1%;
-    min-width: 75px;
+    width: 85px;
+    min-width: 85px;
+    max-width: 85px;
     white-space: nowrap;
 }
 
 #contenedorActividades table .nota-input {
     width: 58px;
+    max-width: 58px;
 }
 
 </style>
@@ -3655,9 +3683,13 @@ function crearActividadHTML(
 
             <td class="nombre">
 
-            ${escapeHTML(
-                estudiante.nombre
-            )}
+                <span class="nombre-dos-lineas">
+
+                    ${escapeHTML(
+                        estudiante.nombre
+                    )}
+
+                </span>
 
             </td>
 
