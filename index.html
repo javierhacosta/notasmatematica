@@ -886,50 +886,70 @@ async function consultarNota() {
            REGISTRAR VISITA DEL ESTUDIANTE
         ================================================= */
 
-        try {
+try {
 
-            await fetch(
+    await fetch(
 
-                `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
+        `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
 
-                {
+        {
 
-                    method: "POST",
+            method: "POST",
 
-                    headers: {
+            headers: {
 
-                        "apikey":
-                            SUPABASE_KEY,
+                "apikey":
+                    SUPABASE_KEY,
 
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`,
+                "Authorization":
+                    `Bearer ${SUPABASE_KEY}`,
 
-                        "Content-Type":
-                            "application/json"
+                "Content-Type":
+                    "application/json"
 
-                    },
+            },
 
-                    body: JSON.stringify({
+            body: JSON.stringify({
 
-                        p_estudiante_id:
-                            alumnoActual.id
+                p_estudiante_id:
+                    alumnoActual.id,
 
-                    })
+                p_dispositivo:
+                    obtenerDispositivo(),
 
-                }
+                p_navegador:
+                    obtenerNavegador(),
 
-            );
+                p_sistema_operativo:
+                    obtenerSistemaOperativo()
 
-        }
-
-        catch (error) {
-
-            console.error(
-                "No se pudo registrar la visita:",
-                error
-            );
+            })
 
         }
+
+    );
+
+}
+
+catch (error) {
+
+    console.error(
+        "No se pudo registrar la visita:",
+        error
+    );
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
         mostrarResultado(
