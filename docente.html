@@ -469,32 +469,6 @@ input, select {
 
 
 /* =====================================================
-   INFORME GENERAL - ENCABEZADOS VERTICALES Y CATEGORÍAS
-===================================================== */
-
-#tablaInformeGeneral th {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    white-space: nowrap;
-    height: 150px;
-    min-height: 150px;
-    padding: 8px 5px;
-    vertical-align: middle;
-}
-
-#tablaInformeGeneral th.nombre-col,
-#tablaInformeGeneral th:first-child {
-    width: 42px;
-    min-width: 42px;
-    max-width: 42px;
-}
-
-#tablaInformeGeneral th.categoria-ser { background: #ead7f3; }
-#tablaInformeGeneral th.categoria-saber { background: #d7e7f7; }
-#tablaInformeGeneral th.categoria-hacer { background: #fce1c7; }
-#tablaInformeGeneral th.categoria-auto { background: #d5eeee; }
-
-/* =====================================================
    TABLAS
 ===================================================== */
 
@@ -811,6 +785,11 @@ td:first-child {
 
 .tabla-asistencia td {
     padding: 7px 5px;
+}
+
+/* NOMBRES OPACADOS CUANDO LA ASISTENCIA ESTA BLOQUEADA */
+.tabla-asistencia.asistencia-bloqueada td.nombre {
+    opacity: .45;
 }
 
 
@@ -1375,167 +1354,55 @@ td,
 /* =====================================================
    INFORME GENERAL
 ===================================================== */
+.panel-informe { margin-top:25px; border:1px solid #ddd; border-radius:12px; overflow:hidden; background:white; }
+.titulo-informe { background:#1557a6; color:white; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:17px; font-weight:bold; }
+.acciones-informe { display:flex; align-items:center; gap:7px; margin-left:auto; }
+.boton-informe { width:38px; height:34px; border:none; border-radius:7px; background:rgba(255,255,255,.20); color:white; font-size:22px; font-weight:bold; cursor:pointer; }
+.boton-informe:hover { background:rgba(255,255,255,.30); }
+.contenido-informe { padding:15px; background:#fff; }
+.contenido-informe.oculto { display:none; }
+.tabla-informe-general-contenedor { width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; }
+.tabla-informe-general { width:max-content; min-width:100%; border-collapse:collapse; table-layout:auto; }
+.tabla-informe-general th,.tabla-informe-general td { border:1px solid #ddd; padding:6px 7px; text-align:center; vertical-align:middle; white-space:nowrap; }
+.tabla-informe-general thead th { background:#f0f2f3; font-weight:bold; position:sticky; top:0; z-index:2; }
+.tabla-informe-general thead tr:first-child th { background:#e4e9ee; height:145px; padding:5px 4px; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; width:34px; min-width:34px; max-width:34px; }
+.tabla-informe-general thead tr:first-child th.nombre-col { width:180px; min-width:180px; max-width:180px; writing-mode:vertical-rl; }
 
-.panel-informe {
-    margin-top: 25px;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    overflow: hidden;
-    background: white;
+/* COLORES DIFERENTES PARA CADA CATEGORÍA */
+.tabla-informe-general thead tr:first-child th.categoria-ser { background:#ead7f0; color:#4a1262; }
+.tabla-informe-general thead tr:first-child th.categoria-saber { background:#d7e7f8; color:#0d3f78; }
+.tabla-informe-general thead tr:first-child th.categoria-hacer { background:#fde0c7; color:#a94800; }
+.tabla-informe-general thead tr:first-child th.categoria-auto { background:#d3eff1; color:#00545b; }
+.tabla-informe-general th.nombre-col,.tabla-informe-general td.nombre-col { text-align:left; white-space:normal; width:180px; min-width:180px; max-width:180px; }
+.tabla-informe-general th:first-child,.tabla-informe-general td:first-child {
+    position:sticky;
+    left:0;
+    z-index:4;
+    width:34px;
+    min-width:34px;
+    max-width:34px;
+    background:#fff;
 }
-
-.titulo-informe {
-    background: #1557a6;
-    color: white;
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 17px;
-    font-weight: bold;
+.tabla-informe-general thead th:first-child {
+    z-index:6;
+    background:#e4e9ee;
 }
-
-.acciones-informe {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    margin-left: auto;
+.tabla-informe-general th.nombre-col,.tabla-informe-general td.nombre-col {
+    position:sticky;
+    left:34px;
+    z-index:3;
+    background:#fff;
 }
-
-.boton-informe {
-    width: 38px;
-    height: 34px;
-    border: none;
-    border-radius: 7px;
-    background: rgba(255,255,255,.20);
-    color: white;
-    font-size: 22px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.boton-informe:hover {
-    background: rgba(255,255,255,.30);
-}
-
-.contenido-informe {
-    padding: 15px;
-    background: #fff;
-}
-
-.contenido-informe.oculto {
-    display: none;
-}
-
-.tabla-informe-general-contenedor {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.tabla-informe-general {
-    width: max-content;
-    min-width: 100%;
-    border-collapse: collapse;
-    table-layout: auto;
-}
-
-.tabla-informe-general th,
-.tabla-informe-general td {
-    border: 1px solid #ddd;
-    padding: 7px 8px;
-    text-align: center;
-    vertical-align: middle;
-    white-space: nowrap;
-}
-
-.tabla-informe-general thead th {
-    background: #f0f2f3;
-    font-weight: bold;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.tabla-informe-general thead tr:first-child th {
-    background: #e4e9ee;
-}
-
-.tabla-informe-general th.nombre-col,
-.tabla-informe-general td.nombre-col {
-    text-align: left;
-    white-space: normal;
-    width: 180px;
-    min-width: 180px;
-    max-width: 180px;
-}
-
-.tabla-informe-general th.asistencia-fecha {
-    min-width: 78px;
-}
-
-.tabla-informe-general td.asistencia-celda {
-    font-size: 17px;
-    font-weight: bold;
-}
-
-.tabla-informe-general .estado-A,
-.tabla-informe-general .estado-R,
-.tabla-informe-general .estado-L,
-.tabla-informe-general .estado-F {
-    color: #222;
-}
-
-.tabla-informe-general .celda-con-observacion {
-    color: #d84315 !important;
-    background: #fff3e0;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    text-underline-offset: 3px;
-}
-
-.tabla-informe-general .nota-con-observacion {
-    color: #d84315 !important;
-    background: #fff3e0;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    text-underline-offset: 3px;
-}
-
-.tabla-informe-general .actividad-nota {
-    font-weight: bold;
-    min-width: 65px;
-}
-
-.tabla-informe-general .actividad-observacion {
-    min-width: 150px;
-    max-width: 230px;
-    white-space: normal;
-    text-align: left;
-}
-
-.tabla-informe-general .promedio-dimension {
-    font-weight: bold;
-    background: #f8f9fa;
-    min-width: 82px;
-}
-
-.tabla-informe-general .nota-3t-general,
-.tabla-informe-general .nota-final-general {
-    font-size: 18px;
-    font-weight: bold;
-    min-width: 70px;
-}
-
-.tabla-informe-general .visitas-general {
-    font-weight: bold;
-    min-width: 70px;
-}
-
+.tabla-informe-general thead th.nombre-col { z-index:5; background:#e4e9ee; }
+.tabla-informe-general th.asistencia-fecha { min-width:34px; width:34px; max-width:34px; }
+.tabla-informe-general td.asistencia-celda { font-size:17px; font-weight:bold; }
+.tabla-informe-general .estado-A,.tabla-informe-general .estado-R,.tabla-informe-general .estado-L,.tabla-informe-general .estado-F { color:#222; }
+.tabla-informe-general .celda-con-observacion,.tabla-informe-general .nota-con-observacion { color:#d84315!important; background:#fff3e0; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
+.tabla-informe-general .grupo-actividad { font-weight:bold; background:#e4e9ee; }
+.tabla-informe-general .actividad-nota { font-weight:bold; min-width:52px; width:52px; }
+.tabla-informe-general .promedio-dimension { font-weight:bold; background:#f8f9fa; min-width:65px; width:65px; }
+.tabla-informe-general .nota-trimestre-general,.tabla-informe-general .nota-final-general { font-size:18px; font-weight:bold; min-width:55px; width:55px; }
+.tabla-informe-general .visitas-general { font-weight:bold; min-width:55px; width:55px; }
 .comentario-informe-fondo {
     position: fixed;
     inset: 0;
@@ -1600,15 +1467,26 @@ td,
 
     .tabla-informe-general th,
     .tabla-informe-general td {
-        padding: 6px;
-        font-size: 13px;
+        padding: 5px;
+        font-size: 12px;
     }
-
+    .tabla-informe-general thead tr:first-child th {
+        height: 125px;
+    }
+    .tabla-informe-general th:first-child,
+    .tabla-informe-general td:first-child {
+        width: 30px;
+        min-width: 30px;
+        max-width: 30px;
+    }
     .tabla-informe-general th.nombre-col,
     .tabla-informe-general td.nombre-col {
-        min-width: 150px;
-        width: 150px;
-        max-width: 150px;
+        left: 30px;
+    }
+    .tabla-informe-general thead tr:first-child th.nombre-col,
+    .tabla-informe-general th.nombre-col,
+    .tabla-informe-general td.nombre-col {
+        min-width: 150px; width: 150px; max-width: 150px;
     }
 }
 
@@ -2627,6 +2505,11 @@ function mostrarPanelAsistencia() {
     asistenciaDesbloqueada =
     false;
 
+    const tablaAsistencia = document.querySelector(".tabla-asistencia");
+    if (tablaAsistencia) {
+        tablaAsistencia.classList.add("asistencia-bloqueada");
+    }
+
 
     const botonBloquear =
     document.getElementById(
@@ -2667,6 +2550,11 @@ function bloquearDesbloquearAsistencia() {
 
     if (asistenciaDesbloqueada) {
 
+        const tablaAsistencia = document.querySelector(".tabla-asistencia");
+        if (tablaAsistencia) {
+            tablaAsistencia.classList.add("asistencia-bloqueada");
+        }
+
         controles.forEach(
         control => {
 
@@ -2694,6 +2582,11 @@ function bloquearDesbloquearAsistencia() {
     }
 
     else {
+
+        const tablaAsistencia = document.querySelector(".tabla-asistencia");
+        if (tablaAsistencia) {
+            tablaAsistencia.classList.remove("asistencia-bloqueada");
+        }
 
         controles.forEach(
         control => {
@@ -5673,756 +5566,129 @@ function mostrarVisitasInforme(estudianteId) {
 
 async function cargarInformeGeneral() {
 
-    const contenedor =
-    document.getElementById(
-        "contenidoInformeGeneral"
-    );
-
-    if (!contenedor) {
-        return;
-    }
+    const contenedor = document.getElementById("contenidoInformeGeneral");
+    if (!contenedor) return;
 
     if (!cursoSeleccionado) {
-
-        contenedor.innerHTML =
-        `<div class="informe-general-vacio">
-            Selecciona un curso para ver el informe general.
-        </div>`;
-
+        contenedor.innerHTML = `<div class="informe-general-vacio">Selecciona un curso para ver el informe general.</div>`;
         return;
     }
 
-    const campoBusqueda =
-    document.getElementById(
-        "buscarNombre"
-    );
-
-    const textoBusqueda =
-    campoBusqueda
-    ? campoBusqueda.value
-        .toLowerCase()
-        .trim()
-    : "";
-
-    const estudiantesCurso =
-    estudiantes
-    .filter(
-        e => e.curso === cursoSeleccionado
-    )
-    .filter(
-        e => {
-
-            if (!textoBusqueda) {
-                return true;
-            }
-
-            const nombre =
-            String(
-                e.nombre || ""
-            ).toLowerCase();
-
-            const numero =
-            String(
-                e.num_lista ?? ""
-            ).toLowerCase();
-
-            return (
-                nombre.includes(textoBusqueda) ||
-                numero.includes(textoBusqueda)
-            );
-
-        }
-    );
+    const campoBusqueda = document.getElementById("buscarNombre");
+    const textoBusqueda = campoBusqueda ? campoBusqueda.value.toLowerCase().trim() : "";
+    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado).filter(e => {
+        if (!textoBusqueda) return true;
+        return String(e.nombre || "").toLowerCase().includes(textoBusqueda) || String(e.num_lista ?? "").toLowerCase().includes(textoBusqueda);
+    });
 
     if (estudiantesCurso.length === 0) {
-
-        contenedor.innerHTML =
-        `<div class="informe-general-vacio">
-            No se encontraron estudiantes con la búsqueda actual.
-        </div>`;
-
+        contenedor.innerHTML = `<div class="informe-general-vacio">No se encontraron estudiantes con la búsqueda actual.</div>`;
         return;
     }
 
-    const idsEstudiantes =
-    estudiantesCurso.map(
-        e => e.id
-    );
-
-    /* -------------------------------------------------
-       ACTIVIDADES DEL TERCER TRIMESTRE
-    ------------------------------------------------- */
-
-    let actividadesInforme =
-    actividades.filter(
-        a =>
-        a.curso === cursoSeleccionado &&
-        Number(a.trimestre) === 3
-    );
-
-    /* Si por alguna razón todavía no están cargadas,
-       se consultan directamente desde Supabase. */
+    const idsEstudiantes = estudiantesCurso.map(e => e.id);
+    let actividadesInforme = actividades.filter(a => a.curso === cursoSeleccionado && Number(a.trimestre) === 3);
 
     if (actividadesInforme.length === 0) {
-
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-        .from("actividades")
-        .select(
-            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
-        )
-        .eq(
-            "curso",
-            cursoSeleccionado
-        )
-        .eq(
-            "trimestre",
-            3
-        )
-        .order(
-            "orden"
-        );
-
-        if (!error) {
-            actividadesInforme = data || [];
-        }
+        const { data, error } = await supabaseClient.from("actividades").select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo").eq("curso", cursoSeleccionado).eq("trimestre", 3).order("orden");
+        if (!error) actividadesInforme = data || [];
     }
 
-    /* -------------------------------------------------
-       CALIFICACIONES
-    ------------------------------------------------- */
-
-    const idsActividades =
-    actividadesInforme.map(
-        a => a.id
-    );
-
+    const idsActividades = actividadesInforme.map(a => a.id);
     let mapaCalificacionesInforme = {};
-
-    if (
-        idsActividades.length > 0 &&
-        idsEstudiantes.length > 0
-    ) {
-
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-        .from("calificaciones")
-        .select(
-            "id,actividad_id,estudiante_id,nota,observacion"
-        )
-        .in(
-            "actividad_id",
-            idsActividades
-        )
-        .in(
-            "estudiante_id",
-            idsEstudiantes
-        );
-
-        if (!error) {
-
-            (data || []).forEach(
-            registro => {
-
-                const clave =
-                registro.estudiante_id +
-                "_" +
-                registro.actividad_id;
-
-                mapaCalificacionesInforme[
-                    clave
-                ] = registro;
-
-            });
-
-        }
+    if (idsActividades.length > 0 && idsEstudiantes.length > 0) {
+        const { data, error } = await supabaseClient.from("calificaciones").select("id,actividad_id,estudiante_id,nota,observacion").in("actividad_id", idsActividades).in("estudiante_id", idsEstudiantes);
+        if (!error) (data || []).forEach(r => mapaCalificacionesInforme[r.estudiante_id + "_" + r.actividad_id] = r);
     }
-
-    /* -------------------------------------------------
-       ASISTENCIA
-    ------------------------------------------------- */
 
     let registrosAsistenciaInforme = [];
-
     if (idsEstudiantes.length > 0) {
-
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-        .from("asistencia")
-        .select(
-            "id,estudiante_id,fecha,estado,observacion"
-        )
-        .in(
-            "estudiante_id",
-            idsEstudiantes
-        )
-        .order(
-            "fecha",
-            { ascending: true }
-        );
-
-        if (!error) {
-            registrosAsistenciaInforme = data || [];
-        }
+        const { data, error } = await supabaseClient.from("asistencia").select("id,estudiante_id,fecha,estado,observacion").in("estudiante_id", idsEstudiantes).order("fecha", {ascending:true});
+        if (!error) registrosAsistenciaInforme = data || [];
     }
-
-    const fechasAsistencia =
-    [...new Set(
-        registrosAsistenciaInforme
-        .map(
-            r => r.fecha
-        )
-        .filter(Boolean)
-    )].sort();
-
+    const fechasAsistencia = [...new Set(registrosAsistenciaInforme.map(r => r.fecha).filter(Boolean))].sort();
     const mapaAsistenciaInforme = {};
-
-    registrosAsistenciaInforme.forEach(
-    registro => {
-
-        const clave =
-        registro.estudiante_id +
-        "_" +
-        registro.fecha;
-
-        mapaAsistenciaInforme[
-            clave
-        ] = registro;
-
-    });
-
-    /* -------------------------------------------------
-       VISITAS A LA PÁGINA
-    ------------------------------------------------- */
+    registrosAsistenciaInforme.forEach(r => mapaAsistenciaInforme[r.estudiante_id + "_" + r.fecha] = r);
 
     let registrosVisitasInforme = [];
-
     if (idsEstudiantes.length > 0) {
-
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-        .from("visitas_estudiantes")
-        .select(
-            "id,estudiante_id,fecha_hora"
-        )
-        .in(
-            "estudiante_id",
-            idsEstudiantes
-        );
-
-        if (!error) {
-            registrosVisitasInforme = data || [];
-            registrosVisitasInformeGlobal = registrosVisitasInforme;
-        }
+        const { data, error } = await supabaseClient.from("visitas_estudiantes").select("id,estudiante_id,fecha_hora").in("estudiante_id", idsEstudiantes);
+        if (!error) { registrosVisitasInforme = data || []; registrosVisitasInformeGlobal = registrosVisitasInforme; }
     }
-
     const totalVisitasPorEstudiante = {};
+    registrosVisitasInforme.forEach(v => totalVisitasPorEstudiante[v.estudiante_id] = (totalVisitasPorEstudiante[v.estudiante_id] || 0) + 1);
 
-    registrosVisitasInforme.forEach(
-    visita => {
+    const ser = actividadesInforme.filter(a => a.categoria === "SER");
+    const saber = actividadesInforme.filter(a => a.categoria === "SABER");
+    const hacer = actividadesInforme.filter(a => a.categoria === "HACER");
+    const auto = actividadesInforme.filter(a => a.categoria === "AUTOEVALUACION");
 
-        const id =
-        visita.estudiante_id;
+    const construirDimension = (estudiante, lista) => {
+        let suma = 0, maximos = 0;
+        lista.forEach(a => {
+            const r = mapaCalificacionesInforme[estudiante.id + "_" + a.id];
+            if (!r || r.nota === null || r.nota === undefined || r.nota === "") return;
+            const nota = Number(r.nota), maximo = Number(a.puntaje_maximo || LIMITES[a.categoria] || 0);
+            if (isNaN(nota) || isNaN(maximo) || maximo <= 0) return;
+            suma += nota; maximos += maximo;
+        });
+        if (!maximos) return "";
+        const limite = LIMITES[lista[0] ? lista[0].categoria : ""] || 0;
+        return Math.round(suma / maximos * limite);
+    };
 
-        totalVisitasPorEstudiante[id] =
-        (
-            totalVisitasPorEstudiante[id] ||
-            0
-        ) + 1;
+    /*
+       INFORME GENERAL: una sola fila de encabezado.
+       Los nombres de las actividades ocupan directamente la primera fila
+       y cada categoría se identifica mediante un fondo diferente.
+    */
+    let encabezado1 = `<tr><th>Nº</th><th class="nombre-col">Nombre</th>`;
+    fechasAsistencia.forEach(f => encabezado1 += `<th class="asistencia-fecha">${escapeHTML(formatearFechaActividad(f))}</th>`);
+    encabezado1 += `<th>Total Asistencias</th><th>Total atrasos</th><th>Total licencias</th><th>Total faltas</th>`;
 
-    });
+    const agregarEncabezadosActividades = (lista, claseCategoria) => {
+        lista.forEach(a => {
+            encabezado1 += `<th class="actividad-encabezado ${claseCategoria}">${escapeHTML(a.nombre || "Actividad")}</th>`;
+        });
+    };
 
-    /* -------------------------------------------------
-       ACTIVIDADES POR DIMENSIÓN
-    ------------------------------------------------- */
+    agregarEncabezadosActividades(ser, "categoria-ser");
+    encabezado1 += `<th class="promedio-dimension categoria-ser">Promedio Ser</th>`;
+    agregarEncabezadosActividades(saber, "categoria-saber");
+    encabezado1 += `<th class="promedio-dimension categoria-saber">Promedio del Saber</th>`;
+    agregarEncabezadosActividades(hacer, "categoria-hacer");
+    encabezado1 += `<th class="promedio-dimension categoria-hacer">Promedio del Hacer</th>`;
+    agregarEncabezadosActividades(auto, "categoria-auto");
+    encabezado1 += `<th class="nota-trimestre-general">Nota 1T</th><th class="nota-trimestre-general">Nota 2T</th><th class="nota-trimestre-general">Nota 3T</th><th class="nota-final-general">Nota Final</th><th class="visitas-general">Visitas a la página</th></tr>`;
 
-    const ser =
-    actividadesInforme.filter(
-        a => a.categoria === "SER"
-    );
-
-    const saber =
-    actividadesInforme.filter(
-        a => a.categoria === "SABER"
-    );
-
-    const hacer =
-    actividadesInforme.filter(
-        a => a.categoria === "HACER"
-    );
-
-    const auto =
-    actividadesInforme.filter(
-        a => a.categoria === "AUTOEVALUACION"
-    );
-
-    /* -------------------------------------------------
-       ENCABEZADO DE LA TABLA
-    ------------------------------------------------- */
-
-    let encabezado1 = `
-        <tr>
-            <th rowspan="2">Nº</th>
-            <th rowspan="2" class="nombre-col">Nombre</th>
-    `;
-
-    fechasAsistencia.forEach(
-    fecha => {
-
-        encabezado1 += `
-            <th rowspan="2" class="asistencia-fecha">
-                ${escapeHTML(
-                    formatearFechaActividad(fecha)
-                )}
-            </th>
-        `;
-
-    });
-
-    encabezado1 += `
-            <th rowspan="2">Total asistencia</th>
-            <th rowspan="2">Total atrasos</th>
-            <th rowspan="2">Total licencias</th>
-            <th rowspan="2">Total faltas</th>
-    `;
-
-    actividadesInforme.forEach(
-    actividad => {
-
-        const claseCategoria =
-                actividad.categoria === "SER" ? "categoria-ser" :
-                actividad.categoria === "SABER" ? "categoria-saber" :
-                actividad.categoria === "HACER" ? "categoria-hacer" :
-                "categoria-auto";
-
-            encabezado1 += `
-            <th class="${claseCategoria}">
-                ${escapeHTML(
-                    actividad.nombre || "Actividad"
-                )}
-            </th>
-        `;
-
-    });
-
-    encabezado1 += `
-            <th rowspan="2">Visitas a la página</th>
-            <th rowspan="2">Promedio SER</th>
-            <th rowspan="2">Promedio SABER</th>
-            <th rowspan="2">Promedio HACER</th>
-            <th rowspan="2">Promedio AUTO</th>
-            <th rowspan="2">Nota 3T</th>
-            <th rowspan="2">Nota Final</th>
-        </tr>
-    `;
-
-    let encabezado2 = "<tr>";
-
-    actividadesInforme.forEach(
-    () => {
-
-        encabezado2 += `
-            <th>Nota</th>
-        `;
-
-    });
-
-    encabezado2 += "</tr>";
+    let encabezado2 = "";
 
     let cuerpo = "";
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const totales = {
-            asistio: 0,
-            atraso: 0,
-            licencia: 0,
-            falta: 0
-        };
-
-        fechasAsistencia.forEach(
-        fecha => {
-
-            const registro =
-            mapaAsistenciaInforme[
-                estudiante.id +
-                "_" +
-                fecha
-            ];
-
-            if (registro) {
-
-                const estado =
-                String(
-                    registro.estado || ""
-                ).toLowerCase();
-
-                if (
-                    totales[estado] !== undefined
-                ) {
-                    totales[estado]++;
-                }
-
-            }
-
+    estudiantesCurso.forEach(estudiante => {
+        const totales = {asistio:0, atraso:0, licencia:0, falta:0};
+        fechasAsistencia.forEach(f => { const r=mapaAsistenciaInforme[estudiante.id+"_"+f]; if(r){const e=String(r.estado||"").toLowerCase(); if(totales[e]!==undefined) totales[e]++;} });
+        const promedioSER=construirDimension(estudiante,ser), promedioSABER=construirDimension(estudiante,saber), promedioHACER=construirDimension(estudiante,hacer), promedioAUTO=construirDimension(estudiante,auto);
+        const nota3 = estudiante.nota_3t !== null && estudiante.nota_3t !== undefined ? Math.round(Number(estudiante.nota_3t)) : ((promedioSER!==""||promedioSABER!==""||promedioHACER!==""||promedioAUTO!=="") ? Math.round(Number(promedioSER||0)+Number(promedioSABER||0)+Number(promedioHACER||0)+Number(promedioAUTO||0)) : "");
+        const notaFinal = estudiante.final !== null && estudiante.final !== undefined ? Math.round(Number(estudiante.final)) : "";
+        cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td>`;
+        fechasAsistencia.forEach(f => {
+            const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
+            let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="licencia"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
+            const obs=r?String(r.observacion||"").trim():"";
+            const click=obs?`onclick="mostrarComentarioInforme('Asistencia - ${escapeHTML(formatearFechaActividad(f))}', '${escapeHTML(obs).replace(/'/g,"&#39;")}')" title="Ver observación"`:"";
+            cuerpo += `<td class="asistencia-celda ${clase} ${obs?"celda-con-observacion":""}" ${click}>${simbolo}</td>`;
         });
-
-        const construirDimension =
-        actividadesLista => {
-
-            let suma = 0;
-            let maximos = 0;
-
-            actividadesLista.forEach(
-            actividad => {
-
-                const registro =
-                mapaCalificacionesInforme[
-                    estudiante.id +
-                    "_" +
-                    actividad.id
-                ];
-
-                if (
-                    !registro ||
-                    registro.nota === null ||
-                    registro.nota === undefined ||
-                    registro.nota === ""
-                ) {
-                    return;
-                }
-
-                const nota =
-                Number(
-                    registro.nota
-                );
-
-                const maximo =
-                Number(
-                    actividad.puntaje_maximo ||
-                    LIMITES[
-                        actividad.categoria
-                    ] ||
-                    0
-                );
-
-                if (
-                    isNaN(nota) ||
-                    isNaN(maximo) ||
-                    maximo <= 0
-                ) {
-                    return;
-                }
-
-                suma += nota;
-                maximos += maximo;
-
-            });
-
-            if (maximos === 0) {
-                return "";
-            }
-
-            const limite =
-            LIMITES[
-                actividadesLista[0]
-                ? actividadesLista[0].categoria
-                : ""
-            ] || 0;
-
-            return Math.round(
-                suma /
-                maximos *
-                limite
-            );
-
-        };
-
-        const promedioSER =
-        construirDimension(ser);
-
-        const promedioSABER =
-        construirDimension(saber);
-
-        const promedioHACER =
-        construirDimension(hacer);
-
-        const promedioAUTO =
-        construirDimension(auto);
-
-        const valorNota3T =
-        estudiante.nota_3t !== null &&
-        estudiante.nota_3t !== undefined
-        ? Math.round(
-            Number(
-                estudiante.nota_3t
-            )
-        )
-        : (
-            promedioSER !== "" ||
-            promedioSABER !== "" ||
-            promedioHACER !== "" ||
-            promedioAUTO !== ""
-            ? Math.round(
-                Number(
-                    promedioSER || 0
-                ) +
-                Number(
-                    promedioSABER || 0
-                ) +
-                Number(
-                    promedioHACER || 0
-                ) +
-                Number(
-                    promedioAUTO || 0
-                )
-            )
-            : ""
-        );
-
-        const notaFinal =
-        estudiante.final !== null &&
-        estudiante.final !== undefined
-        ? Math.round(
-            Number(
-                estudiante.final
-            )
-        )
-        : "";
-
-        cuerpo += `
-            <tr>
-                <td>
-                    ${escapeHTML(
-                        String(
-                            estudiante.num_lista ?? ""
-                        )
-                    )}
-                </td>
-
-                <td class="nombre-col">
-                    ${escapeHTML(
-                        estudiante.nombre || ""
-                    )}
-                </td>
-        `;
-
-        fechasAsistencia.forEach(
-        fecha => {
-
-            const registro =
-            mapaAsistenciaInforme[
-                estudiante.id +
-                "_" +
-                fecha
-            ];
-
-            const estado =
-            registro
-            ? String(
-                registro.estado || ""
-            ).toLowerCase()
-            : "";
-
-            let simbolo = "";
-
-            if (estado === "asistio") {
-                simbolo = "A";
-            }
-            else if (estado === "atraso") {
-                simbolo = "R";
-            }
-            else if (estado === "licencia") {
-                simbolo = "L";
-            }
-            else if (estado === "falta") {
-                simbolo = "F";
-            }
-
-            let claseEstado = "";
-
-            if (estado === "asistio") {
-                claseEstado = "estado-A";
-            }
-            else if (estado === "atraso") {
-                claseEstado = "estado-R";
-            }
-            else if (estado === "licencia") {
-                claseEstado = "estado-L";
-            }
-            else if (estado === "falta") {
-                claseEstado = "estado-F";
-            }
-
-            const observacionAsistencia =
-            registro
-            ? String(
-                registro.observacion || ""
-            ).trim()
-            : "";
-
-            const claseObservacionAsistencia =
-            observacionAsistencia
-            ? "celda-con-observacion"
-            : "";
-
-            const comentarioAsistencia =
-            observacionAsistencia
-            ? `onclick="mostrarComentarioInforme('Asistencia - ${escapeHTML(formatearFechaActividad(fecha))}', '${escapeHTML(observacionAsistencia).replace(/'/g, "&#39;")}')" title="Ver observación"`
-            : "";
-
-            cuerpo += `
-                <td class="asistencia-celda ${claseEstado} ${claseObservacionAsistencia}" ${comentarioAsistencia}>
-                    ${simbolo}
-                </td>
-            `;
-
-        });
-
-        cuerpo += `
-                <td>${totales.asistio}</td>
-                <td>${totales.atraso}</td>
-                <td>${totales.licencia}</td>
-                <td>${totales.falta}</td>
-        `;
-
-        actividadesInforme.forEach(
-        actividad => {
-
-            const registro =
-            mapaCalificacionesInforme[
-                estudiante.id +
-                "_" +
-                actividad.id
-            ] || {};
-
-            const nota =
-            registro.nota === null ||
-            registro.nota === undefined
-            ? ""
-            : String(
-                registro.nota
-            );
-
-            const observacion =
-            String(
-                registro.observacion || ""
-            );
-
-            const claseNotaObservacion =
-            observacion.trim()
-            ? "nota-con-observacion"
-            : "";
-
-            const comentarioNota =
-            observacion.trim()
-            ? `onclick="mostrarComentarioInforme('Observación - ${escapeHTML(actividad.nombre || "Actividad")}', '${escapeHTML(observacion).replace(/'/g, "&#39;")}')" title="Ver observación"`
-            : "";
-
-            cuerpo += `
-                <td class="actividad-nota ${claseNotaObservacion}" ${comentarioNota}>
-                    ${escapeHTML(nota)}
-                </td>
-            `;
-
-        });
-
-        cuerpo += `
-                <td
-                    class="visitas-general"
-                    style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;"
-                    onclick="mostrarVisitasInforme(${estudiante.id})"
-                    title="Ver días y horas de visita"
-                >
-                    ${
-                        totalVisitasPorEstudiante[
-                            estudiante.id
-                        ] || 0
-                    }
-                </td>
-
-                <td class="promedio-dimension">
-                    ${escapeHTML(
-                        String(
-                            promedioSER
-                        )
-                    )}
-                </td>
-
-                <td class="promedio-dimension">
-                    ${escapeHTML(
-                        String(
-                            promedioSABER
-                        )
-                    )}
-                </td>
-
-                <td class="promedio-dimension">
-                    ${escapeHTML(
-                        String(
-                            promedioHACER
-                        )
-                    )}
-                </td>
-
-                <td class="promedio-dimension">
-                    ${escapeHTML(
-                        String(
-                            promedioAUTO
-                        )
-                    )}
-                </td>
-
-                <td class="nota-3t-general">
-                    ${escapeHTML(
-                        String(
-                            valorNota3T
-                        )
-                    )}
-                </td>
-
-                <td class="nota-final-general">
-                    ${escapeHTML(
-                        String(
-                            notaFinal
-                        )
-                    )}
-                </td>
-
-            </tr>
-        `;
-
+        cuerpo += `<td>${totales.asistio}</td><td>${totales.atraso}</td><td>${totales.licencia}</td><td>${totales.falta}</td>`;
+        const agregarNotas=lista=>lista.forEach(a=>{const r=mapaCalificacionesInforme[estudiante.id+"_"+a.id]||{}, nota=r.nota===null||r.nota===undefined?"":String(r.nota),obs=String(r.observacion||""); const click=obs.trim()?`onclick="mostrarComentarioInforme('Observación - ${escapeHTML(a.nombre||"Actividad")}', '${escapeHTML(obs).replace(/'/g,"&#39;")}')" title="Ver observación"`:""; cuerpo+=`<td class="actividad-nota ${obs.trim()?"nota-con-observacion":""}" ${click}>${escapeHTML(nota)}</td>`;});
+        agregarNotas(ser); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSER))}</td>`;
+        agregarNotas(saber); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSABER))}</td>`;
+        agregarNotas(hacer); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioHACER))}</td>`;
+        agregarNotas(auto);
+        cuerpo += `<td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_1t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_2t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(nota3))}</td><td class="nota-final-general">${escapeHTML(String(notaFinal))}</td><td class="visitas-general" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" onclick="mostrarVisitasInforme(${estudiante.id})" title="Ver días y horas de visita">${totalVisitasPorEstudiante[estudiante.id]||0}</td></tr>`;
     });
 
-    contenedor.innerHTML = `
-        <div class="tabla-informe-general-contenedor">
-            <table class="tabla-informe-general">
-                <thead>
-                    ${encabezado1}
-                    ${encabezado2}
-                </thead>
-                <tbody>
-                    ${cuerpo}
-                </tbody>
-            </table>
-        </div>
-    `;
-
+    contenedor.innerHTML = `<div class="tabla-informe-general-contenedor"><table class="tabla-informe-general"><thead>${encabezado1}</thead><tbody>${cuerpo}</tbody></table></div>`;
 }
-
 
 /* =====================================================
    INTEGRACIÓN CON CARGA DE ESTUDIANTES
