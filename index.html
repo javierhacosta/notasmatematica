@@ -495,6 +495,28 @@ button:hover {
     font-weight: bold;
 
     white-space: nowrap;
+
+    text-align: right;
+}
+
+
+.actividad-observacion {
+
+    margin-top: 4px;
+
+    font-size: 12px;
+
+    font-weight: normal;
+
+    color: #666;
+
+    white-space: normal;
+
+    max-width: 180px;
+
+    text-align: right;
+
+    line-height: 1.3;
 }
 
 
@@ -1723,7 +1745,7 @@ async function mostrarDetalles() {
 
                 `&actividad_id=in.(${ids.join(",")})` +
 
-                `&select=actividad_id,nota`,
+                `&select=actividad_id,nota,observacion`,
 
                 {
 
@@ -1752,8 +1774,14 @@ async function mostrarDetalles() {
         calificaciones.forEach(
             c => {
 
-                mapa[c.actividad_id] =
-                    c.nota;
+                mapa[c.actividad_id] = {
+
+                    nota: c.nota,
+
+                    observacion:
+                        c.observacion
+
+                };
 
             }
         );
@@ -1866,10 +1894,16 @@ async function mostrarDetalles() {
                     actividad => {
 
 
-                        const nota =
+                        const registro =
                             mapa[
                                 actividad.id
                             ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
 
 
                         if (
@@ -1946,10 +1980,28 @@ async function mostrarDetalles() {
                     actividad => {
 
 
-                        const nota =
+                        const registro =
                             mapa[
                                 actividad.id
                             ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
+
+                        const observacion =
+
+                            registro &&
+                            registro.observacion
+
+                            ? escapeHTML(
+                                registro.observacion
+                            )
+
+                            : "";
 
 
                         const valor =
@@ -1994,9 +2046,31 @@ async function mostrarDetalles() {
 
                                 <div class="actividad-nota">
 
-                                    ${valor}
+                                    <div>
 
-                                    / ${actividad.puntaje_maximo}
+                                        ${valor}
+
+                                        / ${actividad.puntaje_maximo}
+
+                                    </div>
+
+
+                                    ${
+                                        observacion
+
+                                        ? `
+
+                                            <div class="actividad-observacion">
+
+                                                📝 ${observacion}
+
+                                            </div>
+
+                                        `
+
+                                        : ""
+
+                                    }
 
                                 </div>
 
