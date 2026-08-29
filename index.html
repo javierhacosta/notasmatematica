@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="es">
 
 <head>
@@ -9,7 +10,6 @@
 content="width=device-width, initial-scale=1.0">
 
 <title>Consulta de Nota</title>
-
 
 <style>
 
@@ -1041,87 +1041,84 @@ button:hover {
 
 </head>
 
-
 <body>
-
 
 <div class="contenedor">
 
+```
+<div class="institucion">
 
-    <div class="institucion">
-
-        U.E. GERMAN BUSCH I
-
-    </div>
-
-
-    <h1>
-
-        Matemática 2026
-
-    </h1>
-
-
-    <div class="profesor">
-
-        Prof. Javier Delmo Hacosta Moralez
-
-    </div>
-
-
-    <div class="subtitulo">
-
-        Consulta tu calificación
-
-    </div>
-
-
-    <label for="ci">
-
-        CI
-
-    </label>
-
-
-    <input
-
-        type="text"
-
-        id="ci"
-
-        placeholder="Ejemplo: 1234567"
-
-    >
-
-
-    <label for="fecha_nacimiento">
-
-        Fecha de nacimiento
-
-    </label>
-
-
-    <input
-
-        type="date"
-
-        id="fecha_nacimiento"
-
-    >
-
-
-    <button onclick="consultarNota()">
-
-        Consultar mi nota
-
-    </button>
-
-
-    <div id="resultado"></div>
-
+    U.E. GERMAN BUSCH I
 
 </div>
 
+
+<h1>
+
+    Matemática 2026
+
+</h1>
+
+
+<div class="profesor">
+
+    Prof. Javier Delmo Hacosta Moralez
+
+</div>
+
+
+<div class="subtitulo">
+
+    Consulta tu calificación
+
+</div>
+
+
+<label for="ci">
+
+    CI
+
+</label>
+
+
+<input
+
+    type="text"
+
+    id="ci"
+
+    placeholder="Ejemplo: 1234567"
+
+>
+
+
+<label for="fecha_nacimiento">
+
+    Fecha de nacimiento
+
+</label>
+
+
+<input
+
+    type="date"
+
+    id="fecha_nacimiento"
+
+>
+
+
+<button onclick="consultarNota()">
+
+    Consultar mi nota
+
+</button>
+
+
+<div id="resultado"></div>
+```
+
+</div>
 
 <script>
 
@@ -1266,32 +1263,76 @@ async function consultarNota() {
 
         try {
 
-            await fetch(
+            const respuestaVisita = await fetch(
+
                 `${SUPABASE_URL}/rest/v1/rpc/registrar_visita`,
+
                 {
+
                     method: "POST",
 
                     headers: {
-                        "apikey": SUPABASE_KEY,
+
+                        "apikey":
+                            SUPABASE_KEY,
+
                         "Authorization":
                             `Bearer ${SUPABASE_KEY}`,
+
                         "Content-Type":
                             "application/json"
+
                     },
 
                     body: JSON.stringify({
+
                         p_ci: ci,
-                        p_fecha_nacimiento: fecha
+
+                        p_fecha_nacimiento:
+                            fecha
+
                     })
+
                 }
+
             );
 
+
+            const textoRespuesta =
+                await respuestaVisita.text();
+
+
+            console.log(
+                "Respuesta registrar_visita:",
+                respuestaVisita.status,
+                textoRespuesta
+            );
+
+
+            if (!respuestaVisita.ok) {
+
+                console.error(
+
+                    "ERROR SUPABASE registrar_visita:",
+
+                    respuestaVisita.status,
+
+                    textoRespuesta
+
+                );
+
+            }
+
         }
+
         catch(error) {
 
             console.error(
-                "No se pudo registrar la visita:",
+
+                "ERROR al registrar la visita:",
+
                 error
+
             );
 
         }
@@ -1385,8 +1426,6 @@ function mostrarResultado(alumno) {
             </div>
 
 
-            <!-- AVISO -->
-
             <div class="aviso-provisional">
 
                 <strong>
@@ -1398,8 +1437,6 @@ function mostrarResultado(alumno) {
 
             </div>
 
-
-            <!-- 3ER TRIMESTRE -->
 
             <div class="titulo-3t">
 
@@ -1419,8 +1456,6 @@ function mostrarResultado(alumno) {
             </div>
 
 
-            <!-- BOTÓN DETALLES ABIERTO -->
-
             <button
 
                 class="boton-detalles"
@@ -1434,8 +1469,6 @@ function mostrarResultado(alumno) {
             </button>
 
 
-            <!-- DETALLE ABIERTO -->
-
             <div
 
                 id="detalle3T"
@@ -1444,8 +1477,6 @@ function mostrarResultado(alumno) {
 
             ></div>
 
-
-            <!-- TRIMESTRES -->
 
             <div class="trimestres">
 
@@ -1519,8 +1550,6 @@ function mostrarResultado(alumno) {
             </div>
 
 
-            <!-- NOTA FINAL -->
-
             <div class="final-box">
 
 
@@ -1572,12 +1601,6 @@ function mostrarResultado(alumno) {
     `;
 
 
-    /*
-    =================================================
-    CARGAR AUTOMÁTICAMENTE LOS DETALLES
-    =================================================
-    */
-
     mostrarDetalles();
 
 }
@@ -1603,12 +1626,6 @@ async function mostrarDetalles() {
 
     }
 
-
-    /*
-    =========================================
-    SI YA ESTÁ ABIERTO, PERMITIR OCULTAR
-    =========================================
-    */
 
     if (
         contenedor.style.display ===
@@ -1639,12 +1656,6 @@ async function mostrarDetalles() {
     }
 
 
-    /*
-    =========================================
-    MOSTRAR
-    =========================================
-    */
-
     contenedor.style.display =
         "block";
 
@@ -1672,10 +1683,6 @@ async function mostrarDetalles() {
 
     try {
 
-
-        /* =========================================
-           ACTIVIDADES
-        ========================================= */
 
         const respuesta =
             await fetch(
@@ -1722,10 +1729,6 @@ async function mostrarDetalles() {
             await respuesta.json();
 
 
-        /* =========================================
-           SI NO HAY ACTIVIDADES
-        ========================================= */
-
         if (
             actividades.length === 0
         ) {
@@ -1762,10 +1765,6 @@ async function mostrarDetalles() {
 
         }
 
-
-        /* =========================================
-           CALIFICACIONES
-        ========================================= */
 
         const ids =
             actividades.map(
@@ -1823,10 +1822,6 @@ async function mostrarDetalles() {
             }
         );
 
-
-        /* =========================================
-           CATEGORÍAS
-        ========================================= */
 
         const categorias = [
 
@@ -2155,10 +2150,6 @@ async function mostrarDetalles() {
         );
 
 
-        /* =========================================
-           NOTA 3T
-        ========================================= */
-
         const nota3 =
             redondearNota(
                 alumnoActual.nota_3t
@@ -2216,12 +2207,6 @@ async function mostrarDetalles() {
         contenedor.innerHTML =
             html;
 
-
-        /*
-        =========================================
-        ASISTENCIA INDEPENDIENTE
-        =========================================
-        */
 
         await mostrarAsistenciaEnDetalle();
 
@@ -2379,10 +2364,6 @@ async function mostrarAsistenciaEnDetalle() {
         );
 
 
-        /* =========================================
-           TABLA
-        ========================================= */
-
         let filas = "";
 
 
@@ -2520,10 +2501,6 @@ async function mostrarAsistenciaEnDetalle() {
         }
 
 
-        /* =========================================
-           BLOQUE COMPLETO ASISTENCIA
-        ========================================= */
-
         const asistenciaHTML = `
 
             <div class="asistencia-box">
@@ -2543,8 +2520,6 @@ async function mostrarAsistenciaEnDetalle() {
 
                 </div>
 
-
-                <!-- RESUMEN -->
 
                 <div class="asistencia-resumen">
 
@@ -2664,8 +2639,6 @@ async function mostrarAsistenciaEnDetalle() {
                 </div>
 
 
-                <!-- BOTÓN ABIERTO -->
-
                 <button
 
                     type="button"
@@ -2680,8 +2653,6 @@ async function mostrarAsistenciaEnDetalle() {
 
                 </button>
 
-
-                <!-- DETALLE ABIERTO -->
 
                 <div
 
