@@ -1133,7 +1133,7 @@ td,
 
 /* =====================================================
    TABLAS DE ACTIVIDADES
-   Nº | Nombre | Nota
+   Nº | Nombre | Nota | Observaciones
 ===================================================== */
 
 #contenedorActividades table {
@@ -1213,6 +1213,26 @@ td,
 #contenedorActividades table .nota-input {
     width: 55px;
     max-width: 55px;
+}
+
+
+/* =====================================================
+   COLUMNA OBSERVACIONES EN ACTIVIDADES
+===================================================== */
+
+#contenedorActividades table th:nth-child(4),
+#contenedorActividades table td:nth-child(4) {
+    width: auto;
+    min-width: 150px;
+}
+
+#contenedorActividades table .observacion-actividad {
+    width: 100%;
+    min-width: 130px;
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
 }
 
 
@@ -1925,6 +1945,7 @@ let estudiantes = [];
 let actividades = [];
 
 let calificaciones = {};
+let observacionesCalificaciones = {};
 
 let cursoSeleccionado = "";
 
@@ -3347,7 +3368,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota"
+        "id,actividad_id,estudiante_id,nota,observacion"
     )
     .in(
         "actividad_id",
@@ -3396,6 +3417,17 @@ async function cargarCalificaciones() {
             cal.actividad_id
         ] =
         cal.nota;
+
+        if (!observacionesCalificaciones[cal.estudiante_id]) {
+            observacionesCalificaciones[cal.estudiante_id] = {};
+        }
+
+        observacionesCalificaciones[
+            cal.estudiante_id
+        ][
+            cal.actividad_id
+        ] =
+        cal.observacion || "";
 
     });
 
