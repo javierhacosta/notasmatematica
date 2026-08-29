@@ -1613,84 +1613,6 @@ Selecciona un curso
 
 
 <!-- =====================================================
-     TABLA GENERAL
-===================================================== -->
-
-<div
-    id="tablaGeneral"
-    class="tabla-general oculto">
-
-<div class="titulo-general">
-
-<span>
-📊 Calificaciones del curso
-</span>
-
-<div class="acciones-general">
-
-<button
-    type="button"
-    class="boton-nueva-actividad"
-    onclick="abrirModalActividad()"
-    title="Añadir nueva actividad">
-
-📝
-
-</button>
-
-
-<button
-    id="botonGeneral"
-    class="boton-general"
-    onclick="ocultarTablaGeneral()"
-    title="Mostrar u ocultar calificaciones">
-
-+
-
-</button>
-
-</div>
-
-</div>
-
-
-<div
-    id="contenidoGeneral"
-    class="oculto">
-
-<div class="tabla-contenedor">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>Nº</th>
-<th>Nombre</th>
-<th>Curso</th>
-<th>1T</th>
-<th>2T</th>
-<th>3T</th>
-<th>Final</th>
-
-</tr>
-
-</thead>
-
-<tbody id="tablaEstudiantes">
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- =====================================================
      ASISTENCIA
 ===================================================== -->
 
@@ -1706,6 +1628,16 @@ Selecciona un curso
 
 
 <div class="acciones-asistencia">
+
+<button
+    type="button"
+    class="boton-nueva-actividad"
+    onclick="abrirModalActividad()"
+    title="Crear nueva actividad">
+
+📝
+
+</button>
 
 <select
     id="listaFechasAsistencia"
@@ -1873,8 +1805,6 @@ Fechas guardadas
 
 </div>
 
-
-
 <!-- =====================================================
      INFORME GENERAL
 ===================================================== -->
@@ -1917,6 +1847,71 @@ Fechas guardadas
         </div>
 
     </div>
+
+</div>
+
+<!-- =====================================================
+     TABLA GENERAL
+===================================================== -->
+
+<div
+    id="tablaGeneral"
+    class="tabla-general oculto">
+
+<div class="titulo-general">
+
+<span>
+📊 Calificaciones del curso
+</span>
+
+<div class="acciones-general">
+<button
+    id="botonGeneral"
+    class="boton-general"
+    onclick="ocultarTablaGeneral()"
+    title="Mostrar u ocultar calificaciones">
+
++
+
+</button>
+
+</div>
+
+</div>
+
+
+<div
+    id="contenidoGeneral"
+    class="oculto">
+
+<div class="tabla-contenedor">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Nº</th>
+<th>Nombre</th>
+<th>Curso</th>
+<th>1T</th>
+<th>2T</th>
+<th>3T</th>
+<th>Final</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tablaEstudiantes">
+</tbody>
+
+</table>
+
+</div>
+
+</div>
 
 </div>
 
@@ -5882,12 +5877,38 @@ function() {
 
 
 /* =====================================================
+   INICIO MINIMIZADO
+===================================================== */
+
+function iniciarPanelesMinimizados() {
+    const contenidoGeneral = document.getElementById("contenidoGeneral");
+    const botonGeneral = document.getElementById("botonGeneral");
+    const contenidoAsistencia = document.getElementById("contenidoAsistencia");
+    const botonAsistencia = document.getElementById("botonAsistencia");
+    const contenidoInforme = document.getElementById("contenidoInforme");
+    const botonInforme = document.getElementById("botonInforme");
+
+    if (contenidoGeneral) contenidoGeneral.classList.add("oculto");
+    if (botonGeneral) botonGeneral.textContent = "+";
+
+    if (contenidoAsistencia) contenidoAsistencia.classList.add("oculto");
+    if (botonAsistencia) botonAsistencia.textContent = "+";
+
+    if (contenidoInforme) contenidoInforme.classList.add("oculto");
+    if (botonInforme) botonInforme.textContent = "+";
+
+    informeGeneralVisible = false;
+}
+
+/* =====================================================
    ACTUALIZACIÓN INICIAL
 ===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
     function() {
+
+        iniciarPanelesMinimizados();
 
         if (cursoSeleccionado) {
             mostrarPanelInforme();
