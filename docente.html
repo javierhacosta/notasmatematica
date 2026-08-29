@@ -6352,473 +6352,194 @@ async function mostrarInformeEstudiante() {
    TABLA: visitas_estudiantes
 ===================================================== */
 
-
-/* =====================================================
-   CARGAR VISITAS DEL ESTUDIANTE
-   TABLA: visitas_estudiantes
-===================================================== */
-
 async function cargarVisitasEstudianteInforme(
     estudiante
 ) {
 
     const contenedor =
-        document.getElementById(
-            "visitasEstudianteInforme"
-        );
+    document.getElementById(
+        "visitasEstudianteInforme"
+    );
 
     if (!contenedor) {
         return;
     }
 
-
-    const estudianteId =
-        estudiante.id;
-
-
-    console.log(
-        "===================================="
-    );
-
-    console.log(
-        "INFORME - VISITAS DEL ESTUDIANTE"
-    );
-
-    console.log(
-        "ID estudiante:",
-        estudianteId
-    );
-
-    console.log(
-        "Tipo del ID:",
-        typeof estudianteId
-    );
-
-
-    /* =================================================
-       PRIMERA CONSULTA
-       BUSCAR DIRECTAMENTE POR estudiante_id
-    ================================================= */
-
-    const resultado =
-        await supabaseClient
-            .from("visitas_estudiantes")
-            .select(
-                "id, estudiante_id, fecha_hora"
-            )
-            .eq(
-                "estudiante_id",
-                estudianteId
-            )
-            .order(
-                "fecha_hora",
-                {
-                    ascending: false
-                }
-            );
-
-
-    const visitas =
-        resultado.data || [];
-
-
-    const error =
-        resultado.error;
-
-
-    console.log(
-        "Visitas encontradas:",
-        visitas
-    );
-
-    console.log(
-        "Cantidad:",
-        visitas.length
-    );
-
-    console.log(
-        "Error:",
+    const {
+        data,
         error
-    );
-
-
-    /* =================================================
-       ERROR DE SUPABASE
-    ================================================= */
+    } =
+    await supabaseClient
+        .from("visitas_estudiantes")
+        .select(
+            "id,estudiante_id,fecha_hora"
+        )
+        .eq(
+            "estudiante_id",
+            estudiante.id
+        )
+        .order(
+            "fecha_hora",
+            {
+                ascending: false
+            }
+        );
 
     if (error) {
 
         console.error(
-            "ERROR AL CONSULTAR visitas_estudiantes:",
+            "Error al cargar visitas:",
             error
         );
 
-
         contenedor.innerHTML =
         `
-            <div class="sin-datos-informe"
-                 style="
-                    color:#c62828;
-                    background:#ffebee;
-                    border-color:#ef9a9a;
-                 ">
-
-                <strong>
-                    Error al consultar las visitas
-                </strong>
-
-                <br><br>
-
-                ${escapeHTML(
-                    error.message
-                )}
-
-                <br><br>
-
-                <small>
-                    Código:
-                    ${escapeHTML(
-                        String(
-                            error.code || "-"
-                        )
-                    )}
-                </small>
-
+            <div class="sin-datos-informe">
+                Error al cargar las visitas:
+                ${escapeHTML(error.message)}
             </div>
         `;
 
         return;
     }
 
+    const visitas =
+        data || [];
 
-    /* =================================================
-       SI ENCUENTRA VISITAS
-    ================================================= */
+    const total =
+        visitas.length;
 
-    if (visitas.length > 0) {
+    if (total === 0) {
 
-        let html =
+        contenedor.innerHTML =
         `
-            <div style="
-                margin-bottom:10px;
-                font-weight:bold;
-                color:#1557a6;
-            ">
-                👁️ Total de ingresos:
-                ${visitas.length}
+            <div class="sin-datos-informe">
+                Este estudiante todavía no ha ingresado
+                a la página de estudiante.
             </div>
-
-            <div class="tabla-contenedor">
-
-                <table class="tabla-informe">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>Nº</th>
-
-                            <th>
-                                Fecha y hora de ingreso
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
         `;
 
+        return;
+    }
 
-        visitas.forEach(
-            (
-                visita,
-                indice
-            ) => {
+    const tabla =
+        document.createElement(
+            "table"
+        );
 
-                let fechaHora =
-                    "-";
+    tabla.className =
+        "tabla-informe";
 
+    tabla.innerHTML =
+    `
+        <thead>
+            <tr>
+                <th>Nº</th>
+                <th>Fecha y hora de ingreso</th>
+            </tr>
+        </thead>
+
+        <tbody></tbody>
+    `;
+
+    const tbody =
+        tabla.querySelector(
+            "tbody"
+        );
+
+    visitas.forEach(
+        (visita, indice) => {
+
+            const fila =
+                document.createElement(
+                    "tr"
+                );
+
+            let fechaHora = "-";
+
+            if (visita.fecha_hora) {
+
+                const fecha =
+                    new Date(
+                        visita.fecha_hora
+                    );
 
                 if (
-                    visita.fecha_hora
+                    !isNaN(
+                        fecha.getTime()
+                    )
                 ) {
 
-                    const fecha =
-                        new Date(
-                            visita.fecha_hora
+                    fechaHora =
+                        fecha.toLocaleString(
+                            "es-BO",
+                            {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit"
+                            }
                         );
 
+                } else {
 
-                    if (
-                        !isNaN(
-                            fecha.getTime()
-                        )
-                    ) {
-
-                        fechaHora =
-                            fecha.toLocaleString(
-                                "es-BO",
-                                {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second: "2-digit"
-                                }
-                            );
-
-                    } else {
-
-                        fechaHora =
-                            String(
-                                visita.fecha_hora
-                            );
-
-                    }
-
+                    fechaHora =
+                        String(
+                            visita.fecha_hora
+                        );
                 }
-
-
-                html +=
-                `
-                    <tr>
-
-                        <td>
-                            ${indice + 1}
-                        </td>
-
-                        <td>
-                            ${escapeHTML(
-                                fechaHora
-                            )}
-                        </td>
-
-                    </tr>
-                `;
-
             }
-        );
 
+            fila.innerHTML =
+            `
+                <td>
+                    ${indice + 1}
+                </td>
 
-        html +=
-        `
-                    </tbody>
-
-                </table>
-
-            </div>
-        `;
-
-
-        contenedor.innerHTML =
-            html;
-
-
-        console.log(
-            "VISITAS MOSTRADAS CORRECTAMENTE"
-        );
-
-        console.log(
-            "===================================="
-        );
-
-        return;
-    }
-
-
-    /* =================================================
-       NO ENCONTRÓ REGISTROS
-       
-       HACEMOS UNA SEGUNDA CONSULTA PARA SABER
-       SI SUPABASE PERMITE VER LA TABLA
-    ================================================= */
-
-    console.warn(
-        "No se encontraron visitas para estudiante_id:",
-        estudianteId
-    );
-
-
-    const comprobacion =
-        await supabaseClient
-            .from("visitas_estudiantes")
-            .select(
-                "id, estudiante_id, fecha_hora"
-            )
-            .limit(20);
-
-
-    console.log(
-        "COMPROBACIÓN GENERAL DE LA TABLA:",
-        comprobacion.data
-    );
-
-    console.log(
-        "ERROR COMPROBACIÓN:",
-        comprobacion.error
-    );
-
-
-    /* =================================================
-       SI LA TABLA NO DEVUELVE NINGÚN REGISTRO
-    ================================================= */
-
-    if (
-        !comprobacion.error &&
-        (
-            !comprobacion.data ||
-            comprobacion.data.length === 0
-        )
-    ) {
-
-        contenedor.innerHTML =
-        `
-            <div class="sin-datos-informe"
-                 style="
-                    color:#c62828;
-                    background:#fff3e0;
-                    border-color:#ffcc80;
-                 ">
-
-                <strong>
-                    No se pueden leer los registros
-                    de visitas_estudiantes.
-                </strong>
-
-                <br><br>
-
-                El estudiante tiene el ID:
-
-                <strong>
+                <td>
                     ${escapeHTML(
-                        String(
-                            estudianteId
-                        )
+                        fechaHora
                     )}
-                </strong>
+                </td>
+            `;
 
-                <br><br>
+            tbody.appendChild(
+                fila
+            );
+        }
+    );
 
-                Si existen registros en la base de datos,
-                revisa las políticas RLS de la tabla
-                <strong>
-                    visitas_estudiantes
-                </strong>.
-
-            </div>
-        `;
-
-        return;
-    }
-
-
-    /* =================================================
-       SI HAY REGISTROS PERO NO COINCIDE EL ID
-    ================================================= */
-
-    if (
-        comprobacion.data &&
-        comprobacion.data.length > 0
-    ) {
-
-        console.warn(
-            "Registros existentes en visitas_estudiantes:",
-            comprobacion.data
+    const envoltorio =
+        document.createElement(
+            "div"
         );
 
+    envoltorio.className =
+        "tabla-contenedor";
 
-        contenedor.innerHTML =
-        `
-            <div class="sin-datos-informe"
-                 style="
-                    color:#856404;
-                    background:#fff3cd;
-                    border-color:#ffeeba;
-                 ">
-
-                <strong>
-                    Hay registros en visitas_estudiantes,
-                    pero no coinciden con el ID consultado.
-                </strong>
-
-                <br><br>
-
-                ID consultado:
-
-                <strong>
-                    ${escapeHTML(
-                        String(
-                            estudianteId
-                        )
-                    )}
-                </strong>
-
-                <br><br>
-
-                Revisa en la consola del navegador
-                los valores de
-                <strong>
-                    estudiante_id
-                </strong>
-                que están registrados.
-
-            </div>
-        `;
-
-        return;
-    }
-
-
-    /* =================================================
-       CASO FINAL
-    ================================================= */
+    envoltorio.appendChild(
+        tabla
+    );
 
     contenedor.innerHTML =
     `
-        <div class="sin-datos-informe">
-
-            Este estudiante todavía no ha
-            ingresado a la página de estudiante.
-
-            <br><br>
-
-            <small>
-                ID consultado:
-                <strong>
-                    ${escapeHTML(
-                        String(
-                            estudianteId
-                        )
-                    )}
-                </strong>
-            </small>
-
+        <div style="
+            margin-bottom:10px;
+            font-weight:bold;
+            color:#1557a6;
+        ">
+            Total de ingresos:
+            ${total}
         </div>
     `;
 
+    contenedor.appendChild(
+        envoltorio
+    );
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /* =====================================================
