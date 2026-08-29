@@ -78,8 +78,7 @@ label {
     margin-bottom: 6px;
 }
 
-input,
-select {
+input, select {
     width: 100%;
     padding: 11px;
     border: 1px solid #ccc;
@@ -237,13 +236,6 @@ select {
     border: 3px solid transparent;
 }
 
-.nombre-categoria {
-    display: none;
-    margin-top: 7px;
-    font-weight: bold;
-    font-size: 14px;
-}
-
 
 /* SER */
 
@@ -288,6 +280,12 @@ select {
     transform: scale(1.08);
 }
 
+.nombre-categoria {
+    display: none;
+    margin-top: 7px;
+    font-weight: bold;
+    font-size: 14px;
+}
 
 .radio-categoria input:checked + label .nombre-categoria {
     display: block;
@@ -540,6 +538,32 @@ td:first-child {
 }
 
 .nota-input.editable {
+    background: #fffde7;
+    border: 2px solid #ef6c00;
+}
+
+
+/* =====================================================
+   OBSERVACIONES DE ACTIVIDADES
+===================================================== */
+
+.observacion-actividad {
+    width: 100%;
+    min-width: 150px;
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.observacion-actividad:disabled {
+    background: #eeeeee;
+    color: #555;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
+.observacion-actividad.editable {
     background: #fffde7;
     border: 2px solid #ef6c00;
 }
@@ -821,7 +845,7 @@ td:first-child {
 
 
 /* =====================================================
-   OBSERVACIÓN
+   OBSERVACIÓN ASISTENCIA
 ===================================================== */
 
 .observacion-asistencia {
@@ -1028,12 +1052,6 @@ td:first-child {
         overflow-x: auto;
     }
 
-    /*
-       CORRECCIÓN:
-       Las tablas de actividades ya no tendrán
-       un mínimo de 600px.
-    */
-
     table {
         width: 100%;
         table-layout: auto;
@@ -1044,6 +1062,11 @@ td:first-child {
         max-width: 100%;
         padding: 6px 2px;
         font-size: 14px;
+    }
+
+    .observacion-actividad {
+        min-width: 130px;
+        font-size: 13px;
     }
 
     .titulo-asistencia {
@@ -1133,7 +1156,7 @@ td,
 
 /* =====================================================
    TABLAS DE ACTIVIDADES
-   Nº | Nombre | Nota
+   Nº | Nombre | Nota | Observaciones
 ===================================================== */
 
 #contenedorActividades table {
@@ -1178,7 +1201,6 @@ td,
     overflow: hidden;
 }
 
-
 #contenedorActividades table td.nombre .nombre-dos-lineas {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -1209,14 +1231,32 @@ td,
     white-space: nowrap;
 }
 
-
 #contenedorActividades table .nota-input {
     width: 55px;
     max-width: 55px;
 }
 
 
-/* BOTONES GUARDAR AL FINAL DE LAS TABLAS */
+/* =====================================================
+   COLUMNA OBSERVACIONES
+===================================================== */
+
+#contenedorActividades table th:nth-child(4),
+#contenedorActividades table td:nth-child(4) {
+    width: 180px;
+    min-width: 150px;
+}
+
+#contenedorActividades table .observacion-actividad {
+    width: 100%;
+    min-width: 130px;
+    max-width: 100%;
+}
+
+
+/* =====================================================
+   BOTONES GUARDAR AL FINAL DE LAS TABLAS
+===================================================== */
 
 .fila-guardar-tabla {
     text-align: center;
@@ -1254,83 +1294,6 @@ td,
    PROGRESO DE GUARDADO
 ===================================================== */
 
-/* =====================================================
-   PROGRESO DE GUARDADO
-===================================================== */
-
-function actualizarProgresoGuardado(tipo, porcentaje, activo = true) {
-
-    const elementos = tipo === "notas"
-        ? Array.from(
-            document.querySelectorAll(".progreso-notas")
-          )
-        : [
-            document.getElementById("progresoAsistencia"),
-            document.getElementById("progresoAsistenciaTabla")
-          ];
-
-
-    elementos.forEach(elemento => {
-
-        if (elemento) {
-
-            /*
-               Mostrar el porcentaje solamente
-               mientras está guardando.
-
-               Al llegar al 100% desaparece.
-            */
-
-            if (
-                activo &&
-                porcentaje > 0 &&
-                porcentaje < 100
-            ) {
-
-                elemento.textContent =
-                    porcentaje + "%";
-
-            } else {
-
-                elemento.textContent = "";
-
-            }
-
-        }
-
-    });
-
-
-    const botones = tipo === "notas"
-        ? Array.from(
-            document.querySelectorAll(".boton-guardar-notas")
-          )
-        : [
-            document.getElementById("botonGuardarAsistencia"),
-            document.getElementById("botonGuardarAsistenciaTabla")
-          ];
-
-
-    botones.forEach(boton => {
-
-        if (boton) {
-
-            if (activo) {
-
-                boton.classList.add("guardando");
-
-            } else {
-
-                boton.classList.remove("guardando");
-
-            }
-
-        }
-
-    });
-
-}
-
 .progreso-guardar {
     display: inline-block;
     margin-left: 5px;
@@ -1360,7 +1323,8 @@ function actualizarProgresoGuardado(tipo, porcentaje, activo = true) {
 <h1>Panel Docente</h1>
 
 <div class="usuario">
-Usuario: <span id="usuario"></span>
+Usuario:
+<span id="usuario"></span>
 </div>
 
 
@@ -1463,17 +1427,11 @@ Selecciona un curso
 <tr>
 
 <th>Nº</th>
-
 <th>Nombre</th>
-
 <th>Curso</th>
-
 <th>1T</th>
-
 <th>2T</th>
-
 <th>3T</th>
-
 <th>Final</th>
 
 </tr>
@@ -1513,10 +1471,14 @@ Selecciona un curso
     id="listaFechasAsistencia"
     class="lista-fechas-asistencia"
     onchange="seleccionarFechaAsistencia()"
-    title="Fechas con asistencia del curso"
->
-    <option value="">Fechas guardadas</option>
+    title="Fechas con asistencia del curso">
+
+<option value="">
+Fechas guardadas
+</option>
+
 </select>
+
 
 <input
     type="date"
@@ -1524,15 +1486,18 @@ Selecciona un curso
     class="fecha-asistencia"
 >
 
+
 <button
     type="button"
     id="botonEliminarFechaAsistencia"
     class="boton-eliminar-fecha-asistencia"
     onclick="eliminarFechaAsistencia()"
-    title="Eliminar la asistencia de esta fecha del curso"
->
-    🗑️
+    title="Eliminar la asistencia de esta fecha del curso">
+
+🗑️
+
 </button>
+
 
 <button
     type="button"
@@ -1542,7 +1507,11 @@ Selecciona un curso
     title="Guardar asistencia">
 
 💾 Guardar
-<span class="progreso-guardar" id="progresoAsistencia"></span>
+
+<span
+    class="progreso-guardar"
+    id="progresoAsistencia">
+</span>
 
 </button>
 
@@ -1576,17 +1545,11 @@ Selecciona un curso
 <tr>
 
 <th>Nº</th>
-
 <th>Nombre</th>
-
 <th>🟢</th>
-
 <th>🟡</th>
-
 <th>🔵</th>
-
 <th>🔴</th>
-
 <th>Observaciones</th>
 
 </tr>
@@ -1595,14 +1558,16 @@ Selecciona un curso
 
 
 <tbody id="tablaAsistencia">
-
 </tbody>
+
 
 <tfoot>
 
 <tr>
 
-<td colspan="7" class="fila-guardar-tabla">
+<td
+    colspan="7"
+    class="fila-guardar-tabla">
 
 <button
     type="button"
@@ -1611,7 +1576,12 @@ Selecciona un curso
     onclick="guardarAsistencia()"
     title="Guardar asistencia">
 
-    💾 <span class="progreso-guardar" id="progresoAsistenciaTabla"></span>
+💾
+
+<span
+    class="progreso-guardar"
+    id="progresoAsistenciaTabla">
+</span>
 
 </button>
 
@@ -1642,7 +1612,11 @@ Selecciona un curso
     onclick="guardarNotas()">
 
 💾 Guardar notas
-<span id="progresoNotas" class="progreso-guardar progreso-notas"></span>
+
+<span
+    id="progresoNotas"
+    class="progreso-guardar progreso-notas">
+</span>
 
 </button>
 
@@ -1720,8 +1694,7 @@ Nombre de la actividad
     type="text"
     id="nombreActividad"
     placeholder="Ej.: Evaluación de números"
-    autocomplete="off"
->
+    autocomplete="off">
 
 </div>
 
@@ -1738,8 +1711,7 @@ Fecha de la actividad
 
 <input
     type="date"
-    id="fechaActividad"
->
+    id="fechaActividad">
 
 </div>
 
@@ -1762,8 +1734,7 @@ Categoría
     type="radio"
     id="categoriaSER"
     name="categoriaActividad"
-    value="SER"
->
+    value="SER">
 
 <label for="categoriaSER">
 
@@ -1788,8 +1759,7 @@ SER — 10 puntos
     type="radio"
     id="categoriaSABER"
     name="categoriaActividad"
-    value="SABER"
->
+    value="SABER">
 
 <label for="categoriaSABER">
 
@@ -1814,8 +1784,7 @@ SABER — 45 puntos
     type="radio"
     id="categoriaHACER"
     name="categoriaActividad"
-    value="HACER"
->
+    value="HACER">
 
 <label for="categoriaHACER">
 
@@ -1840,8 +1809,7 @@ HACER — 40 puntos
     type="radio"
     id="categoriaAUTO"
     name="categoriaActividad"
-    value="AUTOEVALUACION"
->
+    value="AUTOEVALUACION">
 
 <label for="categoriaAUTO">
 
@@ -1921,13 +1889,9 @@ window.supabase.createClient(
 ===================================================== */
 
 let estudiantes = [];
-
 let actividades = [];
-
 let calificaciones = {};
-
 let cursoSeleccionado = "";
-
 let registrosAsistencia = {};
 
 
@@ -2004,14 +1968,11 @@ function establecerFechaActual() {
         "fechaAsistencia"
     );
 
-
     const hoy =
     new Date();
 
-
     const año =
     hoy.getFullYear();
-
 
     const mes =
     String(
@@ -2021,7 +1982,6 @@ function establecerFechaActual() {
         "0"
     );
 
-
     const dia =
     String(
         hoy.getDate()
@@ -2029,7 +1989,6 @@ function establecerFechaActual() {
         2,
         "0"
     );
-
 
     fecha.value =
     `${año}-${mes}-${dia}`;
@@ -2048,19 +2007,15 @@ function establecerFechaActividadActual() {
         "fechaActividad"
     );
 
-
     if (!fecha) {
         return;
     }
 
-
     const hoy =
     new Date();
 
-
     const año =
     hoy.getFullYear();
-
 
     const mes =
     String(
@@ -2070,7 +2025,6 @@ function establecerFechaActividadActual() {
         "0"
     );
 
-
     const dia =
     String(
         hoy.getDate()
@@ -2078,7 +2032,6 @@ function establecerFechaActividadActual() {
         2,
         "0"
     );
-
 
     fecha.value =
     `${año}-${mes}-${dia}`;
@@ -2111,8 +2064,7 @@ async function cargarEstudiantes() {
 
         alert(
             "Error al cargar estudiantes: " +
-            error.message,
-            true
+            error.message
         );
 
         return;
@@ -2122,7 +2074,6 @@ async function cargarEstudiantes() {
 
     estudiantes =
     data || [];
-
 
     cargarCursos();
 
@@ -2140,18 +2091,13 @@ function cargarCursos() {
         "buscarCurso"
     );
 
-
     const valorAnterior =
     select.value;
 
-
-    select.innerHTML = `
-
-        <option value="">
-            Selecciona un curso
-        </option>
-
-    `;
+    select.innerHTML =
+    `<option value="">
+        Selecciona un curso
+    </option>`;
 
 
     const cursos =
@@ -2172,14 +2118,11 @@ function cargarCursos() {
             "option"
         );
 
-
         opcion.value =
         curso;
 
-
         opcion.textContent =
         curso;
-
 
         select.appendChild(
             opcion
@@ -2216,16 +2159,13 @@ document.getElementById(
         cursoSeleccionado =
         this.value;
 
-
         document.getElementById(
             "contenedorActividades"
         ).innerHTML = "";
 
-
         document.getElementById(
             "tablaEstudiantes"
         ).innerHTML = "";
-
 
         document.getElementById(
             "tablaGeneral"
@@ -2233,41 +2173,29 @@ document.getElementById(
             "oculto"
         );
 
-
         document.getElementById(
             "panelAsistencia"
         ).classList.add(
             "oculto"
         );
 
-
         cerrarModalActividad();
-
 
         actividadesDesbloqueadas.clear();
 
-
         if (!cursoSeleccionado) {
-
             return;
-
         }
-
 
         await cargarActividades();
 
-
         mostrarTablaGeneral();
-
 
         mostrarPanelAsistencia();
 
-
         await cargarFechasAsistencia();
 
-
         await cargarAsistencia();
-
 
         aplicarBusqueda();
 
@@ -2287,13 +2215,11 @@ function mostrarPanelAsistencia() {
         "oculto"
     );
 
-
     document.getElementById(
         "contenidoAsistencia"
     ).classList.add(
         "oculto"
     );
-
 
     document.getElementById(
         "botonAsistencia"
@@ -2314,7 +2240,6 @@ function mostrarOcultarAsistencia() {
         "contenidoAsistencia"
     );
 
-
     const boton =
     document.getElementById(
         "botonAsistencia"
@@ -2331,10 +2256,8 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
-
         boton.textContent =
         "−";
-
 
         boton.title =
         "Ocultar asistencia";
@@ -2347,10 +2270,8 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
-
         boton.textContent =
         "+";
-
 
         boton.title =
         "Mostrar asistencia";
@@ -2361,7 +2282,7 @@ function mostrarOcultarAsistencia() {
 
 
 /* =====================================================
-   FECHAS DE ASISTENCIA DEL CURSO
+   FECHAS DE ASISTENCIA
 ===================================================== */
 
 async function cargarFechasAsistencia() {
@@ -2375,9 +2296,10 @@ async function cargarFechasAsistencia() {
         return;
     }
 
-    select.innerHTML = `
-        <option value="">Fechas guardadas</option>
-    `;
+    select.innerHTML =
+    `<option value="">
+        Fechas guardadas
+    </option>`;
 
     if (!cursoSeleccionado) {
         return;
@@ -2388,7 +2310,8 @@ async function cargarFechasAsistencia() {
         e => e.curso === cursoSeleccionado
     );
 
-    const ids = estudiantesCurso.map(
+    const ids =
+    estudiantesCurso.map(
         e => e.id
     );
 
@@ -2404,29 +2327,49 @@ async function cargarFechasAsistencia() {
     .from("asistencia")
     .select("fecha")
     .in("estudiante_id", ids)
-    .order("fecha", { ascending: false });
+    .order("fecha", {
+        ascending: false
+    });
 
     if (error) {
+
         console.error(error);
+
         alert(
             "Error al cargar las fechas de asistencia: " +
-            error.message,
-            true
+            error.message
         );
+
         return;
+
     }
 
-    const fechas = [...new Set(
-        (data || []).map(r => r.fecha).filter(Boolean)
+    const fechas =
+    [...new Set(
+        (data || [])
+        .map(r => r.fecha)
+        .filter(Boolean)
     )];
 
-    fechas.forEach(fecha => {
-        const opcion =
-        document.createElement("option");
 
-        opcion.value = fecha;
-        opcion.textContent = fecha;
-        select.appendChild(opcion);
+    fechas.forEach(
+    fecha => {
+
+        const opcion =
+        document.createElement(
+            "option"
+        );
+
+        opcion.value =
+        fecha;
+
+        opcion.textContent =
+        fecha;
+
+        select.appendChild(
+            opcion
+        );
+
     });
 
 }
@@ -2448,7 +2391,9 @@ function seleccionarFechaAsistencia() {
         return;
     }
 
-    fecha.value = select.value;
+    fecha.value =
+    select.value;
+
     cargarAsistencia();
 
 }
@@ -2457,8 +2402,13 @@ function seleccionarFechaAsistencia() {
 async function eliminarFechaAsistencia() {
 
     if (!cursoSeleccionado) {
-        alert("Primero selecciona un curso.");
+
+        alert(
+            "Primero selecciona un curso."
+        );
+
         return;
+
     }
 
     const fecha =
@@ -2467,11 +2417,17 @@ async function eliminarFechaAsistencia() {
     ).value;
 
     if (!fecha) {
-        alert("Selecciona una fecha de asistencia.");
+
+        alert(
+            "Selecciona una fecha de asistencia."
+        );
+
         return;
+
     }
 
-    const confirmar = confirm(
+    const confirmar =
+    confirm(
         `¿Deseas eliminar toda la asistencia del curso "${cursoSeleccionado}" correspondiente al ${fecha}?\n\nEsta acción eliminará los registros de todos los estudiantes de esa fecha.`
     );
 
@@ -2484,7 +2440,8 @@ async function eliminarFechaAsistencia() {
         e => e.curso === cursoSeleccionado
     );
 
-    const ids = estudiantesCurso.map(
+    const ids =
+    estudiantesCurso.map(
         e => e.id
     );
 
@@ -2492,9 +2449,13 @@ async function eliminarFechaAsistencia() {
         return;
     }
 
-    mostrarMensaje("Eliminando asistencia...");
+    mostrarMensaje(
+        "Eliminando asistencia..."
+    );
 
-    const { error } =
+    const {
+        error
+    } =
     await supabaseClient
     .from("asistencia")
     .delete()
@@ -2502,17 +2463,22 @@ async function eliminarFechaAsistencia() {
     .in("estudiante_id", ids);
 
     if (error) {
+
         console.error(error);
+
         alert(
             "Error al eliminar asistencia: " +
-            error.message,
-            true
+            error.message
         );
+
         return;
+
     }
 
     establecerFechaActual();
+
     await cargarFechasAsistencia();
+
     await cargarAsistencia();
 
     alert(
@@ -2533,11 +2499,8 @@ document.getElementById(
     async function() {
 
         if (!cursoSeleccionado) {
-
             return;
-
         }
-
 
         await cargarAsistencia();
 
@@ -2553,26 +2516,18 @@ async function cargarAsistencia() {
 
     registrosAsistencia = {};
 
-
     if (!cursoSeleccionado) {
-
         return;
-
     }
-
 
     const fecha =
     document.getElementById(
         "fechaAsistencia"
     ).value;
 
-
     if (!fecha) {
-
         return;
-
     }
-
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -2581,12 +2536,10 @@ async function cargarAsistencia() {
         cursoSeleccionado
     );
 
-
     const ids =
     estudiantesCurso.map(
         e => e.id
     );
-
 
     if (
         ids.length === 0
@@ -2597,7 +2550,6 @@ async function cargarAsistencia() {
         return;
 
     }
-
 
     const {
         data,
@@ -2617,15 +2569,13 @@ async function cargarAsistencia() {
         ids
     );
 
-
     if (error) {
 
         console.error(error);
 
         alert(
             "Error al cargar asistencia: " +
-            error.message,
-            true
+            error.message
         );
 
         mostrarTablaAsistencia();
@@ -2633,7 +2583,6 @@ async function cargarAsistencia() {
         return;
 
     }
-
 
     (data || []).forEach(
     registro => {
@@ -2652,7 +2601,6 @@ async function cargarAsistencia() {
 
     });
 
-
     mostrarTablaAsistencia();
 
 }
@@ -2669,16 +2617,11 @@ function mostrarTablaAsistencia() {
         "tablaAsistencia"
     );
 
-
     tbody.innerHTML = "";
 
-
     if (!cursoSeleccionado) {
-
         return;
-
     }
-
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -2696,10 +2639,8 @@ function mostrarTablaAsistencia() {
             estudiante.id
         ] || {};
 
-
         const estado =
         registro.estado || "";
-
 
         const observacion =
         registro.observacion || "";
@@ -2721,13 +2662,11 @@ function mostrarTablaAsistencia() {
                 )}
             </td>
 
-
             <td class="nombre">
                 ${escapeHTML(
                     estudiante.nombre
                 )}
             </td>
-
 
             <td>
 
@@ -2889,7 +2828,6 @@ function mostrarTablaAsistencia() {
 
         `;
 
-
         tbody.appendChild(
             fila
         );
@@ -2903,41 +2841,94 @@ function mostrarTablaAsistencia() {
    PROGRESO DE GUARDADO
 ===================================================== */
 
-function actualizarProgresoGuardado(tipo, porcentaje, activo = true) {
+function actualizarProgresoGuardado(
+    tipo,
+    porcentaje,
+    activo = true
+) {
 
-    const elementos = tipo === "notas"
-        ? Array.from(
-            document.querySelectorAll(".progreso-notas")
-          )
-        : [
-            document.getElementById("progresoAsistencia"),
-            document.getElementById("progresoAsistenciaTabla")
-          ];
+    const elementos =
+    tipo === "notas"
 
-    elementos.forEach(elemento => {
+    ? Array.from(
+        document.querySelectorAll(
+            ".progreso-notas"
+        )
+    )
+
+    : [
+
+        document.getElementById(
+            "progresoAsistencia"
+        ),
+
+        document.getElementById(
+            "progresoAsistenciaTabla"
+        )
+
+    ];
+
+
+    elementos.forEach(
+    elemento => {
+
         if (elemento) {
-            elemento.textContent = porcentaje + "%";
+
+            elemento.textContent =
+            porcentaje + "%";
+
         }
+
     });
 
-    const botones = tipo === "notas"
-        ? Array.from(
-            document.querySelectorAll(".boton-guardar-notas")
-          )
-        : [
-            document.getElementById("botonGuardarAsistencia"),
-            document.getElementById("botonGuardarAsistenciaTabla")
-          ];
 
-    botones.forEach(boton => {
+    const botones =
+    tipo === "notas"
+
+    ? Array.from(
+        document.querySelectorAll(
+            ".boton-guardar-notas"
+        )
+    )
+
+    : [
+
+        document.getElementById(
+            "botonGuardarAsistencia"
+        ),
+
+        document.getElementById(
+            "botonGuardarAsistenciaTabla"
+        )
+
+    ];
+
+
+    botones.forEach(
+    boton => {
+
         if (boton) {
+
             if (activo) {
-                boton.classList.add("guardando");
-            } else {
-                boton.classList.remove("guardando");
+
+                boton.classList.add(
+                    "guardando"
+                );
+
             }
+
+            else {
+
+                boton.classList.remove(
+                    "guardando"
+                );
+
+            }
+
         }
+
     });
+
 }
 
 
@@ -2957,12 +2948,10 @@ async function guardarAsistencia() {
 
     }
 
-
     const fecha =
     document.getElementById(
         "fechaAsistencia"
     ).value;
-
 
     if (!fecha) {
 
@@ -2974,14 +2963,12 @@ async function guardarAsistencia() {
 
     }
 
-
     const estudiantesCurso =
     estudiantes.filter(
         e =>
         e.curso ===
         cursoSeleccionado
     );
-
 
     if (
         estudiantesCurso.length === 0
@@ -2996,7 +2983,12 @@ async function guardarAsistencia() {
     }
 
 
-    actualizarProgresoGuardado("asistencia", 0, true);
+    actualizarProgresoGuardado(
+        "asistencia",
+        0,
+        true
+    );
+
 
     mostrarMensaje(
         "Guardando asistencia... 0%"
@@ -3021,8 +3013,7 @@ async function guardarAsistencia() {
         );
 
 
-        let estado =
-        null;
+        let estado = null;
 
 
         if (seleccionado) {
@@ -3074,8 +3065,13 @@ async function guardarAsistencia() {
 
         alert(
             "Error al guardar asistencia: " +
-            error.message,
-            true
+            error.message
+        );
+
+        actualizarProgresoGuardado(
+            "asistencia",
+            0,
+            false
         );
 
         return false;
@@ -3083,11 +3079,17 @@ async function guardarAsistencia() {
     }
 
 
-    actualizarProgresoGuardado("asistencia", 100, false);
+    actualizarProgresoGuardado(
+        "asistencia",
+        100,
+        false
+    );
+
 
     mostrarMensaje(
         "✓ Asistencia guardada correctamente."
     );
+
 
     alert(
         "✓ Asistencia guardada correctamente."
@@ -3096,13 +3098,14 @@ async function guardarAsistencia() {
 
     await cargarFechasAsistencia();
 
+
     document.getElementById(
         "listaFechasAsistencia"
-    ).value = fecha;
+    ).value =
+    fecha;
 
 
     await cargarAsistencia();
-
 
     return true;
 
@@ -3182,13 +3185,9 @@ function cerrarModalActividad() {
         "modalNuevaActividad"
     );
 
-
     if (!modal) {
-
         return;
-
     }
-
 
     modal.classList.add(
         "oculto"
@@ -3271,8 +3270,7 @@ async function cargarActividades() {
 
         alert(
             "Error al cargar actividades: " +
-            error.message,
-            true
+            error.message
         );
 
         return;
@@ -3286,14 +3284,13 @@ async function cargarActividades() {
 
     await cargarCalificaciones();
 
-
     mostrarActividades();
 
 }
 
 
 /* =====================================================
-   CARGAR CALIFICACIONES
+   CARGAR CALIFICACIONES + OBSERVACIONES
 ===================================================== */
 
 async function cargarCalificaciones() {
@@ -3304,9 +3301,7 @@ async function cargarCalificaciones() {
     if (
         actividades.length === 0
     ) {
-
         return;
-
     }
 
 
@@ -3334,9 +3329,7 @@ async function cargarCalificaciones() {
         idsEstudiantes.length === 0 ||
         idsActividades.length === 0
     ) {
-
         return;
-
     }
 
 
@@ -3347,7 +3340,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota"
+        "id,actividad_id,estudiante_id,nota,observacion"
     )
     .in(
         "actividad_id",
@@ -3365,8 +3358,7 @@ async function cargarCalificaciones() {
 
         alert(
             "Error al cargar calificaciones: " +
-            error.message,
-            true
+            error.message
         );
 
         return;
@@ -3394,8 +3386,15 @@ async function cargarCalificaciones() {
             cal.estudiante_id
         ][
             cal.actividad_id
-        ] =
-        cal.nota;
+        ] = {
+
+            nota:
+            cal.nota,
+
+            observacion:
+            cal.observacion || ""
+
+        };
 
     });
 
@@ -3460,9 +3459,7 @@ function mostrarActividades() {
         if (
             lista.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -3523,8 +3520,8 @@ function mostrarActividades() {
 
             <div class="info">
 
-            Este curso todavía no tiene actividades
-            para el tercer trimestre.
+                Este curso todavía no tiene actividades
+                para el tercer trimestre.
 
             </div>
 
@@ -3536,15 +3533,15 @@ function mostrarActividades() {
 
 
 /* =====================================================
-   FORMATEAR FECHA DE ACTIVIDAD
+   FORMATEAR FECHA ACTIVIDAD
 ===================================================== */
 
-function formatearFechaActividad(fecha) {
+function formatearFechaActividad(
+    fecha
+) {
 
     if (!fecha) {
-
         return "Fecha no registrada";
-
     }
 
 
@@ -3583,7 +3580,6 @@ function crearActividadHTML(
         "div"
     );
 
-
     bloque.className =
     "actividad";
 
@@ -3592,7 +3588,6 @@ function crearActividadHTML(
     document.createElement(
         "div"
     );
-
 
     encabezado.className =
     "encabezado-actividad";
@@ -3603,7 +3598,6 @@ function crearActividadHTML(
         "div"
     );
 
-
     izquierda.className =
     "izquierda-actividad";
 
@@ -3613,14 +3607,11 @@ function crearActividadHTML(
         "button"
     );
 
-
     botonEditar.className =
     "boton-editar";
 
-
     botonEditar.textContent =
     "✏️";
-
 
     botonEditar.title =
     "Editar nombre y fecha de actividad";
@@ -3631,14 +3622,11 @@ function crearActividadHTML(
         "button"
     );
 
-
     botonEliminar.className =
     "boton-eliminar";
 
-
     botonEliminar.textContent =
     "🗑️";
-
 
     botonEliminar.title =
     "Eliminar actividad";
@@ -3648,7 +3636,6 @@ function crearActividadHTML(
     document.createElement(
         "div"
     );
-
 
     nombre.className =
     "nombre-actividad";
@@ -3684,6 +3671,7 @@ function crearActividadHTML(
 
         </span>
 
+
         <span
             id="fecha-actividad-${actividad.id}"
             class="puntaje-actividad">
@@ -3695,6 +3683,7 @@ function crearActividadHTML(
             )}
 
         </span>
+
 
         <span class="puntaje-actividad">
 
@@ -3709,11 +3698,9 @@ function crearActividadHTML(
         botonEditar
     );
 
-
     izquierda.appendChild(
         botonEliminar
     );
-
 
     izquierda.appendChild(
         nombre
@@ -3725,7 +3712,6 @@ function crearActividadHTML(
         "div"
     );
 
-
     derecha.className =
     "derecha-actividad";
 
@@ -3735,14 +3721,11 @@ function crearActividadHTML(
         "button"
     );
 
-
     botonOcultar.className =
     "boton-ocultar";
 
-
     botonOcultar.textContent =
     "+";
-
 
     botonOcultar.title =
     "Mostrar estudiantes";
@@ -3753,23 +3736,19 @@ function crearActividadHTML(
         "button"
     );
 
-
     botonBloquear.className =
     "boton-bloquear";
-
 
     botonBloquear.textContent =
     "🔒";
 
-
     botonBloquear.title =
-    "Desbloquear notas";
+    "Desbloquear notas y observaciones";
 
 
     derecha.appendChild(
         botonOcultar
     );
-
 
     derecha.appendChild(
         botonBloquear
@@ -3779,7 +3758,6 @@ function crearActividadHTML(
     encabezado.appendChild(
         izquierda
     );
-
 
     encabezado.appendChild(
         derecha
@@ -3796,7 +3774,6 @@ function crearActividadHTML(
         "div"
     );
 
-
     contenido.className =
     "contenido-actividad oculto";
 
@@ -3805,7 +3782,6 @@ function crearActividadHTML(
     document.createElement(
         "div"
     );
-
 
     tablaContenedor.className =
     "tabla-contenedor";
@@ -3821,15 +3797,17 @@ function crearActividadHTML(
 
         <thead>
 
-        <tr>
+            <tr>
 
-        <th>Nº</th>
+                <th>Nº</th>
 
-        <th>Nombre</th>
+                <th>Nombre</th>
 
-        <th>Nota / ${puntajeMaximo}</th>
+                <th>Nota / ${puntajeMaximo}</th>
 
-        </tr>
+                <th>Observaciones</th>
+
+            </tr>
 
         </thead>
 
@@ -3856,6 +3834,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
+        let observacion = "";
 
 
         if (
@@ -3869,12 +3848,33 @@ function crearActividadHTML(
             ] !== undefined
         ) {
 
-            nota =
+            const registro =
             calificaciones[
                 estudiante.id
             ][
                 actividad.id
             ];
+
+
+            if (
+                typeof registro === "object" &&
+                registro !== null
+            ) {
+
+                nota =
+                registro.nota;
+
+                observacion =
+                registro.observacion || "";
+
+            }
+
+            else {
+
+                nota =
+                registro;
+
+            }
 
         }
 
@@ -3889,13 +3889,14 @@ function crearActividadHTML(
 
             <td>
 
-            ${escapeHTML(
-                String(
-                    estudiante.num_lista ?? ""
-                )
-            )}
+                ${escapeHTML(
+                    String(
+                        estudiante.num_lista ?? ""
+                    )
+                )}
 
             </td>
+
 
             <td class="nombre">
 
@@ -3909,43 +3910,73 @@ function crearActividadHTML(
 
             </td>
 
+
             <td>
 
-            <input
+                <input
 
-            class="nota-input"
+                    class="nota-input"
 
-            type="number"
+                    type="number"
 
-            min="0"
+                    min="0"
 
-            max="${puntajeMaximo}"
+                    max="${puntajeMaximo}"
 
-            step="0.01"
+                    step="0.01"
 
-            value="${
-                nota === null
-                ? ""
-                : nota
-            }"
+                    value="${
+                        nota === null
+                        ? ""
+                        : nota
+                    }"
 
-            data-estudiante="${
-                estudiante.id
-            }"
+                    data-estudiante="${
+                        estudiante.id
+                    }"
 
-            data-actividad="${
-                actividad.id
-            }"
+                    data-actividad="${
+                        actividad.id
+                    }"
 
-            data-maximo="${
-                puntajeMaximo
-            }"
+                    data-maximo="${
+                        puntajeMaximo
+                    }"
 
-            disabled
+                    disabled
 
-            oninput="validarNota(this)"
+                    oninput="validarNota(this)"
 
-            >
+                >
+
+            </td>
+
+
+            <td>
+
+                <input
+
+                    type="text"
+
+                    class="observacion-actividad"
+
+                    value="${escapeHTML(
+                        observacion
+                    )}"
+
+                    data-estudiante="${
+                        estudiante.id
+                    }"
+
+                    data-actividad="${
+                        actividad.id
+                    }"
+
+                    placeholder="Observación..."
+
+                    disabled
+
+                >
 
             </td>
 
@@ -3969,23 +4000,37 @@ function crearActividadHTML(
     );
 
 
-    const filaGuardar = document.createElement("div");
+    const filaGuardar =
+    document.createElement(
+        "div"
+    );
 
-    filaGuardar.className = "fila-guardar-tabla";
+    filaGuardar.className =
+    "fila-guardar-tabla";
+
 
     filaGuardar.innerHTML = `
 
         <button
-            type="button"
-            class="boton-guardar-tabla boton-guardar-notas"
-            onclick="guardarNotas()"
-            title="Guardar notas">
 
-            💾 <span class="progreso-guardar progreso-notas">0%</span>
+            type="button"
+
+            class="boton-guardar-tabla boton-guardar-notas"
+
+            onclick="guardarNotas()"
+
+            title="Guardar notas y observaciones">
+
+            💾
+
+            <span
+                class="progreso-guardar progreso-notas">
+            </span>
 
         </button>
 
     `;
+
 
     contenido.appendChild(
         filaGuardar
@@ -4010,10 +4055,8 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "−";
-
 
             botonOcultar.title =
             "Ocultar estudiantes";
@@ -4026,10 +4069,8 @@ function crearActividadHTML(
                 "oculto"
             );
 
-
             botonOcultar.textContent =
             "+";
-
 
             botonOcultar.title =
             "Mostrar estudiantes";
@@ -4060,7 +4101,7 @@ function crearActividadHTML(
 
         const inputs =
         bloque.querySelectorAll(
-            ".nota-input"
+            ".nota-input, .observacion-actividad"
         );
 
 
@@ -4087,13 +4128,12 @@ function crearActividadHTML(
             botonBloquear.textContent =
             "🔒";
 
-
             botonBloquear.title =
-            "Desbloquear notas";
+            "Desbloquear notas y observaciones";
 
 
             mostrarMensaje(
-                "🔒 Notas bloqueadas: " +
+                "🔒 Notas y observaciones bloqueadas: " +
                 actividad.nombre
             );
 
@@ -4122,13 +4162,12 @@ function crearActividadHTML(
             botonBloquear.textContent =
             "🔓";
 
-
             botonBloquear.title =
-            "Bloquear notas";
+            "Bloquear notas y observaciones";
 
 
             mostrarMensaje(
-                "🔓 Notas desbloqueadas: " +
+                "🔓 Notas y observaciones desbloqueadas: " +
                 actividad.nombre
             );
 
@@ -4170,9 +4209,7 @@ async function editarNombreActividad(
     if (
         nuevoNombre === null
     ) {
-
         return;
-
     }
 
 
@@ -4205,9 +4242,7 @@ async function editarNombreActividad(
     if (
         nuevaFecha === null
     ) {
-
         return;
-
     }
 
 
@@ -4247,9 +4282,7 @@ async function editarNombreActividad(
         nombre === actividad.nombre &&
         fecha === fechaActual
     ) {
-
         return;
-
     }
 
 
@@ -4284,8 +4317,7 @@ async function editarNombreActividad(
 
         alert(
             "Error al actualizar la actividad: " +
-            error.message,
-            true
+            error.message
         );
 
         return;
@@ -4295,7 +4327,6 @@ async function editarNombreActividad(
 
     actividad.nombre =
     nombre;
-
 
     actividad.fecha =
     fecha;
@@ -4350,9 +4381,7 @@ function validarNota(input) {
     if (
         input.value === ""
     ) {
-
         return true;
-
     }
 
 
@@ -4378,7 +4407,6 @@ function validarNota(input) {
 
 
         input.value = "";
-
 
         return false;
 
@@ -4410,9 +4438,7 @@ function validarNota(input) {
 
         input.value = "";
 
-
         input.focus();
-
 
         return false;
 
@@ -4490,11 +4516,9 @@ async function crearActividad() {
             "Escribe el nombre de la actividad."
         );
 
-
         document.getElementById(
             "nombreActividad"
         ).focus();
-
 
         return;
 
@@ -4507,11 +4531,9 @@ async function crearActividad() {
             "Selecciona la fecha de la actividad."
         );
 
-
         document.getElementById(
             "fechaActividad"
         ).focus();
-
 
         return;
 
@@ -4603,8 +4625,7 @@ async function crearActividad() {
 
         alert(
             "Error al crear actividad: " +
-            error.message,
-            true
+            error.message
         );
 
         return;
@@ -4621,7 +4642,6 @@ async function crearActividad() {
 
 
     await cargarActividades();
-
 
     aplicarBusqueda();
 
@@ -4651,9 +4671,7 @@ async function eliminarActividad(
 
 
     if (!confirmar) {
-
         return;
-
     }
 
 
@@ -4679,8 +4697,7 @@ async function eliminarActividad(
 
         alert(
             "Error al eliminar calificaciones: " +
-            errorCalificaciones.message,
-            true
+            errorCalificaciones.message
         );
 
         return;
@@ -4705,8 +4722,7 @@ async function eliminarActividad(
 
         alert(
             "Error al eliminar actividad: " +
-            errorActividad.message,
-            true
+            errorActividad.message
         );
 
         return;
@@ -4726,9 +4742,7 @@ async function eliminarActividad(
 
     await cargarActividades();
 
-
     mostrarTablaGeneral();
-
 
     aplicarBusqueda();
 
@@ -4751,9 +4765,7 @@ function mostrarTablaGeneral() {
 
 
     if (!cursoSeleccionado) {
-
         return;
-
     }
 
 
@@ -4778,63 +4790,69 @@ function mostrarTablaGeneral() {
 
             <td>
 
-            ${escapeHTML(
-                String(
-                    estudiante.num_lista ?? ""
-                )
-            )}
+                ${escapeHTML(
+                    String(
+                        estudiante.num_lista ?? ""
+                    )
+                )}
 
             </td>
+
 
             <td class="nombre">
 
-            ${escapeHTML(
-                estudiante.nombre
-            )}
+                ${escapeHTML(
+                    estudiante.nombre
+                )}
 
             </td>
+
 
             <td>
 
-            ${escapeHTML(
-                estudiante.curso
-            )}
+                ${escapeHTML(
+                    estudiante.curso
+                )}
 
             </td>
+
 
             <td>
 
-            ${mostrarNota(
-                estudiante.nota_1t
-            )}
+                ${mostrarNota(
+                    estudiante.nota_1t
+                )}
 
             </td>
+
 
             <td>
 
-            ${mostrarNota(
-                estudiante.nota_2t
-            )}
+                ${mostrarNota(
+                    estudiante.nota_2t
+                )}
 
             </td>
+
 
             <td
                 id="nota3t-${estudiante.id}"
                 class="nota-3t">
 
-            ${mostrarNota(
-                estudiante.nota_3t
-            )}
+                ${mostrarNota(
+                    estudiante.nota_3t
+                )}
 
             </td>
+
 
             <td
                 id="final-${estudiante.id}"
                 class="nota-final">
 
-            ${mostrarNota(
-                estudiante.final
-            )}
+                ${mostrarNota(
+                    estudiante.final
+                )}
 
             </td>
 
@@ -4909,7 +4927,6 @@ function ocultarTablaGeneral() {
             "oculto"
         );
 
-
         boton.textContent =
         "−";
 
@@ -4920,7 +4937,6 @@ function ocultarTablaGeneral() {
         contenido.classList.add(
             "oculto"
         );
-
 
         boton.textContent =
         "+";
@@ -4951,9 +4967,7 @@ function aplicarBusqueda() {
 
 
     if (!campo) {
-
         return;
-
     }
 
 
@@ -4977,9 +4991,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -5036,9 +5048,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -5095,9 +5105,7 @@ function aplicarBusqueda() {
         if (
             celdas.length === 0
         ) {
-
             return;
-
         }
 
 
@@ -5143,7 +5151,7 @@ function aplicarBusqueda() {
 
 
 /* =====================================================
-   GUARDAR NOTAS
+   GUARDAR NOTAS + OBSERVACIONES
 ===================================================== */
 
 async function guardarNotas() {
@@ -5185,9 +5193,7 @@ async function guardarNotas() {
         if (
             input.value === ""
         ) {
-
             continue;
-
         }
 
 
@@ -5224,7 +5230,6 @@ async function guardarNotas() {
 
             );
 
-
             return false;
 
         }
@@ -5232,7 +5237,12 @@ async function guardarNotas() {
     }
 
 
-    actualizarProgresoGuardado("notas", 0, true);
+    actualizarProgresoGuardado(
+        "notas",
+        0,
+        true
+    );
+
 
     mostrarMensaje(
         "Guardando calificaciones... 0%"
@@ -5272,6 +5282,18 @@ async function guardarNotas() {
         }
 
 
+        const observacionInput =
+        document.querySelector(
+            `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+        );
+
+
+        const observacion =
+        observacionInput
+        ? observacionInput.value.trim()
+        : null;
+
+
         registros.push({
 
             actividad_id:
@@ -5281,7 +5303,10 @@ async function guardarNotas() {
             estudianteId,
 
             nota:
-            nota
+            nota,
+
+            observacion:
+            observacion || null
 
         });
 
@@ -5307,10 +5332,19 @@ async function guardarNotas() {
         );
 
 
-        if (errorCalificaciones) {
+        if (
+            errorCalificaciones
+        ) {
 
             console.error(
                 errorCalificaciones
+            );
+
+
+            actualizarProgresoGuardado(
+                "notas",
+                0,
+                false
             );
 
 
@@ -5318,9 +5352,7 @@ async function guardarNotas() {
 
                 "Error al guardar calificaciones: " +
 
-                errorCalificaciones.message,
-
-                true
+                errorCalificaciones.message
 
             );
 
@@ -5332,7 +5364,12 @@ async function guardarNotas() {
     }
 
 
-    actualizarProgresoGuardado("notas", 50, true);
+    actualizarProgresoGuardado(
+        "notas",
+        50,
+        true
+    );
+
 
     const estudiantesCurso =
     estudiantes.filter(
@@ -5481,7 +5518,13 @@ async function guardarNotas() {
 
             console.error(error);
 
-            actualizarProgresoGuardado("notas", 0, false);
+
+            actualizarProgresoGuardado(
+                "notas",
+                0,
+                false
+            );
+
 
             alert(
 
@@ -5491,9 +5534,7 @@ async function guardarNotas() {
 
                 ": " +
 
-                error.message,
-
-                true
+                error.message
 
             );
 
@@ -5502,20 +5543,49 @@ async function guardarNotas() {
 
         }
 
-        const totalEstudiantes = estudiantesCurso.length || 1;
-        const indiceEstudiante = estudiantesCurso.indexOf(estudiante) + 1;
-        const porcentaje = 50 + Math.round((indiceEstudiante / totalEstudiantes) * 50);
 
-        actualizarProgresoGuardado("notas", porcentaje, true);
+        const totalEstudiantes =
+        estudiantesCurso.length || 1;
+
+
+        const indiceEstudiante =
+        estudiantesCurso.indexOf(
+            estudiante
+        ) + 1;
+
+
+        const porcentaje =
+        50 +
+        Math.round(
+            (
+                indiceEstudiante /
+                totalEstudiantes
+            ) * 50
+        );
+
+
+        actualizarProgresoGuardado(
+            "notas",
+            porcentaje,
+            true
+        );
+
 
         mostrarMensaje(
-            "Guardando calificaciones... " + porcentaje + "%"
+            "Guardando calificaciones... " +
+            porcentaje +
+            "%"
         );
 
     }
 
 
-    actualizarProgresoGuardado("notas", 100, false);
+    actualizarProgresoGuardado(
+        "notas",
+        100,
+        false
+    );
+
 
     mostrarMensaje(
         "✓ Calificaciones guardadas correctamente."
@@ -5629,8 +5699,10 @@ function calcularPuntosCategoria(
 
 
     return (
+
         sumaNotas /
         sumaMaximos
+
     ) *
     limiteCategoria;
 
@@ -5739,16 +5811,29 @@ async function exportarExcel() {
         const guardado =
         await guardarNotas();
 
+
         if (guardado === false) {
             return;
         }
 
-        mostrarMensaje("Preparando archivo Excel...");
 
-        if (typeof XLSX === "undefined") {
-            alert("No se pudo cargar la herramienta de Excel.");
+        mostrarMensaje(
+            "Preparando archivo Excel..."
+        );
+
+
+        if (
+            typeof XLSX === "undefined"
+        ) {
+
+            alert(
+                "No se pudo cargar la herramienta de Excel."
+            );
+
             return;
+
         }
+
 
         const {
             data: todasActividades,
@@ -5759,19 +5844,31 @@ async function exportarExcel() {
         .select(
             "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
         )
-        .eq("trimestre", 3)
+        .eq(
+            "trimestre",
+            3
+        )
         .order("orden");
+
 
         if (errorActividades) {
             throw errorActividades;
         }
 
+
         const idsActividades =
-        (todasActividades || []).map(a => a.id);
+        (todasActividades || [])
+        .map(
+            a => a.id
+        );
+
 
         let todasCalificaciones = [];
 
-        if (idsActividades.length > 0) {
+
+        if (
+            idsActividades.length > 0
+        ) {
 
             const {
                 data,
@@ -5779,33 +5876,65 @@ async function exportarExcel() {
             } =
             await supabaseClient
             .from("calificaciones")
-            .select("actividad_id,estudiante_id,nota")
-            .in("actividad_id", idsActividades);
+            .select(
+                "actividad_id,estudiante_id,nota,observacion"
+            )
+            .in(
+                "actividad_id",
+                idsActividades
+            );
+
 
             if (error) {
                 throw error;
             }
 
-            todasCalificaciones = data || [];
+
+            todasCalificaciones =
+            data || [];
+
         }
+
 
         const mapaCalificaciones = {};
 
-        todasCalificaciones.forEach(cal => {
+
+        todasCalificaciones.forEach(
+        cal => {
 
             const clave =
-            cal.estudiante_id + "_" + cal.actividad_id;
+            cal.estudiante_id +
+            "_" +
+            cal.actividad_id;
 
-            mapaCalificaciones[clave] = cal.nota;
+
+            mapaCalificaciones[
+                clave
+            ] = {
+
+                nota:
+                cal.nota,
+
+                observacion:
+                cal.observacion || ""
+
+            };
 
         });
 
+
         const idsEstudiantes =
-        estudiantes.map(e => e.id).filter(Boolean);
+        estudiantes
+        .map(e => e.id)
+        .filter(Boolean);
+
 
         let todaAsistencia = [];
 
-        if (idsEstudiantes.length > 0) {
+
+        if (
+            idsEstudiantes.length > 0
+        ) {
 
             const {
                 data,
@@ -5813,123 +5942,200 @@ async function exportarExcel() {
             } =
             await supabaseClient
             .from("asistencia")
-            .select("estudiante_id,fecha,estado")
-            .in("estudiante_id", idsEstudiantes)
+            .select(
+                "estudiante_id,fecha,estado"
+            )
+            .in(
+                "estudiante_id",
+                idsEstudiantes
+            )
             .order("fecha");
+
 
             if (error) {
                 throw error;
             }
 
-            todaAsistencia = data || [];
+
+            todaAsistencia =
+            data || [];
+
         }
 
+
         const codigoAsistencia = {
+
             asistio: "A",
             atraso: "R",
             licencia: "L",
             falta: "F"
+
         };
+
 
         const mapaAsistencia = {};
 
-        todaAsistencia.forEach(registro => {
+
+        todaAsistencia.forEach(
+        registro => {
 
             const clave =
-            registro.estudiante_id + "_" + registro.fecha;
+            registro.estudiante_id +
+            "_" +
+            registro.fecha;
 
-            mapaAsistencia[clave] =
-            codigoAsistencia[registro.estado] || "";
+
+            mapaAsistencia[
+                clave
+            ] =
+            codigoAsistencia[
+                registro.estado
+            ] || "";
 
         });
 
-        const cursosConAsistencia = new Set();
 
-        todaAsistencia.forEach(registro => {
+        const cursosConAsistencia =
+        new Set();
+
+
+        todaAsistencia.forEach(
+        registro => {
 
             const estudiante =
             estudiantes.find(
-                e => e.id === registro.estudiante_id
+                e =>
+                e.id ===
+                registro.estudiante_id
             );
 
-            if (estudiante && estudiante.curso) {
-                cursosConAsistencia.add(estudiante.curso);
+
+            if (
+                estudiante &&
+                estudiante.curso
+            ) {
+
+                cursosConAsistencia.add(
+                    estudiante.curso
+                );
+
             }
 
         });
 
-        const cursos =
-        [...cursosConAsistencia].sort();
 
-        if (cursos.length === 0) {
+        const cursos =
+        [...cursosConAsistencia]
+        .sort();
+
+
+        if (
+            cursos.length === 0
+        ) {
 
             alert(
                 "No existen registros de asistencia para exportar."
             );
 
             return;
+
         }
 
-        const libro = XLSX.utils.book_new();
 
-        cursos.forEach(curso => {
+        const libro =
+        XLSX.utils.book_new();
+
+
+        cursos.forEach(
+        curso => {
 
             const estudiantesCurso =
             estudiantes.filter(
-                e => e.curso === curso
+                e =>
+                e.curso ===
+                curso
             );
+
 
             const idsCurso =
             new Set(
-                estudiantesCurso.map(e => e.id)
+                estudiantesCurso.map(
+                    e => e.id
+                )
             );
+
 
             const fechasCurso =
             [...new Set(
+
                 todaAsistencia
                 .filter(
                     registro =>
-                    idsCurso.has(registro.estudiante_id)
+                    idsCurso.has(
+                        registro.estudiante_id
+                    )
                 )
                 .map(
-                    registro => registro.fecha
+                    registro =>
+                    registro.fecha
                 )
                 .filter(Boolean)
+
             )].sort();
+
 
             const actividadesCurso =
             (todasActividades || [])
             .filter(
-                a => a.curso === curso
+                a =>
+                a.curso ===
+                curso
             );
+
 
             const ser =
             actividadesCurso.filter(
-                a => a.categoria === "SER"
+                a =>
+                a.categoria ===
+                "SER"
             );
+
 
             const saber =
             actividadesCurso.filter(
-                a => a.categoria === "SABER"
+                a =>
+                a.categoria ===
+                "SABER"
             );
+
 
             const hacer =
             actividadesCurso.filter(
-                a => a.categoria === "HACER"
+                a =>
+                a.categoria ===
+                "HACER"
             );
+
 
             const auto =
             actividadesCurso.filter(
-                a => a.categoria === "AUTOEVALUACION"
+                a =>
+                a.categoria ===
+                "AUTOEVALUACION"
             );
+
 
             const columnas = [
 
                 "Nº LISTA",
+
                 "NOMBRE",
 
                 ...fechasCurso.map(
-                    fecha => formatearFechaExcel(fecha)
+                    fecha =>
+                    formatearFechaExcel(
+                        fecha
+                    )
                 ),
 
                 "TOTAL A",
@@ -5937,65 +6143,118 @@ async function exportarExcel() {
                 "TOTAL L",
                 "TOTAL F",
 
-                ...ser.map(a => a.nombre),
+                ...ser.map(
+                    a => a.nombre
+                ),
+
                 "PROMEDIO SER",
 
-                ...saber.map(a => a.nombre),
+                ...saber.map(
+                    a => a.nombre
+                ),
+
                 "PROMEDIO SABER",
 
-                ...hacer.map(a => a.nombre),
+                ...hacer.map(
+                    a => a.nombre
+                ),
+
                 "PROMEDIO HACER",
 
                 "AUTOEVALUACIÓN",
+
                 "NOTA 3T",
+
                 "NOTA FINAL"
+
             ];
 
-            const datos = [];
-            datos.push(columnas);
 
-            estudiantesCurso.forEach(estudiante => {
+            const datos = [];
+
+            datos.push(
+                columnas
+            );
+
+
+            estudiantesCurso.forEach(
+            estudiante => {
 
                 const fila = [];
+
 
                 fila.push(
                     estudiante.num_lista ?? ""
                 );
 
+
                 fila.push(
                     estudiante.nombre ?? ""
                 );
 
+
                 const totalesAsistencia = {
+
                     A: 0,
                     R: 0,
                     L: 0,
                     F: 0
+
                 };
 
-                fechasCurso.forEach(fecha => {
+
+                fechasCurso.forEach(
+                fecha => {
 
                     const clave =
-                    estudiante.id + "_" + fecha;
+                    estudiante.id +
+                    "_" +
+                    fecha;
+
 
                     const codigo =
-                    mapaAsistencia[clave] || "";
+                    mapaAsistencia[
+                        clave
+                    ] || "";
 
-                    fila.push(codigo);
+
+                    fila.push(
+                        codigo
+                    );
+
 
                     if (
                         codigo &&
-                        totalesAsistencia[codigo] !== undefined
+                        totalesAsistencia[
+                            codigo
+                        ] !== undefined
                     ) {
-                        totalesAsistencia[codigo]++;
+
+                        totalesAsistencia[
+                            codigo
+                        ]++;
+
                     }
 
                 });
 
-                fila.push(totalesAsistencia.A);
-                fila.push(totalesAsistencia.R);
-                fila.push(totalesAsistencia.L);
-                fila.push(totalesAsistencia.F);
+
+                fila.push(
+                    totalesAsistencia.A
+                );
+
+                fila.push(
+                    totalesAsistencia.R
+                );
+
+                fila.push(
+                    totalesAsistencia.L
+                );
+
+                fila.push(
+                    totalesAsistencia.F
+                );
+
 
                 const notasSer =
                 ser.map(
@@ -6007,7 +6266,9 @@ async function exportarExcel() {
                     )
                 );
 
-                ser.forEach(actividad => {
+
+                ser.forEach(
+                actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -6019,12 +6280,14 @@ async function exportarExcel() {
 
                 });
 
+
                 fila.push(
                     calcularPromedioPonderado(
                         notasSer,
                         ser
                     )
                 );
+
 
                 const notasSaber =
                 saber.map(
@@ -6036,7 +6299,9 @@ async function exportarExcel() {
                     )
                 );
 
-                saber.forEach(actividad => {
+
+                saber.forEach(
+                actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -6048,12 +6313,14 @@ async function exportarExcel() {
 
                 });
 
+
                 fila.push(
                     calcularPromedioPonderado(
                         notasSaber,
                         saber
                     )
                 );
+
 
                 const notasHacer =
                 hacer.map(
@@ -6065,7 +6332,9 @@ async function exportarExcel() {
                     )
                 );
 
-                hacer.forEach(actividad => {
+
+                hacer.forEach(
+                actividad => {
 
                     fila.push(
                         obtenerNotaExcel(
@@ -6077,12 +6346,14 @@ async function exportarExcel() {
 
                 });
 
+
                 fila.push(
                     calcularPromedioPonderado(
                         notasHacer,
                         hacer
                     )
                 );
+
 
                 const notasAuto =
                 auto.map(
@@ -6094,6 +6365,7 @@ async function exportarExcel() {
                     )
                 );
 
+
                 fila.push(
                     calcularPromedioPonderado(
                         notasAuto,
@@ -6101,105 +6373,172 @@ async function exportarExcel() {
                     )
                 );
 
+
                 fila.push(
+
                     estudiante.nota_3t === null ||
                     estudiante.nota_3t === undefined
+
                     ? ""
+
                     : Math.round(
-                        Number(estudiante.nota_3t)
+                        Number(
+                            estudiante.nota_3t
+                        )
                     )
+
                 );
+
 
                 fila.push(
+
                     estudiante.final === null ||
                     estudiante.final === undefined
+
                     ? ""
+
                     : Math.round(
-                        Number(estudiante.final)
+                        Number(
+                            estudiante.final
+                        )
                     )
+
                 );
 
-                datos.push(fila);
+
+                datos.push(
+                    fila
+                );
 
             });
 
+
             const hoja =
-            XLSX.utils.aoa_to_sheet(datos);
+            XLSX.utils.aoa_to_sheet(
+                datos
+            );
+
 
             hoja["!freeze"] = {
+
                 xSplit: 2,
+
                 ySplit: 1
+
             };
+
 
             hoja["!cols"] =
             columnas.map(
-            (nombre, indice) => {
+            (
+                nombre,
+                indice
+            ) => {
 
-                if (indice === 0) {
-                    return { wch: 10 };
+                if (
+                    indice === 0
+                ) {
+
+                    return {
+                        wch: 10
+                    };
+
                 }
 
-                if (indice === 1) {
-                    return { wch: 32 };
+
+                if (
+                    indice === 1
+                ) {
+
+                    return {
+                        wch: 32
+                    };
+
                 }
+
 
                 if (
                     indice >= 2 &&
-                    indice < 2 + fechasCurso.length
+                    indice <
+                    2 +
+                    fechasCurso.length
                 ) {
-                    return { wch: 13 };
+
+                    return {
+                        wch: 13
+                    };
+
                 }
 
-                return { wch: 20 };
+
+                return {
+                    wch: 20
+                };
 
             });
 
-/* =====================================================
-   GIRAR TEXTO DE LA FILA 1 HACIA ARRIBA
-===================================================== */
 
-for (
-    let columna = 0;
-    columna < columnas.length;
-    columna++
-) {
+            /* =================================================
+               GIRAR TEXTO DE LA FILA 1 HACIA ARRIBA
+            ================================================= */
 
-    const celda =
-    XLSX.utils.encode_cell({
-        r: 0,
-        c: columna
-    });
+            for (
+                let columna = 0;
+                columna < columnas.length;
+                columna++
+            ) {
 
-    if (hoja[celda]) {
+                const celda =
+                XLSX.utils.encode_cell({
 
-        hoja[celda].s = {
+                    r: 0,
 
-            alignment: {
-                textRotation: 90,
-                vertical: "center",
-                horizontal: "center",
-                wrapText: true
+                    c: columna
+
+                });
+
+
+                if (
+                    hoja[celda]
+                ) {
+
+                    hoja[celda].s = {
+
+                        alignment: {
+
+                            textRotation: 90,
+
+                            vertical: "center",
+
+                            horizontal: "center",
+
+                            wrapText: true
+
+                        }
+
+                    };
+
+                }
+
             }
-
-        };
-
-    }
-
-}
-
 
 
             let nombreHoja =
             String(curso)
             .replace(
-                /[\\\/\?\*\[\]:]/g,
+                /[\/?*:]/g,
                 ""
             )
-            .substring(0, 31);
+            .substring(
+                0,
+                31
+            );
+
 
             if (!nombreHoja) {
                 nombreHoja = "Curso";
             }
+
 
             XLSX.utils.book_append_sheet(
                 libro,
@@ -6209,31 +6548,41 @@ for (
 
         });
 
+
         const fecha =
         new Date()
         .toISOString()
-        .slice(0, 10);
+        .slice(
+            0,
+            10
+        );
+
 
         XLSX.writeFile(
+
             libro,
+
             "Asistencia_y_Calificaciones_Tercer_Trimestre_" +
             fecha +
             ".xlsx"
+
         );
+
 
         mostrarMensaje(
             "✓ Excel exportado correctamente."
         );
 
     }
+
+
     catch (error) {
 
         console.error(error);
 
         alert(
             "Error al exportar Excel: " +
-            error.message,
-            true
+            error.message
         );
 
     }
@@ -6245,26 +6594,35 @@ for (
    FORMATEAR FECHA PARA EXCEL
 ===================================================== */
 
-function formatearFechaExcel(fecha) {
+function formatearFechaExcel(
+    fecha
+) {
 
     if (!fecha) {
         return "";
     }
 
+
     const partes =
     String(fecha).split("-");
 
-    if (partes.length === 3) {
+
+    if (
+        partes.length === 3
+    ) {
 
         return (
+
             partes[2] +
             "/" +
             partes[1] +
             "/" +
             partes[0]
+
         );
 
     }
+
 
     return fecha;
 
@@ -6299,8 +6657,33 @@ function obtenerNotaExcel(
     }
 
 
+    const registro =
+    mapa[clave];
+
+
+    if (
+        typeof registro === "object" &&
+        registro !== null
+    ) {
+
+        if (
+            registro.nota === null ||
+            registro.nota === undefined
+        ) {
+
+            return "";
+
+        }
+
+        return Number(
+            registro.nota
+        );
+
+    }
+
+
     return Number(
-        mapa[clave]
+        registro
     );
 
 }
@@ -6333,7 +6716,10 @@ function calcularPromedioPonderado(
 
 
     notas.forEach(
-    (nota, indice) => {
+    (
+        nota,
+        indice
+    ) => {
 
         if (
             nota === "" ||
@@ -6409,7 +6795,6 @@ async function cerrarSesion() {
 
     await supabaseClient.auth.signOut();
 
-
     window.location.href =
     "login-docente.html";
 
@@ -6432,51 +6817,63 @@ function mostrarMensaje(
         "mensaje"
     );
 
+
     if (!mensaje) {
         return;
     }
 
+
     mensaje.textContent =
     texto;
+
 
     mensaje.style.color =
     error
     ? "#c62828"
     : "#16803c";
 
+
     mensaje.style.display =
     "block";
 
-    /* Cancelar temporizador anterior */
-    if (mensaje._temporizador) {
+
+    if (
+        mensaje._temporizador
+    ) {
+
         clearTimeout(
             mensaje._temporizador
         );
+
     }
 
-    /*
-       Los mensajes finales desaparecen
-       automáticamente después de 3 segundos.
-    */
+
     if (
+
         texto.includes(
             "guardadas correctamente"
         ) ||
+
         texto.includes(
             "guardada correctamente"
         ) ||
+
         texto.includes(
             "actualizada correctamente"
         ) ||
+
         texto.includes(
             "creada correctamente"
         ) ||
+
         texto.includes(
             "eliminada correctamente"
         ) ||
+
         texto.includes(
             "exportado correctamente"
         )
+
     ) {
 
         mensaje._temporizador =
@@ -6494,7 +6891,6 @@ function mostrarMensaje(
     }
 
 }
-
 
 
 /* =====================================================
