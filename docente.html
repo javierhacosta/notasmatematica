@@ -343,6 +343,25 @@ input, select {
     padding: 13px 15px;
     font-size: 17px;
     font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.icono-expandir-categoria {
+    font-size: 25px;
+    line-height: 1;
+    font-weight: normal;
+    margin-left: 10px;
+}
+
+.contenido-categoria {
+    display: none;
+}
+
+.contenido-categoria.abierta {
+    display: block;
 }
 
 .ser {
@@ -3902,26 +3921,52 @@ function mostrarActividades() {
         "titulo-categoria " +
         categoria.clase;
 
+        const nombreCategoria =
+        document.createElement("span");
 
-        encabezado.textContent =
+        nombreCategoria.textContent =
         categoria.nombre;
 
+        const iconoCategoria =
+        document.createElement("span");
 
-        seccion.appendChild(
-            encabezado
-        );
+        iconoCategoria.className =
+        "icono-expandir-categoria";
 
+        iconoCategoria.textContent = "+";
+
+        encabezado.appendChild(nombreCategoria);
+        encabezado.appendChild(iconoCategoria);
+
+        const contenidoCategoria =
+        document.createElement("div");
+
+        contenidoCategoria.className =
+        "contenido-categoria";
 
         lista.forEach(
         actividad => {
 
-            seccion.appendChild(
+            contenidoCategoria.appendChild(
                 crearActividadHTML(
                     actividad
                 )
             );
 
         });
+
+        encabezado.addEventListener("click", () => {
+            const abierta = contenidoCategoria.classList.toggle("abierta");
+            iconoCategoria.textContent = abierta ? "−" : "+";
+        });
+
+        seccion.appendChild(
+            encabezado
+        );
+
+        seccion.appendChild(
+            contenidoCategoria
+        );
 
 
         contenedor.appendChild(
