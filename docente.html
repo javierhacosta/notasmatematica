@@ -761,6 +761,31 @@ td:first-child {
 }
 
 
+/* RESUMEN DE ASISTENCIA DEL DÍA SELECCIONADO */
+.resumen-boton-asistencia {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.resumen-asistencia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.resumen-asistencia span {
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.14);
+}
+
 /* BOTÓN + */
 
 .boton-asistencia {
@@ -1733,6 +1758,18 @@ Fechas guardadas
 </button>
 
 
+<div class="resumen-boton-asistencia">
+
+<div
+    id="resumenAsistencia"
+    class="resumen-asistencia"
+    title="Resumen de la fecha seleccionada">
+    <span>✓ 0</span>
+    <span>⏰ 0</span>
+    <span>📄 0</span>
+    <span>✕ 0</span>
+</div>
+
 <button
     type="button"
     id="botonAsistencia"
@@ -1743,6 +1780,8 @@ Fechas guardadas
 +
 
 </button>
+
+</div>
 
 </div>
 
@@ -3017,6 +3056,41 @@ async function cargarAsistencia() {
    MOSTRAR TABLA ASISTENCIA
 ===================================================== */
 
+function actualizarResumenAsistencia() {
+
+    const resumen = document.getElementById("resumenAsistencia");
+    if (!resumen) return;
+
+    const totales = {
+        asistio: 0,
+        atraso: 0,
+        licencia: 0,
+        falta: 0
+    };
+
+    Object.values(registrosAsistencia || {}).forEach(registro => {
+        const estado = String(registro.estado || "").toLowerCase();
+        if (totales[estado] !== undefined) {
+            totales[estado]++;
+        }
+    });
+
+    resumen.innerHTML = `
+        <span>✓ ${totales.asistio}</span>
+        <span>⏰ ${totales.atraso}</span>
+        <span>📄 ${totales.licencia}</span>
+        <span>✕ ${totales.falta}</span>
+    `;
+
+    const fecha = document.getElementById("fechaAsistencia");
+    if (fecha && fecha.value) {
+        resumen.title = `Resumen de asistencia del ${formatearFechaActividad(fecha.value)}`;
+    } else {
+        resumen.title = "Resumen de la fecha seleccionada";
+    }
+}
+
+
 function mostrarTablaAsistencia() {
 
     const tbody =
@@ -3025,6 +3099,8 @@ function mostrarTablaAsistencia() {
     );
 
     tbody.innerHTML = "";
+
+    actualizarResumenAsistencia();
 
 
     /* =================================================
