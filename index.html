@@ -688,17 +688,23 @@ const INICIO_3T = "2026-08-01";
 const FIN_3T = "2026-12-31";
 
 
-
-
 /* =================================================
    DETECTAR DISPOSITIVO
 ================================================= */
 
 function obtenerDispositivo() {
 
-    if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    if (
+        /Mobi|Android|iPhone|iPad|iPod/i.test(
+            navigator.userAgent
+        )
+    ) {
 
-        if (/iPad|Tablet|Android(?!.*Mobile)/i.test(navigator.userAgent)) {
+        if (
+            /iPad|Tablet|Android(?!.*Mobile)/i.test(
+                navigator.userAgent
+            )
+        ) {
 
             return "Tablet";
 
@@ -715,22 +721,54 @@ function obtenerDispositivo() {
 
 function obtenerNavegador() {
 
-    const ua = navigator.userAgent;
+    const ua =
+        navigator.userAgent;
 
-    if (ua.includes("Edg/"))
+
+    if (
+        ua.includes("Edg/")
+    ) {
+
         return "Microsoft Edge";
 
-    if (ua.includes("OPR/"))
+    }
+
+
+    if (
+        ua.includes("OPR/")
+    ) {
+
         return "Opera";
 
-    if (ua.includes("Chrome/"))
+    }
+
+
+    if (
+        ua.includes("Chrome/")
+    ) {
+
         return "Google Chrome";
 
-    if (ua.includes("Firefox/"))
+    }
+
+
+    if (
+        ua.includes("Firefox/")
+    ) {
+
         return "Mozilla Firefox";
 
-    if (ua.includes("Safari/"))
+    }
+
+
+    if (
+        ua.includes("Safari/")
+    ) {
+
         return "Safari";
+
+    }
+
 
     return "Otro";
 
@@ -739,39 +777,58 @@ function obtenerNavegador() {
 
 function obtenerSistemaOperativo() {
 
-    const ua = navigator.userAgent;
+    const ua =
+        navigator.userAgent;
 
-    if (/Windows/i.test(ua))
+
+    if (
+        /Windows/i.test(ua)
+    ) {
+
         return "Windows";
 
-    if (/Android/i.test(ua))
+    }
+
+
+    if (
+        /Android/i.test(ua)
+    ) {
+
         return "Android";
 
-    if (/iPhone|iPad|iPod/i.test(ua))
+    }
+
+
+    if (
+        /iPhone|iPad|iPod/i.test(ua)
+    ) {
+
         return "iOS";
 
-    if (/Mac OS X/i.test(ua))
+    }
+
+
+    if (
+        /Mac OS X/i.test(ua)
+    ) {
+
         return "macOS";
 
-    if (/Linux/i.test(ua))
+    }
+
+
+    if (
+        /Linux/i.test(ua)
+    ) {
+
         return "Linux";
+
+    }
+
 
     return "Otro";
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 /* =================================================
@@ -886,70 +943,59 @@ async function consultarNota() {
            REGISTRAR VISITA DEL ESTUDIANTE
         ================================================= */
 
-try {
+        try {
 
-    await fetch(
+            await fetch(
 
-        `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
+                `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
 
-        {
+                {
 
-            method: "POST",
+                    method: "POST",
 
-            headers: {
+                    headers: {
 
-                "apikey":
-                    SUPABASE_KEY,
+                        "apikey":
+                            SUPABASE_KEY,
 
-                "Authorization":
-                    `Bearer ${SUPABASE_KEY}`,
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`,
 
-                "Content-Type":
-                    "application/json"
+                        "Content-Type":
+                            "application/json"
 
-            },
+                    },
 
-            body: JSON.stringify({
+                    body: JSON.stringify({
 
-                p_estudiante_id:
-                    alumnoActual.id,
+                        p_estudiante_id:
+                            alumnoActual.id,
 
-                p_dispositivo:
-                    obtenerDispositivo(),
+                        p_dispositivo:
+                            obtenerDispositivo(),
 
-                p_navegador:
-                    obtenerNavegador(),
+                        p_navegador:
+                            obtenerNavegador(),
 
-                p_sistema_operativo:
-                    obtenerSistemaOperativo()
+                        p_sistema_operativo:
+                            obtenerSistemaOperativo()
 
-            })
+                    })
+
+                }
+
+            );
 
         }
 
-    );
+        catch (error) {
 
-}
+            console.error(
+                "No se pudo registrar la visita:",
+                error
+            );
 
-catch (error) {
-
-    console.error(
-        "No se pudo registrar la visita:",
-        error
-    );
-
-}
-
-
-
-
-
-
-
-
-
-
-
+        }
 
 
         mostrarResultado(
