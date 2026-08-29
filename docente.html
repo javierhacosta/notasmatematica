@@ -2903,6 +2903,39 @@ function mostrarTablaAsistencia() {
 
             </td>
 
+            <td>
+
+            <input
+
+            type="text"
+
+            class="observacion-actividad"
+
+            placeholder="Escribir..."
+
+            value="${
+                observacionesCalificaciones[estudiante.id] &&
+                observacionesCalificaciones[estudiante.id][actividad.id]
+                ? escapeHTML(
+                    observacionesCalificaciones[estudiante.id][actividad.id]
+                )
+                : ""
+            }"
+
+            data-estudiante="${
+                estudiante.id
+            }"
+
+            data-actividad="${
+                actividad.id
+            }"
+
+            disabled
+
+            >
+
+            </td>
+
         `;
 
 
@@ -3855,7 +3888,7 @@ function crearActividadHTML(
         <th>Nombre</th>
 
         <th>Nota / ${puntajeMaximo}</th>
-        <th>Observaciones</th>
+        <th>Texto</th>
 
         </tr>
 
@@ -4088,7 +4121,7 @@ function crearActividadHTML(
 
         const inputs =
         bloque.querySelectorAll(
-            ".nota-input"
+            ".nota-input, .observacion-actividad"
         );
 
 
@@ -5300,6 +5333,17 @@ async function guardarNotas() {
         }
 
 
+        const observacionInput =
+        document.querySelector(
+            `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+        );
+
+        const observacion =
+        observacionInput
+        ? observacionInput.value.trim()
+        : "";
+
+
         registros.push({
 
             actividad_id:
@@ -5309,7 +5353,10 @@ async function guardarNotas() {
             estudianteId,
 
             nota:
-            nota
+            nota,
+
+            observacion:
+            observacion
 
         });
 
