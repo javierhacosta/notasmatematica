@@ -6352,18 +6352,26 @@ async function mostrarInformeEstudiante() {
    TABLA: visitas_estudiantes
 ===================================================== */
 
-async function cargarVisitasEstudianteInforme(
-    estudiante
-) {
+async function cargarVisitasEstudianteInforme(estudiante) {
 
     const contenedor =
-    document.getElementById(
-        "visitasEstudianteInforme"
-    );
+        document.getElementById(
+            "visitasEstudianteInforme"
+        );
 
     if (!contenedor) {
         return;
     }
+
+    console.log(
+        "ESTUDIANTE SELECCIONADO:",
+        estudiante
+    );
+
+    console.log(
+        "ID DEL ESTUDIANTE PARA BUSCAR VISITAS:",
+        estudiante.id
+    );
 
     const {
         data,
@@ -6372,7 +6380,7 @@ async function cargarVisitasEstudianteInforme(
     await supabaseClient
         .from("visitas_estudiantes")
         .select(
-            "id,estudiante_id,fecha_hora"
+            "id, estudiante_id, fecha_hora"
         )
         .eq(
             "estudiante_id",
@@ -6385,18 +6393,33 @@ async function cargarVisitasEstudianteInforme(
             }
         );
 
-    if (error) {
+    console.log(
+        "VISITAS ENCONTRADAS:",
+        data
+    );
 
-        console.error(
-            "Error al cargar visitas:",
-            error
-        );
+    console.log(
+        "ERROR VISITAS:",
+        error
+    );
+
+    if (error) {
 
         contenedor.innerHTML =
         `
-            <div class="sin-datos-informe">
-                Error al cargar las visitas:
-                ${escapeHTML(error.message)}
+            <div class="sin-datos-informe"
+                 style="color:#c62828;">
+
+                <strong>
+                    Error al consultar las visitas
+                </strong>
+
+                <br><br>
+
+                ${escapeHTML(
+                    error.message
+                )}
+
             </div>
         `;
 
@@ -6406,54 +6429,61 @@ async function cargarVisitasEstudianteInforme(
     const visitas =
         data || [];
 
-    const total =
-        visitas.length;
-
-    if (total === 0) {
+    if (visitas.length === 0) {
 
         contenedor.innerHTML =
         `
             <div class="sin-datos-informe">
-                Este estudiante todavía no ha ingresado
-                a la página de estudiante.
+
+                Este estudiante todavía no ha
+                ingresado a la página de estudiante.
+
+                <br><br>
+
+                <small>
+                    ID consultado:
+                    <strong>
+                        ${escapeHTML(
+                            String(estudiante.id)
+                        )}
+                    </strong>
+                </small>
+
             </div>
         `;
 
         return;
     }
 
-    const tabla =
-        document.createElement(
-            "table"
-        );
-
-    tabla.className =
-        "tabla-informe";
-
-    tabla.innerHTML =
+    let html =
     `
-        <thead>
-            <tr>
-                <th>Nº</th>
-                <th>Fecha y hora de ingreso</th>
-            </tr>
-        </thead>
+        <div style="
+            margin-bottom:10px;
+            font-weight:bold;
+            color:#1557a6;
+        ">
+            👁️ Total de ingresos:
+            ${visitas.length}
+        </div>
 
-        <tbody></tbody>
+        <div class="tabla-contenedor">
+
+            <table class="tabla-informe">
+
+                <thead>
+
+                    <tr>
+                        <th>Nº</th>
+                        <th>Fecha y hora de ingreso</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
     `;
-
-    const tbody =
-        tabla.querySelector(
-            "tbody"
-        );
 
     visitas.forEach(
         (visita, indice) => {
-
-            const fila =
-                document.createElement(
-                    "tr"
-                );
 
             let fechaHora = "-";
 
@@ -6489,58 +6519,43 @@ async function cargarVisitasEstudianteInforme(
                         String(
                             visita.fecha_hora
                         );
+
                 }
+
             }
 
-            fila.innerHTML =
+            html +=
             `
-                <td>
-                    ${indice + 1}
-                </td>
+                <tr>
 
-                <td>
-                    ${escapeHTML(
-                        fechaHora
-                    )}
-                </td>
+                    <td>
+                        ${indice + 1}
+                    </td>
+
+                    <td>
+                        ${escapeHTML(
+                            fechaHora
+                        )}
+                    </td>
+
+                </tr>
             `;
 
-            tbody.appendChild(
-                fila
-            );
         }
     );
 
-    const envoltorio =
-        document.createElement(
-            "div"
-        );
-
-    envoltorio.className =
-        "tabla-contenedor";
-
-    envoltorio.appendChild(
-        tabla
-    );
-
-    contenedor.innerHTML =
+    html +=
     `
-        <div style="
-            margin-bottom:10px;
-            font-weight:bold;
-            color:#1557a6;
-        ">
-            Total de ingresos:
-            ${total}
+                </tbody>
+
+            </table>
+
         </div>
     `;
 
-    contenedor.appendChild(
-        envoltorio
-    );
-
+    contenedor.innerHTML =
+        html;
 }
-
 
 /* =====================================================
    ACTIVIDADES PRESENTADAS + OBSERVACIONES
