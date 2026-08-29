@@ -698,6 +698,30 @@ td:first-child {
 }
 
 
+/* =====================================================
+   NUEVO BOTÓN BLOQUEAR ASISTENCIA
+===================================================== */
+
+.boton-bloquear-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #ef6c00;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.boton-bloquear-asistencia:hover {
+    background: #d95f00;
+}
+
+
 /* BOTÓN GUARDAR ASISTENCIA */
 
 .boton-guardar-asistencia {
@@ -857,6 +881,13 @@ td:first-child {
     font-size: 13px;
 }
 
+.observacion-asistencia:disabled {
+    background: #eeeeee;
+    color: #555;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
 
 /* =====================================================
    NOTAS FINALES
@@ -962,7 +993,7 @@ td:first-child {
     .acciones-asistencia {
         width: 100%;
         display: grid;
-        grid-template-columns: 1fr auto auto;
+        grid-template-columns: 1fr auto auto auto;
         gap: 7px;
         align-items: center;
     }
@@ -985,8 +1016,13 @@ td:first-child {
         grid-row: 2;
     }
 
-    .boton-guardar-asistencia {
+    .boton-bloquear-asistencia {
         grid-column: 3;
+        grid-row: 2;
+    }
+
+    .boton-guardar-asistencia {
+        grid-column: 4;
         grid-row: 2;
         padding: 0 9px;
         font-size: 13px;
@@ -1499,6 +1535,22 @@ Fechas guardadas
 </button>
 
 
+<!-- =====================================================
+     NUEVO BOTÓN BLOQUEAR ASISTENCIA
+===================================================== -->
+
+<button
+    type="button"
+    id="botonBloquearAsistencia"
+    class="boton-bloquear-asistencia"
+    onclick="bloquearDesbloquearAsistencia()"
+    title="Desbloquear tabla de asistencia">
+
+🔒
+
+</button>
+
+
 <button
     type="button"
     id="botonGuardarAsistencia"
@@ -1896,6 +1948,13 @@ let registrosAsistencia = {};
 
 
 /* =====================================================
+   NUEVO ESTADO BLOQUEO ASISTENCIA
+===================================================== */
+
+let asistenciaDesbloqueada = false;
+
+
+/* =====================================================
    LIMITES
 ===================================================== */
 
@@ -1913,7 +1972,7 @@ const LIMITES = {
 
 
 /* =====================================================
-   ESTADO BLOQUEO
+   ESTADO BLOQUEO ACTIVIDADES
 ===================================================== */
 
 const actividadesDesbloqueadas =
@@ -2183,6 +2242,24 @@ document.getElementById(
 
         actividadesDesbloqueadas.clear();
 
+        asistenciaDesbloqueada =
+        false;
+
+        const botonBloquearAsistencia =
+        document.getElementById(
+            "botonBloquearAsistencia"
+        );
+
+        if (botonBloquearAsistencia) {
+
+            botonBloquearAsistencia.textContent =
+            "🔒";
+
+            botonBloquearAsistencia.title =
+            "Desbloquear tabla de asistencia";
+
+        }
+
         if (!cursoSeleccionado) {
             return;
         }
@@ -2225,6 +2302,104 @@ function mostrarPanelAsistencia() {
         "botonAsistencia"
     ).textContent =
     "+";
+
+
+    asistenciaDesbloqueada =
+    false;
+
+
+    const botonBloquear =
+    document.getElementById(
+        "botonBloquearAsistencia"
+    );
+
+
+    if (botonBloquear) {
+
+        botonBloquear.textContent =
+        "🔒";
+
+        botonBloquear.title =
+        "Desbloquear tabla de asistencia";
+
+    }
+
+}
+
+
+/* =====================================================
+   BLOQUEAR / DESBLOQUEAR TABLA DE ASISTENCIA
+===================================================== */
+
+function bloquearDesbloquearAsistencia() {
+
+    const boton =
+    document.getElementById(
+        "botonBloquearAsistencia"
+    );
+
+
+    const controles =
+    document.querySelectorAll(
+        "#tablaAsistencia input"
+    );
+
+
+    if (asistenciaDesbloqueada) {
+
+        controles.forEach(
+        control => {
+
+            control.disabled =
+            true;
+
+        });
+
+
+        asistenciaDesbloqueada =
+        false;
+
+
+        boton.textContent =
+        "🔒";
+
+        boton.title =
+        "Desbloquear tabla de asistencia";
+
+
+        mostrarMensaje(
+            "🔒 Tabla de asistencia bloqueada."
+        );
+
+    }
+
+    else {
+
+        controles.forEach(
+        control => {
+
+            control.disabled =
+            false;
+
+        });
+
+
+        asistenciaDesbloqueada =
+        true;
+
+
+        boton.textContent =
+        "🔓";
+
+        boton.title =
+        "Bloquear tabla de asistencia";
+
+
+        mostrarMensaje(
+            "🔓 Tabla de asistencia desbloqueada."
+        );
+
+    }
 
 }
 
@@ -2619,6 +2794,32 @@ function mostrarTablaAsistencia() {
 
     tbody.innerHTML = "";
 
+
+    /* =================================================
+       LA TABLA SIEMPRE COMIENZA BLOQUEADA
+    ================================================= */
+
+    asistenciaDesbloqueada =
+    false;
+
+
+    const botonBloquear =
+    document.getElementById(
+        "botonBloquearAsistencia"
+    );
+
+
+    if (botonBloquear) {
+
+        botonBloquear.textContent =
+        "🔒";
+
+        botonBloquear.title =
+        "Desbloquear tabla de asistencia";
+
+    }
+
+
     if (!cursoSeleccionado) {
         return;
     }
@@ -2684,6 +2885,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
+                            disabled
                         >
 
                         <label
@@ -2720,6 +2922,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
+                            disabled
                         >
 
                         <label
@@ -2756,6 +2959,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
+                            disabled
                         >
 
                         <label
@@ -2792,6 +2996,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
+                            disabled
                         >
 
                         <label
@@ -2822,6 +3027,7 @@ function mostrarTablaAsistencia() {
                         observacion
                     )}"
                     placeholder="-"
+                    disabled
                 >
 
             </td>
