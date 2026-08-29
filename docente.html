@@ -787,6 +787,11 @@ td:first-child {
     padding: 7px 5px;
 }
 
+/* NOMBRES OPACADOS CUANDO LA ASISTENCIA ESTA BLOQUEADA */
+.tabla-asistencia.asistencia-bloqueada td.nombre {
+    opacity: .45;
+}
+
 
 /* =====================================================
    BOTONES DE ESTADO DE ASISTENCIA
@@ -1363,6 +1368,8 @@ td,
 .tabla-informe-general thead tr:first-child th { background:#e4e9ee; height:145px; padding:5px 4px; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; width:34px; min-width:34px; max-width:34px; }
 .tabla-informe-general thead tr:first-child th.nombre-col { width:180px; min-width:180px; max-width:180px; writing-mode:vertical-rl; }
 .tabla-informe-general th.nombre-col,.tabla-informe-general td.nombre-col { text-align:left; white-space:normal; width:180px; min-width:180px; max-width:180px; }
+.tabla-informe-general th.nombre-col,.tabla-informe-general td.nombre-col { position:sticky; left:0; z-index:3; background:#fff; }
+.tabla-informe-general thead th.nombre-col { z-index:5; background:#e4e9ee; }
 .tabla-informe-general th.asistencia-fecha { min-width:34px; width:34px; max-width:34px; }
 .tabla-informe-general td.asistencia-celda { font-size:17px; font-weight:bold; }
 .tabla-informe-general .estado-A,.tabla-informe-general .estado-R,.tabla-informe-general .estado-L,.tabla-informe-general .estado-F { color:#222; }
@@ -2464,6 +2471,11 @@ function mostrarPanelAsistencia() {
     asistenciaDesbloqueada =
     false;
 
+    const tablaAsistencia = document.querySelector(".tabla-asistencia");
+    if (tablaAsistencia) {
+        tablaAsistencia.classList.add("asistencia-bloqueada");
+    }
+
 
     const botonBloquear =
     document.getElementById(
@@ -2504,6 +2516,11 @@ function bloquearDesbloquearAsistencia() {
 
     if (asistenciaDesbloqueada) {
 
+        const tablaAsistencia = document.querySelector(".tabla-asistencia");
+        if (tablaAsistencia) {
+            tablaAsistencia.classList.add("asistencia-bloqueada");
+        }
+
         controles.forEach(
         control => {
 
@@ -2531,6 +2548,11 @@ function bloquearDesbloquearAsistencia() {
     }
 
     else {
+
+        const tablaAsistencia = document.querySelector(".tabla-asistencia");
+        if (tablaAsistencia) {
+            tablaAsistencia.classList.remove("asistencia-bloqueada");
+        }
 
         controles.forEach(
         control => {
