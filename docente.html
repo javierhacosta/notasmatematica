@@ -1446,6 +1446,172 @@ td,
     max-width: 180px;
 }
 
+/* N° y Nombre permanecen fijos al desplazar horizontalmente */
+.tabla-informe-general th:first-child,
+.tabla-informe-general td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: #fff;
+    box-shadow: 2px 0 3px rgba(0,0,0,.06);
+}
+
+.tabla-informe-general th.nombre-col,
+.tabla-informe-general td.nombre-col {
+    position: sticky;
+    left: 45px;
+    z-index: 4;
+    background: #fff;
+    box-shadow: 2px 0 3px rgba(0,0,0,.06);
+}
+
+.tabla-informe-general thead th:first-child,
+.tabla-informe-general thead th.nombre-col {
+    z-index: 7;
+    background: #e4e9ee;
+}
+
+.nombre-informe-clic {
+    cursor: pointer;
+    color: #1557a6;
+    font-weight: bold;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+}
+
+.nombre-informe-clic:hover {
+    color: #0d3f78;
+}
+
+.detalle-estudiante-fondo {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.48);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    z-index: 11000;
+}
+
+.detalle-estudiante {
+    width: 100%;
+    max-width: 850px;
+    max-height: 90vh;
+    overflow: hidden;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+
+.detalle-estudiante-cabecera {
+    background: #1557a6;
+    color: white;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.detalle-estudiante-titulo {
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.detalle-estudiante-cerrar {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.detalle-estudiante-cuerpo {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(90vh - 64px);
+}
+
+.detalle-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(135px,1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.detalle-resumen-item {
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    padding: 10px;
+    text-align: center;
+    background: #f8f9fa;
+}
+
+.detalle-resumen-item strong {
+    display: block;
+    font-size: 19px;
+    margin-top: 3px;
+}
+
+.detalle-seccion {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.detalle-seccion-boton {
+    width: 100%;
+    border: none;
+    background: #f0f2f3;
+    padding: 11px 13px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.detalle-seccion-contenido {
+    padding: 10px 12px;
+}
+
+.detalle-tabla {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.detalle-tabla th,
+.detalle-tabla td {
+    border: 1px solid #ddd;
+    padding: 7px;
+    text-align: center;
+}
+
+.detalle-tabla th {
+    background: #f5f6f7;
+}
+
+.detalle-sin-datos {
+    color: #777;
+    padding: 8px;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .detalle-estudiante {
+        max-height: 94vh;
+    }
+
+    .detalle-estudiante-cuerpo {
+        max-height: calc(94vh - 64px);
+    }
+}
+
 .tabla-informe-general th.asistencia-fecha {
     min-width: 78px;
 }
@@ -5609,6 +5775,178 @@ function mostrarComentarioInforme(titulo, comentario) {
     document.body.appendChild(fondo);
 }
 
+
+function formatearFechaHoraInforme(fechaHora) {
+    if (!fechaHora) return "";
+    const d = new Date(fechaHora);
+    if (isNaN(d.getTime())) return String(fechaHora);
+    return d.toLocaleString("es-BO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    });
+}
+
+function mostrarDetalleEstudianteInforme(idEstudiante) {
+    const datos = window.informeGeneralDatos;
+    if (!datos) return;
+
+    const estudiante = datos.estudiantes.find(e => String(e.id) === String(idEstudiante));
+    if (!estudiante) return;
+
+    const asistencias = datos.asistencias.filter(r => String(r.estudiante_id) === String(idEstudiante));
+    const visitas = datos.visitas.filter(r => String(r.estudiante_id) === String(idEstudiante));
+
+    const estado = { asistio: 0, atraso: 0, licencia: 0, falta: 0 };
+    asistencias.forEach(r => {
+        const e = String(r.estado || "").toLowerCase();
+        if (estado[e] !== undefined) estado[e]++;
+    });
+
+    const actividadesPresentadas = datos.actividades.filter(a => {
+        const r = datos.calificaciones[idEstudiante + "_" + a.id];
+        return r && r.nota !== null && r.nota !== undefined && r.nota !== "";
+    });
+
+    const limites = window.LIMITES || {};
+    function promedio(lista) {
+        let suma = 0, maximos = 0;
+        lista.forEach(a => {
+            const r = datos.calificaciones[idEstudiante + "_" + a.id];
+            if (!r || r.nota === null || r.nota === undefined || r.nota === "") return;
+            const nota = Number(r.nota);
+            const maximo = Number(a.puntaje_maximo || limites[a.categoria] || 0);
+            if (!isNaN(nota) && !isNaN(maximo) && maximo > 0) {
+                suma += nota;
+                maximos += maximo;
+            }
+        });
+        if (!maximos) return "";
+        return Math.round(suma / maximos * (limites[lista[0]?.categoria] || 0));
+    }
+
+    const ser = datos.actividades.filter(a => a.categoria === "SER");
+    const saber = datos.actividades.filter(a => a.categoria === "SABER");
+    const hacer = datos.actividades.filter(a => a.categoria === "HACER");
+    const auto = datos.actividades.filter(a => a.categoria === "AUTOEVALUACION");
+
+    const pSER = promedio(ser), pSABER = promedio(saber), pHACER = promedio(hacer), pAUTO = promedio(auto);
+
+    const modal = document.createElement("div");
+    modal.className = "detalle-estudiante-fondo";
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+
+    const caja = document.createElement("div");
+    caja.className = "detalle-estudiante";
+
+    const cabecera = document.createElement("div");
+    cabecera.className = "detalle-estudiante-cabecera";
+    cabecera.innerHTML = `<div><div class="detalle-estudiante-titulo">${escapeHTML(estudiante.nombre || "Estudiante")}</div><div>Curso: ${escapeHTML(estudiante.curso || "")} — Nº ${escapeHTML(String(estudiante.num_lista ?? ""))}</div></div>`;
+
+    const cerrar = document.createElement("button");
+    cerrar.className = "detalle-estudiante-cerrar";
+    cerrar.textContent = "×";
+    cerrar.onclick = () => modal.remove();
+    cabecera.appendChild(cerrar);
+
+    const cuerpo = document.createElement("div");
+    cuerpo.className = "detalle-estudiante-cuerpo";
+
+    const nota3t = estudiante.nota_3t !== null && estudiante.nota_3t !== undefined ? Math.round(Number(estudiante.nota_3t)) : "";
+    const notaFinal = estudiante.final !== null && estudiante.final !== undefined ? Math.round(Number(estudiante.final)) : "";
+
+    cuerpo.innerHTML = `
+        <div class="detalle-resumen">
+            <div class="detalle-resumen-item">Asistencia<strong>${estado.asistio}</strong></div>
+            <div class="detalle-resumen-item">Atrasos<strong>${estado.atraso}</strong></div>
+            <div class="detalle-resumen-item">Licencias<strong>${estado.licencia}</strong></div>
+            <div class="detalle-resumen-item">Faltas<strong>${estado.falta}</strong></div>
+            <div class="detalle-resumen-item">Actividades presentadas<strong>${actividadesPresentadas.length}</strong></div>
+            <div class="detalle-resumen-item">Entradas a la página<strong>${visitas.length}</strong></div>
+            <div class="detalle-resumen-item">Nota 3T<strong>${escapeHTML(String(nota3t))}</strong></div>
+            <div class="detalle-resumen-item">Nota Final<strong>${escapeHTML(String(notaFinal))}</strong></div>
+        </div>
+
+        <div class="detalle-seccion">
+            <button class="detalle-seccion-boton" type="button">+ Ver fechas de asistencia</button>
+            <div class="detalle-seccion-contenido oculto"></div>
+        </div>
+
+        <div class="detalle-seccion">
+            <button class="detalle-seccion-boton" type="button">+ Ver actividades presentadas</button>
+            <div class="detalle-seccion-contenido oculto"></div>
+        </div>
+
+        <div class="detalle-seccion">
+            <button class="detalle-seccion-boton" type="button">+ Ver promedios obtenidos</button>
+            <div class="detalle-seccion-contenido oculto"></div>
+        </div>
+
+        <div class="detalle-seccion">
+            <button class="detalle-seccion-boton" type="button">+ Ver días y horas de ingreso a la página</button>
+            <div class="detalle-seccion-contenido oculto"></div>
+        </div>
+    `;
+
+    const secciones = cuerpo.querySelectorAll(".detalle-seccion");
+
+    // Asistencia
+    const contenidoAsistencia = secciones[0].querySelector(".detalle-seccion-contenido");
+    if (asistencias.length) {
+        let html = `<table class="detalle-tabla"><thead><tr><th>Fecha</th><th>Estado</th><th>Observación</th></tr></thead><tbody>`;
+        asistencias.sort((a,b) => String(a.fecha || "").localeCompare(String(b.fecha || ""))).forEach(r => {
+            const e = String(r.estado || "").toLowerCase();
+            const letras = {asistio:"A", atraso:"R", licencia:"L", falta:"F"};
+            html += `<tr><td>${escapeHTML(formatearFechaActividad(r.fecha))}</td><td><strong>${letras[e] || ""}</strong></td><td>${r.observacion ? escapeHTML(r.observacion) : ""}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        contenidoAsistencia.innerHTML = html;
+    } else contenidoAsistencia.innerHTML = `<div class="detalle-sin-datos">No hay registros de asistencia.</div>`;
+
+    // Actividades
+    const contenidoActividades = secciones[1].querySelector(".detalle-seccion-contenido");
+    if (actividadesPresentadas.length) {
+        let html = `<table class="detalle-tabla"><thead><tr><th>Actividad</th><th>Dimensión</th><th>Nota</th></tr></thead><tbody>`;
+        actividadesPresentadas.forEach(a => {
+            const r = datos.calificaciones[idEstudiante + "_" + a.id];
+            const obs = String(r.observacion || "").trim();
+            html += `<tr><td>${escapeHTML(a.nombre || "Actividad")}</td><td>${escapeHTML(a.categoria || "")}</td><td class="${obs ? "nota-con-observacion" : ""}" ${obs ? `onclick="mostrarComentarioInforme('Observación - ${escapeHTML(a.nombre || "Actividad")}', '${escapeHTML(obs).replace(/'/g,"&#39;")}')"` : ""}>${escapeHTML(String(r.nota))}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        contenidoActividades.innerHTML = html;
+    } else contenidoActividades.innerHTML = `<div class="detalle-sin-datos">No hay actividades presentadas.</div>`;
+
+    // Promedios
+    secciones[2].querySelector(".detalle-seccion-contenido").innerHTML = `
+        <table class="detalle-tabla"><thead><tr><th>SER</th><th>SABER</th><th>HACER</th><th>AUTOEVALUACIÓN</th><th>3T</th><th>Final</th></tr></thead>
+        <tbody><tr><td>${escapeHTML(String(pSER))}</td><td>${escapeHTML(String(pSABER))}</td><td>${escapeHTML(String(pHACER))}</td><td>${escapeHTML(String(pAUTO))}</td><td>${escapeHTML(String(nota3t))}</td><td>${escapeHTML(String(notaFinal))}</td></tr></tbody></table>`;
+
+    // Visitas
+    const contenidoVisitas = secciones[3].querySelector(".detalle-seccion-contenido");
+    if (visitas.length) {
+        visitas.sort((a,b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+        contenidoVisitas.innerHTML = `<table class="detalle-tabla"><thead><tr><th>Nº</th><th>Día y hora</th></tr></thead><tbody>${visitas.map((v,i) => `<tr><td>${i+1}</td><td>${escapeHTML(formatearFechaHoraInforme(v.fecha_hora))}</td></tr>`).join("")}</tbody></table>`;
+    } else contenidoVisitas.innerHTML = `<div class="detalle-sin-datos">No hay registros de ingreso a la página.</div>`;
+
+    secciones.forEach((sec, i) => {
+        const btn = sec.querySelector(".detalle-seccion-boton");
+        const cont = sec.querySelector(".detalle-seccion-contenido");
+        btn.onclick = () => {
+            const oculto = cont.classList.toggle("oculto");
+            const textos = ["Ver fechas de asistencia", "Ver actividades presentadas", "Ver promedios obtenidos", "Ver días y horas de ingreso a la página"];
+            btn.textContent = `${oculto ? "+" : "−"} ${textos[i]}`;
+        };
+    });
+
+    caja.appendChild(cabecera);
+    caja.appendChild(cuerpo);
+    modal.appendChild(caja);
+    document.body.appendChild(modal);
+}
+
 async function cargarInformeGeneral() {
 
     const contenedor =
@@ -5881,6 +6219,14 @@ async function cargarInformeGeneral() {
 
     });
 
+    window.informeGeneralDatos = {
+        estudiantes: estudiantesCurso,
+        actividades: actividadesInforme,
+        asistencias: registrosAsistenciaInforme,
+        visitas: registrosVisitasInforme,
+        calificaciones: mapaCalificacionesInforme
+    };
+
     /* -------------------------------------------------
        ACTIVIDADES POR DIMENSIÓN
     ------------------------------------------------- */
@@ -6145,9 +6491,14 @@ async function cargarInformeGeneral() {
                 </td>
 
                 <td class="nombre-col">
-                    ${escapeHTML(
-                        estudiante.nombre || ""
-                    )}
+                    <span
+                        class="nombre-informe-clic"
+                        onclick="mostrarDetalleEstudianteInforme('${String(estudiante.id).replace(/'/g, "\'")}')"
+                        title="Ver detalle del estudiante">
+                        ${escapeHTML(
+                            estudiante.nombre || ""
+                        )}
+                    </span>
                 </td>
         `;
 
