@@ -1133,7 +1133,7 @@ td,
 
 /* =====================================================
    TABLAS DE ACTIVIDADES
-   Nº | Nombre | Nota | Observaciones
+   Nº | Nombre | Nota
 ===================================================== */
 
 #contenedorActividades table {
@@ -1213,37 +1213,6 @@ td,
 #contenedorActividades table .nota-input {
     width: 55px;
     max-width: 55px;
-}
-
-/* OBSERVACIONES */
-#contenedorActividades table th:nth-child(4),
-#contenedorActividades table td:nth-child(4) {
-    width: 180px;
-    min-width: 180px;
-    max-width: 180px;
-}
-
-#contenedorActividades table .observacion-input {
-    width: 100%;
-    min-width: 0;
-    padding: 7px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    box-sizing: border-box;
-    resize: vertical;
-}
-
-#contenedorActividades table .observacion-input:disabled {
-    background: #eeeeee;
-    color: #555;
-    cursor: not-allowed;
-    border-color: #ddd;
-}
-
-#contenedorActividades table .observacion-input.editable {
-    background: #fffde7;
-    border: 2px solid #ef6c00;
 }
 
 
@@ -2918,25 +2887,6 @@ function mostrarTablaAsistencia() {
 
             </td>
 
-            <td>
-
-            <textarea
-                class="observacion-input"
-                rows="1"
-                data-estudiante="${
-                    estudiante.id
-                }"
-                data-actividad="${
-                    actividad.id
-                }"
-                disabled
-                placeholder="Observación..."
-            >${escapeHTML(
-                observacion
-            )}</textarea>
-
-            </td>
-
         `;
 
 
@@ -3397,7 +3347,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion"
+        "id,actividad_id,estudiante_id,nota"
     )
     .in(
         "actividad_id",
@@ -3444,10 +3394,8 @@ async function cargarCalificaciones() {
             cal.estudiante_id
         ][
             cal.actividad_id
-        ] = {
-            nota: cal.nota,
-            observacion: cal.observacion || ""
-        };
+        ] =
+        cal.nota;
 
     });
 
@@ -3881,8 +3829,6 @@ function crearActividadHTML(
 
         <th>Nota / ${puntajeMaximo}</th>
 
-        <th>Observaciones</th>
-
         </tr>
 
         </thead>
@@ -3910,7 +3856,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
-        let observacion = "";
+
 
         if (
             calificaciones[
@@ -3923,31 +3869,12 @@ function crearActividadHTML(
             ] !== undefined
         ) {
 
-            const registroCalificacion =
+            nota =
             calificaciones[
                 estudiante.id
             ][
                 actividad.id
             ];
-
-            if (
-                registroCalificacion &&
-                typeof registroCalificacion === "object"
-            ) {
-
-                nota =
-                registroCalificacion.nota;
-
-                observacion =
-                registroCalificacion.observacion || "";
-
-            }
-            else {
-
-                nota =
-                registroCalificacion;
-
-            }
 
         }
 
@@ -4019,25 +3946,6 @@ function crearActividadHTML(
             oninput="validarNota(this)"
 
             >
-
-            </td>
-
-            <td>
-
-            <textarea
-                class="observacion-input"
-                rows="1"
-                data-estudiante="${
-                    estudiante.id
-                }"
-                data-actividad="${
-                    actividad.id
-                }"
-                disabled
-                placeholder="Observación..."
-            >${escapeHTML(
-                observacion
-            )}</textarea>
 
             </td>
 
@@ -4152,7 +4060,7 @@ function crearActividadHTML(
 
         const inputs =
         bloque.querySelectorAll(
-            ".nota-input, .observacion-input"
+            ".nota-input"
         );
 
 
@@ -5364,22 +5272,6 @@ async function guardarNotas() {
         }
 
 
-        const fila =
-        input.closest("tr");
-
-        const observacionInput =
-        fila
-        ? fila.querySelector(
-            ".observacion-input"
-        )
-        : null;
-
-        const observacion =
-        observacionInput
-        ? observacionInput.value.trim()
-        : null;
-
-
         registros.push({
 
             actividad_id:
@@ -5389,10 +5281,7 @@ async function guardarNotas() {
             estudianteId,
 
             nota:
-            nota,
-
-            observacion:
-            observacion
+            nota
 
         });
 
@@ -5890,7 +5779,7 @@ async function exportarExcel() {
             } =
             await supabaseClient
             .from("calificaciones")
-            .select("actividad_id,estudiante_id,nota,observacion")
+            .select("actividad_id,estudiante_id,nota")
             .in("actividad_id", idsActividades);
 
             if (error) {
@@ -5907,10 +5796,7 @@ async function exportarExcel() {
             const clave =
             cal.estudiante_id + "_" + cal.actividad_id;
 
-            mapaCalificaciones[clave] = {
-                nota: cal.nota,
-                observacion: cal.observacion || ""
-            };
+            mapaCalificaciones[clave] = cal.nota;
 
         });
 
@@ -6051,29 +5937,16 @@ async function exportarExcel() {
                 "TOTAL L",
                 "TOTAL F",
 
-                ...ser.flatMap(a => [
-                    a.nombre,
-                    "Observación: " + a.nombre
-                ]),
+                ...ser.map(a => a.nombre),
                 "PROMEDIO SER",
 
-                ...saber.flatMap(a => [
-                    a.nombre,
-                    "Observación: " + a.nombre
-                ]),
+                ...saber.map(a => a.nombre),
                 "PROMEDIO SABER",
 
-                ...hacer.flatMap(a => [
-                    a.nombre,
-                    "Observación: " + a.nombre
-                ]),
+                ...hacer.map(a => a.nombre),
                 "PROMEDIO HACER",
 
-                ...auto.flatMap(a => [
-                    a.nombre,
-                    "Observación: " + a.nombre
-                ]),
-                "PROMEDIO AUTO",
+                "AUTOEVALUACIÓN",
                 "NOTA 3T",
                 "NOTA FINAL"
             ];
@@ -6144,14 +6017,6 @@ async function exportarExcel() {
                         )
                     );
 
-                    fila.push(
-                        obtenerObservacionExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
                 });
 
                 fila.push(
@@ -6175,14 +6040,6 @@ async function exportarExcel() {
 
                     fila.push(
                         obtenerNotaExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                    fila.push(
-                        obtenerObservacionExcel(
                             estudiante.id,
                             actividad.id,
                             mapaCalificaciones
@@ -6218,14 +6075,6 @@ async function exportarExcel() {
                         )
                     );
 
-                    fila.push(
-                        obtenerObservacionExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
                 });
 
                 fila.push(
@@ -6244,26 +6093,6 @@ async function exportarExcel() {
                         mapaCalificaciones
                     )
                 );
-
-                auto.forEach(actividad => {
-
-                    fila.push(
-                        obtenerNotaExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                    fila.push(
-                        obtenerObservacionExcel(
-                            estudiante.id,
-                            actividad.id,
-                            mapaCalificaciones
-                        )
-                    );
-
-                });
 
                 fila.push(
                     calcularPromedioPonderado(
@@ -6446,37 +6275,6 @@ function formatearFechaExcel(fecha) {
    NOTA EXCEL
 ===================================================== */
 
-function obtenerObservacionExcel(
-
-    estudianteId,
-    actividadId,
-    mapa
-
-) {
-
-    const clave =
-    estudianteId +
-    "_" +
-    actividadId;
-
-    const registro =
-    mapa[clave];
-
-    if (
-        registro &&
-        typeof registro === "object"
-    ) {
-        return registro.observacion || "";
-    }
-
-    return "";
-}
-
-
-/* =====================================================
-   OBTENER NOTA PARA EXCEL
-===================================================== */
-
 function obtenerNotaExcel(
 
     estudianteId,
@@ -6501,22 +6299,8 @@ function obtenerNotaExcel(
     }
 
 
-    const registro =
-    mapa[clave];
-
-    if (
-        registro &&
-        typeof registro === "object"
-    ) {
-        return registro.nota === null ||
-            registro.nota === undefined ||
-            registro.nota === ""
-            ? ""
-            : Number(registro.nota);
-    }
-
     return Number(
-        registro
+        mapa[clave]
     );
 
 }
