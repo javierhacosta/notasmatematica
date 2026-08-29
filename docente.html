@@ -1803,6 +1803,137 @@ td,
     }
 }
 
+
+
+/* =====================================================
+   VISITAS DEL ESTUDIANTE
+===================================================== */
+
+.resumen-visitas {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 10px;
+
+    margin-bottom: 10px;
+
+}
+
+
+.visita-total,
+.ultima-visita {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    background: #f7f9fc;
+
+}
+
+
+.visita-total {
+
+    font-size: 25px;
+
+}
+
+
+.ultima-visita {
+
+    font-size: 20px;
+
+}
+
+
+.visita-total strong,
+.ultima-visita strong {
+
+    display: block;
+
+    font-size: 20px;
+
+}
+
+
+.visita-total span,
+.ultima-visita span {
+
+    display: block;
+
+    margin-top: 3px;
+
+    color: #666;
+
+    font-size: 12px;
+
+}
+
+
+.boton-visitas {
+
+    width: 100%;
+
+    padding: 10px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #455a64;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+}
+
+
+.boton-visitas:hover {
+
+    background: #263238;
+
+}
+
+
+.historial-visitas {
+
+    margin-top: 10px;
+
+}
+
+
+.historial-visitas.oculto {
+
+    display: none;
+
+}
+
+
+@media(max-width:600px) {
+
+    .resumen-visitas {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+}
+
 </style>
 
 </head>
@@ -6173,6 +6304,258 @@ function actualizarEstudiantesInforme() {
    MOSTRAR INFORME DEL ESTUDIANTE
 ===================================================== */
 
+
+
+/* =====================================================
+   CARGAR VISITAS DEL ESTUDIANTE
+===================================================== */
+
+async function cargarVisitasInforme(estudiante) {
+
+    const contenedor =
+        document.getElementById(
+            "visitasInforme"
+        );
+
+    if (!contenedor) {
+        return;
+    }
+
+    contenedor.innerHTML =
+        `
+        <div class="cargando">
+            Cargando visitas...
+        </div>
+        `;
+
+    try {
+
+        const respuesta =
+            await fetch(
+                `${SUPABASE_URL}/rest/v1/visitas_estudiantes?` +
+                `estudiante_id=eq.${encodeURIComponent(
+                    estudiante.id
+                )}` +
+                `&select=id,fecha_hora` +
+                `&order=fecha_hora.desc`,
+                {
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+
+        if (!respuesta.ok) {
+            throw new Error(
+                "No se pudieron cargar las visitas."
+            );
+        }
+
+        const visitas =
+            await respuesta.json();
+
+        if (visitas.length === 0) {
+
+            contenedor.innerHTML =
+                `
+                <div class="sin-datos-informe">
+                    Este estudiante todavía no ha visitado
+                    la página de consulta.
+                </div>
+                `;
+
+            return;
+        }
+
+        const ultimaVisita =
+            new Date(visitas[0].fecha_hora);
+
+        const fechaUltima =
+            ultimaVisita.toLocaleDateString(
+                "es-BO",
+                {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                }
+            );
+
+        const horaUltima =
+            ultimaVisita.toLocaleTimeString(
+                "es-BO",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }
+            );
+
+        let filas = "";
+
+        visitas.forEach(
+            (visita, indice) => {
+
+                const fecha =
+                    new Date(
+                        visita.fecha_hora
+                    );
+
+                const fechaTexto =
+                    fecha.toLocaleDateString(
+                        "es-BO",
+                        {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric"
+                        }
+                    );
+
+                const horaTexto =
+                    fecha.toLocaleTimeString(
+                        "es-BO",
+                        {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit"
+                        }
+                    );
+
+                filas +=
+                    `
+                    <tr>
+                        <td>${indice + 1}</td>
+                        <td>${fechaTexto}</td>
+                        <td>${horaTexto}</td>
+                    </tr>
+                    `;
+            }
+        );
+
+        contenedor.innerHTML =
+            `
+            <div class="resumen-visitas">
+
+                <div class="visita-total">
+                    👁️
+                    <div>
+                        <strong>
+                            ${visitas.length}
+                        </strong>
+                        <span>
+                            visitas a la página
+                        </span>
+                    </div>
+                </div>
+
+                <div class="ultima-visita">
+                    🕐
+                    <div>
+                        <strong>
+                            Última visita
+                        </strong>
+                        <span>
+                            ${fechaUltima}
+                            ${horaUltima}
+                        </span>
+                    </div>
+                </div>
+
+            </div>
+
+            <button
+                type="button"
+                class="boton-visitas"
+                onclick="mostrarOcultarHistorialVisitas()">
+                📋 Ver historial de visitas
+            </button>
+
+            <div
+                id="historialVisitas"
+                class="historial-visitas oculto">
+
+                <table class="tabla-informe">
+                    <thead>
+                        <tr>
+                            <th>Nº</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filas}
+                    </tbody>
+                </table>
+
+            </div>
+            `;
+
+    }
+    catch(error) {
+
+        console.error(error);
+
+        contenedor.innerHTML =
+            `
+            <div class="sin-datos-informe">
+                No se pudo cargar el historial
+                de visitas.
+            </div>
+            `;
+    }
+}
+
+
+/* =====================================================
+   MOSTRAR / OCULTAR HISTORIAL DE VISITAS
+===================================================== */
+
+function mostrarOcultarHistorialVisitas() {
+
+    const historial =
+        document.getElementById(
+            "historialVisitas"
+        );
+
+    const boton =
+        document.querySelector(
+            ".boton-visitas"
+        );
+
+    if (!historial) {
+        return;
+    }
+
+    if (
+        historial.classList.contains(
+            "oculto"
+        )
+    ) {
+
+        historial.classList.remove(
+            "oculto"
+        );
+
+        if (boton) {
+            boton.textContent =
+                "− Ocultar historial de visitas";
+        }
+    }
+    else {
+
+        historial.classList.add(
+            "oculto"
+        );
+
+        if (boton) {
+            boton.textContent =
+                "📋 Ver historial de visitas";
+        }
+    }
+}
+
+
 async function mostrarInformeEstudiante() {
 
     const select =
@@ -6279,6 +6662,27 @@ async function mostrarInformeEstudiante() {
 
         </div>
 
+        <!-- =================================================
+             VISITAS A LA PÁGINA
+        ================================================= -->
+
+        <div class="informe-seccion">
+
+            <h4>
+                👁️ Visitas a la página
+            </h4>
+
+            <div
+                id="visitasInforme">
+
+                <div class="cargando">
+                    Cargando visitas...
+                </div>
+
+            </div>
+
+        </div>
+
         <div class="informe-seccion">
 
             <h4>
@@ -6320,6 +6724,10 @@ async function mostrarInformeEstudiante() {
 
     mostrarActividadesInforme(
         estudiante.id
+    );
+
+    await cargarVisitasInforme(
+        estudiante
     );
 
     await cargarAsistenciaInforme(
