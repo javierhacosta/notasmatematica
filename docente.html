@@ -556,6 +556,31 @@ input, select {
     font-weight: normal;
 }
 
+.asistencia-qr-opciones {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 10px 0 16px;
+}
+
+.asistencia-qr-opcion {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.asistencia-qr-opcion input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
 .modal-calificacion-qr {
     width: 100%;
     max-width: 430px;
@@ -1761,6 +1786,16 @@ Selecciona un curso
 
 </button>
 
+<button
+    type="button"
+    class="boton-bloquear boton-escanear-qr"
+    onclick="abrirEscanerAsistenciaQR()"
+    title="Tomar asistencia mediante QR">
+
+📷
+
+</button>
+
 <select
     id="listaFechasAsistencia"
     class="lista-fechas-asistencia"
@@ -2368,6 +2403,80 @@ Cancelar
             <label for="mantenerCamaraQR">
                 Mantener la cámara abierta para seguir escaneando
             </label>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL ASISTENCIA POR QR
+===================================================== -->
+
+<div
+    id="modalAsistenciaQR"
+    class="modal-fondo oculto"
+    onclick="cerrarModalAsistenciaQR(event)">
+
+    <div
+        class="modal-calificacion-qr"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+
+            <h3>
+                📷 Registrar asistencia
+            </h3>
+
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarModalAsistenciaQR()">
+
+                ×
+
+            </button>
+
+        </div>
+
+        <div class="modal-cuerpo">
+
+            <div
+                id="infoEstudianteAsistenciaQR"
+                class="info-estudiante-qr">
+            </div>
+
+            <div class="asistencia-qr-opciones">
+
+                <label class="asistencia-qr-opcion">
+                    <input
+                        type="checkbox"
+                        id="checkAsistenciaQR"
+                        onchange="seleccionarEstadoAsistenciaQR('asistio')">
+                    <span>✓ Asistencia</span>
+                </label>
+
+                <label class="asistencia-qr-opcion">
+                    <input
+                        type="checkbox"
+                        id="checkAtrasoQR"
+                        onchange="seleccionarEstadoAsistenciaQR('atraso')">
+                    <span>⏰ Atraso</span>
+                </label>
+
+            </div>
+
+            <button
+                type="button"
+                id="botonContinuarAsistenciaQR"
+                class="boton-guardar-tabla boton-guardar-notas"
+                onclick="continuarEscaneoAsistenciaQR()">
+
+                📷 Continuar escaneando
+
+            </button>
+
         </div>
 
     </div>
@@ -8223,10 +8332,14 @@ let actividadQRSeleccionada = null;
 let estudianteQRSeleccionado = null;
 let escaneandoQR = false;
 let mantenerCamaraQR = true;
+let modoQRAsistencia = false;
+let estudianteQRAsistencia = null;
+let estadoQRAsistencia = "asistio";
 
 
 async function abrirEscanerQR(actividad) {
 
+    modoQRAsistencia = false;
     actividadQRSeleccionada = actividad;
 
     const checkboxCamara =
@@ -8384,6 +8497,11 @@ async function solicitarLecturaQR() {
 
             escaneandoQR = false;
 
+            if (modoQRAsistencia) {
+                await prepararAsistenciaQR(ci);
+                return;
+            }
+
             /*
              * Si "Mantener la cámara abierta" está activado,
              * conservamos el modal y el stream de la cámara.
@@ -8519,6 +8637,228 @@ function detenerCamaraQR() {
         video.srcObject = null;
     }
 
+}
+
+
+async function abrirEscanerAsistenciaQR() {
+
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const fecha =
+    document.getElementById("fechaAsistencia").value;
+
+    if (!fecha) {
+        alert("Selecciona una fecha.");
+        return;
+    }
+
+    modoQRAsistencia = true;
+    actividadQRSeleccionada = null;
+    estudianteQRAsistencia = null;
+
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
+    estudiantesCurso.forEach(estudiante => {
+        const anterior = registrosAsistencia[estudiante.id] || {};
+        registrosAsistencia[estudiante.id] = {
+            estado: "falta",
+            observacion: anterior.observacion || ""
+        };
+        const falta = document.getElementById(`falta-${estudiante.id}`);
+        if (falta) falta.checked = true;
+    });
+
+    actualizarResumenAsistencia();
+
+    const checkboxCamara =
+    document.getElementById("mantenerCamaraQR");
+
+    mantenerCamaraQR =
+    checkboxCamara ? checkboxCamara.checked : true;
+
+    const modal = document.getElementById("modalEscanerQR");
+    const mensaje = document.getElementById("mensajeQR");
+
+    if (modal) modal.classList.remove("oculto");
+    if (mensaje) {
+        mensaje.textContent =
+        "Apunta la cámara al código QR del estudiante para registrar su asistencia.";
+    }
+
+    if (streamQR) {
+        escaneandoQR = true;
+        requestAnimationFrame(solicitarLecturaQR);
+        return;
+    }
+
+    await iniciarCamaraQR();
+}
+
+
+async function iniciarCamaraQR() {
+
+    const modal = document.getElementById("modalEscanerQR");
+    const video = document.getElementById("videoQR");
+    const mensaje = document.getElementById("mensajeQR");
+
+    if (modal) modal.classList.remove("oculto");
+
+    if (!("BarcodeDetector" in window)) {
+        mensaje.textContent =
+        "⚠️ Este navegador no admite el escáner QR integrado. Usa Chrome actualizado en Android.";
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        mensaje.textContent =
+        "⚠️ Este dispositivo no permite acceder a la cámara desde el navegador.";
+        return;
+    }
+
+    try {
+        detectorQR = new BarcodeDetector({ formats: ["qr_code"] });
+
+        streamQR = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } },
+            audio: false
+        });
+
+        video.srcObject = streamQR;
+        await video.play();
+
+        escaneandoQR = true;
+        solicitarLecturaQR();
+
+    } catch (error) {
+        console.error(error);
+        mensaje.textContent =
+        "⚠️ No se pudo abrir la cámara. Verifica el permiso de cámara del navegador.";
+    }
+}
+
+
+async function prepararAsistenciaQR(ci) {
+
+    const { data, error } = await supabaseClient
+        .from("matematica")
+        .select("id,ci,nombre,num_lista,curso")
+        .eq("ci", ci)
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        alert("Error al buscar al estudiante: " + error.message);
+        if (streamQR) {
+            escaneandoQR = true;
+            requestAnimationFrame(solicitarLecturaQR);
+        }
+        return;
+    }
+
+    if (!data) {
+        alert("No se encontró ningún estudiante con el CI " + ci + ".");
+        if (streamQR) {
+            escaneandoQR = true;
+            requestAnimationFrame(solicitarLecturaQR);
+        }
+        return;
+    }
+
+    if (data.curso !== cursoSeleccionado) {
+        alert(
+            "El estudiante pertenece al curso " + data.curso +
+            " y no al curso seleccionado " + cursoSeleccionado + "."
+        );
+        if (streamQR) {
+            escaneandoQR = true;
+            requestAnimationFrame(solicitarLecturaQR);
+        }
+        return;
+    }
+
+    estudianteQRAsistencia = data;
+    estadoQRAsistencia = "asistio";
+
+    document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
+        <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
+        <br>
+        <strong>Estudiante:</strong> ${escapeHTML(data.nombre)}
+    `;
+
+    const checkAsistencia = document.getElementById("checkAsistenciaQR");
+    const checkAtraso = document.getElementById("checkAtrasoQR");
+    if (checkAsistencia) checkAsistencia.checked = true;
+    if (checkAtraso) checkAtraso.checked = false;
+
+    const modal = document.getElementById("modalAsistenciaQR");
+    if (modal) modal.classList.remove("oculto");
+}
+
+
+function seleccionarEstadoAsistenciaQR(estado) {
+
+    const checkAsistencia = document.getElementById("checkAsistenciaQR");
+    const checkAtraso = document.getElementById("checkAtrasoQR");
+
+    if (estado === "asistio") {
+        estadoQRAsistencia = "asistio";
+        if (checkAsistencia) checkAsistencia.checked = true;
+        if (checkAtraso) checkAtraso.checked = false;
+    } else {
+        estadoQRAsistencia = "atraso";
+        if (checkAsistencia) checkAsistencia.checked = false;
+        if (checkAtraso) checkAtraso.checked = true;
+    }
+}
+
+
+function continuarEscaneoAsistenciaQR() {
+
+    if (!estudianteQRAsistencia) return;
+
+    registrosAsistencia[estudianteQRAsistencia.id] = {
+        estado: estadoQRAsistencia,
+        observacion: (registrosAsistencia[estudianteQRAsistencia.id] || {}).observacion || ""
+    };
+
+    const radio = document.querySelector(
+        `input[name="asistencia-${estudianteQRAsistencia.id}"][value="${estadoQRAsistencia}"]`
+    );
+
+    if (radio) radio.checked = true;
+
+    actualizarResumenAsistencia();
+
+    document.getElementById("modalAsistenciaQR").classList.add("oculto");
+    estudianteQRAsistencia = null;
+
+    if (streamQR) {
+        escaneandoQR = true;
+        requestAnimationFrame(solicitarLecturaQR);
+    } else {
+        abrirEscanerAsistenciaQR();
+    }
+}
+
+
+function cerrarModalAsistenciaQR(event) {
+
+    if (event && event.target !== document.getElementById("modalAsistenciaQR")) {
+        return;
+    }
+
+    document.getElementById("modalAsistenciaQR").classList.add("oculto");
+    estudianteQRAsistencia = null;
+
+    if (modoQRAsistencia && streamQR) {
+        escaneandoQR = true;
+        requestAnimationFrame(solicitarLecturaQR);
+    }
 }
 
 
@@ -8943,6 +9283,11 @@ function cerrarEscanerQR(
     }
 
     detenerCamaraQR();
+    modoQRAsistencia = false;
+    estudianteQRAsistencia = null;
+
+    const modalAsistencia = document.getElementById("modalAsistenciaQR");
+    if (modalAsistencia) modalAsistencia.classList.add("oculto");
 
     document.getElementById(
         "modalEscanerQR"
