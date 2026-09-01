@@ -2597,6 +2597,7 @@ let estudiantes = [];
 let actividades = [];
 let calificaciones = {};
 let guardandoNotasEnProceso = false;
+let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
 let registrosVisitasInformeGlobal = [];
@@ -3855,179 +3856,131 @@ function actualizarProgresoGuardado(
 
 async function guardarAsistencia() {
 
-    if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
+    /* =====================================================
+       PROTECCIÓN CONTRA DOBLE GUARDADO
+    ===================================================== */
+    if (guardandoAsistenciaEnProceso) {
+        mostrarMensaje(
+            "⏳ La asistencia ya se está guardando. Espera a que termine."
         );
-
         return false;
-
     }
 
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return false;
+    }
+
+    const fecha = document.getElementById("fechaAsistencia").value;
 
     if (!fecha) {
-
-        alert(
-            "Selecciona una fecha."
-        );
-
+        alert("Selecciona una fecha.");
         return false;
-
     }
 
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
     );
 
-    if (
-        estudiantesCurso.length === 0
-    ) {
-
-        alert(
-            "No existen estudiantes en este curso."
-        );
-
+    if (estudiantesCurso.length === 0) {
+        alert("No existen estudiantes en este curso.");
         return false;
-
     }
 
+    const botonesGuardar = [
+        document.getElementById("botonGuardarAsistencia"),
+        document.getElementById("botonGuardarAsistenciaTabla")
+    ].filter(Boolean);
 
-    actualizarProgresoGuardado(
-        "asistencia",
-        0,
-        true
-    );
+    guardandoAsistenciaEnProceso = true;
 
-
-    mostrarMensaje(
-        "Guardando asistencia... 0%"
-    );
-
-
-    const registros = [];
-
-
-    estudiantesCurso.forEach(
-    estudiante => {
-
-        const seleccionado =
-        document.querySelector(
-            `input[name="asistencia-${estudiante.id}"]:checked`
-        );
-
-
-        const observacion =
-        document.querySelector(
-            `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
-        );
-
-
-        let estado = null;
-
-
-        if (seleccionado) {
-
-            estado =
-            seleccionado.value;
-
-        }
-
-
-        registros.push({
-
-            estudiante_id:
-            estudiante.id,
-
-            fecha:
-            fecha,
-
-            estado:
-            estado || "asistio",
-
-            observacion:
-            observacion
-            ? observacion.value.trim()
-            : null
-
-        });
-
+    botonesGuardar.forEach(boton => {
+        boton.disabled = true;
+        boton.dataset.textoOriginal = boton.innerHTML;
+        boton.classList.add("guardando");
     });
 
+    try {
+        actualizarProgresoGuardado("asistencia", 0, true);
+        mostrarMensaje("Preparando asistencia... 0%");
 
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .upsert(
-        registros,
-        {
-            onConflict:
-            "estudiante_id,fecha"
+        const registros = [];
+
+        estudiantesCurso.forEach(estudiante => {
+            const seleccionado = document.querySelector(
+                `input[name="asistencia-${estudiante.id}"]:checked`
+            );
+
+            const observacion = document.querySelector(
+                `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
+            );
+
+            registros.push({
+                estudiante_id: estudiante.id,
+                fecha: fecha,
+                estado: seleccionado ? seleccionado.value : "asistio",
+                observacion: observacion ? observacion.value.trim() : null
+            });
+        });
+
+        actualizarProgresoGuardado("asistencia", 20, true);
+        mostrarMensaje("Guardando asistencia... 20%");
+
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert(registros, {
+                onConflict: "estudiante_id,fecha"
+            });
+
+        if (error) {
+            throw error;
         }
-    );
 
+        actualizarProgresoGuardado("asistencia", 90, true);
+        mostrarMensaje("Actualizando asistencia... 90%");
 
-    if (error) {
+        await cargarFechasAsistencia();
 
-        console.error(error);
+        const listaFechas = document.getElementById("listaFechasAsistencia");
+        if (listaFechas) {
+            listaFechas.value = fecha;
+        }
+
+        await cargarAsistencia();
+
+        actualizarProgresoGuardado("asistencia", 100, false);
+        mostrarMensaje("✓ Asistencia guardada correctamente.");
+
+        alert("✓ Asistencia guardada correctamente.");
+        return true;
+
+    } catch (error) {
+        console.error("Error al guardar asistencia:", error);
+
+        actualizarProgresoGuardado("asistencia", 0, false);
 
         alert(
             "Error al guardar asistencia: " +
-            error.message
-        );
-
-        actualizarProgresoGuardado(
-            "asistencia",
-            0,
-            false
+            (error.message || error)
         );
 
         return false;
 
+    } finally {
+        guardandoAsistenciaEnProceso = false;
+
+        botonesGuardar.forEach(boton => {
+            boton.disabled = false;
+            boton.classList.remove("guardando");
+
+            if (boton.dataset.textoOriginal !== undefined) {
+                boton.innerHTML = boton.dataset.textoOriginal;
+                delete boton.dataset.textoOriginal;
+            }
+        });
     }
 
-
-    actualizarProgresoGuardado(
-        "asistencia",
-        100,
-        false
-    );
-
-
-    mostrarMensaje(
-        "✓ Asistencia guardada correctamente."
-    );
-
-
-    alert(
-        "✓ Asistencia guardada correctamente."
-    );
-
-
-    await cargarFechasAsistencia();
-
-
-    document.getElementById(
-        "listaFechasAsistencia"
-    ).value =
-    fecha;
-
-
-    await cargarAsistencia();
-
-    return true;
-
 }
-
 
 /* =====================================================
    MODAL NUEVA ACTIVIDAD
