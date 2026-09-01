@@ -532,30 +532,6 @@ input, select {
     color: #555;
 }
 
-.qr-camara-continua {
-    padding: 10px 16px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #444;
-    background: #fff;
-}
-
-.qr-camara-continua input {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    cursor: pointer;
-}
-
-.qr-camara-continua label {
-    margin: 0;
-    cursor: pointer;
-    font-weight: normal;
-}
-
 .modal-calificacion-qr {
     width: 100%;
     max-width: 430px;
@@ -2358,16 +2334,6 @@ Cancelar
 
             Apunta la cámara al código QR del estudiante.
 
-        </div>
-
-        <div class="qr-camara-continua">
-            <input
-                type="checkbox"
-                id="mantenerCamaraQR"
-                checked>
-            <label for="mantenerCamaraQR">
-                Mantener la cámara abierta para seguir escaneando
-            </label>
         </div>
 
     </div>
@@ -8222,20 +8188,11 @@ let detectorQR = null;
 let actividadQRSeleccionada = null;
 let estudianteQRSeleccionado = null;
 let escaneandoQR = false;
-let mantenerCamaraQR = true;
 
 
 async function abrirEscanerQR(actividad) {
 
     actividadQRSeleccionada = actividad;
-
-    const checkboxCamara =
-    document.getElementById("mantenerCamaraQR");
-
-    mantenerCamaraQR =
-    checkboxCamara
-    ? checkboxCamara.checked
-    : true;
 
     const modal =
     document.getElementById(
@@ -8384,22 +8341,7 @@ async function solicitarLecturaQR() {
 
             escaneandoQR = false;
 
-            /*
-             * Si "Mantener la cámara abierta" está activado,
-             * conservamos el modal y el stream de la cámara.
-             */
-            if (!mantenerCamaraQR) {
-
-                const modalEscaner = document.getElementById(
-                    "modalEscanerQR"
-                );
-
-                if (modalEscaner) {
-                    modalEscaner.classList.add("oculto");
-                }
-
-                detenerCamaraQR();
-            }
+            detenerCamaraQR();
 
             await prepararCalificacionQR(
                 ci
@@ -8556,14 +8498,9 @@ async function prepararCalificacionQR(
             error.message
         );
 
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
-        }
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
 
         return;
 
@@ -8577,14 +8514,9 @@ async function prepararCalificacionQR(
             "."
         );
 
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
-        }
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
 
         return;
 
@@ -8603,14 +8535,9 @@ async function prepararCalificacionQR(
             "."
         );
 
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
-        }
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
 
         return;
 
@@ -8678,11 +8605,11 @@ async function prepararCalificacionQR(
     );
 
     info.innerHTML = `
-        <strong>N°:</strong>
-        ${escapeHTML(String(data.num_lista))}
-        <br>
         <strong>Estudiante:</strong>
         ${escapeHTML(data.nombre)}
+        <br>
+        <strong>CI:</strong>
+        ${escapeHTML(String(data.ci))}
         <br>
         <strong>Actividad:</strong>
         ${escapeHTML(actividadQRSeleccionada.nombre)}
@@ -8868,40 +8795,15 @@ async function guardarCalificacionQR() {
             observacionAnterior
         };
 
-        const nombreEstudianteQR =
-        estudianteQRSeleccionado.nombre;
+        cerrarModalCalificacionQR();
 
-        if (mantenerCamaraQR && streamQR) {
+        mostrarActividades();
 
-            document.getElementById(
-                "modalCalificacionQR"
-            ).classList.add("oculto");
-
-            estudianteQRSeleccionado = null;
-
-            mostrarActividades();
-
-            mostrarMensaje(
-                "✅ Calificación guardada para " +
-                nombreEstudianteQR +
-                ". Escanea al siguiente estudiante."
-            );
-
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-
-        } else {
-
-            cerrarModalCalificacionQR();
-
-            mostrarActividades();
-
-            mostrarMensaje(
-                "✅ Calificación guardada para " +
-                nombreEstudianteQR +
-                "."
-            );
-        }
+        mostrarMensaje(
+            "✅ Calificación guardada para " +
+            estudianteQRSeleccionado.nombre +
+            "."
+        );
 
     }
 
@@ -8976,16 +8878,8 @@ function cerrarModalCalificacionQR(
     estudianteQRSeleccionado =
     null;
 
-    if (mantenerCamaraQR && streamQR) {
-
-        escaneandoQR = true;
-        requestAnimationFrame(solicitarLecturaQR);
-
-    } else {
-
-        actividadQRSeleccionada =
-        null;
-    }
+    actividadQRSeleccionada =
+    null;
 
 }
 
