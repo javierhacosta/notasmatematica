@@ -2596,7 +2596,6 @@ window.supabase.createClient(
 let estudiantes = [];
 let actividades = [];
 let calificaciones = {};
-let guardandoNotasEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
 let registrosVisitasInformeGlobal = [];
@@ -6547,20 +6546,6 @@ function aplicarBusqueda() {
 
 async function guardarNotas() {
 
-    /* =====================================================
-       PROTECCIÓN CONTRA DOBLE GUARDADO
-    ===================================================== */
-    if (guardandoNotasEnProceso) {
-
-        mostrarMensaje(
-            "⏳ Las calificaciones ya se están guardando. Espera a que termine."
-        );
-
-        return false;
-
-    }
-
-
     if (!cursoSeleccionado) {
 
         alert(
@@ -6572,7 +6557,9 @@ async function guardarNotas() {
     }
 
 
-    if (actividades.length === 0) {
+    if (
+        actividades.length === 0
+    ) {
 
         alert(
             "Este curso no tiene actividades."
@@ -6583,222 +6570,209 @@ async function guardarNotas() {
     }
 
 
-    const botonesGuardar =
-    Array.from(
-        document.querySelectorAll(
-            ".boton-guardar-notas"
-        )
+    const inputs =
+    document.querySelectorAll(
+        ".nota-input"
     );
 
 
-    /*
-       El bloqueo se hace en JavaScript y no solamente con CSS.
-       Así, aunque se pulse dos veces rápidamente, la segunda
-       ejecución no puede comenzar.
-    */
-    guardandoNotasEnProceso = true;
+    for (
+        const input of inputs
+    ) {
+
+        if (
+            input.value === ""
+        ) {
+            continue;
+        }
 
 
-    botonesGuardar.forEach(
-    boton => {
-
-        boton.disabled = true;
-        boton.dataset.textoOriginal =
-            boton.innerHTML;
-
-        boton.classList.add(
-            "guardando"
-        );
-
-    });
-
-
-    try {
-
-        const inputs =
-        document.querySelectorAll(
-            ".nota-input"
+        const valor =
+        Number(
+            input.value
         );
 
 
-        /* =====================================================
-           VALIDAR TODAS LAS NOTAS ANTES DE ENVIAR NADA
-        ===================================================== */
-        for (
-            const input of inputs
+        const maximo =
+        Number(
+            input.dataset.maximo
+        );
+
+
+        if (
+            valor < 0 ||
+            valor > maximo
         ) {
 
-            if (
-                input.value === ""
-            ) {
-                continue;
-            }
+            alert(
+
+                "⚠️ Hay una nota inválida.\n\n" +
+
+                "Actividad: " +
+
+                obtenerNombreActividad(
+                    input.dataset.actividad
+                ) +
+
+                "\nMáximo permitido: " +
+
+                maximo
+
+            );
+
+            return false;
+
+        }
+
+    }
 
 
-            const valor =
+    actualizarProgresoGuardado(
+        "notas",
+        0,
+        true
+    );
+
+
+    mostrarMensaje(
+        "Guardando calificaciones... 0%"
+    );
+
+
+    const registros = [];
+
+
+    inputs.forEach(
+    input => {
+
+        const estudianteId =
+        Number(
+            input.dataset.estudiante
+        );
+
+
+        const actividadId =
+        Number(
+            input.dataset.actividad
+        );
+
+
+        let nota = null;
+
+
+        if (
+            input.value !== ""
+        ) {
+
+            nota =
             Number(
                 input.value
             );
 
-
-            const maximo =
-            Number(
-                input.dataset.maximo
-            );
-
-
-            if (
-                isNaN(valor) ||
-                valor < 0 ||
-                valor > maximo
-            ) {
-
-                alert(
-                    "⚠️ Hay una nota inválida.\n\n" +
-                    "Actividad: " +
-                    obtenerNombreActividad(
-                        input.dataset.actividad
-                    ) +
-                    "\nMáximo permitido: " +
-                    maximo
-                );
-
-                return false;
-
-            }
-
         }
 
 
-        actualizarProgresoGuardado(
-            "notas",
-            0,
-            true
+        const observacionInput =
+        document.querySelector(
+            `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
         );
 
 
-        mostrarMensaje(
-            "Guardando calificaciones... 0%"
-        );
+        const observacion =
+        observacionInput
+        ? observacionInput.value.trim()
+        : null;
 
 
-        /* =====================================================
-           PREPARAR CALIFICACIONES Y OBSERVACIONES
-        ===================================================== */
-        const registros = [];
+        registros.push({
 
+            actividad_id:
+            actividadId,
 
-        inputs.forEach(
-        input => {
+            estudiante_id:
+            estudianteId,
 
-            const estudianteId =
-            Number(
-                input.dataset.estudiante
-            );
+            nota:
+            nota,
 
-
-            const actividadId =
-            Number(
-                input.dataset.actividad
-            );
-
-
-            let nota = null;
-
-
-            if (
-                input.value !== ""
-            ) {
-
-                nota =
-                Number(
-                    input.value
-                );
-
-            }
-
-
-            const observacionInput =
-            document.querySelector(
-                `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-            );
-
-
-            const observacion =
-            observacionInput
-            ? observacionInput.value.trim()
-            : null;
-
-
-            registros.push({
-
-                actividad_id:
-                actividadId,
-
-                estudiante_id:
-                estudianteId,
-
-                nota:
-                nota,
-
-                observacion:
-                observacion || null
-
-            });
+            observacion:
+            observacion || null
 
         });
 
+    });
 
-        /* =====================================================
-           GUARDAR CALIFICACIONES EN UN SOLO UPSERT
-        ===================================================== */
+
+    if (
+        registros.length > 0
+    ) {
+
+        const {
+            error:
+            errorCalificaciones
+        } =
+        await supabaseClient
+        .from("calificaciones")
+        .upsert(
+            registros,
+            {
+                onConflict:
+                "actividad_id,estudiante_id"
+            }
+        );
+
+
         if (
-            registros.length > 0
+            errorCalificaciones
         ) {
 
-            const {
-                error:
+            console.error(
                 errorCalificaciones
-            } =
-            await supabaseClient
-            .from("calificaciones")
-            .upsert(
-                registros,
-                {
-                    onConflict:
-                    "actividad_id,estudiante_id"
-                }
             );
 
 
-            if (
-                errorCalificaciones
-            ) {
+            actualizarProgresoGuardado(
+                "notas",
+                0,
+                false
+            );
 
-                console.error(
-                    errorCalificaciones
-                );
 
-                throw new Error(
-                    "Error al guardar calificaciones: " +
-                    errorCalificaciones.message
-                );
+            alert(
 
-            }
+                "Error al guardar calificaciones: " +
+
+                errorCalificaciones.message
+
+            );
+
+
+            return false;
 
         }
 
+    }
 
-        /* =====================================================
-           CALCULAR NOTAS DEL TERCER TRIMESTRE
-        ===================================================== */
-        const estudiantesCurso =
-        estudiantes.filter(
-            e =>
-            e.curso ===
-            cursoSeleccionado
-        );
 
+    actualizarProgresoGuardado(
+        "notas",
+        50,
+        true
+    );
+
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    for (
+        const estudiante
+        of estudiantesCurso
+    ) {
 
         const actividadesSER =
         actividades.filter(
@@ -6832,287 +6806,197 @@ async function guardarNotas() {
         );
 
 
-        const actualizaciones =
-        estudiantesCurso.map(
-        estudiante => {
-
-            const puntosSER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesSER,
-                LIMITES.SER
-            );
+        const puntosSER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesSER,
+            LIMITES.SER
+        );
 
 
-            const puntosSABER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesSABER,
-                LIMITES.SABER
-            );
+        const puntosSABER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesSABER,
+            LIMITES.SABER
+        );
 
 
-            const puntosHACER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesHACER,
-                LIMITES.HACER
-            );
+        const puntosHACER =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesHACER,
+            LIMITES.HACER
+        );
 
 
-            const puntosAUTO =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesAUTO,
-                LIMITES.AUTOEVALUACION
-            );
+        const puntosAUTO =
+        calcularPuntosCategoria(
+            estudiante.id,
+            actividadesAUTO,
+            LIMITES.AUTOEVALUACION
+        );
 
 
-            const nota3T =
-            redondear(
-                puntosSER +
-                puntosSABER +
-                puntosHACER +
-                puntosAUTO
-            );
+        const nota3T =
+        redondear(
+
+            puntosSER +
+            puntosSABER +
+            puntosHACER +
+            puntosAUTO
+
+        );
 
 
-            const nota1T =
-            convertirNumero(
-                estudiante.nota_1t
-            );
+        const nota1T =
+        convertirNumero(
+            estudiante.nota_1t
+        );
 
 
-            const nota2T =
-            convertirNumero(
-                estudiante.nota_2t
-            );
+        const nota2T =
+        convertirNumero(
+            estudiante.nota_2t
+        );
 
 
-            let notaFinal = null;
+        let notaFinal = null;
 
 
-            if (
-                nota1T !== null &&
-                nota2T !== null &&
-                nota3T !== null
-            ) {
-
-                notaFinal =
-                redondear(
-                    (
-                        nota1T +
-                        nota2T +
-                        nota3T
-                    ) / 3
-                );
-
-            }
-
-
-            return {
-                estudiante,
-                nota3T,
-                notaFinal
-            };
-
-        });
-
-
-        /* =====================================================
-           ACTUALIZAR MATEMATICA EN LOTES PEQUEÑOS
-
-           Se procesan varios estudiantes a la vez para que el
-           guardado sea más rápido sin lanzar cientos de peticiones
-           simultáneas contra Supabase.
-        ===================================================== */
-        const TAMANO_LOTE = 5;
-        let estudiantesProcesados = 0;
-
-
-        for (
-            let inicio = 0;
-            inicio < actualizaciones.length;
-            inicio += TAMANO_LOTE
+        if (
+            nota1T !== null &&
+            nota2T !== null &&
+            nota3T !== null
         ) {
 
-            const lote =
-            actualizaciones.slice(
-                inicio,
-                inicio + TAMANO_LOTE
-            );
+            notaFinal =
+            redondear(
 
-
-            const resultados =
-            await Promise.all(
-                lote.map(
-                async item => {
-
-                    const {
-                        error
-                    } =
-                    await supabaseClient
-                    .from("matematica")
-                    .update({
-
-                        nota_3t:
-                        item.nota3T,
-
-                        final:
-                        item.notaFinal
-
-                    })
-                    .eq(
-                        "id",
-                        item.estudiante.id
-                    );
-
-
-                    return {
-                        item,
-                        error
-                    };
-
-                })
-            );
-
-
-            for (
-                const resultado of resultados
-            ) {
-
-                if (
-                    resultado.error
-                ) {
-
-                    throw new Error(
-                        "Error al actualizar notas de " +
-                        resultado.item.estudiante.nombre +
-                        ": " +
-                        resultado.error.message
-                    );
-
-                }
-
-            }
-
-
-            estudiantesProcesados +=
-            lote.length;
-
-
-            const totalEstudiantes =
-            actualizaciones.length || 1;
-
-
-            const porcentaje =
-            50 +
-            Math.round(
                 (
-                    estudiantesProcesados /
-                    totalEstudiantes
-                ) * 50
-            );
+                    nota1T +
+                    nota2T +
+                    nota3T
+                ) / 3
 
-
-            actualizarProgresoGuardado(
-                "notas",
-                porcentaje,
-                true
-            );
-
-
-            mostrarMensaje(
-                "Guardando calificaciones... " +
-                porcentaje +
-                "%"
             );
 
         }
 
 
+        const {
+            error
+        } =
+        await supabaseClient
+        .from("matematica")
+        .update({
+
+            nota_3t:
+            nota3T,
+
+            final:
+            notaFinal
+
+        })
+        .eq(
+            "id",
+            estudiante.id
+        );
+
+
+        if (error) {
+
+            console.error(error);
+
+
+            actualizarProgresoGuardado(
+                "notas",
+                0,
+                false
+            );
+
+
+            alert(
+
+                "Error al actualizar notas de " +
+
+                estudiante.nombre +
+
+                ": " +
+
+                error.message
+
+            );
+
+
+            return false;
+
+        }
+
+
+        const totalEstudiantes =
+        estudiantesCurso.length || 1;
+
+
+        const indiceEstudiante =
+        estudiantesCurso.indexOf(
+            estudiante
+        ) + 1;
+
+
+        const porcentaje =
+        50 +
+        Math.round(
+            (
+                indiceEstudiante /
+                totalEstudiantes
+            ) * 50
+        );
+
+
         actualizarProgresoGuardado(
             "notas",
-            100,
-            false
+            porcentaje,
+            true
         );
 
 
         mostrarMensaje(
-            "✓ Calificaciones guardadas correctamente."
+            "Guardando calificaciones... " +
+            porcentaje +
+            "%"
         );
-
-
-        await cargarEstudiantes();
-        await cargarActividades();
-
-        mostrarTablaGeneral();
-
-        await cargarAsistencia();
-
-        aplicarBusqueda();
-
-
-        return true;
 
     }
-    catch(error) {
-
-        console.error(
-            "Error en guardarNotas():",
-            error
-        );
 
 
-        actualizarProgresoGuardado(
-            "notas",
-            0,
-            false
-        );
+    actualizarProgresoGuardado(
+        "notas",
+        100,
+        false
+    );
 
 
-        alert(
-            error && error.message
-            ? error.message
-            : "No se pudieron guardar las calificaciones."
-        );
+    mostrarMensaje(
+        "✓ Calificaciones guardadas correctamente."
+    );
 
 
-        return false;
+    await cargarEstudiantes();
 
-    }
-    finally {
+    await cargarActividades();
 
-        /* =====================================================
-           LIBERAR EL BLOQUEO SIEMPRE
-        ===================================================== */
-        guardandoNotasEnProceso = false;
+    mostrarTablaGeneral();
+
+    await cargarAsistencia();
+
+    aplicarBusqueda();
 
 
-        botonesGuardar.forEach(
-        boton => {
-
-            boton.disabled = false;
-            boton.classList.remove(
-                "guardando"
-            );
-
-            if (
-                boton.dataset.textoOriginal
-            ) {
-
-                boton.innerHTML =
-                    boton.dataset.textoOriginal;
-
-                delete boton.dataset.textoOriginal;
-
-            }
-
-        });
-
-    }
+    return true;
 
 }
+
 
 /* =====================================================
    CALCULAR PUNTOS
