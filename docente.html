@@ -478,6 +478,96 @@ input, select {
 }
 
 
+
+/* =====================================================
+   ESCÁNER QR PARA CALIFICAR UN ESTUDIANTE
+===================================================== */
+
+.boton-escanear-qr {
+    background: #00838f;
+}
+
+.boton-escanear-qr:hover {
+    background: #006b73;
+}
+
+.modal-qr {
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+}
+
+.modal-qr-video-contenedor {
+    width: 100%;
+    background: #111;
+    position: relative;
+}
+
+#videoQR {
+    width: 100%;
+    display: block;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+.qr-marco {
+    position: absolute;
+    left: 15%;
+    top: 15%;
+    width: 70%;
+    height: 70%;
+    border: 3px solid white;
+    border-radius: 12px;
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
+}
+
+.qr-mensaje {
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+}
+
+.modal-calificacion-qr {
+    width: 100%;
+    max-width: 430px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+}
+
+.info-estudiante-qr {
+    background: #f4f6f8;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.info-estudiante-qr strong {
+    color: #1557a6;
+}
+
+#notaQR {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+@media (max-width: 600px) {
+    .modal-qr,
+    .modal-calificacion-qr {
+        max-width: 100%;
+    }
+}
+
+
 /* =====================================================
    CONTENIDO
 ===================================================== */
@@ -2193,6 +2283,144 @@ Cancelar
 
 </div>
 
+
+
+<!-- =====================================================
+     MODAL ESCÁNER QR
+===================================================== -->
+
+<div
+    id="modalEscanerQR"
+    class="modal-fondo oculto"
+    onclick="cerrarEscanerQR(event)">
+
+    <div
+        class="modal-qr"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+
+            <h3>
+                📷 Escanear estudiante
+            </h3>
+
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarEscanerQR()">
+
+                ×
+
+            </button>
+
+        </div>
+
+        <div class="modal-qr-video-contenedor">
+
+            <video
+                id="videoQR"
+                autoplay
+                muted
+                playsinline>
+            </video>
+
+            <div class="qr-marco"></div>
+
+        </div>
+
+        <div
+            id="mensajeQR"
+            class="qr-mensaje">
+
+            Apunta la cámara al código QR del estudiante.
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL CALIFICACIÓN POR QR
+===================================================== -->
+
+<div
+    id="modalCalificacionQR"
+    class="modal-fondo oculto"
+    onclick="cerrarModalCalificacionQR(event)">
+
+    <div
+        class="modal-calificacion-qr"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+
+            <h3>
+                📝 Registrar calificación
+            </h3>
+
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarModalCalificacionQR()">
+
+                ×
+
+            </button>
+
+        </div>
+
+        <div class="modal-cuerpo">
+
+            <div
+                id="infoEstudianteQR"
+                class="info-estudiante-qr">
+            </div>
+
+            <div class="campo">
+
+                <label>
+                    Calificación
+                </label>
+
+                <input
+                    type="number"
+                    id="notaQR"
+                    min="0"
+                    step="0.01"
+                    autocomplete="off">
+
+            </div>
+
+            <div class="modal-acciones">
+
+                <button
+                    type="button"
+                    class="boton-cancelar"
+                    onclick="cerrarModalCalificacionQR()">
+
+                    Cancelar
+
+                </button>
+
+                <button
+                    type="button"
+                    class="boton-crear-modal"
+                    id="botonGuardarQR"
+                    onclick="guardarCalificacionQR()">
+
+                    💾 Guardar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -4315,6 +4543,34 @@ function crearActividadHTML(
 
     botonBloquear.title =
     "Desbloquear notas y observaciones";
+
+
+    const botonEscanearQR =
+    document.createElement(
+        "button"
+    );
+
+    botonEscanearQR.className =
+    "boton-bloquear boton-escanear-qr";
+
+    botonEscanearQR.textContent =
+    "📷";
+
+    botonEscanearQR.title =
+    "Escanear QR del estudiante y registrar calificación";
+
+    botonEscanearQR.addEventListener(
+        "click",
+        function(event) {
+            event.stopPropagation();
+            abrirEscanerQR(actividad);
+        }
+    );
+
+
+    derecha.appendChild(
+        botonEscanearQR
+    );
 
 
     derecha.appendChild(
@@ -7920,6 +8176,713 @@ function escapeHTML(
     );
 
 }
+
+
+
+/* =====================================================
+   ESCÁNER QR Y CALIFICACIÓN INDIVIDUAL
+===================================================== */
+
+let streamQR = null;
+let detectorQR = null;
+let actividadQRSeleccionada = null;
+let estudianteQRSeleccionado = null;
+let escaneandoQR = false;
+
+
+async function abrirEscanerQR(actividad) {
+
+    actividadQRSeleccionada = actividad;
+
+    const modal =
+    document.getElementById(
+        "modalEscanerQR"
+    );
+
+    const video =
+    document.getElementById(
+        "videoQR"
+    );
+
+    const mensaje =
+    document.getElementById(
+        "mensajeQR"
+    );
+
+    modal.classList.remove("oculto");
+
+    mensaje.textContent =
+    "Apunta la cámara al código QR del estudiante.";
+
+    if (
+        !("BarcodeDetector" in window)
+    ) {
+
+        mensaje.textContent =
+        "⚠️ Este navegador no admite el escáner QR integrado. Usa Chrome actualizado en Android.";
+
+        return;
+
+    }
+
+    if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ) {
+
+        mensaje.textContent =
+        "⚠️ Este dispositivo no permite acceder a la cámara desde el navegador.";
+
+        return;
+
+    }
+
+    try {
+
+        detectorQR =
+        new BarcodeDetector({
+            formats: ["qr_code"]
+        });
+
+        streamQR =
+        await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: {
+                    ideal: "environment"
+                }
+            },
+            audio: false
+        });
+
+        video.srcObject =
+        streamQR;
+
+        await video.play();
+
+        escaneandoQR = true;
+
+        solicitarLecturaQR();
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+        mensaje.textContent =
+        "⚠️ No se pudo abrir la cámara. Verifica el permiso de cámara del navegador.";
+
+    }
+
+}
+
+
+async function solicitarLecturaQR() {
+
+    if (
+        !escaneandoQR ||
+        !detectorQR
+    ) {
+        return;
+    }
+
+    const video =
+    document.getElementById(
+        "videoQR"
+    );
+
+    if (
+        video.readyState <
+        HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+
+        requestAnimationFrame(
+            solicitarLecturaQR
+        );
+
+        return;
+
+    }
+
+    try {
+
+        const codigos =
+        await detectorQR.detect(
+            video
+        );
+
+        if (
+            codigos &&
+            codigos.length > 0
+        ) {
+
+            const textoQR =
+            codigos[0].rawValue || "";
+
+            const ci =
+            extraerCIDesdeQR(
+                textoQR
+            );
+
+            if (!ci) {
+
+                document.getElementById(
+                    "mensajeQR"
+                ).textContent =
+                "⚠️ El QR no contiene un CI válido.";
+
+                requestAnimationFrame(
+                    solicitarLecturaQR
+                );
+
+                return;
+
+            }
+
+            escaneandoQR = false;
+
+            detenerCamaraQR();
+
+            await prepararCalificacionQR(
+                ci
+            );
+
+            return;
+
+        }
+
+    }
+
+    catch(error) {
+
+        console.error(
+            "Error al leer QR:",
+            error
+        );
+
+    }
+
+    requestAnimationFrame(
+        solicitarLecturaQR
+    );
+
+}
+
+
+function extraerCIDesdeQR(
+    texto
+) {
+
+    const valor =
+    String(
+        texto || ""
+    ).trim();
+
+    if (!valor) {
+        return null;
+    }
+
+    try {
+
+        const url =
+        new URL(valor);
+
+        const ci =
+        url.searchParams.get(
+            "ci"
+        );
+
+        if (
+            ci &&
+            /^\d+$/.test(
+                ci.trim()
+            )
+        ) {
+
+            return ci.trim();
+
+        }
+
+    }
+
+    catch(error) {
+        /* El QR puede contener directamente el número. */
+    }
+
+    const coincidencia =
+    valor.match(
+        /(?:[?&]ci=)(\d+)/i
+    );
+
+    if (
+        coincidencia &&
+        coincidencia[1]
+    ) {
+
+        return coincidencia[1];
+
+    }
+
+    if (
+        /^\d+$/.test(valor)
+    ) {
+
+        return valor;
+
+    }
+
+    return null;
+
+}
+
+
+function detenerCamaraQR() {
+
+    escaneandoQR = false;
+
+    if (streamQR) {
+
+        streamQR
+        .getTracks()
+        .forEach(
+            track => track.stop()
+        );
+
+        streamQR = null;
+
+    }
+
+    const video =
+    document.getElementById(
+        "videoQR"
+    );
+
+    if (video) {
+        video.srcObject = null;
+    }
+
+}
+
+
+async function prepararCalificacionQR(
+    ci
+) {
+
+    if (
+        !actividadQRSeleccionada
+    ) {
+        return;
+    }
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("matematica")
+    .select(
+        "id,ci,nombre,num_lista,curso"
+    )
+    .eq(
+        "ci",
+        ci
+    )
+    .maybeSingle();
+
+    if (error) {
+
+        console.error(error);
+
+        alert(
+            "Error al buscar al estudiante: " +
+            error.message
+        );
+
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
+
+        return;
+
+    }
+
+    if (!data) {
+
+        alert(
+            "No se encontró ningún estudiante con el CI " +
+            ci +
+            "."
+        );
+
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
+
+        return;
+
+    }
+
+    if (
+        data.curso !==
+        cursoSeleccionado
+    ) {
+
+        alert(
+            "El estudiante pertenece al curso " +
+            data.curso +
+            " y no al curso seleccionado " +
+            cursoSeleccionado +
+            "."
+        );
+
+        abrirEscanerQR(
+            actividadQRSeleccionada
+        );
+
+        return;
+
+    }
+
+    estudianteQRSeleccionado =
+    data;
+
+    let puntajeMaximo =
+    Number(
+        actividadQRSeleccionada.puntaje_maximo
+    );
+
+    if (
+        !puntajeMaximo ||
+        puntajeMaximo <= 0
+    ) {
+
+        puntajeMaximo =
+        LIMITES[
+            actividadQRSeleccionada.categoria
+        ];
+
+    }
+
+    const registro =
+    calificaciones[
+        data.id
+    ] &&
+    calificaciones[
+        data.id
+    ][
+        actividadQRSeleccionada.id
+    ];
+
+    let notaActual = "";
+
+    if (
+        registro !== undefined &&
+        registro !== null
+    ) {
+
+        if (
+            typeof registro === "object"
+        ) {
+
+            notaActual =
+            registro.nota ??
+            "";
+
+        }
+
+        else {
+
+            notaActual =
+            registro;
+
+        }
+
+    }
+
+    const info =
+    document.getElementById(
+        "infoEstudianteQR"
+    );
+
+    info.innerHTML = `
+        <strong>Estudiante:</strong>
+        ${escapeHTML(data.nombre)}
+        <br>
+        <strong>CI:</strong>
+        ${escapeHTML(String(data.ci))}
+        <br>
+        <strong>Actividad:</strong>
+        ${escapeHTML(actividadQRSeleccionada.nombre)}
+        <br>
+        <strong>Máximo:</strong>
+        ${puntajeMaximo} puntos
+    `;
+
+    const notaInput =
+    document.getElementById(
+        "notaQR"
+    );
+
+    notaInput.max =
+    puntajeMaximo;
+
+    notaInput.value =
+    notaActual === null ||
+    notaActual === undefined
+    ? ""
+    : notaActual;
+
+    document.getElementById(
+        "modalCalificacionQR"
+    ).classList.remove(
+        "oculto"
+    );
+
+    setTimeout(
+        function() {
+            notaInput.focus();
+            notaInput.select();
+        },
+        100
+    );
+
+}
+
+
+async function guardarCalificacionQR() {
+
+    if (
+        !actividadQRSeleccionada ||
+        !estudianteQRSeleccionado
+    ) {
+        return;
+    }
+
+    const notaInput =
+    document.getElementById(
+        "notaQR"
+    );
+
+    const valorTexto =
+    notaInput.value.trim();
+
+    if (
+        valorTexto === ""
+    ) {
+
+        alert(
+            "Introduce una calificación."
+        );
+
+        notaInput.focus();
+
+        return;
+
+    }
+
+    const nota =
+    Number(
+        valorTexto
+    );
+
+    let puntajeMaximo =
+    Number(
+        actividadQRSeleccionada.puntaje_maximo
+    );
+
+    if (
+        !puntajeMaximo ||
+        puntajeMaximo <= 0
+    ) {
+
+        puntajeMaximo =
+        LIMITES[
+            actividadQRSeleccionada.categoria
+        ];
+
+    }
+
+    if (
+        isNaN(nota) ||
+        nota < 0 ||
+        nota > puntajeMaximo
+    ) {
+
+        alert(
+            "La calificación debe estar entre 0 y " +
+            puntajeMaximo +
+            "."
+        );
+
+        notaInput.focus();
+
+        return;
+
+    }
+
+    const boton =
+    document.getElementById(
+        "botonGuardarQR"
+    );
+
+    boton.disabled = true;
+
+    boton.textContent =
+    "💾 Guardando...";
+
+    try {
+
+        const {
+            error
+        } =
+        await supabaseClient
+        .from("calificaciones")
+        .upsert(
+            {
+                actividad_id:
+                actividadQRSeleccionada.id,
+
+                estudiante_id:
+                estudianteQRSeleccionado.id,
+
+                nota:
+                nota
+            },
+            {
+                onConflict:
+                "actividad_id,estudiante_id"
+            }
+        );
+
+        if (error) {
+            throw error;
+        }
+
+        if (
+            !calificaciones[
+                estudianteQRSeleccionado.id
+            ]
+        ) {
+
+            calificaciones[
+                estudianteQRSeleccionado.id
+            ] = {};
+
+        }
+
+        const registroAnterior =
+        calificaciones[
+            estudianteQRSeleccionado.id
+        ][
+            actividadQRSeleccionada.id
+        ];
+
+        const observacionAnterior =
+        registroAnterior &&
+        typeof registroAnterior === "object"
+        ? registroAnterior.observacion || ""
+        : "";
+
+        calificaciones[
+            estudianteQRSeleccionado.id
+        ][
+            actividadQRSeleccionada.id
+        ] = {
+            nota:
+            nota,
+
+            observacion:
+            observacionAnterior
+        };
+
+        cerrarModalCalificacionQR();
+
+        mostrarActividades();
+
+        mostrarMensaje(
+            "✅ Calificación guardada para " +
+            estudianteQRSeleccionado.nombre +
+            "."
+        );
+
+    }
+
+    catch(error) {
+
+        console.error(error);
+
+        alert(
+            "Error al guardar la calificación: " +
+            error.message
+        );
+
+    }
+
+    finally {
+
+        boton.disabled = false;
+
+        boton.textContent =
+        "💾 Guardar";
+
+    }
+
+}
+
+
+function cerrarEscanerQR(
+    event
+) {
+
+    if (
+        event &&
+        event.target !==
+        document.getElementById(
+            "modalEscanerQR"
+        )
+    ) {
+        return;
+    }
+
+    detenerCamaraQR();
+
+    document.getElementById(
+        "modalEscanerQR"
+    ).classList.add(
+        "oculto"
+    );
+
+}
+
+
+function cerrarModalCalificacionQR(
+    event
+) {
+
+    if (
+        event &&
+        event.target !==
+        document.getElementById(
+            "modalCalificacionQR"
+        )
+    ) {
+        return;
+    }
+
+    document.getElementById(
+        "modalCalificacionQR"
+    ).classList.add(
+        "oculto"
+    );
+
+    estudianteQRSeleccionado =
+    null;
+
+    actividadQRSeleccionada =
+    null;
+
+}
+
 
 
 /* =====================================================
