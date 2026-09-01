@@ -8452,6 +8452,17 @@ let modoQRAsistencia = false;
 let estudianteQRAsistencia = null;
 let estadoQRAsistencia = "asistio";
 
+/* =====================================================
+   PROTECCIÓN SEGUNDA ETAPA - QR
+   Evita procesar dos veces el mismo QR por accidente.
+===================================================== */
+let procesandoQR = false;
+let ultimoCIPRProcesado = null;
+let tiempoUltimoQRProcesado = 0;
+const TIEMPO_ANTI_DUPLICADO_QR = 1800;
+
+let guardandoCalificacionQR = false;
+
 
 async function abrirEscanerQR(actividad) {
 
@@ -8611,6 +8622,27 @@ async function solicitarLecturaQR() {
 
             }
 
+            /*
+             * Protección contra lecturas repetidas del mismo QR.
+             * No impide volver a escanear al estudiante después
+             * de unos segundos si se necesita corregir su nota.
+             */
+            const ahoraQR = Date.now();
+
+            if (
+                procesandoQR ||
+                (ultimoCIPRProcesado === ci &&
+                 ahoraQR - tiempoUltimoQRProcesado < TIEMPO_ANTI_DUPLICADO_QR)
+            ) {
+                requestAnimationFrame(
+                    solicitarLecturaQR
+                );
+                return;
+            }
+
+            procesandoQR = true;
+            ultimoCIPRProcesado = ci;
+            tiempoUltimoQRProcesado = ahoraQR;
             escaneandoQR = false;
 
             if (modoQRAsistencia) {
@@ -8869,6 +8901,7 @@ async function prepararAsistenciaQR(ci) {
     if (error) {
         console.error(error);
         alert("Error al buscar al estudiante: " + error.message);
+        procesandoQR = false;
         if (streamQR) {
             escaneandoQR = true;
             requestAnimationFrame(solicitarLecturaQR);
@@ -8878,6 +8911,7 @@ async function prepararAsistenciaQR(ci) {
 
     if (!data) {
         alert("No se encontró ningún estudiante con el CI " + ci + ".");
+        procesandoQR = false;
         if (streamQR) {
             escaneandoQR = true;
             requestAnimationFrame(solicitarLecturaQR);
@@ -8890,6 +8924,7 @@ async function prepararAsistenciaQR(ci) {
             "El estudiante pertenece al curso " + data.curso +
             " y no al curso seleccionado " + cursoSeleccionado + "."
         );
+        procesandoQR = false;
         if (streamQR) {
             escaneandoQR = true;
             requestAnimationFrame(solicitarLecturaQR);
@@ -8913,6 +8948,7 @@ async function prepararAsistenciaQR(ci) {
 
     const modal = document.getElementById("modalAsistenciaQR");
     if (modal) modal.classList.remove("oculto");
+    procesandoQR = false;
 }
 
 
@@ -9021,6 +9057,7 @@ async function prepararCalificacionQR(
             );
         }
 
+        procesandoQR = false;
         return;
 
     }
@@ -9042,6 +9079,7 @@ async function prepararCalificacionQR(
             );
         }
 
+        procesandoQR = false;
         return;
 
     }
@@ -9068,6 +9106,7 @@ async function prepararCalificacionQR(
             );
         }
 
+        procesandoQR = false;
         return;
 
     }
@@ -9175,10 +9214,16 @@ async function prepararCalificacionQR(
         100
     );
 
+    procesandoQR = false;
+
 }
 
 
 async function guardarCalificacionQR() {
+
+    if (guardandoCalificacionQR) {
+        return;
+    }
 
     if (
         !actividadQRSeleccionada ||
@@ -9254,6 +9299,7 @@ async function guardarCalificacionQR() {
         "botonGuardarQR"
     );
 
+    guardandoCalificacionQR = true;
     boton.disabled = true;
 
     boton.textContent =
@@ -9379,6 +9425,8 @@ async function guardarCalificacionQR() {
         boton.textContent =
         "💾 Guardar";
 
+        guardandoCalificacionQR = false;
+
     }
 
 }
@@ -9401,6 +9449,7 @@ function cerrarEscanerQR(
     detenerCamaraQR();
     modoQRAsistencia = false;
     estudianteQRAsistencia = null;
+    procesandoQR = false;
 
     const modalAsistencia = document.getElementById("modalAsistenciaQR");
     if (modalAsistencia) modalAsistencia.classList.add("oculto");
