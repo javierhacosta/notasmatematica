@@ -4023,6 +4023,22 @@ async function guardarAsistencia() {
         return false;
     }
 
+    /* En asistencia manual, no se permite guardar si algún estudiante
+       quedó sin elegir. Antes se completaba automáticamente como
+       "presente"; ahora se solicita que se elija un estado. */
+    if (!escaneoAsistenciaQRRealizado) {
+        const estudianteSinEstado = estudiantesCurso.find(estudiante =>
+            !document.querySelector(
+                `input[name="asistencia-${estudiante.id}"]:checked`
+            )
+        );
+
+        if (estudianteSinEstado) {
+            alert("⚠️ Debe elegir una opción de asistencia para todos los estudiantes antes de guardar.");
+            return false;
+        }
+    }
+
     const botonesGuardar = [
         document.getElementById("botonGuardarAsistencia"),
         document.getElementById("botonGuardarAsistenciaTabla")
@@ -4058,9 +4074,8 @@ async function guardarAsistencia() {
              * después y actualizar asistencia/atraso sin convertir
              * automáticamente a los demás en falta.
              *
-             * En la asistencia manual se conserva el comportamiento
-             * anterior: un estudiante sin selección se guarda como
-             * "asistio".
+             * En la asistencia manual, la validación previa exige
+             * que todos tengan un estado elegido.
              */
             if (escaneoAsistenciaQRRealizado && !seleccionado) {
                 return;
@@ -4069,7 +4084,7 @@ async function guardarAsistencia() {
             registros.push({
                 estudiante_id: estudiante.id,
                 fecha: fecha,
-                estado: seleccionado ? seleccionado.value : "asistio",
+                estado: seleccionado ? seleccionado.value : null,
                 observacion: observacion ? observacion.value.trim() : null
             });
         });
