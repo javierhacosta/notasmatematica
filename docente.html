@@ -3500,6 +3500,7 @@ document.getElementById(
 async function cargarAsistencia() {
 
     registrosAsistencia = {};
+    escaneoAsistenciaQRRealizado = false;
 
     if (!cursoSeleccionado) {
         return;
@@ -4050,6 +4051,21 @@ async function guardarAsistencia() {
                 `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
             );
 
+            /*
+             * Cuando la asistencia fue tomada con QR, NO se crea un
+             * registro para quienes no fueron escaneados. Así, al
+             * cerrar y volver a abrir la cámara se pueden escanear
+             * después y actualizar asistencia/atraso sin convertir
+             * automáticamente a los demás en falta.
+             *
+             * En la asistencia manual se conserva el comportamiento
+             * anterior: un estudiante sin selección se guarda como
+             * "asistio".
+             */
+            if (escaneoAsistenciaQRRealizado && !seleccionado) {
+                return;
+            }
+
             registros.push({
                 estudiante_id: estudiante.id,
                 fecha: fecha,
@@ -4057,6 +4073,12 @@ async function guardarAsistencia() {
                 observacion: observacion ? observacion.value.trim() : null
             });
         });
+
+        if (registros.length === 0) {
+            mostrarMensaje("ℹ️ No hay estudiantes escaneados para guardar todavía.");
+            actualizarProgresoGuardado("asistencia", 0, false);
+            return false;
+        }
 
         actualizarProgresoGuardado("asistencia", 20, true);
         mostrarMensaje("Guardando asistencia... 20%");
@@ -8538,6 +8560,12 @@ let escaneandoQR = false;
 let mantenerCamaraQR = true;
 let modoQRAsistencia = false;
 let estudianteQRAsistencia = null;
+
+/* Indica que se inició una toma de asistencia mediante QR.
+   Permite guardar solo a los estudiantes que realmente tienen
+   un estado registrado por el escáner, sin convertir los no
+   escaneados en falta ni en asistencia. */
+let escaneoAsistenciaQRRealizado = false;
 let estadoQRAsistencia = "asistio";
 
 /* =====================================================
@@ -8895,20 +8923,15 @@ async function abrirEscanerAsistenciaQR() {
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
 
-    const estudiantesCurso = estudiantes.filter(
-        e => e.curso === cursoSeleccionado
-    );
-
-    estudiantesCurso.forEach(estudiante => {
-        const anterior = registrosAsistencia[estudiante.id] || {};
-        registrosAsistencia[estudiante.id] = {
-            estado: "falta",
-            observacion: anterior.observacion || ""
-        };
-        const falta = document.getElementById(`falta-${estudiante.id}`);
-        if (falta) falta.checked = true;
-    });
-
+    /*
+     * IMPORTANTE:
+     * Al volver a abrir el escáner NO se reinicia la lista a "falta".
+     * Se conservan los estados ya registrados en esta fecha, tanto
+     * los guardados en Supabase como los escaneados previamente en
+     * esta misma sesión. Los estudiantes que todavía no fueron
+     * escaneados permanecen sin estado.
+     */
+    mostrarTablaAsistencia();
     actualizarResumenAsistencia();
 
     const checkboxCamara =
@@ -9065,6 +9088,8 @@ function continuarEscaneoAsistenciaQR() {
         estado: estadoQRAsistencia,
         observacion: (registrosAsistencia[estudianteQRAsistencia.id] || {}).observacion || ""
     };
+
+    escaneoAsistenciaQRRealizado = true;
 
     const radio = document.querySelector(
         `input[name="asistencia-${estudianteQRAsistencia.id}"][value="${estadoQRAsistencia}"]`
