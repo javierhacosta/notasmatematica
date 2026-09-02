@@ -4909,9 +4909,8 @@ function mostrarActividades() {
 
 
 /* =====================================================
-   FORMATEAR FECHA ACTIVIDAD
+   FORMATEAR FECHA ACTIVIDAD CON DÍA DE LA SEMANA
 ===================================================== */
-
 function formatearFechaActividad(
     fecha
 ) {
@@ -4920,26 +4919,37 @@ function formatearFechaActividad(
         return "Fecha no registrada";
     }
 
-
     const partes =
     String(fecha).split("-");
 
-
     if (partes.length === 3) {
 
+        // Fecha local para evitar cambios de día por UTC.
+        const fechaLocal = new Date(
+            Number(partes[0]),
+            Number(partes[1]) - 1,
+            Number(partes[2])
+        );
+
+        const dia = fechaLocal.toLocaleDateString("es-BO", {
+            weekday: "long"
+        });
+
+        const diaCapitalizado =
+            dia.charAt(0).toUpperCase() + dia.slice(1);
+
         return (
+            diaCapitalizado +
+            " " +
             partes[2] +
             "/" +
             partes[1] +
             "/" +
             partes[0]
         );
-
     }
 
-
     return fecha;
-
 }
 
 
@@ -6633,7 +6643,12 @@ async function cargarInformeGeneral() {
 
     const agregarEncabezadosActividades = (lista, claseCategoria) => {
         lista.forEach(a => {
-            encabezado1 += `<th class="actividad-encabezado ${claseCategoria}">${escapeHTML(a.nombre || "Actividad")}</th>`;
+            const nombreActividad = escapeHTML(a.nombre || "Actividad");
+            const fechaActividad = escapeHTML(formatearFechaActividad(a.fecha));
+            encabezado1 += `<th class="actividad-encabezado ${claseCategoria}">
+                ${nombreActividad}<br>
+                <small style="font-weight:normal;font-size:11px;">${fechaActividad}</small>
+            </th>`;
         });
     };
 
