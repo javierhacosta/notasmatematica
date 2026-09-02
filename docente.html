@@ -581,6 +581,132 @@ input, select {
     cursor: pointer;
 }
 
+
+/* =====================================================
+   MODAL ESTUDIANTES PENDIENTES DE ASISTENCIA
+===================================================== */
+.modal-pendientes-asistencia {
+    width: 100%;
+    max-width: 850px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.pendientes-aviso {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    color: #7a5a00;
+    font-weight: 600;
+}
+
+.tabla-pendientes-asistencia {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tabla-pendientes-asistencia th,
+.tabla-pendientes-asistencia td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.tabla-pendientes-asistencia th {
+    background: #f1f4f7;
+}
+
+.tabla-pendientes-asistencia td.nombre-pendiente {
+    text-align: left;
+    font-weight: 600;
+}
+
+.opciones-pendiente {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.opcion-pendiente {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.opcion-pendiente input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.pendientes-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.pendientes-acciones button {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.boton-pendientes-cancelar {
+    background: #e5e7eb;
+    color: #333;
+}
+
+.boton-pendientes-confirmar {
+    background: #1557a6;
+    color: white;
+}
+
+.contenedor-tabla-pendientes {
+    overflow: auto;
+    max-height: 55vh;
+}
+
+@media (max-width: 600px) {
+    .modal-pendientes-asistencia {
+        max-width: 100%;
+        max-height: 94vh;
+    }
+
+    .tabla-pendientes-asistencia {
+        font-size: 12px;
+    }
+
+    .tabla-pendientes-asistencia th,
+    .tabla-pendientes-asistencia td {
+        padding: 6px 4px;
+    }
+
+    .opciones-pendiente {
+        gap: 5px;
+        justify-content: flex-start;
+    }
+
+    .opcion-pendiente {
+        font-size: 11px;
+    }
+}
+
 .modal-calificacion-qr {
     width: 100%;
     max-width: 430px;
@@ -2546,6 +2672,37 @@ Cancelar
 
 
 <!-- =====================================================
+     MODAL ESTUDIANTES PENDIENTES DE ASISTENCIA
+===================================================== -->
+<div id="modalPendientesAsistencia" class="modal-fondo oculto" onclick="cerrarModalPendientesAsistencia(event)">
+    <div class="modal-pendientes-asistencia" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>⚠️ Faltan estudiantes por registrar</h3>
+            <button type="button" class="boton-cerrar-modal" onclick="cerrarModalPendientesAsistencia()">×</button>
+        </div>
+        <div class="modal-cuerpo">
+            <div id="mensajePendientesAsistencia" class="pendientes-aviso"></div>
+            <div class="contenedor-tabla-pendientes">
+                <table class="tabla-pendientes-asistencia">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Nombre</th>
+                            <th>Elegir asistencia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaPendientesAsistencia"></tbody>
+                </table>
+            </div>
+            <div class="pendientes-acciones">
+                <button type="button" class="boton-pendientes-cancelar" onclick="cerrarModalPendientesAsistencia()">Cancelar</button>
+                <button type="button" class="boton-pendientes-confirmar" onclick="confirmarPendientesAsistencia()">✓ Confirmar elecciones</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
      MODAL ASISTENCIA POR QR
 ===================================================== -->
 
@@ -3349,7 +3506,7 @@ async function cargarFechasAsistencia() {
         fecha;
 
         opcion.textContent =
-        fecha;
+        formatearFechaGuardadaAsistencia(fecha);
 
         select.appendChild(
             opcion
@@ -3588,6 +3745,42 @@ async function cargarAsistencia() {
     });
 
     mostrarTablaAsistencia();
+
+}
+
+
+/* =====================================================
+   FORMATEAR FECHA GUARDADA CON DÍA DE LA SEMANA
+===================================================== */
+
+function formatearFechaGuardadaAsistencia(fecha) {
+
+    if (!fecha) {
+        return "Fecha no registrada";
+    }
+
+    const partes = String(fecha).split("-");
+
+    if (partes.length !== 3) {
+        return fecha;
+    }
+
+    // Se crea la fecha en horario local para evitar cambios de día
+    // que pueden ocurrir al interpretar una fecha YYYY-MM-DD como UTC.
+    const fechaLocal = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+    );
+
+    const dia = fechaLocal.toLocaleDateString("es-ES", {
+        weekday: "long"
+    });
+
+    const diaCapitalizado =
+        dia.charAt(0).toUpperCase() + dia.slice(1);
+
+    return `${diaCapitalizado} ${partes[2]}/${partes[1]}/${partes[0]}`;
 
 }
 
@@ -3987,6 +4180,123 @@ function actualizarProgresoGuardado(
 
 
 /* =====================================================
+   ESTUDIANTES PENDIENTES DE ASISTENCIA
+===================================================== */
+
+function obtenerEstudiantesSinEstadoAsistencia() {
+    if (!cursoSeleccionado) return [];
+
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
+    return estudiantesCurso.filter(estudiante => {
+        const seleccionado = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"]:checked`
+        );
+        return !seleccionado;
+    });
+}
+
+function mostrarPendientesAsistencia() {
+    const pendientes = obtenerEstudiantesSinEstadoAsistencia();
+    const tbody = document.getElementById("tablaPendientesAsistencia");
+    const modal = document.getElementById("modalPendientesAsistencia");
+    const mensaje = document.getElementById("mensajePendientesAsistencia");
+
+    if (!tbody || !modal) return pendientes.length;
+
+    tbody.innerHTML = "";
+
+    if (mensaje) {
+        mensaje.textContent =
+            `Faltan ${pendientes.length} estudiante(s). Debe elegir una opción para cada uno antes de guardar la asistencia.`;
+    }
+
+    pendientes.forEach(estudiante => {
+        const fila = document.createElement("tr");
+        const estadoActual = (registrosAsistencia[estudiante.id] || {}).estado || "";
+
+        fila.innerHTML = `
+            <td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td>
+            <td class="nombre-pendiente">${escapeHTML(estudiante.nombre)}</td>
+            <td>
+                <div class="opciones-pendiente">
+                    <label class="opcion-pendiente" title="Presente">
+                        <input type="radio" name="pendiente-${estudiante.id}" value="asistio" ${estadoActual === "asistio" ? "checked" : ""}>
+                        ✓ Presente
+                    </label>
+                    <label class="opcion-pendiente" title="Atraso">
+                        <input type="radio" name="pendiente-${estudiante.id}" value="atraso" ${estadoActual === "atraso" ? "checked" : ""}>
+                        ⏰ Atraso
+                    </label>
+                    <label class="opcion-pendiente" title="Licencia">
+                        <input type="radio" name="pendiente-${estudiante.id}" value="licencia" ${estadoActual === "licencia" ? "checked" : ""}>
+                        📄 Licencia
+                    </label>
+                    <label class="opcion-pendiente" title="Falta">
+                        <input type="radio" name="pendiente-${estudiante.id}" value="falta" ${estadoActual === "falta" ? "checked" : ""}>
+                        ✕ Falta
+                    </label>
+                </div>
+            </td>
+        `;
+
+        tbody.appendChild(fila);
+    });
+
+    modal.classList.remove("oculto");
+    return pendientes.length;
+}
+
+function confirmarPendientesAsistencia() {
+    const pendientes = obtenerEstudiantesSinEstadoAsistencia();
+    const faltantes = [];
+
+    pendientes.forEach(estudiante => {
+        const seleccionado = document.querySelector(
+            `input[name="pendiente-${estudiante.id}"]:checked`
+        );
+
+        if (!seleccionado) {
+            faltantes.push(estudiante);
+            return;
+        }
+
+        registrosAsistencia[estudiante.id] = {
+            estado: seleccionado.value,
+            observacion: (registrosAsistencia[estudiante.id] || {}).observacion || ""
+        };
+
+        const radioTabla = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"][value="${seleccionado.value}"]`
+        );
+        if (radioTabla) radioTabla.checked = true;
+    });
+
+    if (faltantes.length > 0) {
+        alert("⚠️ Debe elegir una opción para todos los estudiantes de la lista.");
+        return false;
+    }
+
+    const modal = document.getElementById("modalPendientesAsistencia");
+    if (modal) modal.classList.add("oculto");
+
+    actualizarResumenAsistencia();
+    mostrarTablaAsistencia();
+    return true;
+}
+
+function cerrarModalPendientesAsistencia(event) {
+    if (event && event.target !== document.getElementById("modalPendientesAsistencia")) {
+        return;
+    }
+
+    const modal = document.getElementById("modalPendientesAsistencia");
+    if (modal) modal.classList.add("oculto");
+}
+
+/* =====================================================
    GUARDAR ASISTENCIA
 ===================================================== */
 
@@ -4023,20 +4333,18 @@ async function guardarAsistencia() {
         return false;
     }
 
-    /* En asistencia manual, no se permite guardar si algún estudiante
-       quedó sin elegir. Antes se completaba automáticamente como
-       "presente"; ahora se solicita que se elija un estado. */
-    if (!escaneoAsistenciaQRRealizado) {
-        const estudianteSinEstado = estudiantesCurso.find(estudiante =>
-            !document.querySelector(
-                `input[name="asistencia-${estudiante.id}"]:checked`
-            )
-        );
+    /* No se permite guardar si todavía existen estudiantes sin estado.
+       En lugar de asignar automáticamente "presente", se muestra una
+       lista con N°, nombre y las opciones que debe elegir. */
+    const estudiantesSinEstado = estudiantesCurso.filter(estudiante =>
+        !document.querySelector(
+            `input[name="asistencia-${estudiante.id}"]:checked`
+        )
+    );
 
-        if (estudianteSinEstado) {
-            alert("⚠️ Debe elegir una opción de asistencia para todos los estudiantes antes de guardar.");
-            return false;
-        }
+    if (estudiantesSinEstado.length > 0) {
+        mostrarPendientesAsistencia();
+        return false;
     }
 
     const botonesGuardar = [
@@ -9574,6 +9882,8 @@ function cerrarEscanerQR(
         return;
     }
 
+    const mostrarPendientesAlCerrar = modoQRAsistencia && escaneoAsistenciaQRRealizado;
+
     detenerCamaraQR();
     modoQRAsistencia = false;
     estudianteQRAsistencia = null;
@@ -9587,6 +9897,15 @@ function cerrarEscanerQR(
     ).classList.add(
         "oculto"
     );
+
+    /* Después de cerrar una toma QR, avisar si todavía hay
+       estudiantes sin registrar y exigir una elección para ellos. */
+    if (mostrarPendientesAlCerrar) {
+        const pendientes = obtenerEstudiantesSinEstadoAsistencia();
+        if (pendientes.length > 0) {
+            mostrarPendientesAsistencia();
+        }
+    }
 
 }
 
