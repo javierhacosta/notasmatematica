@@ -652,6 +652,44 @@ input, select {
     cursor: pointer;
 }
 
+.observacion-pendiente {
+    width: 100%;
+    min-width: 150px;
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.qr-nota-observacion {
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) minmax(180px, 2fr);
+    gap: 10px;
+    align-items: end;
+}
+
+.qr-nota-observacion .campo {
+    margin-bottom: 0;
+}
+
+#observacionQR {
+    width: 100%;
+    min-height: 42px;
+    resize: vertical;
+}
+
+@media (max-width: 600px) {
+    .qr-nota-observacion {
+        grid-template-columns: 1fr 1.5fr;
+    }
+
+    .observacion-pendiente {
+        min-width: 130px;
+        font-size: 13px;
+    }
+}
+
 .pendientes-acciones {
     display: flex;
     justify-content: flex-end;
@@ -2689,6 +2727,7 @@ Cancelar
                             <th>N°</th>
                             <th>Nombre</th>
                             <th>Elegir asistencia</th>
+                            <th>Observación</th>
                         </tr>
                     </thead>
                     <tbody id="tablaPendientesAsistencia"></tbody>
@@ -2813,18 +2852,35 @@ Cancelar
                 class="info-estudiante-qr">
             </div>
 
-            <div class="campo">
+            <div class="qr-nota-observacion">
 
-                <label>
-                    Calificación
-                </label>
+                <div class="campo">
 
-                <input
-                    type="number"
-                    id="notaQR"
-                    min="0"
-                    step="0.01"
-                    autocomplete="off">
+                    <label>
+                        Calificación
+                    </label>
+
+                    <input
+                        type="number"
+                        id="notaQR"
+                        min="0"
+                        step="0.01"
+                        autocomplete="off">
+
+                </div>
+
+                <div class="campo">
+
+                    <label>
+                        Observación
+                    </label>
+
+                    <textarea
+                        id="observacionQR"
+                        placeholder="Escribe una observación..."
+                        rows="2"></textarea>
+
+                </div>
 
             </div>
 
@@ -4240,6 +4296,15 @@ function mostrarPendientesAsistencia() {
                     </label>
                 </div>
             </td>
+            <td>
+                <input
+                    type="text"
+                    class="observacion-pendiente"
+                    data-estudiante="${estudiante.id}"
+                    value="${escapeHTML((registrosAsistencia[estudiante.id] || {}).observacion || "")}"
+                    placeholder="Escribe una observación..."
+                >
+            </td>
         `;
 
         tbody.appendChild(fila);
@@ -4263,15 +4328,30 @@ function confirmarPendientesAsistencia() {
             return;
         }
 
+        const observacionInput = document.querySelector(
+            `.observacion-pendiente[data-estudiante="${estudiante.id}"]`
+        );
+
+        const observacion = observacionInput
+            ? observacionInput.value.trim()
+            : ((registrosAsistencia[estudiante.id] || {}).observacion || "");
+
         registrosAsistencia[estudiante.id] = {
             estado: seleccionado.value,
-            observacion: (registrosAsistencia[estudiante.id] || {}).observacion || ""
+            observacion: observacion
         };
 
         const radioTabla = document.querySelector(
             `input[name="asistencia-${estudiante.id}"][value="${seleccionado.value}"]`
         );
         if (radioTabla) radioTabla.checked = true;
+
+        const observacionTabla = document.querySelector(
+            `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
+        );
+        if (observacionTabla) {
+            observacionTabla.value = observacion;
+        }
     });
 
     if (faltantes.length > 0) {
@@ -9593,6 +9673,7 @@ async function prepararCalificacionQR(
     ];
 
     let notaActual = "";
+    let observacionActual = "";
 
     if (
         registro !== undefined &&
@@ -9605,6 +9686,10 @@ async function prepararCalificacionQR(
 
             notaActual =
             registro.nota ??
+            "";
+
+            observacionActual =
+            registro.observacion ||
             "";
 
         }
@@ -9650,6 +9735,16 @@ async function prepararCalificacionQR(
     notaActual === undefined
     ? ""
     : notaActual;
+
+    const observacionInputQR =
+    document.getElementById(
+        "observacionQR"
+    );
+
+    if (observacionInputQR) {
+        observacionInputQR.value =
+        observacionActual || "";
+    }
 
     document.getElementById(
         "modalCalificacionQR"
@@ -9745,6 +9840,16 @@ async function guardarCalificacionQR() {
 
     }
 
+    const observacionInputQR =
+    document.getElementById(
+        "observacionQR"
+    );
+
+    const observacion =
+    observacionInputQR
+    ? observacionInputQR.value.trim()
+    : "";
+
     const boton =
     document.getElementById(
         "botonGuardarQR"
@@ -9772,7 +9877,10 @@ async function guardarCalificacionQR() {
                 estudianteQRSeleccionado.id,
 
                 nota:
-                nota
+                nota,
+
+                observacion:
+                observacion || null
             },
             {
                 onConflict:
@@ -9818,7 +9926,7 @@ async function guardarCalificacionQR() {
             nota,
 
             observacion:
-            observacionAnterior
+            observacion
         };
 
         const nombreEstudianteQR =
