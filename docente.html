@@ -1686,54 +1686,8 @@ td,
 
 
 /* =====================================================
-   ICONO DE ASISTENCIA ANTES DE LA NOTA
+   COLUMNA NOTA
 ===================================================== */
-
-#contenedorActividades table .nota-con-asistencia {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    white-space: nowrap;
-}
-
-#contenedorActividades table .icono-asistencia-actividad {
-    width: 27px;
-    height: 27px;
-    min-width: 27px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 14px;
-    font-weight: bold;
-    line-height: 1;
-}
-
-#contenedorActividades table .icono-asistencia-actividad.estado-asistio {
-    background: #2e7d32;
-}
-
-#contenedorActividades table .icono-asistencia-actividad.estado-atraso {
-    background: #f9a825;
-}
-
-#contenedorActividades table .icono-asistencia-actividad.estado-licencia {
-    background: #1565c0;
-}
-
-#contenedorActividades table .icono-asistencia-actividad.estado-falta {
-    background: #c62828;
-}
-
-#contenedorActividades table .icono-asistencia-actividad.sin-asistencia {
-    background: #e0e0e0;
-    color: #777;
-}
-
-
-${marker}
 
 #contenedorActividades table th:nth-child(3),
 #contenedorActividades table td:nth-child(3) {
@@ -3057,8 +3011,6 @@ let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
-/* Asistencia de cada estudiante por fecha, usada para mostrar el icono en las actividades. */
-let mapaAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
 
@@ -3896,10 +3848,6 @@ async function cargarAsistencia() {
 
     (data || []).forEach(
     registro => {
-
-        mapaAsistenciaActividades[
-            registro.estudiante_id + "_" + fecha
-        ] = registro.estado || "";
 
         registrosAsistencia[
             registro.estudiante_id
@@ -4829,10 +4777,6 @@ async function cargarActividades() {
 
     await cargarCalificaciones();
 
-    /* Cargar la asistencia de todas las fechas para que cada actividad
-       pueda mostrar el estado correspondiente a su propia fecha. */
-    await cargarAsistenciaParaActividades();
-
     mostrarActividades();
 
 }
@@ -4951,83 +4895,8 @@ async function cargarCalificaciones() {
 
 
 /* =====================================================
-   CARGAR ASISTENCIA PARA LAS TABLAS DE ACTIVIDADES
+   MOSTRAR ACTIVIDADES
 ===================================================== */
-
-async function cargarAsistenciaParaActividades() {
-
-    mapaAsistenciaActividades = {};
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-    const estudiantesCurso =
-        estudiantes.filter(e => e.curso === cursoSeleccionado);
-
-    const idsEstudiantes =
-        estudiantesCurso.map(e => e.id).filter(Boolean);
-
-    if (idsEstudiantes.length === 0) {
-        return;
-    }
-
-    const { data, error } =
-        await supabaseClient
-            .from("asistencia")
-            .select("estudiante_id,fecha,estado")
-            .in("estudiante_id", idsEstudiantes);
-
-    if (error) {
-        console.error("Error al cargar asistencia para actividades:", error);
-        return;
-    }
-
-    (data || []).forEach(registro => {
-        mapaAsistenciaActividades[
-            registro.estudiante_id + "_" + registro.fecha
-        ] = registro.estado || "";
-    });
-
-}
-
-
-/* =====================================================
-   ICONO DE ASISTENCIA PARA LA FECHA DE LA ACTIVIDAD
-===================================================== */
-
-function obtenerIconoAsistenciaActividad(estudianteId, fecha) {
-
-    const estado =
-        mapaAsistenciaActividades[
-            estudianteId + "_" + fecha
-        ] || "";
-
-    const estados = {
-        asistio: { icono: "✓", clase: "estado-asistio", titulo: "Asistencia" },
-        atraso: { icono: "⏰", clase: "estado-atraso", titulo: "Atraso" },
-        licencia: { icono: "📄", clase: "estado-licencia", titulo: "Permiso / Licencia" },
-        falta: { icono: "✕", clase: "estado-falta", titulo: "Falta" }
-    };
-
-    const info = estados[estado];
-
-    if (!info) {
-        return `<span class="icono-asistencia-actividad sin-asistencia" title="Sin registro de asistencia para este día">—</span>`;
-    }
-
-    return `
-        <span
-            class="icono-asistencia-actividad ${info.clase}"
-            title="${info.titulo}"
-            aria-label="${info.titulo}">
-            ${info.icono}
-        </span>
-    `;
-}
-
-
-${marker}
 
 function mostrarActividades() {
 
@@ -5601,14 +5470,7 @@ function crearActividadHTML(
 
             <td>
 
-                <div class="nota-con-asistencia">
-
-                    ${obtenerIconoAsistenciaActividad(
-                        estudiante.id,
-                        actividad.fecha
-                    )}
-
-                    <input
+                <input
 
                     class="nota-input"
 
@@ -5642,9 +5504,7 @@ function crearActividadHTML(
 
                     oninput="validarNota(this)"
 
-                    >
-
-                </div>
+                >
 
             </td>
 
