@@ -1704,6 +1704,43 @@ td,
 
 
 /* =====================================================
+   ICONO DE ASISTENCIA ANTES DE LA NOTA
+===================================================== */
+
+.icono-asistencia-actividad {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    min-width: 27px;
+    margin-right: 4px;
+    border-radius: 50%;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.icono-asistencia-actividad.estado-asistio {
+    background: #2e7d32;
+}
+
+.icono-asistencia-actividad.estado-atraso {
+    background: #f9a825;
+}
+
+.icono-asistencia-actividad.estado-licencia {
+    background: #1565c0;
+}
+
+.icono-asistencia-actividad.estado-falta {
+    background: #c62828;
+}
+
+
+/* =====================================================
    COLUMNA OBSERVACIONES
 ===================================================== */
 
@@ -3011,6 +3048,7 @@ let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
+let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
 
@@ -4007,6 +4045,61 @@ function mostrarTablaAsistencia() {
         registro.observacion || "";
 
 
+        const estadoAsistenciaActividad =
+        registrosAsistenciaActividades[
+            estudiante.id +
+            "_" +
+            actividad.fecha
+        ] || "";
+
+        let iconoAsistenciaActividad = "";
+
+        if (estadoAsistenciaActividad === "asistio") {
+
+            iconoAsistenciaActividad = `
+                <span
+                    class="icono-asistencia-actividad estado-asistio"
+                    title="Asistencia">
+                    ✓
+                </span>
+            `;
+
+        }
+        else if (estadoAsistenciaActividad === "atraso") {
+
+            iconoAsistenciaActividad = `
+                <span
+                    class="icono-asistencia-actividad estado-atraso"
+                    title="Atraso">
+                    ⏰
+                </span>
+            `;
+
+        }
+        else if (estadoAsistenciaActividad === "licencia") {
+
+            iconoAsistenciaActividad = `
+                <span
+                    class="icono-asistencia-actividad estado-licencia"
+                    title="Permiso / licencia">
+                    📄
+                </span>
+            `;
+
+        }
+        else if (estadoAsistenciaActividad === "falta") {
+
+            iconoAsistenciaActividad = `
+                <span
+                    class="icono-asistencia-actividad estado-falta"
+                    title="Falta">
+                    ✕
+                </span>
+            `;
+
+        }
+
+
         const fila =
         document.createElement(
             "tr"
@@ -4571,6 +4664,10 @@ async function guardarAsistencia() {
 
         await cargarAsistencia();
 
+        /* Actualizar los iconos de asistencia en las tablas de actividades. */
+        await cargarCalificaciones();
+        mostrarActividades();
+
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
@@ -4890,6 +4987,69 @@ async function cargarCalificaciones() {
         };
 
     });
+
+
+    /* =====================================================
+       CARGAR ASISTENCIA DE LAS FECHAS DE LAS ACTIVIDADES
+       Para mostrar el icono correspondiente antes de la nota.
+    ===================================================== */
+
+    registrosAsistenciaActividades = {};
+
+    const fechasActividades =
+    [...new Set(
+        actividades
+        .map(a => a.fecha)
+        .filter(Boolean)
+    )];
+
+    if (fechasActividades.length > 0) {
+
+        const {
+            data: datosAsistencia,
+            error: errorAsistencia
+        } =
+        await supabaseClient
+        .from("asistencia")
+        .select(
+            "estudiante_id,fecha,estado"
+        )
+        .in(
+            "estudiante_id",
+            idsEstudiantes
+        )
+        .in(
+            "fecha",
+            fechasActividades
+        );
+
+        if (errorAsistencia) {
+
+            console.error(
+                "Error al cargar asistencia para actividades:",
+                errorAsistencia
+            );
+
+        }
+        else {
+
+            (datosAsistencia || []).forEach(
+            registro => {
+
+                registrosAsistenciaActividades[
+                    registro.estudiante_id +
+                    "_" +
+                    registro.fecha
+                ] =
+                String(
+                    registro.estado || ""
+                ).toLowerCase();
+
+            });
+
+        }
+
+    }
 
 }
 
@@ -5469,6 +5629,8 @@ function crearActividadHTML(
 
 
             <td>
+
+                ${iconoAsistenciaActividad}
 
                 <input
 
