@@ -679,6 +679,54 @@ input, select {
     resize: vertical;
 }
 
+/* =====================================================
+   NOTAS RÁPIDAS AL ESCANEAR QR
+===================================================== */
+.qr-notas-rapidas {
+    margin: 0 0 15px;
+}
+
+.qr-notas-rapidas > label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #444;
+}
+
+.botones-notas-rapidas {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 7px;
+}
+
+.botones-notas-rapidas button {
+    min-height: 42px;
+    border: 1px solid #1565c0;
+    border-radius: 8px;
+    background: #e8f1fb;
+    color: #1557a6;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+
+.botones-notas-rapidas button:hover {
+    background: #1565c0;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.botones-notas-rapidas button:active {
+    transform: scale(.96);
+}
+
+.botones-notas-rapidas button:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+    transform: none;
+}
+
 @media (max-width: 600px) {
     .qr-nota-observacion {
         grid-template-columns: 1fr 1.5fr;
@@ -2850,6 +2898,21 @@ Cancelar
             <div
                 id="infoEstudianteQR"
                 class="info-estudiante-qr">
+            </div>
+
+            <div class="qr-notas-rapidas">
+
+                <label>Notas rápidas</label>
+
+                <div class="botones-notas-rapidas">
+                    <button type="button" onclick="seleccionarNotaRapidaQR(40)">40</button>
+                    <button type="button" onclick="seleccionarNotaRapidaQR(35)">35</button>
+                    <button type="button" onclick="seleccionarNotaRapidaQR(30)">30</button>
+                    <button type="button" onclick="seleccionarNotaRapidaQR(25)">25</button>
+                    <button type="button" onclick="seleccionarNotaRapidaQR(20)">20</button>
+                    <button type="button" onclick="seleccionarNotaRapidaQR(15)">15</button>
+                </div>
+
             </div>
 
             <div class="qr-nota-observacion">
@@ -9730,6 +9793,19 @@ async function prepararCalificacionQR(
     notaInput.max =
     puntajeMaximo;
 
+    /* Activar/desactivar las notas rápidas según el máximo de la actividad. */
+    const botonesNotasRapidasQR =
+    document.querySelectorAll(
+        ".botones-notas-rapidas button"
+    );
+
+    botonesNotasRapidasQR.forEach(
+        function(boton) {
+            const valor = Number(boton.textContent.trim());
+            boton.disabled = valor > puntajeMaximo;
+        }
+    );
+
     notaInput.value =
     notaActual === null ||
     notaActual === undefined
@@ -9761,6 +9837,31 @@ async function prepararCalificacionQR(
     );
 
     procesandoQR = false;
+
+}
+
+
+function seleccionarNotaRapidaQR(nota) {
+
+    const notaInput =
+    document.getElementById(
+        "notaQR"
+    );
+
+    if (!notaInput) {
+        return;
+    }
+
+    const puntajeMaximo =
+    Number(notaInput.max || 0);
+
+    if (nota > puntajeMaximo) {
+        return;
+    }
+
+    notaInput.value = nota;
+
+    notaInput.focus();
 
 }
 
