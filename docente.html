@@ -1702,6 +1702,42 @@ td,
     max-width: 55px;
 }
 
+/* ICONO DE ASISTENCIA DEL DÍA DE LA ACTIVIDAD */
+.icono-asistencia-actividad {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    margin-right: 5px;
+    border-radius: 50%;
+    font-size: 16px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: default;
+}
+
+.icono-asistencia-actividad.asistio {
+    background: #2e7d32;
+    color: white;
+}
+
+.icono-asistencia-actividad.atraso {
+    background: #f9a825;
+    color: white;
+}
+
+.icono-asistencia-actividad.licencia,
+.icono-asistencia-actividad.permiso {
+    background: #1565c0;
+    color: white;
+}
+
+.icono-asistencia-actividad.falta {
+    background: #c62828;
+    color: white;
+}
+
 
 /* =====================================================
    COLUMNA OBSERVACIONES
@@ -3011,6 +3047,7 @@ let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
+let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
 
@@ -4730,6 +4767,85 @@ document.addEventListener(
 
 
 /* =====================================================
+   CARGAR ASISTENCIA PARA LAS FECHAS DE LAS ACTIVIDADES
+===================================================== */
+
+async function cargarAsistenciaActividades() {
+
+    registrosAsistenciaActividades = {};
+
+    if (!cursoSeleccionado || actividades.length === 0) {
+        return;
+    }
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+    const idsEstudiantes =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+    const fechas =
+    [...new Set(
+        actividades
+        .map(a => a.fecha)
+        .filter(Boolean)
+        .map(fecha => String(fecha))
+    )];
+
+    if (
+        idsEstudiantes.length === 0 ||
+        fechas.length === 0
+    ) {
+        return;
+    }
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("asistencia")
+    .select(
+        "estudiante_id,fecha,estado"
+    )
+    .in(
+        "estudiante_id",
+        idsEstudiantes
+    )
+    .in(
+        "fecha",
+        fechas
+    );
+
+    if (error) {
+        console.error(
+            "Error al cargar asistencia de actividades:",
+            error
+        );
+        return;
+    }
+
+    (data || []).forEach(
+    registro => {
+
+        const clave =
+        String(registro.estudiante_id) +
+        "_" +
+        String(registro.fecha);
+
+        registrosAsistenciaActividades[clave] =
+        registro.estado || "";
+    });
+}
+
+
+/* =====================================================
    CARGAR ACTIVIDADES
 ===================================================== */
 
@@ -4776,6 +4892,7 @@ async function cargarActividades() {
 
 
     await cargarCalificaciones();
+    await cargarAsistenciaActividades();
 
     mostrarActividades();
 
@@ -5093,6 +5210,66 @@ function formatearFechaActividad(
     }
 
     return fecha;
+}
+
+
+/* =====================================================
+   ICONO DE ASISTENCIA EN LA ACTIVIDAD
+===================================================== */
+
+function obtenerIconoAsistenciaActividad(
+    estudianteId,
+    fecha
+) {
+
+    if (!fecha) {
+        return "";
+    }
+
+    const clave =
+    String(estudianteId) +
+    "_" +
+    String(fecha);
+
+    const estado =
+    String(
+        registrosAsistenciaActividades[clave] || ""
+    ).toLowerCase();
+
+    const datos = {
+        asistio: {
+            icono: "✓",
+            titulo: "Asistencia"
+        },
+        atraso: {
+            icono: "⏰",
+            titulo: "Atraso"
+        },
+        licencia: {
+            icono: "📄",
+            titulo: "Permiso / licencia"
+        },
+        permiso: {
+            icono: "📄",
+            titulo: "Permiso"
+        },
+        falta: {
+            icono: "✕",
+            titulo: "Falta"
+        }
+    };
+
+    if (!datos[estado]) {
+        return "";
+    }
+
+    return `
+        <span
+            class="icono-asistencia-actividad ${estado}"
+            title="${datos[estado].titulo}">
+            ${datos[estado].icono}
+        </span>
+    `;
 }
 
 
@@ -5469,6 +5646,11 @@ function crearActividadHTML(
 
 
             <td>
+
+                ${obtenerIconoAsistenciaActividad(
+                    estudiante.id,
+                    actividad.fecha
+                )}
 
                 <input
 
