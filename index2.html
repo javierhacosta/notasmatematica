@@ -1202,7 +1202,6 @@ async function mostrarCentralizador() {
         const respuesta = await fetch(
             `${SUPABASE_URL}/rest/v1/centralizador?` +
             `ci=eq.${encodeURIComponent(alumnoActual.ci || "")}` +
-            `&fecha_nacimiento=eq.${encodeURIComponent(alumnoActual.fecha_nacimiento || "")}` +
             `&select=*`,
             {
                 headers: {
@@ -1213,7 +1212,9 @@ async function mostrarCentralizador() {
         );
 
         if (!respuesta.ok) {
-            throw new Error("Error al consultar centralizador");
+            const detalleError = await respuesta.text();
+            console.error("Error centralizador Supabase:", detalleError);
+            throw new Error("Error al consultar centralizador: " + detalleError);
         }
 
         const datos = await respuesta.json();
@@ -1292,6 +1293,9 @@ async function mostrarCentralizador() {
                 </div>
                 <p class="error">
                     No se pudo cargar el centralizador de notas.
+                </p>
+                <p style="font-size:12px;color:#777;text-align:center;line-height:1.4;">
+                    La consulta del centralizador debe utilizar la columna <b>ci</b>.
                 </p>
             </div>
         `;
