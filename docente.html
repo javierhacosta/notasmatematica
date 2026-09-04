@@ -10461,13 +10461,24 @@ async function prepararCalificacionQR(
         "oculto"
     );
 
-    setTimeout(
-        function() {
-            notaInput.focus();
-            notaInput.select();
-        },
-        100
-    );
+    /* En celular no enfocar automáticamente la calificación.
+       Así el teclado no aparece después de escanear el QR.
+       El teclado aparecerá solamente cuando el docente toque
+       el cuadro de calificación u observación. */
+    if (window.matchMedia("(max-width: 600px)").matches) {
+        notaInput.blur();
+        if (observacionInputQR) {
+            observacionInputQR.blur();
+        }
+    } else {
+        setTimeout(
+            function() {
+                notaInput.focus();
+                notaInput.select();
+            },
+            100
+        );
+    }
 
     procesandoQR = false;
 
