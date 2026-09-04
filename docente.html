@@ -4090,6 +4090,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="asistio-${estudiante.id}"
                             value="asistio"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "asistio"
                                 ? "checked"
@@ -4127,6 +4128,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="atraso-${estudiante.id}"
                             value="atraso"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "atraso"
                                 ? "checked"
@@ -4164,6 +4166,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="licencia-${estudiante.id}"
                             value="licencia"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "licencia"
                                 ? "checked"
@@ -4201,6 +4204,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="falta-${estudiante.id}"
                             value="falta"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "falta"
                                 ? "checked"
@@ -4237,6 +4241,7 @@ function mostrarTablaAsistencia() {
                         observacion
                     )}"
                     placeholder="-"
+                    onchange="guardarObservacionAsistenciaIndividual(this)"
                     disabled
                 >
 
@@ -4488,6 +4493,124 @@ function cerrarModalPendientesAsistencia(event) {
     const modal = document.getElementById("modalPendientesAsistencia");
     if (modal) modal.classList.add("oculto");
 }
+
+/* =====================================================
+   GUARDADO AUTOMÁTICO INDIVIDUAL DE ASISTENCIA
+   Solo envía a Supabase el estudiante que fue cambiado.
+===================================================== */
+
+const guardadosAsistenciaIndividual = new Map();
+
+async function guardarAsistenciaIndividual(control) {
+
+    if (!control || !asistenciaDesbloqueada) return;
+
+    const estudianteId = Number(
+        control.dataset.estudiante ||
+        String(control.name || "").replace("asistencia-", "")
+    );
+
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+
+    if (!estudianteId || !fecha) return;
+
+    const seleccionado = document.querySelector(
+        `input[name="asistencia-${estudianteId}"]:checked`
+    );
+
+    if (!seleccionado) return;
+
+    const observacionInput = document.querySelector(
+        `.observacion-asistencia[data-estudiante="${estudianteId}"]`
+    );
+
+    const observacion = observacionInput
+        ? observacionInput.value.trim()
+        : "";
+
+    const clave = estudianteId + "|" + fecha;
+
+    /* Si ya había un guardado del mismo estudiante, esperamos a que termine. */
+    const anterior = guardadosAsistenciaIndividual.get(clave) || Promise.resolve();
+
+    const promesa = anterior
+        .catch(() => {})
+        .then(async () => {
+
+            mostrarMensaje("💾 Guardando asistencia...");
+
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert({
+                    estudiante_id: estudianteId,
+                    fecha: fecha,
+                    estado: seleccionado.value,
+                    observacion: observacion || null
+                }, {
+                    onConflict: "estudiante_id,fecha"
+                });
+
+            if (error) throw error;
+
+            registrosAsistencia[estudianteId] = {
+                estado: seleccionado.value,
+                observacion: observacion
+            };
+
+            actualizarResumenAsistencia();
+
+            const estudiante = estudiantes.find(
+                e => Number(e.id) === estudianteId
+            );
+
+            mostrarMensaje(
+                "✓ Asistencia guardada" +
+                (estudiante ? ": " + estudiante.nombre : ".")
+            );
+        })
+        .catch(error => {
+
+            console.error("Error al guardar asistencia individual:", error);
+
+            mostrarMensaje(
+                "✕ Error al guardar la asistencia.",
+                true
+            );
+
+        });
+
+    guardadosAsistenciaIndividual.set(clave, promesa);
+
+    await promesa;
+
+    if (guardadosAsistenciaIndividual.get(clave) === promesa) {
+        guardadosAsistenciaIndividual.delete(clave);
+    }
+}
+
+
+async function guardarObservacionAsistenciaIndividual(input) {
+
+    if (!input || !asistenciaDesbloqueada) return;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+
+    if (!estudianteId || !fecha) return;
+
+    const seleccionado = document.querySelector(
+        `input[name="asistencia-${estudianteId}"]:checked`
+    );
+
+    /*
+       Si todavía no existe un estado, no se crea una asistencia
+       solo por escribir una observación.
+    */
+    if (!seleccionado) return;
+
+    await guardarAsistenciaIndividual(seleccionado);
+}
+
 
 /* =====================================================
    GUARDAR ASISTENCIA
@@ -5698,6 +5821,7 @@ function crearActividadHTML(
                     disabled
 
                     oninput="validarNota(this)"
+                    onchange="guardarCambioActividadIndividual(this)"
 
                 >
 
@@ -5725,6 +5849,7 @@ function crearActividadHTML(
                     }"
 
                     placeholder="-"
+                    onchange="guardarCambioActividadIndividual(this)"
 
                     disabled
 
@@ -7324,6 +7449,228 @@ function aplicarBusqueda() {
 
     actualizarEstudiantesInforme();
 
+}
+
+
+/* =====================================================
+   GUARDADO AUTOMÁTICO INDIVIDUAL DE ACTIVIDADES
+   Solo guarda la actividad y el estudiante modificados.
+===================================================== */
+
+const guardadosActividadIndividual = new Map();
+
+async function guardarCambioActividadIndividual(input) {
+
+    if (!input) return;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const actividadId = Number(input.dataset.actividad);
+
+    if (!estudianteId || !actividadId) return;
+
+    const actividad = actividades.find(
+        a => Number(a.id) === actividadId
+    );
+
+    if (!actividad) return;
+
+    const notaInput = document.querySelector(
+        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    const observacionInput = document.querySelector(
+        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    let nota = null;
+
+    if (notaInput && notaInput.value.trim() !== "") {
+
+        nota = Number(notaInput.value);
+
+        const maximo = Number(
+            notaInput.dataset.maximo ||
+            actividad.puntaje_maximo ||
+            LIMITES[actividad.categoria]
+        );
+
+        if (
+            isNaN(nota) ||
+            nota < 0 ||
+            nota > maximo
+        ) {
+            alert(
+                "La calificación debe estar entre 0 y " +
+                maximo +
+                "."
+            );
+
+            notaInput.focus();
+            return;
+        }
+    }
+
+    const observacion =
+        observacionInput
+        ? observacionInput.value.trim()
+        : "";
+
+    const clave = estudianteId + "|" + actividadId;
+
+    const anterior =
+        guardadosActividadIndividual.get(clave) ||
+        Promise.resolve();
+
+    const promesa = anterior
+        .catch(() => {})
+        .then(async () => {
+
+            mostrarMensaje("💾 Guardando cambio...");
+
+            const { error } = await supabaseClient
+                .from("calificaciones")
+                .upsert({
+                    actividad_id: actividadId,
+                    estudiante_id: estudianteId,
+                    nota: nota,
+                    observacion: observacion || null
+                }, {
+                    onConflict: "actividad_id,estudiante_id"
+                });
+
+            if (error) throw error;
+
+            /* Mantener la memoria local sincronizada */
+            if (!calificaciones[estudianteId]) {
+                calificaciones[estudianteId] = {};
+            }
+
+            calificaciones[estudianteId][actividadId] = {
+                nota: nota,
+                observacion: observacion
+            };
+
+            /*
+               Recalcular SOLO al estudiante modificado.
+               Ya no se recorren todos los estudiantes del curso.
+            */
+            await actualizarMatematicaEstudianteIndividual(estudianteId);
+
+            const estudiante = estudiantes.find(
+                e => Number(e.id) === estudianteId
+            );
+
+            mostrarMensaje(
+                "✓ Guardado" +
+                (estudiante ? ": " + estudiante.nombre : ".")
+            );
+        })
+        .catch(error => {
+
+            console.error(
+                "Error al guardar actividad individual:",
+                error
+            );
+
+            mostrarMensaje(
+                "✕ No se pudo guardar el cambio.",
+                true
+            );
+        });
+
+    guardadosActividadIndividual.set(clave, promesa);
+
+    await promesa;
+
+    if (guardadosActividadIndividual.get(clave) === promesa) {
+        guardadosActividadIndividual.delete(clave);
+    }
+}
+
+
+async function actualizarMatematicaEstudianteIndividual(estudianteId) {
+
+    const estudiante = estudiantes.find(
+        e => Number(e.id) === Number(estudianteId)
+    );
+
+    if (!estudiante) return;
+
+    const actividadesSER = actividades.filter(
+        a => a.categoria === "SER"
+    );
+
+    const actividadesSABER = actividades.filter(
+        a => a.categoria === "SABER"
+    );
+
+    const actividadesHACER = actividades.filter(
+        a => a.categoria === "HACER"
+    );
+
+    const actividadesAUTO = actividades.filter(
+        a => a.categoria === "AUTOEVALUACION"
+    );
+
+    const puntosSER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesSER,
+        LIMITES.SER
+    );
+
+    const puntosSABER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesSABER,
+        LIMITES.SABER
+    );
+
+    const puntosHACER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesHACER,
+        LIMITES.HACER
+    );
+
+    const puntosAUTO = calcularPuntosCategoria(
+        estudianteId,
+        actividadesAUTO,
+        LIMITES.AUTOEVALUACION
+    );
+
+    const nota3T = redondear(
+        puntosSER +
+        puntosSABER +
+        puntosHACER +
+        puntosAUTO
+    );
+
+    const nota1T = convertirNumero(estudiante.nota_1t);
+    const nota2T = convertirNumero(estudiante.nota_2t);
+
+    let notaFinal = null;
+
+    if (
+        nota1T !== null &&
+        nota2T !== null &&
+        nota3T !== null
+    ) {
+        notaFinal = redondear(
+            (nota1T + nota2T + nota3T) / 3
+        );
+    }
+
+    const { error } = await supabaseClient
+        .from("matematica")
+        .update({
+            nota_3t: nota3T,
+            final: notaFinal
+        })
+        .eq("id", estudiante.id);
+
+    if (error) throw error;
+
+    /* Actualizar también los datos locales. */
+    estudiante.nota_3t = nota3T;
+    estudiante.final = notaFinal;
 }
 
 
@@ -9756,33 +10103,103 @@ function seleccionarEstadoAsistenciaQR(estado) {
 }
 
 
-function continuarEscaneoAsistenciaQR() {
+async function continuarEscaneoAsistenciaQR() {
 
     if (!estudianteQRAsistencia) return;
 
-    registrosAsistencia[estudianteQRAsistencia.id] = {
-        estado: estadoQRAsistencia,
-        observacion: (registrosAsistencia[estudianteQRAsistencia.id] || {}).observacion || ""
-    };
+    const boton = document.getElementById("botonContinuarAsistenciaQR");
+    const estudiante = estudianteQRAsistencia;
 
-    escaneoAsistenciaQRRealizado = true;
+    /*
+       IMPORTANTE:
+       Al pulsar "Continuar escaneando" se guarda INMEDIATAMENTE
+       solamente el estudiante que acaba de ser escaneado.
+       No se guarda toda la lista ni se vuelve a cargar la tabla.
+    */
+    if (boton) {
+        boton.disabled = true;
+        boton.dataset.textoOriginal = boton.innerHTML;
+        boton.innerHTML = "💾 Guardando...";
+    }
 
-    const radio = document.querySelector(
-        `input[name="asistencia-${estudianteQRAsistencia.id}"][value="${estadoQRAsistencia}"]`
-    );
+    try {
 
-    if (radio) radio.checked = true;
+        const fecha = document.getElementById("fechaAsistencia")?.value;
 
-    actualizarResumenAsistencia();
+        if (!fecha) {
+            throw new Error("Selecciona una fecha de asistencia.");
+        }
 
-    document.getElementById("modalAsistenciaQR").classList.add("oculto");
-    estudianteQRAsistencia = null;
+        const registro = {
+            estudiante_id: estudiante.id,
+            fecha: fecha,
+            estado: estadoQRAsistencia,
+            observacion:
+                (registrosAsistencia[estudiante.id] || {}).observacion || null
+        };
 
-    if (streamQR) {
-        escaneandoQR = true;
-        requestAnimationFrame(solicitarLecturaQR);
-    } else {
-        abrirEscanerAsistenciaQR();
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert(registro, {
+                onConflict: "estudiante_id,fecha"
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        /* Mantener la información local sincronizada */
+        registrosAsistencia[estudiante.id] = {
+            estado: estadoQRAsistencia,
+            observacion: registro.observacion || ""
+        };
+
+        const radio = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"][value="${estadoQRAsistencia}"]`
+        );
+
+        if (radio) radio.checked = true;
+
+        actualizarResumenAsistencia();
+
+        escaneoAsistenciaQRRealizado = true;
+
+        mostrarMensaje(
+            "✓ Asistencia guardada: " + estudiante.nombre
+        );
+
+        document.getElementById("modalAsistenciaQR").classList.add("oculto");
+        estudianteQRAsistencia = null;
+
+        /* La cámara continúa sin volver a cargar estudiantes/asistencia. */
+        if (streamQR) {
+            escaneandoQR = true;
+            requestAnimationFrame(solicitarLecturaQR);
+        } else {
+            abrirEscanerAsistenciaQR();
+        }
+
+    } catch (error) {
+
+        console.error("Error al guardar asistencia QR:", error);
+
+        alert(
+            "No se pudo guardar la asistencia de " +
+            estudiante.nombre +
+            ": " +
+            (error.message || error)
+        );
+
+    } finally {
+
+        if (boton) {
+            boton.disabled = false;
+
+            if (boton.dataset.textoOriginal !== undefined) {
+                boton.innerHTML = boton.dataset.textoOriginal;
+                delete boton.dataset.textoOriginal;
+            }
+        }
     }
 }
 
