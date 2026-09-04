@@ -2110,8 +2110,27 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 
-/* Guardado automático: ocultar botones manuales de guardado */
-button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
+/* Guardado automático:
+   Solo se muestran el guardado de asistencia y el guardado general inferior.
+*/
+button[onclick*="guardarNotas"],
+button[onclick*="guardarCalificaciones"],
+button[onclick*="guardarAsistencia"],
+#btnGuardarNotas,
+#guardarNotas,
+#btnGuardarCalificaciones,
+#guardarCalificaciones {
+    display: none !important;
+}
+
+/* Excepciones que deben permanecer visibles */
+#botonGuardarAsistenciaTabla {
+    display: inline-flex !important;
+}
+
+#botonGuardarNotas {
+    display: inline-flex !important;
+}
 </style>
 
 </head>
@@ -2252,24 +2271,6 @@ Fechas guardadas
 🔒
 
 </button>
-
-
-<button
-    type="button"
-    id="botonGuardarAsistencia"
-    class="boton-guardar-asistencia"
-    onclick="guardarAsistencia()"
-    title="Guardar asistencia">
-
-💾 Guardar
-
-<span
-    class="progreso-guardar"
-    id="progresoAsistencia">
-</span>
-
-</button>
-
 </div>
 
 
@@ -2502,7 +2503,7 @@ Fechas guardadas
     class="guardar boton-guardar-notas"
     onclick="guardarNotas()">
 
-💾 Guardar notas
+💾 Guardar general
 
 <span
     id="progresoNotas"
@@ -5887,43 +5888,7 @@ function crearActividadHTML(
     contenido.appendChild(
         tablaContenedor
     );
-
-
-    const filaGuardar =
-    document.createElement(
-        "div"
-    );
-
-    filaGuardar.className =
-    "fila-guardar-tabla";
-
-
-    filaGuardar.innerHTML = `
-
-        <button
-
-            type="button"
-
-            class="boton-guardar-tabla boton-guardar-notas"
-
-            onclick="guardarNotas()"
-
-            title="Guardar notas y observaciones">
-
-            💾
-
-            <span
-                class="progreso-guardar progreso-notas">
-            </span>
-
-        </button>
-
-    `;
-
-
-    contenido.appendChild(
-        filaGuardar
-    );
+    /* El guardado de notas/observaciones es automático. */
 
 
     bloque.appendChild(
