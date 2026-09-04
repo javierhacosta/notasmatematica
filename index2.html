@@ -1237,15 +1237,22 @@ async function mostrarCentralizador() {
 
         let filas = "";
 
+        // PostgreSQL convierte los nombres de columnas sin comillas a minúsculas.
+        // Por eso se prueban tanto MAYÚSCULAS como minúsculas para mostrar las notas.
+        const obtenerNotaCentralizador = (codigo, periodo) => {
+            const nombreColumna = codigo + periodo;
+            return centralizador[nombreColumna] ?? centralizador[nombreColumna.toLowerCase()];
+        };
+
         MATERIAS_CENTRALIZADOR.forEach(([codigo, nombre]) => {
 
             filas += `
                 <tr>
                     <td>${escapeHTML(nombre)}</td>
-                    <td>${mostrarValorCentralizador(centralizador[codigo + "1"])}</td>
-                    <td>${mostrarValorCentralizador(centralizador[codigo + "2"])}</td>
-                    <td>${mostrarValorCentralizador(centralizador[codigo + "3"])}</td>
-                    <td>${mostrarValorCentralizador(centralizador[codigo + "A"])}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "1"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "2"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "3"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "A"))}</td>
                 </tr>
             `;
         });
