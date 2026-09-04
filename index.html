@@ -573,6 +573,67 @@ button:hover {
 
 }
 
+/* =================================================
+   CENTRALIZADOR DE NOTAS - SOLO 5A
+================================================= */
+.boton-centralizador {
+    margin-top: 10px;
+    background: #00897b;
+    font-size: 16px;
+}
+.boton-centralizador:hover { background: #00695c; }
+
+.centralizador-box {
+    margin-top: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 16px;
+    text-align: left;
+}
+.centralizador-titulo {
+    text-align: center;
+    color: #1557a6;
+    font-size: 19px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+.centralizador-tabla-contenedor { width: 100%; overflow-x: auto; }
+.centralizador-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.centralizador-tabla th {
+    background: #f1f4f8;
+    color: #555;
+    font-weight: bold;
+    padding: 9px 5px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+}
+.centralizador-tabla td {
+    padding: 9px 5px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    vertical-align: middle;
+}
+.centralizador-tabla th:first-child,
+.centralizador-tabla td:first-child {
+    text-align: left;
+    min-width: 210px;
+}
+.nota-centralizador { font-weight: bold; }
+.sin-nota { color: #999; font-weight: normal; }
+
+@media(max-width:500px) {
+    .centralizador-tabla { font-size: 11px; }
+    .centralizador-tabla th,
+    .centralizador-tabla td { padding: 8px 4px; }
+    .centralizador-tabla th:first-child,
+    .centralizador-tabla td:first-child { min-width: 190px; }
+}
+
 </style>
 
 </head>
@@ -725,7 +786,7 @@ async function consultarNota() {
 
             `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
 
-            `&select=id,nombre,curso,nota_1t,nota_2t,nota_3t,final`,
+            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,nota_3t,final`,
 
             {
 
@@ -1063,6 +1124,21 @@ function mostrarResultado(alumno) {
 
         </div>
 
+        ${
+            String(alumno.curso || "").trim().toUpperCase() === "5A"
+            ? `
+                <button
+                    type="button"
+                    class="boton-centralizador"
+                    onclick="mostrarCentralizador()"
+                >
+                    📊 Ver mis notas de todas las materias
+                </button>
+                <div id="centralizador5A"></div>
+              `
+            : ""
+        }
+
     `;
 
 
@@ -1070,6 +1146,168 @@ function mostrarResultado(alumno) {
 
 }
 
+
+
+/* =================================================
+   CENTRALIZADOR DE NOTAS - SOLO 5A
+================================================= */
+
+const MATERIAS_CENTRALIZADOR = [
+    ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
+    ["LEX", "LENGUA EXTRANJERA"],
+    ["SOC", "CIENCIAS SOCIALES"],
+    ["EFD", "EDUCACIÓN FÍSICA Y DEPORTES"],
+    ["EMU", "EDUCACIÓN MUSICAL"],
+    ["APV", "ARTES PLÁSTICAS Y VISUALES"],
+    ["MAT", "MATEMÁTICA"],
+    ["BIO", "CIENCIAS NATURALES: BIOLOGÍA GEOGRAFÍA"],
+    ["FIS", "CIENCIAS NATURALES: FÍSICA"],
+    ["QMC", "CIENCIAS NATURALES: QUÍMICA"],
+    ["CFS", "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"],
+    ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES"],
+    ["TTE", "TÉCNICA TECNOLÓGICA ESPECIALIZADA"]
+];
+
+function mostrarValorCentralizador(valor) {
+    if (valor === null || valor === undefined || valor === "") {
+        return '<span class="sin-nota">—</span>';
+    }
+    const numero = Number(valor);
+    if (isNaN(numero)) {
+        return '<span class="sin-nota">' + escapeHTML(String(valor)) + '</span>';
+    }
+    return '<span class="nota-centralizador">' + Math.round(numero) + '</span>';
+}
+
+async function mostrarCentralizador() {
+
+    const contenedor = document.getElementById("centralizador5A");
+
+    if (!contenedor || !alumnoActual) return;
+
+    if (String(alumnoActual.curso || "").trim().toUpperCase() !== "5A") {
+        return;
+    }
+
+    if (contenedor.innerHTML.trim() !== "") {
+        contenedor.innerHTML = "";
+        return;
+    }
+
+    contenedor.innerHTML =
+        '<p class="cargando">Cargando notas de todas las materias...</p>';
+
+    try {
+
+        const respuesta = await fetch(
+            `${SUPABASE_URL}/rest/v1/centralizador?` +
+            `ci=eq.${encodeURIComponent(alumnoActual.ci || "")}` +
+            `&select=*`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuesta.ok) {
+            const detalleError = await respuesta.text();
+            console.error("Error centralizador Supabase:", detalleError);
+            throw new Error("Error al consultar centralizador: " + detalleError);
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.length) {
+            contenedor.innerHTML = `
+                <div class="centralizador-box">
+                    <div class="centralizador-titulo">
+                        📊 NOTAS DE TODAS LAS MATERIAS
+                    </div>
+                    <p style="text-align:center;color:#666;line-height:1.5;">
+                        No se encontraron notas en el centralizador.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const centralizador = datos[0];
+
+        let filas = "";
+
+        // PostgreSQL convierte los nombres de columnas sin comillas a minúsculas.
+        // Por eso se prueban tanto MAYÚSCULAS como minúsculas para mostrar las notas.
+        const obtenerNotaCentralizador = (codigo, periodo) => {
+            const nombreColumna = codigo + periodo;
+            return centralizador[nombreColumna] ?? centralizador[nombreColumna.toLowerCase()];
+        };
+
+        MATERIAS_CENTRALIZADOR.forEach(([codigo, nombre]) => {
+
+            filas += `
+                <tr>
+                    <td>${escapeHTML(nombre)}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "1"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "2"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "3"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "A"))}</td>
+                </tr>
+            `;
+        });
+
+        contenedor.innerHTML = `
+            <div class="centralizador-box">
+
+                <div class="centralizador-titulo">
+                    📊 NOTAS DE TODAS LAS MATERIAS
+                </div>
+
+                <div style="text-align:center;color:#666;font-size:13px;margin-bottom:12px;">
+                    Curso: 5A
+                </div>
+
+                <div class="centralizador-tabla-contenedor">
+                    <table class="centralizador-tabla">
+
+                        <thead>
+                            <tr>
+                                <th>Materia</th>
+                                <th>1er Trimestre</th>
+                                <th>2do Trimestre</th>
+                                <th>3er Trimestre</th>
+                                <th>Promedio Anual</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>${filas}</tbody>
+
+                    </table>
+                </div>
+
+            </div>
+        `;
+
+    } catch (error) {
+
+        console.error(error);
+
+        contenedor.innerHTML = `
+            <div class="centralizador-box">
+                <div class="centralizador-titulo">
+                    📊 NOTAS DE TODAS LAS MATERIAS
+                </div>
+                <p class="error">
+                    No se pudo cargar el centralizador de notas.
+                </p>
+                <p style="font-size:12px;color:#777;text-align:center;line-height:1.4;">
+                    La consulta del centralizador debe utilizar la columna <b>ci</b>.
+                </p>
+            </div>
+        `;
+    }
+}
 
 /* =================================================
    DETALLES DEL 3ER TRIMESTRE
