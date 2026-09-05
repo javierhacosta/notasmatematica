@@ -1,1324 +1,846 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consulta de Nota - Matemática 2026</title>
 
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
-
-<title>Consulta de Nota</title>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f2f5f9;
-    color: #222;
-}
-
-.contenedor {
-    width: 92%;
-    max-width: 520px;
-    margin: 35px auto;
-    background: white;
-    padding: 28px;
-    border-radius: 18px;
-    box-shadow: 0 5px 20px rgba(0,0,0,.12);
-}
-
-.institucion {
-    text-align: center;
-    color: #1557a6;
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 8px;
-}
-
-h1 {
-    text-align: center;
-    color: #1557a6;
-    margin: 5px 0;
-}
-
-.profesor {
-    text-align: center;
-    color: #555;
-    font-size: 15px;
-    font-weight: bold;
-    margin-bottom: 25px;
-}
-
-.subtitulo {
-    text-align: center;
-    color: #666;
-    margin-bottom: 25px;
-}
-
-label {
-    display: block;
-    margin-top: 15px;
-    margin-bottom: 6px;
-    font-weight: bold;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 16px;
-}
-
-button {
-    width: 100%;
-    margin-top: 25px;
-    padding: 13px;
-    border: none;
-    border-radius: 9px;
-    background: #1557a6;
-    color: white;
-    font-size: 17px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #0d4282;
-}
-
-#resultado {
-    margin-top: 30px;
-}
-
-.nota-box {
-    background: #f1f6ff;
-    padding: 24px;
-    border-radius: 18px;
-    text-align: center;
-}
-
-.nombre {
-    color: #1557a6;
-    font-size: 21px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.curso {
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.aviso-provisional {
-    background: #fff8e1;
-    border: 1px solid #ffca28;
-    color: #795548;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-.aviso-provisional strong {
-    display: block;
-    color: #e65100;
-    font-size: 15px;
-    margin-bottom: 4px;
-}
-
-.titulo-3t {
-    color: #555;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.nota {
-    font-size: 90px;
-    font-weight: bold;
-    line-height: 1;
-    margin: 15px 0;
-    color: #1557a6;
-}
-
-.boton-detalles {
-    margin-top: 5px;
-    background: #455a64;
-    font-size: 16px;
-}
-
-.boton-detalles:hover {
-    background: #263238;
-}
-
-.trimestres {
-    margin-top: 25px;
-    display: grid;
-    grid-template-columns:
-    repeat(3, 1fr);
-    gap: 10px;
-}
-
-.trimestre-card {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    padding: 12px 5px;
-    text-align: center;
-}
-
-.trimestre-card .titulo {
-    color: #666;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-.trimestre-card .numero {
-    font-size: 30px;
-    font-weight: bold;
-    margin-top: 5px;
-}
-
-.t1 {
-    color: #7b1fa2;
-}
-
-.t2 {
-    color: #1565c0;
-}
-
-.t3 {
-    color: #ef6c00;
-}
-
-.detalle {
-    margin-top: 20px;
-    background: white;
-    border-radius: 15px;
-    border: 1px solid #ddd;
-    padding: 18px;
-    text-align: left;
-}
-
-.detalle-titulo {
-    text-align: center;
-    font-size: 19px;
-    font-weight: bold;
-    color: #1557a6;
-    margin-bottom: 15px;
-}
-
-.categoria {
-    margin-top: 15px;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #ddd;
-}
-
-.categoria-titulo {
-    color: white;
-    padding: 11px 12px;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.ser {
-    background: #8e24aa;
-}
-
-.saber {
-    background: #1565c0;
-}
-
-.hacer {
-    background: #ef6c00;
-}
-
-.auto {
-    background: #00897b;
-}
-
-.actividad-fila {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 11px;
-    border-top: 1px solid #eee;
-    background: #fff;
-    gap: 10px;
-}
-
-.actividad-nombre {
-    font-size: 14px;
-    flex: 1;
-}
-
-.actividad-fecha {
-    display: block;
-    margin-top: 4px;
-    color: #777;
-    font-size: 12px;
-    font-weight: normal;
-}
-
-.actividad-nota {
-    font-weight: bold;
-    white-space: nowrap;
-    text-align: right;
-}
-
-.actividad-observacion {
-    margin-top: 4px;
-    font-size: 12px;
-    font-weight: normal;
-    color: #666;
-    white-space: normal;
-    max-width: 180px;
-    text-align: right;
-    line-height: 1.3;
-}
-
-.resumen-categoria {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: #f7f7f7;
-    border-top: 1px solid #ddd;
-    font-size: 15px;
-    font-weight: bold;
-}
-
-.promedio-valor {
-    color: #1557a6;
-}
-
-.resultado-3t {
-    margin-top: 20px;
-    padding: 18px;
-    border-radius: 14px;
-    background: #eef4fb;
-    text-align: center;
-}
-
-.resultado-3t-titulo {
-    color: #555;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.resultado-3t-numero {
-    font-size: 45px;
-    font-weight: bold;
-    color: #1557a6;
-    margin-top: 5px;
-}
-
-.asistencia-box {
-    margin-top: 25px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 15px;
-    overflow: hidden;
-    text-align: left;
-}
-
-.asistencia-titulo {
-    background: #1557a6;
-    color: white;
-    padding: 14px;
-    text-align: center;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.asistencia-descripcion {
-    text-align: center;
-    color: #666;
-    font-size: 13px;
-    padding: 12px 15px 8px;
-    line-height: 1.5;
-}
-
-.asistencia-resumen {
-    display: grid;
-    grid-template-columns:
-    repeat(4, 1fr);
-    gap: 6px;
-    padding: 12px;
-}
-
-.asistencia-card {
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 9px 3px;
-    text-align: center;
-    background: #fafafa;
-}
-
-.asistencia-card .icono {
-    font-size: 19px;
-    display: block;
-    margin-bottom: 3px;
-}
-
-.asistencia-card .cantidad {
-    font-size: 21px;
-    font-weight: bold;
-    display: block;
-}
-
-.asistencia-card .texto {
-    font-size: 9px;
-    color: #666;
-    display: block;
-    margin-top: 2px;
-}
-
-.asistencia-presente {
-    color: #2e7d32;
-}
-
-.asistencia-atraso {
-    color: #f57c00;
-}
-
-.asistencia-licencia {
-    color: #1565c0;
-}
-
-.asistencia-falta {
-    color: #c62828;
-}
-
-.boton-asistencia {
-    width: calc(100% - 24px);
-    margin: 5px 12px 12px;
-    padding: 11px;
-    background: #455a64;
-    color: white;
-    border: none;
-    border-radius: 9px;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.boton-asistencia:hover {
-    background: #263238;
-}
-
-.detalle-asistencia {
-    display: block;
-    border-top: 1px solid #ddd;
-    padding-bottom: 5px;
-}
-
-.tabla-asistencia-contenedor {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.tabla-asistencia {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.tabla-asistencia th {
-    background: #f1f4f8;
-    color: #555;
-    font-weight: bold;
-    padding: 10px 5px;
-    border-bottom: 1px solid #ddd;
-    text-align: center;
+*{
+    box-sizing:border-box;
 }
 
-.tabla-asistencia td {
-    padding: 10px 5px;
-    border-bottom: 1px solid #eee;
-    text-align: center;
-    vertical-align: middle;
+body{
+    margin:0;
+    font-family:Arial,Helvetica,sans-serif;
+    background:#f1f5f9;
+    color:#263238;
 }
 
-.tabla-asistencia td.observacion {
-    text-align: left;
-    color: #666;
-    font-size: 12px;
+.contenedor{
+    max-width:900px;
+    margin:auto;
+    padding:20px;
 }
 
-.tabla-asistencia tr:last-child td {
-    border-bottom: none;
+.encabezado{
+    background:linear-gradient(135deg,#1565c0,#42a5f5);
+    color:white;
+    padding:25px 20px;
+    border-radius:18px;
+    text-align:center;
+    box-shadow:0 5px 15px rgba(0,0,0,.15);
+    margin-bottom:20px;
 }
 
-.estado-asistencia {
-    font-weight: bold;
-    padding: 5px 7px;
-    border-radius: 7px;
-    display: inline-block;
-    font-size: 12px;
+.encabezado h1{
+    margin:0 0 8px;
+    font-size:25px;
 }
 
-.estado-presente {
-    background: #e8f5e9;
-    color: #2e7d32;
+.encabezado p{
+    margin:4px 0;
+    font-size:14px;
 }
 
-.estado-atraso {
-    background: #fff3e0;
-    color: #e65100;
+.tarjeta{
+    background:white;
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 4px 15px rgba(0,0,0,.10);
+    margin-bottom:20px;
 }
 
-.estado-licencia {
-    background: #e3f2fd;
-    color: #1565c0;
+.tarjeta h2{
+    margin-top:0;
+    color:#1565c0;
+    text-align:center;
 }
 
-.estado-falta {
-    background: #ffebee;
-    color: #c62828;
+label{
+    display:block;
+    margin:12px 0 6px;
+    font-weight:bold;
 }
 
-.asistencia-vacia {
-    padding: 18px;
-    text-align: center;
-    color: #666;
-    font-size: 14px;
+input{
+    width:100%;
+    padding:13px;
+    border:1px solid #cfd8dc;
+    border-radius:10px;
+    font-size:16px;
+    outline:none;
 }
 
-.final-box {
-    margin-top: 25px;
-    padding: 20px;
-    background: white;
-    border: 2px solid #ddd;
-    border-radius: 15px;
-    text-align: center;
+input:focus{
+    border-color:#1565c0;
+    box-shadow:0 0 0 3px rgba(21,101,192,.10);
 }
 
-.final-titulo {
-    font-size: 18px;
-    color: #555;
-    font-weight: bold;
+button{
+    width:100%;
+    border:0;
+    border-radius:12px;
+    padding:14px;
+    margin-top:15px;
+    background:#1565c0;
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
 }
 
-.nota-final {
-    font-size: 58px;
-    font-weight: bold;
-    margin: 8px 0;
+button:hover{
+    background:#0d47a1;
 }
 
-.aprobado {
-    color: #1565c0;
+button:disabled{
+    opacity:.6;
+    cursor:not-allowed;
 }
 
-.reprobado {
-    color: #c62828;
+.oculto{
+    display:none!important;
 }
 
-.estado {
-    font-size: 21px;
-    font-weight: bold;
+.mensaje{
+    margin-top:15px;
+    padding:12px;
+    border-radius:10px;
+    text-align:center;
+    display:none;
 }
 
-.error {
-    color: #c62828;
-    text-align: center;
-    font-weight: bold;
+.mensaje.error{
+    display:block;
+    background:#ffebee;
+    color:#c62828;
 }
 
-.cargando {
-    text-align: center;
-    color: #1557a6;
+.mensaje.exito{
+    display:block;
+    background:#e8f5e9;
+    color:#2e7d32;
 }
-
 
-/* =================================================
-   CANDADO DE MALETA - FECHA DE NACIMIENTO
-================================================= */
+/* =========================================================
+   CANDADO / RUEDAS
+   ========================================================= */
 
-.maleta-lock {
-    margin-top: 8px;
-    border-radius: 17px;
-    overflow: hidden;
-    background:
-        linear-gradient(
-            145deg,
-            #263238,
-            #37474f 50%,
-            #20272b
-        );
-    border: 2px solid #455a64;
+.maleta-lock{
+    margin-top:8px;
+    border-radius:18px;
+    overflow:hidden;
+    background:linear-gradient(145deg,#263238,#455a64);
     box-shadow:
-        0 7px 18px rgba(0,0,0,.20),
-        inset 0 1px 0 rgba(255,255,255,.10);
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
+        inset 0 1px 0 rgba(255,255,255,.15),
+        0 8px 20px rgba(0,0,0,.18);
+    border:2px solid #37474f;
+    user-select:none;
 }
 
-.maleta-tapa {
-    padding: 11px 8px;
-    text-align: center;
-    color: #eceff1;
+.maleta-tapa{
+    text-align:center;
+    color:#eceff1;
+    background:linear-gradient(180deg,#37474f,#263238);
+    padding:11px 8px;
+    font-size:13px;
+    font-weight:bold;
+    letter-spacing:1px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.maleta-cuerpo{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:20px 12px 15px;
     background:
-        linear-gradient(
-            #263238,
-            #1c2327
-        );
-    font-size: 13px;
-    font-weight: bold;
-    letter-spacing: .7px;
-    border-bottom: 1px solid #546e7a;
+        radial-gradient(circle at 50% 0%,rgba(255,255,255,.08),transparent 50%),
+        linear-gradient(145deg,#cfd8dc,#90a4ae);
 }
 
-.maleta-cuerpo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 15px 7px 9px;
-    position: relative;
+.rueda-grupo{
+    width:88px;
+    text-align:center;
 }
 
-/* Línea central que simula la abertura del candado */
-
-.maleta-cuerpo::before {
-    content: "";
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    top: 82px;
-    height: 2px;
-    background: rgba(0,0,0,.35);
-    pointer-events: none;
-    z-index: 4;
-}
-
-/* Cada rueda */
-
-.rueda-grupo {
-    width: 82px;
-    text-align: center;
-    position: relative;
-    z-index: 2;
-}
-
-.rueda-anio {
-    width: 104px;
-}
-
-/* Ventana de la rueda */
-
-.rueda-ventana {
-    height: 86px;
-    position: relative;
-    overflow: hidden;
-    margin: 0;
-    border-radius: 7px;
-    border: 2px solid #90a4ae;
+.rueda-ventana{
+    position:relative;
+    width:88px;
+    height:104px;
+    overflow:hidden;
+    border-radius:12px;
     background:
         linear-gradient(
             90deg,
-            #b0bec5,
-            #eceff1 18%,
-            #f5f5f5 50%,
-            #cfd8dc 82%,
-            #90a4ae
-        );
+            rgba(0,0,0,.18),
+            transparent 18%,
+            transparent 82%,
+            rgba(0,0,0,.18)
+        ),
+        linear-gradient(180deg,#eceff1,#cfd8dc);
+    border:2px solid #607d8b;
     box-shadow:
-        inset 0 8px 10px rgba(0,0,0,.16),
-        inset 0 -8px 10px rgba(0,0,0,.15),
-        0 2px 3px rgba(0,0,0,.25);
-    cursor: grab;
-    touch-action: none;
+        inset 0 5px 10px rgba(0,0,0,.15),
+        inset 0 -5px 10px rgba(0,0,0,.15),
+        0 2px 5px rgba(0,0,0,.2);
+    touch-action:none;
+    cursor:grab;
+    perspective:350px;
 }
 
-.rueda-ventana:active {
-    cursor: grabbing;
+.rueda-ventana:active{
+    cursor:grabbing;
 }
 
-/* Degradado arriba y abajo */
-
-.rueda-ventana::before,
-.rueda-ventana::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 22px;
-    z-index: 5;
-    pointer-events: none;
+.rueda-ventana::before{
+    content:"";
+    position:absolute;
+    z-index:8;
+    left:0;
+    right:0;
+    top:0;
+    height:28%;
+    pointer-events:none;
+    background:linear-gradient(
+        to bottom,
+        rgba(255,255,255,.65),
+        rgba(255,255,255,0)
+    );
 }
 
-.rueda-ventana::before {
-    top: 0;
-    background:
-        linear-gradient(
-            to bottom,
-            rgba(207,216,220,.95),
-            rgba(207,216,220,0)
-        );
-}
-
-.rueda-ventana::after {
-    bottom: 0;
-    background:
-        linear-gradient(
-            to top,
-            rgba(207,216,220,.95),
-            rgba(207,216,220,0)
-        );
-}
-
-/* Los tres números visibles */
-
-.rueda-numeros {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 2;
-    transition: transform .12s cubic-bezier(.2,.8,.3,1);
-}
-
-.numero-secundario {
-    height: 27px;
-    line-height: 27px;
-    font-family: "Courier New", monospace;
-    font-size: 17px;
-    font-weight: bold;
-    color: #78909c;
-    opacity: .65;
-}
-
-.numero-central {
-    height: 32px;
-    line-height: 32px;
-    font-family: "Courier New", monospace;
-    font-size: 29px;
-    font-weight: bold;
-    color: #263238;
-    letter-spacing: 1px;
-    text-shadow: 0 1px 0 white;
-}
-
-.rueda-titulo {
-    color: #cfd8dc;
-    font-size: 9px;
-    font-weight: bold;
-    letter-spacing: 1.5px;
-    margin-top: 5px;
-}
-
-/* Pequeños remaches del candado */
-
-.remache {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #90a4ae;
+.rueda-ventana::after{
+    content:"";
+    position:absolute;
+    z-index:20;
+    left:3px;
+    right:3px;
+    top:50%;
+    height:34px;
+    transform:translateY(-50%);
+    pointer-events:none;
+    border-top:2px solid rgba(21,101,192,.65);
+    border-bottom:2px solid rgba(21,101,192,.65);
+    background:rgba(255,255,255,.10);
     box-shadow:
-        inset 0 1px 1px rgba(255,255,255,.7),
-        0 1px 2px rgba(0,0,0,.5);
-    z-index: 8;
+        0 0 8px rgba(21,101,192,.15),
+        inset 0 0 8px rgba(255,255,255,.35);
 }
 
-.remache.izquierda {
-    left: 6px;
-    top: 6px;
+.rueda-pista{
+    position:absolute;
+    left:0;
+    right:0;
+    top:50%;
+    height:288px;
+    margin-top:-144px;
+    transform-style:preserve-3d;
+    will-change:transform;
+    transition:
+        transform .24s cubic-bezier(.18,.78,.25,1);
 }
 
-.remache.derecha {
-    right: 6px;
-    top: 6px;
+.rueda-pista.arrastrando{
+    transition:none;
 }
 
-/* Separadores */
-
-.separador-ruedas {
-    color: #cfd8dc;
-    font-size: 20px;
-    font-weight: bold;
-    margin-top: -3px;
+.rueda-item{
+    position:relative;
+    width:100%;
+    height:32px;
+    line-height:32px;
+    text-align:center;
+    font-family:"Courier New",monospace;
+    font-size:18px;
+    font-weight:bold;
+    color:#607d8b;
+    opacity:.45;
+    transform-origin:center center;
+    transition:
+        opacity .12s,
+        filter .12s;
+    backface-visibility:hidden;
 }
 
-/* Indicador */
-
-.maleta-indicador {
-    padding: 9px 10px 11px;
-    text-align: center;
-    color: #b0bec5;
-    font-size: 11px;
-    line-height: 1.4;
-    border-top: 1px solid #455a64;
-    background: rgba(0,0,0,.10);
+.rueda-item.centro{
+    font-size:29px;
+    color:#263238;
+    opacity:1;
+    font-weight:900;
+    text-shadow:0 1px 1px rgba(255,255,255,.8);
 }
 
-.maleta-indicador strong {
-    color: #eceff1;
+.rueda-titulo{
+    margin-top:7px;
+    color:#263238;
+    font-size:10px;
+    font-weight:bold;
+    letter-spacing:1px;
 }
 
-/* Animación al girar */
-
-.rueda-giro-arriba {
-    animation: giroArriba .13s ease-out;
+.separador-ruedas{
+    color:#263238;
+    font-size:25px;
+    font-weight:bold;
+    margin-top:-18px;
 }
 
-.rueda-giro-abajo {
-    animation: giroAbajo .13s ease-out;
+.maleta-indicador{
+    text-align:center;
+    color:#eceff1;
+    font-size:11px;
+    padding:9px 5px 12px;
+    background:#263238;
+    letter-spacing:.2px;
 }
 
-@keyframes giroArriba {
+.fecha-seleccionada{
+    text-align:center;
+    margin-top:10px;
+    font-size:13px;
+    font-weight:bold;
+    color:#1565c0;
+}
 
-    0% {
-        transform: translateY(14px);
-        opacity: .4;
+/* =========================================================
+   RESULTADOS
+   ========================================================= */
+
+.resultado-header{
+    text-align:center;
+    padding:15px;
+    border-radius:14px;
+    background:#e3f2fd;
+    margin-bottom:15px;
+}
+
+.resultado-header h2{
+    margin:5px 0;
+    color:#0d47a1;
+}
+
+.resultado-header p{
+    margin:5px 0;
+}
+
+.nota-principal{
+    text-align:center;
+    background:linear-gradient(135deg,#1565c0,#42a5f5);
+    color:white;
+    border-radius:18px;
+    padding:25px 15px;
+    margin-bottom:15px;
+}
+
+.nota-principal .numero{
+    font-size:55px;
+    font-weight:bold;
+    line-height:1;
+}
+
+.nota-principal .texto{
+    margin-top:8px;
+    font-size:14px;
+}
+
+.cards-notas{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-bottom:15px;
+}
+
+.card-nota{
+    background:#fafafa;
+    border:1px solid #e0e0e0;
+    border-radius:14px;
+    padding:15px 8px;
+    text-align:center;
+}
+
+.card-nota h3{
+    margin:0 0 8px;
+    font-size:13px;
+}
+
+.card-nota .valor{
+    font-size:28px;
+    font-weight:bold;
+    color:#1565c0;
+}
+
+.tabla-responsive{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:500px;
+}
+
+th,
+td{
+    padding:9px 7px;
+    border-bottom:1px solid #e0e0e0;
+    text-align:center;
+    font-size:13px;
+}
+
+th{
+    background:#1565c0;
+    color:white;
+}
+
+tr:nth-child(even){
+    background:#fafafa;
+}
+
+.nota-actividad{
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.nota-actividad:hover{
+    background:#e3f2fd;
+}
+
+.asistencia-A{
+    color:#2e7d32;
+    font-weight:bold;
+}
+
+.asistencia-R{
+    color:#ef6c00;
+    font-weight:bold;
+}
+
+.asistencia-L{
+    color:#1565c0;
+    font-weight:bold;
+}
+
+.asistencia-F{
+    color:#c62828;
+    font-weight:bold;
+}
+
+.observacion{
+    font-size:11px;
+    color:#616161;
+    margin-top:3px;
+}
+
+.seccion-titulo{
+    background:#1565c0;
+    color:white;
+    border-radius:10px;
+    padding:10px;
+    margin:18px 0 10px;
+    font-weight:bold;
+}
+
+.info-box{
+    background:#f5f5f5;
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:10px;
+}
+
+.info-box strong{
+    color:#1565c0;
+}
+
+.detalle-estudiante{
+    background:white;
+    border:1px solid #e0e0e0;
+    border-radius:14px;
+    padding:15px;
+    margin-top:12px;
+}
+
+.detalle-fila{
+    display:flex;
+    justify-content:space-between;
+    padding:7px 0;
+    border-bottom:1px solid #eeeeee;
+}
+
+.detalle-fila:last-child{
+    border-bottom:0;
+}
+
+.plus{
+    cursor:pointer;
+    color:#1565c0;
+    font-weight:bold;
+    font-size:18px;
+    margin-left:5px;
+}
+
+.subdetalle{
+    display:none;
+    margin-top:8px;
+    padding:8px;
+    background:#fafafa;
+    border-radius:8px;
+}
+
+.centralizador{
+    overflow-x:auto;
+}
+
+.centralizador table{
+    min-width:700px;
+}
+
+.footer{
+    text-align:center;
+    color:#78909c;
+    font-size:11px;
+    padding:15px 0;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:600px){
+
+    .contenedor{
+        padding:10px;
     }
 
-    100% {
-        transform: translateY(0);
-        opacity: 1;
+    .encabezado{
+        padding:20px 12px;
+        border-radius:14px;
     }
 
-}
-
-@keyframes giroAbajo {
-
-    0% {
-        transform: translateY(-14px);
-        opacity: .4;
+    .encabezado h1{
+        font-size:21px;
     }
 
-    100% {
-        transform: translateY(0);
-        opacity: 1;
+    .tarjeta{
+        padding:15px;
+        border-radius:14px;
     }
 
-}
-
-@media(max-width:500px) {
-
-    .maleta-cuerpo {
-        gap: 2px;
-        padding-left: 4px;
-        padding-right: 4px;
+    .maleta-cuerpo{
+        gap:4px;
+        padding-left:5px;
+        padding-right:5px;
     }
 
-    .rueda-grupo {
-        width: 73px;
+    .rueda-grupo{
+        width:76px;
     }
 
-    .rueda-anio {
-        width: 91px;
+    .rueda-ventana{
+        width:76px;
+        height:100px;
     }
 
-    .numero-central {
-        font-size: 27px;
+    .separador-ruedas{
+        font-size:20px;
+        margin-top:-17px;
     }
 
-    .numero-secundario {
-        font-size: 16px;
+    .cards-notas{
+        grid-template-columns:1fr;
     }
 
-    .separador-ruedas {
-        font-size: 16px;
+    .nota-principal .numero{
+        font-size:48px;
     }
-
 }
-
-
-/* =================================================
-   CENTRALIZADOR DE NOTAS - SOLO 5A
-================================================= */
-
-.boton-centralizador {
-    margin-top: 10px;
-    background: #00897b;
-    font-size: 16px;
-}
-
-.boton-centralizador:hover {
-    background: #00695c;
-}
-
-.centralizador-box {
-    margin-top: 20px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 15px;
-    padding: 16px;
-    text-align: left;
-}
-
-.centralizador-titulo {
-    text-align: center;
-    color: #1557a6;
-    font-size: 19px;
-    font-weight: bold;
-    margin-bottom: 12px;
-}
-
-.centralizador-tabla-contenedor {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.centralizador-tabla {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.centralizador-tabla th {
-    background: #f1f4f8;
-    color: #555;
-    font-weight: bold;
-    padding: 9px 5px;
-    border-bottom: 1px solid #ddd;
-    text-align: center;
-}
-
-.centralizador-tabla td {
-    padding: 9px 5px;
-    border-bottom: 1px solid #eee;
-    text-align: center;
-    vertical-align: middle;
-}
-
-.centralizador-tabla th:first-child,
-.centralizador-tabla td:first-child {
-    text-align: left;
-    min-width: 210px;
-}
-
-.nota-centralizador {
-    font-weight: bold;
-}
-
-.sin-nota {
-    color: #999;
-    font-weight: normal;
-}
-
-@media(max-width:500px) {
-
-    .centralizador-tabla {
-        font-size: 11px;
-    }
-
-    .centralizador-tabla th,
-    .centralizador-tabla td {
-        padding: 8px 4px;
-    }
-
-    .centralizador-tabla th:first-child,
-    .centralizador-tabla td:first-child {
-        min-width: 190px;
-    }
-
-}
-
 </style>
-
 </head>
-
 
 <body>
 
-
 <div class="contenedor">
 
+    <div class="encabezado">
+        <h1>UNIDAD EDUCATIVA GERMAN BUSCH I</h1>
+        <p><strong>Consulta de Nota</strong></p>
+        <p>Matemática — Gestión 2026</p>
+        <p>Prof. Javier Delmo Hacosta Moralez</p>
+    </div>
 
-    <div class="institucion">
+    <!-- =====================================================
+         LOGIN
+         ===================================================== -->
 
-        U.E. GERMAN BUSCH I
+    <div class="tarjeta" id="tarjetaLogin">
+
+        <h2>🔐 Consulta tus calificaciones</h2>
+
+        <label for="ci">Carnet de Identidad</label>
+        <input
+            type="text"
+            id="ci"
+            placeholder="Ingrese su C.I."
+            inputmode="numeric"
+            autocomplete="off"
+        >
+
+        <label>Fecha de nacimiento</label>
+
+        <!--
+            Este campo se mantiene oculto para conservar
+            la compatibilidad con la consulta original.
+        -->
+        <input type="hidden" id="fecha_nacimiento">
+
+        <!-- CANDADO -->
+        <div class="maleta-lock">
+
+            <div class="maleta-tapa">
+                🔒 CÓDIGO DE SEGURIDAD
+            </div>
+
+            <div class="maleta-cuerpo">
+
+                <div class="rueda-grupo">
+                    <div
+                        class="rueda-ventana"
+                        id="rueda-dia-control"
+                        data-tipo="dia"
+                        aria-label="Seleccionar día"
+                    >
+                        <div
+                            class="rueda-pista"
+                            id="rueda-dia"
+                        ></div>
+                    </div>
+                    <div class="rueda-titulo">DÍA</div>
+                </div>
+
+                <div class="separador-ruedas">•</div>
+
+                <div class="rueda-grupo">
+                    <div
+                        class="rueda-ventana"
+                        id="rueda-mes-control"
+                        data-tipo="mes"
+                        aria-label="Seleccionar mes"
+                    >
+                        <div
+                            class="rueda-pista"
+                            id="rueda-mes"
+                        ></div>
+                    </div>
+                    <div class="rueda-titulo">MES</div>
+                </div>
+
+                <div class="separador-ruedas">•</div>
+
+                <div class="rueda-grupo">
+                    <div
+                        class="rueda-ventana"
+                        id="rueda-anio-control"
+                        data-tipo="anio"
+                        aria-label="Seleccionar año"
+                    >
+                        <div
+                            class="rueda-pista"
+                            id="rueda-anio"
+                        ></div>
+                    </div>
+                    <div class="rueda-titulo">AÑO</div>
+                </div>
+
+            </div>
+
+            <div class="maleta-indicador">
+                👆 Desliza el dedo hacia arriba o abajo para girar las ruedas
+            </div>
+
+        </div>
+
+        <div
+            class="fecha-seleccionada"
+            id="fechaMostrada"
+        ></div>
+
+        <button
+            id="btnConsultar"
+            onclick="consultarEstudiante()"
+        >
+            🔎 CONSULTAR MIS NOTAS
+        </button>
+
+        <div id="mensaje" class="mensaje"></div>
 
     </div>
 
 
-    <h1>
-
-        Matemática 2026
-
-    </h1>
-
-
-    <div class="profesor">
-
-        Prof. Javier Delmo Hacosta Moralez
-
-    </div>
-
-
-    <div class="subtitulo">
-
-        Consulta tu calificación
-
-    </div>
-
-
-    <label for="ci">
-
-        CI
-
-    </label>
-
-
-    <input
-        type="text"
-        id="ci"
-        placeholder="Ejemplo: 1234567"
-    >
-
-
-    <label>
-
-        Fecha de nacimiento
-
-    </label>
-
-
-    <!--
-        Este input oculto conserva exactamente el mismo ID
-        que utilizaba el sistema anterior.
-    -->
-    <input
-        type="hidden"
-        id="fecha_nacimiento"
-    >
-
-
-    <!-- =================================================
-         CANDADO DE COMBINACIÓN
-    ================================================= -->
+    <!-- =====================================================
+         RESULTADOS
+         ===================================================== -->
 
     <div
-        class="maleta-lock"
-        aria-label="Candado de seguridad para fecha de nacimiento"
+        class="tarjeta oculto"
+        id="resultado"
     >
 
-        <div class="maleta-tapa">
+        <div
+            class="resultado-header"
+            id="datosEstudiante"
+        ></div>
 
-            🔒 CÓDIGO DE SEGURIDAD
+        <div class="nota-principal">
+
+            <div class="numero" id="nota3Mostrar">
+                -
+            </div>
+
+            <div class="texto">
+                NOTA DEL 3ER TRIMESTRE
+            </div>
 
         </div>
 
+        <div class="cards-notas">
 
-        <div class="maleta-cuerpo">
-
-
-            <div class="rueda-grupo">
-
-                <div class="remache izquierda"></div>
-                <div class="remache derecha"></div>
-
+            <div class="card-nota">
+                <h3>1er Trimestre</h3>
                 <div
-                    class="rueda-ventana"
-                    id="rueda-dia-control"
-                    data-tipo="dia"
+                    class="valor"
+                    id="nota1Mostrar"
                 >
-
-                    <div
-                        class="rueda-numeros"
-                        id="rueda-dia"
-                    ></div>
-
+                    -
                 </div>
-
-                <div class="rueda-titulo">
-
-                    DÍA
-
-                </div>
-
             </div>
 
-
-            <div class="separador-ruedas">
-
-                •
-
-            </div>
-
-
-            <div class="rueda-grupo">
-
-                <div class="remache izquierda"></div>
-                <div class="remache derecha"></div>
-
+            <div class="card-nota">
+                <h3>2do Trimestre</h3>
                 <div
-                    class="rueda-ventana"
-                    id="rueda-mes-control"
-                    data-tipo="mes"
+                    class="valor"
+                    id="nota2Mostrar"
                 >
-
-                    <div
-                        class="rueda-numeros"
-                        id="rueda-mes"
-                    ></div>
-
+                    -
                 </div>
-
-                <div class="rueda-titulo">
-
-                    MES
-
-                </div>
-
             </div>
 
-
-            <div class="separador-ruedas">
-
-                •
-
-            </div>
-
-
-            <div class="rueda-grupo rueda-anio">
-
-                <div class="remache izquierda"></div>
-                <div class="remache derecha"></div>
-
+            <div class="card-nota">
+                <h3>Nota Final</h3>
                 <div
-                    class="rueda-ventana"
-                    id="rueda-anio-control"
-                    data-tipo="anio"
+                    class="valor"
+                    id="finalMostrar"
                 >
-
-                    <div
-                        class="rueda-numeros"
-                        id="rueda-anio"
-                    ></div>
-
+                    -
                 </div>
-
-                <div class="rueda-titulo">
-
-                    AÑO
-
-                </div>
-
             </div>
-
 
         </div>
 
+        <div class="seccion-titulo">
+            📚 ACTIVIDADES
+        </div>
 
-        <div class="maleta-indicador">
+        <div
+            class="tabla-responsive"
+            id="tablaActividades"
+        ></div>
 
-            👆 <strong>Desliza el dedo</strong>
-            sobre los números para girar el candado
+        <div class="seccion-titulo">
+            📅 ASISTENCIA
+        </div>
 
-            <br>
+        <div
+            class="tabla-responsive"
+            id="tablaAsistencia"
+        ></div>
 
-            🔊 Cada giro produce un clic
+        <div
+            id="seccionCentralizador"
+            class="oculto"
+        >
+
+            <div class="seccion-titulo">
+                📊 CENTRALIZADOR DE CALIFICACIONES
+            </div>
+
+            <div
+                class="centralizador"
+                id="tablaCentralizador"
+            ></div>
 
         </div>
 
+        <button
+            onclick="cerrarConsulta()"
+        >
+            🔒 CERRAR CONSULTA
+        </button>
 
     </div>
 
-
-    <button onclick="consultarNota()">
-
-        Consultar mi nota
-
-    </button>
-
-
-    <div id="resultado"></div>
-
+    <div class="footer">
+        Sistema de consulta académica — 2026
+    </div>
 
 </div>
 
 
 <script>
 
-
-/* =================================================
+/* =========================================================
    SUPABASE
-================================================= */
+   ========================================================= */
 
 const SUPABASE_URL =
-
-"https://tecphbbkkmlgahjddcep.supabase.co";
-
+    "https://tecphbbkkmlgahjddcep.supabase.co";
 
 const SUPABASE_KEY =
+    "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-"sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
-
-
-let alumnoActual = null;
-
-
-/* =================================================
-   FECHAS DEL 3ER TRIMESTRE
-================================================= */
-
-const INICIO_3T = "2026-08-01";
-
-const FIN_3T = "2026-12-31";
+const supabaseClient =
+    window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
 
 
-/* =================================================
-   CANDADO DE MALETA
-================================================= */
+/* =========================================================
+   VARIABLES DEL CANDADO
+   ========================================================= */
 
 const candadoFecha = {
-
     dia: 1,
-
     mes: 1,
-
     anio: 2000
+};
 
+const RUEDA_ITEM_ALTO = 32;
+const RUEDA_RADIO = 4;
+
+const LIMITES = {
+    dia: {
+        min: 1,
+        max: 31
+    },
+    mes: {
+        min: 1,
+        max: 12
+    },
+    anio: {
+        min: 1950,
+        max: 2026
+    }
 };
 
 
-/* -------------------------------------------------
-   SONIDO MECÁNICO DEL CANDADO
-------------------------------------------------- */
+/* =========================================================
+   DÍAS DEL MES
+   ========================================================= */
 
-let audioContext = null;
-
-
-function sonidoCandado() {
-
-    try {
-
-        if (!audioContext) {
-
-            audioContext =
-                new (
-                    window.AudioContext ||
-                    window.webkitAudioContext
-                )();
-
-        }
-
-
-        if (
-            audioContext.state === "suspended"
-        ) {
-
-            audioContext.resume();
-
-        }
-
-
-        const ahora =
-            audioContext.currentTime;
-
-
-        const oscilador =
-            audioContext.createOscillator();
-
-
-        const ganancia =
-            audioContext.createGain();
-
-
-        oscilador.type = "square";
-
-
-        oscilador.frequency.setValueAtTime(
-            1250,
-            ahora
-        );
-
-
-        oscilador.frequency.exponentialRampToValueAtTime(
-            520,
-            ahora + 0.045
-        );
-
-
-        ganancia.gain.setValueAtTime(
-            0.0001,
-            ahora
-        );
-
-
-        ganancia.gain.exponentialRampToValueAtTime(
-            0.08,
-            ahora + 0.004
-        );
-
-
-        ganancia.gain.exponentialRampToValueAtTime(
-            0.0001,
-            ahora + 0.055
-        );
-
-
-        oscilador.connect(ganancia);
-
-        ganancia.connect(
-            audioContext.destination
-        );
-
-
-        oscilador.start(ahora);
-
-        oscilador.stop(
-            ahora + 0.06
-        );
-
-    }
-
-    catch(error) {
-
-        console.log(
-            "Audio no disponible"
-        );
-
-    }
-
-}
-
-
-/* -------------------------------------------------
-   VIBRACIÓN
-------------------------------------------------- */
-
-function vibrarCandado() {
-
-    try {
-
-        if (
-            navigator.vibrate
-        ) {
-
-            navigator.vibrate(8);
-
-        }
-
-    }
-
-    catch(error) {}
-
-}
-
-
-/* -------------------------------------------------
-   CANTIDAD DE DÍAS DEL MES
-------------------------------------------------- */
-
-function diasDelMes(
-    mes,
-    anio
-) {
+function diasDelMes(mes, anio){
 
     return new Date(
         anio,
@@ -1329,594 +851,842 @@ function diasDelMes(
 }
 
 
-/* -------------------------------------------------
-   VALOR ANTERIOR
-------------------------------------------------- */
+/* =========================================================
+   AJUSTAR DÍA SI CAMBIA EL MES
+   ========================================================= */
 
-function valorAnterior(
-    tipo
-) {
+function ajustarDia(){
 
-    if (
-        tipo === "dia"
-    ) {
+    const maximo =
+        diasDelMes(
+            candadoFecha.mes,
+            candadoFecha.anio
+        );
 
-        const maximo =
+    if(candadoFecha.dia > maximo){
+        candadoFecha.dia = maximo;
+    }
+
+}
+
+
+/* =========================================================
+   OBTENER VALOR
+   ========================================================= */
+
+function obtenerValorRueda(tipo){
+
+    return candadoFecha[tipo];
+
+}
+
+
+/* =========================================================
+   ENVOLVER VALOR
+   ========================================================= */
+
+function envolverValor(valor, tipo){
+
+    let min = LIMITES[tipo].min;
+    let max = LIMITES[tipo].max;
+
+    if(tipo === "dia"){
+
+        max =
             diasDelMes(
                 candadoFecha.mes,
                 candadoFecha.anio
             );
 
-        return candadoFecha.dia <= 1
-            ? maximo
-            : candadoFecha.dia - 1;
-
     }
 
-
-    if (
-        tipo === "mes"
-    ) {
-
-        return candadoFecha.mes <= 1
-            ? 12
-            : candadoFecha.mes - 1;
-
+    if(valor < min){
+        return max;
     }
 
+    if(valor > max){
+        return min;
+    }
 
-    return candadoFecha.anio <= 1950
-        ? 2026
-        : candadoFecha.anio - 1;
+    return valor;
 
 }
 
 
-/* -------------------------------------------------
-   VALOR SIGUIENTE
-------------------------------------------------- */
+/* =========================================================
+   FORMATO DE NÚMERO
+   ========================================================= */
 
-function valorSiguiente(
-    tipo
-) {
+function formatoRueda(tipo, valor){
 
-    if (
-        tipo === "dia"
-    ) {
-
-        const maximo =
-            diasDelMes(
-                candadoFecha.mes,
-                candadoFecha.anio
-            );
-
-        return candadoFecha.dia >= maximo
-            ? 1
-            : candadoFecha.dia + 1;
-
+    if(tipo === "anio"){
+        return String(valor);
     }
 
-
-    if (
-        tipo === "mes"
-    ) {
-
-        return candadoFecha.mes >= 12
-            ? 1
-            : candadoFecha.mes + 1;
-
-    }
-
-
-    return candadoFecha.anio >= 2026
-        ? 1950
-        : candadoFecha.anio + 1;
+    return String(valor).padStart(2,"0");
 
 }
 
 
-/* -------------------------------------------------
-   FORMATO DEL NÚMERO
-------------------------------------------------- */
+/* =========================================================
+   CREAR VALORES VISIBLES
+   ========================================================= */
 
-function formatoRueda(
-    tipo,
-    numero
-) {
+function valoresVisibles(tipo){
 
-    if (
-        tipo === "anio"
-    ) {
+    const actual =
+        obtenerValorRueda(tipo);
 
-        return String(numero);
+    const valores = [];
+
+    for(
+        let i = -RUEDA_RADIO;
+        i <= RUEDA_RADIO;
+        i++
+    ){
+
+        valores.push(
+            envolverValor(
+                actual + i,
+                tipo
+            )
+        );
 
     }
 
-    return String(numero)
-        .padStart(2, "0");
+    return valores;
 
 }
 
 
-/* -------------------------------------------------
+/* =========================================================
    DIBUJAR RUEDA
-------------------------------------------------- */
+   ========================================================= */
 
 function dibujarRueda(
     tipo,
-    direccion = 0
-) {
+    desplazamiento = 0,
+    animar = true
+){
 
-    const elemento =
+    const pista =
         document.getElementById(
-            tipo === "dia"
-                ? "rueda-dia"
-                : tipo === "mes"
-                    ? "rueda-mes"
-                    : "rueda-anio"
+            "rueda-" + tipo
         );
 
+    if(!pista) return;
 
-    if (!elemento) {
+    const valores =
+        valoresVisibles(tipo);
 
-        return;
+    pista.innerHTML = "";
 
-    }
+    valores.forEach(
+        (valor, indice) => {
 
+            const item =
+                document.createElement("div");
 
-    const anterior =
-        formatoRueda(
-            tipo,
-            valorAnterior(tipo)
-        );
+            item.className =
+                "rueda-item";
 
+            const posicion =
+                indice - RUEDA_RADIO;
 
-    const actual =
-        formatoRueda(
-            tipo,
-            tipo === "dia"
-                ? candadoFecha.dia
-                : tipo === "mes"
-                    ? candadoFecha.mes
-                    : candadoFecha.anio
-        );
+            if(posicion === 0){
+                item.classList.add("centro");
+            }
 
+            item.textContent =
+                formatoRueda(
+                    tipo,
+                    valor
+                );
 
-    const siguiente =
-        formatoRueda(
-            tipo,
-            valorSiguiente(tipo)
-        );
+            /*
+             * Efecto 3D:
+             * los números cercanos al centro
+             * parecen estar sobre una rueda.
+             */
+            const distancia =
+                Math.abs(posicion);
 
+            const angulo =
+                posicion * -17;
 
-    elemento.innerHTML = `
+            const escala =
+                posicion === 0
+                    ? 1
+                    : Math.max(
+                        .70,
+                        1 - distancia * .10
+                    );
 
-        <div class="numero-secundario">
+            const opacidad =
+                posicion === 0
+                    ? 1
+                    : Math.max(
+                        .28,
+                        1 - distancia * .16
+                    );
 
-            ${anterior}
+            item.style.transform =
+                `rotateX(${angulo}deg) scale(${escala})`;
 
-        </div>
+            item.style.opacity =
+                opacidad;
 
+            pista.appendChild(item);
 
-        <div class="numero-central">
-
-            ${actual}
-
-        </div>
-
-
-        <div class="numero-secundario">
-
-            ${siguiente}
-
-        </div>
-
-    `;
-
-
-    elemento.classList.remove(
-        "rueda-giro-arriba",
-        "rueda-giro-abajo"
+        }
     );
 
+    pista.style.transition =
+        animar
+            ? "transform .24s cubic-bezier(.18,.78,.25,1)"
+            : "none";
 
-    if (
-        direccion !== 0
-    ) {
+    const posicionInicial =
+        -RUEDA_RADIO * RUEDA_ITEM_ALTO;
 
-        void elemento.offsetWidth;
-
-
-        elemento.classList.add(
-
-            direccion > 0
-
-                ? "rueda-giro-arriba"
-
-                : "rueda-giro-abajo"
-
-        );
-
-    }
+    pista.style.transform =
+        `translate3d(
+            0,
+            ${posicionInicial + desplazamiento}px,
+            0
+        )`;
 
 }
 
 
-/* -------------------------------------------------
+/* =========================================================
    ACTUALIZAR FECHA OCULTA
-------------------------------------------------- */
+   ========================================================= */
 
-function actualizarFechaCandado() {
+function actualizarFecha(){
 
     const dia =
         String(
             candadoFecha.dia
-        ).padStart(
-            2,
-            "0"
-        );
-
+        ).padStart(2,"0");
 
     const mes =
         String(
             candadoFecha.mes
-        ).padStart(
-            2,
-            "0"
-        );
-
+        ).padStart(2,"0");
 
     const anio =
-        String(
-            candadoFecha.anio
-        );
+        candadoFecha.anio;
 
+    const fecha =
+        `${anio}-${mes}-${dia}`;
 
     document.getElementById(
         "fecha_nacimiento"
-    ).value =
+    ).value = fecha;
 
-        `${anio}-${mes}-${dia}`;
-
-
-    dibujarRueda(
-        "dia"
-    );
-
-    dibujarRueda(
-        "mes"
-    );
-
-    dibujarRueda(
-        "anio"
-    );
+    document.getElementById(
+        "fechaMostrada"
+    ).textContent =
+        `📅 Fecha seleccionada: ${dia}/${mes}/${anio}`;
 
 }
 
 
-/* -------------------------------------------------
-   MOVER UNA RUEDA
-------------------------------------------------- */
+/* =========================================================
+   SONIDO DE CLIC
+   ========================================================= */
 
-function moverRueda(
+let audioContext = null;
+
+function sonidoCandado(){
+
+    try{
+
+        if(!audioContext){
+
+            audioContext =
+                new (
+                    window.AudioContext ||
+                    window.webkitAudioContext
+                )();
+
+        }
+
+        if(
+            audioContext.state ===
+            "suspended"
+        ){
+
+            audioContext.resume();
+
+        }
+
+        const oscillator =
+            audioContext.createOscillator();
+
+        const gain =
+            audioContext.createGain();
+
+        oscillator.type =
+            "square";
+
+        oscillator.frequency.setValueAtTime(
+            850,
+            audioContext.currentTime
+        );
+
+        oscillator.frequency.exponentialRampToValueAtTime(
+            520,
+            audioContext.currentTime + .045
+        );
+
+        gain.gain.setValueAtTime(
+            .045,
+            audioContext.currentTime
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+            .001,
+            audioContext.currentTime + .055
+        );
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start();
+
+        oscillator.stop(
+            audioContext.currentTime + .06
+        );
+
+    }catch(error){
+
+        console.log(
+            "Audio no disponible",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   VIBRACIÓN
+   ========================================================= */
+
+function vibrarCandado(){
+
+    try{
+
+        if(
+            navigator.vibrate
+        ){
+
+            navigator.vibrate(8);
+
+        }
+
+    }catch(error){
+
+        // Algunos navegadores no permiten vibración.
+
+    }
+
+}
+
+
+/* =========================================================
+   CAMBIAR RUEDA
+   ========================================================= */
+
+function cambiarRuedaPorPasos(
     tipo,
-    direccion
-) {
+    pasos,
+    pista,
+    finalizar
+){
 
-    if (
-        direccion === 0
-    ) {
+    if(pasos === 0){
+
+        pista.style.transition =
+            "transform .20s cubic-bezier(.18,.78,.25,1)";
+
+        pista.style.transform =
+            `translate3d(
+                0,
+                ${-RUEDA_RADIO * RUEDA_ITEM_ALTO}px,
+                0
+            )`;
+
+        setTimeout(
+            finalizar,
+            230
+        );
 
         return;
 
     }
 
+    let valor =
+        candadoFecha[tipo];
 
-    if (
+    const limiteMin =
+        LIMITES[tipo].min;
+
+    const limiteMax =
         tipo === "dia"
-    ) {
-
-        const maximo =
-            diasDelMes(
+            ? diasDelMes(
                 candadoFecha.mes,
                 candadoFecha.anio
-            );
+            )
+            : LIMITES[tipo].max;
 
+    /*
+     * Calculamos el nuevo valor
+     * respetando los extremos.
+     */
+    valor += pasos;
 
-        candadoFecha.dia +=
-            direccion;
+    while(valor < limiteMin){
+        valor = limiteMax;
+    }
 
+    while(valor > limiteMax){
+        valor = limiteMin;
+    }
 
-        if (
-            candadoFecha.dia >
-            maximo
-        ) {
+    /*
+     * Si el año está en un extremo,
+     * no dejamos que continúe fuera.
+     */
+    if(
+        tipo === "anio" &&
+        valor < LIMITES.anio.min
+    ){
+        valor = LIMITES.anio.min;
+    }
 
-            candadoFecha.dia = 1;
+    if(
+        tipo === "anio" &&
+        valor > LIMITES.anio.max
+    ){
+        valor = LIMITES.anio.max;
+    }
 
-        }
+    /*
+     * Animación física:
+     * la pista continúa desplazándose
+     * la cantidad de posiciones calculadas.
+     */
+    const posicionInicial =
+        -RUEDA_RADIO * RUEDA_ITEM_ALTO;
 
+    const posicionFinal =
+        posicionInicial -
+        pasos * RUEDA_ITEM_ALTO;
 
-        if (
-            candadoFecha.dia < 1
-        ) {
+    pista.style.transition =
+        "transform .24s cubic-bezier(.18,.78,.25,1)";
 
-            candadoFecha.dia =
-                maximo;
+    pista.style.transform =
+        `translate3d(
+            0,
+            ${posicionFinal}px,
+            0
+        )`;
 
-        }
+    /*
+     * Sonido de cada posición.
+     */
+    const cantidadSonidos =
+        Math.min(
+            Math.abs(pasos),
+            8
+        );
+
+    for(
+        let i = 0;
+        i < cantidadSonidos;
+        i++
+    ){
+
+        setTimeout(
+            () => {
+
+                sonidoCandado();
+                vibrarCandado();
+
+            },
+            i * 45
+        );
 
     }
 
+    setTimeout(
+        () => {
 
-    else if (
-        tipo === "mes"
-    ) {
+            candadoFecha[tipo] =
+                valor;
 
-        candadoFecha.mes +=
-            direccion;
+            ajustarDia();
 
+            actualizarFecha();
 
-        if (
-            candadoFecha.mes > 12
-        ) {
-
-            candadoFecha.mes = 1;
-
-        }
-
-
-        if (
-            candadoFecha.mes < 1
-        ) {
-
-            candadoFecha.mes = 12;
-
-        }
-
-
-        const maximo =
-            diasDelMes(
-                candadoFecha.mes,
-                candadoFecha.anio
+            /*
+             * Volvemos a dibujar la rueda
+             * desde el centro.
+             */
+            dibujarRueda(
+                tipo,
+                0,
+                false
             );
 
+            /*
+             * Si cambiar mes o año modificó
+             * el máximo de días, actualizamos
+             * también la rueda del día.
+             */
+            if(
+                tipo === "mes" ||
+                tipo === "anio"
+            ){
 
-        if (
-            candadoFecha.dia >
-            maximo
-        ) {
+                dibujarRueda(
+                    "dia",
+                    0,
+                    false
+                );
 
-            candadoFecha.dia =
-                maximo;
+            }
 
-        }
+            if(
+                typeof finalizar ===
+                "function"
+            ){
 
-    }
+                finalizar();
 
+            }
 
-    else if (
-        tipo === "anio"
-    ) {
-
-        candadoFecha.anio +=
-            direccion;
-
-
-        if (
-            candadoFecha.anio > 2026
-        ) {
-
-            candadoFecha.anio =
-                1950;
-
-        }
-
-
-        if (
-            candadoFecha.anio < 1950
-        ) {
-
-            candadoFecha.anio =
-                2026;
-
-        }
-
-
-        const maximo =
-            diasDelMes(
-                candadoFecha.mes,
-                candadoFecha.anio
-            );
-
-
-        if (
-            candadoFecha.dia >
-            maximo
-        ) {
-
-            candadoFecha.dia =
-                maximo;
-
-        }
-
-    }
-
-
-    sonidoCandado();
-
-    vibrarCandado();
-
-    actualizarFechaCandado();
+        },
+        260
+    );
 
 }
 
 
-/* =================================================
-   CONTROL DE DESLIZAMIENTO
-================================================= */
+/* =========================================================
+   CONFIGURAR ARRASTRE DE RUEDA
+   ========================================================= */
 
-const controlesRuedas =
-    document.querySelectorAll(
-        ".rueda-ventana"
+function configurarRueda(tipo){
+
+    const ventana =
+        document.getElementById(
+            "rueda-" + tipo + "-control"
+        );
+
+    const pista =
+        document.getElementById(
+            "rueda-" + tipo
+        );
+
+    if(!ventana || !pista){
+        return;
+    }
+
+    let activo = false;
+
+    let inicioY = 0;
+
+    let ultimoY = 0;
+
+    let desplazamiento = 0;
+
+    let velocidad = 0;
+
+    let ultimoTiempo = 0;
+
+    let ultimoPasoSonido = 0;
+
+    ventana.addEventListener(
+        "pointerdown",
+        function(event){
+
+            activo = true;
+
+            inicioY =
+                event.clientY;
+
+            ultimoY =
+                event.clientY;
+
+            desplazamiento = 0;
+
+            velocidad = 0;
+
+            ultimoPasoSonido = 0;
+
+            ultimoTiempo =
+                performance.now();
+
+            pista.classList.add(
+                "arrastrando"
+            );
+
+            ventana.setPointerCapture(
+                event.pointerId
+            );
+
+            event.preventDefault();
+
+            /*
+             * Desbloquea el audio después
+             * de una interacción real.
+             */
+            try{
+
+                if(audioContext &&
+                    audioContext.state ===
+                    "suspended"
+                ){
+
+                    audioContext.resume();
+
+                }
+
+            }catch(e){}
+
+        }
     );
 
 
-controlesRuedas.forEach(
-    rueda => {
+    ventana.addEventListener(
+        "pointermove",
+        function(event){
 
-        let inicioY = 0;
-
-        let ultimoY = 0;
-
-        let arrastrando = false;
-
-
-        rueda.addEventListener(
-            "pointerdown",
-            function(event) {
-
-                arrastrando = true;
-
-                inicioY =
-                    event.clientY;
-
-                ultimoY =
-                    event.clientY;
-
-
-                try {
-
-                    rueda.setPointerCapture(
-                        event.pointerId
-                    );
-
-                }
-
-                catch(error) {}
-
+            if(!activo){
+                return;
             }
-        );
 
+            const ahora =
+                performance.now();
 
-        rueda.addEventListener(
-            "pointermove",
-            function(event) {
-
-                if (
-                    !arrastrando
-                ) {
-
-                    return;
-
-                }
-
-
-                const diferencia =
-                    event.clientY -
-                    ultimoY;
-
-
-                /*
-                   Se necesita un pequeño recorrido
-                   para producir un giro.
-                */
-
-                if (
-                    Math.abs(diferencia) >= 18
-                ) {
-
-                    /*
-                       Dedo hacia arriba = número siguiente.
-                       Dedo hacia abajo = número anterior.
-                    */
-
-                    const direccion =
-                        diferencia < 0
-                            ? 1
-                            : -1;
-
-
-                    const tipo =
-                        rueda.dataset.tipo;
-
-
-                    moverRueda(
-                        tipo,
-                        direccion
-                    );
-
-
-                    ultimoY =
-                        event.clientY;
-
-                }
-
-            }
-        );
-
-
-        rueda.addEventListener(
-            "pointerup",
-            function(event) {
-
-                arrastrando = false;
-
-
-                try {
-
-                    rueda.releasePointerCapture(
-                        event.pointerId
-                    );
-
-                }
-
-                catch(error) {}
-
-            }
-        );
-
-
-        rueda.addEventListener(
-            "pointercancel",
-            function() {
-
-                arrastrando = false;
-
-            }
-        );
-
-
-        /*
-           También permite hacer clic/tocar
-           y arrastrar con el mouse en computadora.
-        */
-
-        rueda.addEventListener(
-            "wheel",
-            function(event) {
-
-                event.preventDefault();
-
-
-                const tipo =
-                    rueda.dataset.tipo;
-
-
-                const direccion =
-                    event.deltaY > 0
-                        ? -1
-                        : 1;
-
-
-                moverRueda(
-                    tipo,
-                    direccion
+            const diferenciaTiempo =
+                Math.max(
+                    1,
+                    ahora - ultimoTiempo
                 );
 
-            },
-            {
-                passive: false
+            velocidad =
+                (
+                    event.clientY -
+                    ultimoY
+                ) /
+                diferenciaTiempo;
+
+            ultimoY =
+                event.clientY;
+
+            ultimoTiempo =
+                ahora;
+
+            desplazamiento =
+                event.clientY -
+                inicioY;
+
+            /*
+             * El dedo mueve físicamente
+             * la pista.
+             */
+            const posicionInicial =
+                -RUEDA_RADIO *
+                RUEDA_ITEM_ALTO;
+
+            pista.style.transform =
+                `translate3d(
+                    0,
+                    ${posicionInicial + desplazamiento}px,
+                    0
+                )`;
+
+            /*
+             * Cada vez que pasamos una posición,
+             * producimos un pequeño clic.
+             */
+            const pasoActual =
+                Math.trunc(
+                    -desplazamiento /
+                    RUEDA_ITEM_ALTO
+                );
+
+            if(
+                pasoActual !==
+                ultimoPasoSonido
+            ){
+
+                sonidoCandado();
+                vibrarCandado();
+
+                ultimoPasoSonido =
+                    pasoActual;
+
+            }
+
+            event.preventDefault();
+
+        }
+    );
+
+
+    function terminar(event){
+
+        if(!activo){
+            return;
+        }
+
+        activo = false;
+
+        pista.classList.remove(
+            "arrastrando"
+        );
+
+        /*
+         * Determinamos cuántas posiciones
+         * debe girar la rueda.
+         */
+        let pasos =
+            Math.round(
+                -desplazamiento /
+                RUEDA_ITEM_ALTO
+            );
+
+        /*
+         * Un movimiento rápido agrega
+         * una posición extra.
+         */
+        if(
+            Math.abs(velocidad) > .85
+        ){
+
+            if(velocidad < 0){
+
+                pasos += 1;
+
+            }else{
+
+                pasos -= 1;
+
+            }
+
+        }
+
+        /*
+         * Evitamos movimientos exagerados
+         * en una sola soltada.
+         */
+        pasos =
+            Math.max(
+                -8,
+                Math.min(
+                    8,
+                    pasos
+                )
+            );
+
+        cambiarRuedaPorPasos(
+            tipo,
+            pasos,
+            pista
+        );
+
+        try{
+
+            ventana.releasePointerCapture(
+                event.pointerId
+            );
+
+        }catch(e){}
+
+        event.preventDefault();
+
+    }
+
+
+    ventana.addEventListener(
+        "pointerup",
+        terminar
+    );
+
+    ventana.addEventListener(
+        "pointercancel",
+        terminar
+    );
+
+}
+
+
+/* =========================================================
+   INICIALIZAR CANDADO
+   ========================================================= */
+
+function inicializarCandado(){
+
+    dibujarRueda(
+        "dia",
+        0,
+        false
+    );
+
+    dibujarRueda(
+        "mes",
+        0,
+        false
+    );
+
+    dibujarRueda(
+        "anio",
+        0,
+        false
+    );
+
+    configurarRueda("dia");
+    configurarRueda("mes");
+    configurarRueda("anio");
+
+    actualizarFecha();
+
+}
+
+
+/* =========================================================
+   INICIAR
+   ========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+
+        inicializarCandado();
+
+        const campoCI =
+            document.getElementById("ci");
+
+        campoCI.addEventListener(
+            "keydown",
+            function(event){
+
+                if(
+                    event.key === "Enter"
+                ){
+
+                    consultarEstudiante();
+
+                }
+
             }
         );
 
@@ -1924,1547 +1694,492 @@ controlesRuedas.forEach(
 );
 
 
-/* Inicializar candado */
+/* =========================================================
+   MENSAJES
+   ========================================================= */
 
-actualizarFechaCandado();
+function mostrarMensaje(
+    texto,
+    tipo = "error"
+){
+
+    const mensaje =
+        document.getElementById(
+            "mensaje"
+        );
+
+    mensaje.textContent =
+        texto;
+
+    mensaje.className =
+        "mensaje " + tipo;
+
+}
 
 
-/* =================================================
-   CONSULTAR
-================================================= */
+/* =========================================================
+   CONSULTAR ESTUDIANTE
+   ========================================================= */
 
-async function consultarNota() {
+async function consultarEstudiante(){
 
     const ci =
-        document.getElementById("ci")
-        .value
-        .trim();
-
+        document.getElementById(
+            "ci"
+        ).value.trim();
 
     const fecha =
         document.getElementById(
             "fecha_nacimiento"
         ).value;
 
+    if(!ci){
 
-    const resultado =
-        document.getElementById(
-            "resultado"
+        mostrarMensaje(
+            "⚠️ Ingrese su Carnet de Identidad."
         );
-
-
-    if (
-        !ci ||
-        !fecha
-    ) {
-
-        resultado.innerHTML =
-            '<p class="error">' +
-            'Ingresa tu CI y fecha de nacimiento.' +
-            '</p>';
-
 
         return;
 
     }
 
+    if(!fecha){
 
-    resultado.innerHTML =
-        '<p class="cargando">Buscando...</p>';
+        mostrarMensaje(
+            "⚠️ Seleccione su fecha de nacimiento."
+        );
 
+        return;
 
-    try {
+    }
 
-        const respuesta =
-            await fetch(
+    const boton =
+        document.getElementById(
+            "btnConsultar"
+        );
 
-                `${SUPABASE_URL}/rest/v1/matematica?` +
+    boton.disabled = true;
 
-                `ci=eq.${encodeURIComponent(ci)}` +
+    boton.textContent =
+        "⏳ CONSULTANDO...";
 
-                `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
-
-                `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,nota_3t,final`,
-
-                {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
-                }
-
-            );
+    mostrarMensaje(
+        "",
+        "oculto"
+    );
 
 
-        if (
-            !respuesta.ok
-        ) {
+    try{
 
-            throw new Error(
-                "Error de conexión"
-            );
+        /*
+         * Consulta del estudiante.
+         */
+        const {
+            data,
+            error
+        } =
+        await supabaseClient
+            .from("matematica")
+            .select("*")
+            .eq("ci",ci)
+            .eq(
+                "fecha_nacimiento",
+                fecha
+            )
+            .maybeSingle();
 
+
+        if(error){
+            throw error;
         }
 
 
-        const datos =
-            await respuesta.json();
+        if(!data){
 
-
-        if (
-            datos.length === 0
-        ) {
-
-            resultado.innerHTML =
-                '<p class="error">' +
-                'CI o fecha de nacimiento incorrectos.' +
-                '</p>';
-
+            mostrarMensaje(
+                "❌ No se encontró un estudiante con esos datos."
+            );
 
             return;
 
         }
 
 
-        alumnoActual =
-            datos[0];
+        /*
+         * Registrar visita.
+         */
+        try{
 
+            await supabaseClient
+                .rpc(
+                    "registrar_visita_estudiante",
+                    {
+                        p_ci: ci
+                    }
+                );
 
-        /* =================================================
-           REGISTRAR VISITA DEL ESTUDIANTE
-        ================================================= */
+        }catch(errorVisita){
 
-        try {
-
-            await fetch(
-
-                `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
-
-                {
-
-                    method: "POST",
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`,
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body: JSON.stringify({
-
-                        p_estudiante_id:
-                            alumnoActual.id
-
-                    })
-
-                }
-
-            );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "No se pudo registrar la visita:",
-                error
+            console.log(
+                "No se pudo registrar visita:",
+                errorVisita
             );
 
         }
 
 
-        mostrarResultado(
-            alumnoActual
+        mostrarDatosEstudiante(
+            data
         );
 
-    }
+
+        await cargarActividades(
+            data
+        );
 
 
-    catch(error) {
+        await cargarAsistencia(
+            data
+        );
 
-        console.error(error);
+
+        /*
+         * El centralizador se muestra
+         * solamente para 5A.
+         */
+        if(
+            String(data.curso)
+                .trim()
+                .toUpperCase()
+                .includes("5A")
+        ){
+
+            document
+                .getElementById(
+                    "seccionCentralizador"
+                )
+                .classList.remove(
+                    "oculto"
+                );
+
+            await cargarCentralizador(
+                data
+            );
+
+        }else{
+
+            document
+                .getElementById(
+                    "seccionCentralizador"
+                )
+                .classList.add(
+                    "oculto"
+                );
+
+        }
 
 
-        resultado.innerHTML =
-            '<p class="error">' +
-            'No se pudo conectar con el servidor.' +
-            '</p>';
+        document
+            .getElementById(
+                "resultado"
+            )
+            .classList.remove(
+                "oculto"
+            );
+
+
+        document
+            .getElementById(
+                "tarjetaLogin"
+            )
+            .classList.add(
+                "oculto"
+            );
+
+
+    }catch(error){
+
+        console.error(
+            error
+        );
+
+        mostrarMensaje(
+            "❌ Ocurrió un error al realizar la consulta."
+        );
+
+    }finally{
+
+        boton.disabled = false;
+
+        boton.textContent =
+            "🔎 CONSULTAR MIS NOTAS";
 
     }
 
 }
 
 
-/* =================================================
-   MOSTRAR RESULTADO
-================================================= */
+/* =========================================================
+   MOSTRAR DATOS DEL ESTUDIANTE
+   ========================================================= */
 
-function mostrarResultado(
-    alumno
-) {
-
-    const nota1 =
-        redondearNota(
-            alumno.nota_1t
-        );
-
-
-    const nota2 =
-        redondearNota(
-            alumno.nota_2t
-        );
-
-
-    const nota3 =
-        redondearNota(
-            alumno.nota_3t
-        );
-
-
-    const final =
-        redondearNota(
-            alumno.final
-        );
-
-
-    let claseFinal = "";
-
-
-    if (
-        final !== null
-    ) {
-
-        claseFinal =
-            final <= 50
-                ? "reprobado"
-                : "aprobado";
-
-    }
-
+function mostrarDatosEstudiante(
+    estudiante
+){
 
     document.getElementById(
-        "resultado"
+        "datosEstudiante"
     ).innerHTML = `
 
-        <div class="nota-box">
-
-            <div class="nombre">
-
-                ${escapeHTML(
-                    alumno.nombre
-                )}
-
-            </div>
-
-
-            <div class="curso">
-
-                Curso:
-                ${escapeHTML(
-                    alumno.curso || ""
-                )}
-
-            </div>
-
-
-            <div class="aviso-provisional">
-
-                <strong>
-                    📌 RESULTADOS PROVISIONALES
-                </strong>
-
-                Las calificaciones pueden modificarse
-                con las próximas actividades y evaluaciones.
-
-            </div>
-
-
-            <div class="titulo-3t">
-
-                Nota del 3er Trimestre
-
-            </div>
-
-
-            <div class="nota">
-
-                ${
-                    nota3 === null
-                    ? "—"
-                    : nota3
-                }
-
-            </div>
-
-
-            <button
-                class="boton-detalles"
-                onclick="mostrarDetalles()"
-            >
-
-                − Ocultar detalles del 3er trimestre
-
-            </button>
-
-
-            <div
-                id="detalle3T"
-                style="display:block"
-            ></div>
-
-
-            <div class="trimestres">
-
-
-                <div class="trimestre-card">
-
-                    <div class="titulo">
-
-                        1er Trimestre
-
-                    </div>
-
-
-                    <div class="numero t1">
-
-                        ${
-                            nota1 === null
-                            ? "—"
-                            : nota1
-                        }
-
-                    </div>
-
-                </div>
-
-
-                <div class="trimestre-card">
-
-                    <div class="titulo">
-
-                        2do Trimestre
-
-                    </div>
-
-
-                    <div class="numero t2">
-
-                        ${
-                            nota2 === null
-                            ? "—"
-                            : nota2
-                        }
-
-                    </div>
-
-                </div>
-
-
-                <div class="trimestre-card">
-
-                    <div class="titulo">
-
-                        3er Trimestre
-
-                    </div>
-
-
-                    <div class="numero t3">
-
-                        ${
-                            nota3 === null
-                            ? "—"
-                            : nota3
-                        }
-
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-            <div class="final-box">
-
-                <div class="final-titulo">
-
-                    NOTA FINAL PROVISIONAL
-
-                </div>
-
-
-                <div class="nota-final ${claseFinal}">
-
-                    ${
-                        final === null
-                        ? "—"
-                        : final
-                    }
-
-                </div>
-
-
-                ${
-                    final !== null
-
-                    ? `
-
-                        <div class="estado ${claseFinal}">
-
-                            ${
-                                final <= 50
-                                ? "REPROBADO"
-                                : "APROBADO"
-                            }
-
-                        </div>
-
-                    `
-
-                    : ""
-
-                }
-
-
-            </div>
-
-
-        </div>
-
-
-        ${
-            String(
-                alumno.curso || ""
-            ).trim().toUpperCase() === "5A"
-
-            ? `
-
-                <button
-                    type="button"
-                    class="boton-centralizador"
-                    onclick="mostrarCentralizador()"
-                >
-
-                    📊 Ver mis notas de todas las materias
-
-                </button>
-
-
-                <div id="centralizador5A"></div>
-
-              `
-
-            : ""
-
-        }
+        <h2>
+            ${escaparHTML(
+                estudiante.nombre || ""
+            )}
+        </h2>
+
+        <p>
+            <strong>C.I.:</strong>
+            ${escaparHTML(
+                estudiante.ci || ""
+            )}
+        </p>
+
+        <p>
+            <strong>Curso:</strong>
+            ${escaparHTML(
+                estudiante.curso || ""
+            )}
+        </p>
 
     `;
 
 
-    mostrarDetalles();
+    document.getElementById(
+        "nota1Mostrar"
+    ).textContent =
+        mostrarNota(
+            estudiante.nota_1t
+        );
+
+
+    document.getElementById(
+        "nota2Mostrar"
+    ).textContent =
+        mostrarNota(
+            estudiante.nota_2t
+        );
+
+
+    document.getElementById(
+        "nota3Mostrar"
+    ).textContent =
+        mostrarNota(
+            estudiante.nota_3t
+        );
+
+
+    document.getElementById(
+        "finalMostrar"
+    ).textContent =
+        mostrarNota(
+            estudiante.final
+        );
 
 }
 
 
-/* =================================================
-   CENTRALIZADOR DE NOTAS - SOLO 5A
-================================================= */
+/* =========================================================
+   MOSTRAR NOTA
+   ========================================================= */
 
-const MATERIAS_CENTRALIZADOR = [
-
-    [
-        "LCO",
-        "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"
-    ],
-
-    [
-        "LEX",
-        "LENGUA EXTRANJERA"
-    ],
-
-    [
-        "SOC",
-        "CIENCIAS SOCIALES"
-    ],
-
-    [
-        "EFD",
-        "EDUCACIÓN FÍSICA Y DEPORTES"
-    ],
-
-    [
-        "EMU",
-        "EDUCACIÓN MUSICAL"
-    ],
-
-    [
-        "APV",
-        "ARTES PLÁSTICAS Y VISUALES"
-    ],
-
-    [
-        "MAT",
-        "MATEMÁTICA"
-    ],
-
-    [
-        "BIO",
-        "CIENCIAS NATURALES: BIOLOGÍA GEOGRAFÍA"
-    ],
-
-    [
-        "FIS",
-        "CIENCIAS NATURALES: FÍSICA"
-    ],
-
-    [
-        "QMC",
-        "CIENCIAS NATURALES: QUÍMICA"
-    ],
-
-    [
-        "CFS",
-        "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"
-    ],
-
-    [
-        "VER",
-        "VALORES ESPIRITUALIDAD Y RELIGIONES"
-    ],
-
-    [
-        "TTE",
-        "TÉCNICA TECNOLÓGICA ESPECIALIZADA"
-    ]
-
-];
-
-
-function mostrarValorCentralizador(
+function mostrarNota(
     valor
-) {
+){
 
-    if (
+    if(
         valor === null ||
         valor === undefined ||
         valor === ""
-    ) {
+    ){
 
-        return '<span class="sin-nota">—</span>';
-
-    }
-
-
-    const numero =
-        Number(valor);
-
-
-    if (
-        isNaN(numero)
-    ) {
-
-        return '<span class="sin-nota">' +
-            escapeHTML(
-                String(valor)
-            ) +
-            '</span>';
+        return "-";
 
     }
 
-
-    return '<span class="nota-centralizador">' +
-        Math.round(numero) +
-        '</span>';
+    return valor;
 
 }
 
 
-async function mostrarCentralizador() {
+/* =========================================================
+   CARGAR ACTIVIDADES
+   ========================================================= */
+
+async function cargarActividades(
+    estudiante
+){
 
     const contenedor =
         document.getElementById(
-            "centralizador5A"
+            "tablaActividades"
         );
-
-
-    if (
-        !contenedor ||
-        !alumnoActual
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        String(
-            alumnoActual.curso || ""
-        ).trim().toUpperCase() !== "5A"
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        contenedor.innerHTML.trim() !== ""
-    ) {
-
-        contenedor.innerHTML = "";
-
-        return;
-
-    }
-
 
     contenedor.innerHTML =
-        '<p class="cargando">' +
-        'Cargando notas de todas las materias...' +
-        '</p>';
+        "⏳ Cargando actividades...";
 
 
-    try {
+    try{
 
-        const respuesta =
-            await fetch(
-
-                `${SUPABASE_URL}/rest/v1/centralizador?` +
-
-                `ci=eq.${encodeURIComponent(
-                    alumnoActual.ci || ""
-                )}` +
-
-                `&select=*`,
-
+        const {
+            data: actividades,
+            error: errorActividades
+        } =
+        await supabaseClient
+            .from("actividades")
+            .select("*")
+            .order(
+                "id",
                 {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
+                    ascending:true
                 }
-
             );
 
 
-        if (
-            !respuesta.ok
-        ) {
-
-            const detalleError =
-                await respuesta.text();
-
-
-            console.error(
-                "Error centralizador Supabase:",
-                detalleError
-            );
-
-
-            throw new Error(
-                "Error al consultar centralizador: " +
-                detalleError
-            );
-
+        if(errorActividades){
+            throw errorActividades;
         }
 
 
-        const datos =
-            await respuesta.json();
-
-
-        if (
-            !datos.length
-        ) {
-
-            contenedor.innerHTML = `
-
-                <div class="centralizador-box">
-
-                    <div class="centralizador-titulo">
-
-                        📊 NOTAS DE TODAS LAS MATERIAS
-
-                    </div>
-
-
-                    <p style="
-                        text-align:center;
-                        color:#666;
-                        line-height:1.5;
-                    ">
-
-                        No se encontraron notas
-                        en el centralizador.
-
-                    </p>
-
-                </div>
-
-            `;
-
-
-            return;
-
-        }
-
-
-        const centralizador =
-            datos[0];
-
-
-        let filas = "";
-
-
-        const obtenerNotaCentralizador =
-            (
-                codigo,
-                periodo
-            ) => {
-
-                const nombreColumna =
-                    codigo +
-                    periodo;
-
-
-                return centralizador[
-                    nombreColumna
-                ] ??
-                centralizador[
-                    nombreColumna.toLowerCase()
-                ];
-
-            };
-
-
-        MATERIAS_CENTRALIZADOR.forEach(
-            (
-                [
-                    codigo,
-                    nombre
-                ]
-            ) => {
-
-                filas += `
-
-                    <tr>
-
-                        <td>
-
-                            ${escapeHTML(
-                                nombre
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            ${mostrarValorCentralizador(
-                                obtenerNotaCentralizador(
-                                    codigo,
-                                    "1"
-                                )
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            ${mostrarValorCentralizador(
-                                obtenerNotaCentralizador(
-                                    codigo,
-                                    "2"
-                                )
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            ${mostrarValorCentralizador(
-                                obtenerNotaCentralizador(
-                                    codigo,
-                                    "3"
-                                )
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            ${mostrarValorCentralizador(
-                                obtenerNotaCentralizador(
-                                    codigo,
-                                    "A"
-                                )
-                            )}
-
-                        </td>
-
-                    </tr>
-
-                `;
-
-            }
-        );
-
-
-        contenedor.innerHTML = `
-
-            <div class="centralizador-box">
-
-                <div class="centralizador-titulo">
-
-                    📊 NOTAS DE TODAS LAS MATERIAS
-
-                </div>
-
-
-                <div style="
-                    text-align:center;
-                    color:#666;
-                    font-size:13px;
-                    margin-bottom:12px;
-                ">
-
-                    Curso: 5A
-
-                </div>
-
-
-                <div class="centralizador-tabla-contenedor">
-
-                    <table class="centralizador-tabla">
-
-                        <thead>
-
-                            <tr>
-
-                                <th>
-                                    Materia
-                                </th>
-
-                                <th>
-                                    1er Trimestre
-                                </th>
-
-                                <th>
-                                    2do Trimestre
-                                </th>
-
-                                <th>
-                                    3er Trimestre
-                                </th>
-
-                                <th>
-                                    Promedio Anual
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            ${filas}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-
-    catch (error) {
-
-        console.error(error);
-
-
-        contenedor.innerHTML = `
-
-            <div class="centralizador-box">
-
-                <div class="centralizador-titulo">
-
-                    📊 NOTAS DE TODAS LAS MATERIAS
-
-                </div>
-
-
-                <p class="error">
-
-                    No se pudo cargar
-                    el centralizador de notas.
-
-                </p>
-
-
-                <p style="
-                    font-size:12px;
-                    color:#777;
-                    text-align:center;
-                    line-height:1.4;
-                ">
-
-                    La consulta del centralizador
-                    debe utilizar la columna <b>ci</b>.
-
-                </p>
-
-            </div>
-
-        `;
-
-    }
-
-}
-
-
-/* =================================================
-   DETALLES DEL 3ER TRIMESTRE
-================================================= */
-
-async function mostrarDetalles() {
-
-    const contenedor =
-        document.getElementById(
-            "detalle3T"
-        );
-
-
-    if (!contenedor) {
-
-        return;
-
-    }
-
-
-    if (
-        contenedor.style.display ===
-        "block" &&
-        contenedor.innerHTML.trim() !== ""
-    ) {
-
-        contenedor.style.display =
-            "none";
-
-
-        const boton =
-            document.querySelector(
-                ".boton-detalles"
+        const {
+            data: calificaciones,
+            error: errorCalificaciones
+        } =
+        await supabaseClient
+            .from("calificaciones")
+            .select("*")
+            .eq(
+                "ci",
+                estudiante.ci
             );
 
 
-        if (boton) {
-
-            boton.innerHTML =
-                "📚 Ver detalles del 3er trimestre";
-
+        if(errorCalificaciones){
+            throw errorCalificaciones;
         }
 
 
-        return;
-
-    }
-
-
-    contenedor.style.display =
-        "block";
-
-
-    const boton =
-        document.querySelector(
-            ".boton-detalles"
-        );
-
-
-    if (boton) {
-
-        boton.innerHTML =
-            "− Ocultar detalles del 3er trimestre";
-
-    }
-
-
-    contenedor.innerHTML =
-        '<div class="cargando">' +
-        'Cargando detalles...' +
-        '</div>';
-
-
-    try {
-
-        const respuesta =
-            await fetch(
-
-                `${SUPABASE_URL}/rest/v1/actividades?` +
-
-                `curso=eq.${encodeURIComponent(
-                    alumnoActual.curso
-                )}` +
-
-                `&trimestre=eq.3` +
-
-                `&select=id,categoria,nombre,orden,puntaje_maximo,fecha` +
-
-                `&order=orden`,
-
-                {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
-                }
-
-            );
-
-
-        if (
-            !respuesta.ok
-        ) {
-
-            throw new Error(
-                "Error actividades"
-            );
-
-        }
-
-
-        const actividades =
-            await respuesta.json();
-
-
-        if (
+        if(
+            !actividades ||
             actividades.length === 0
-        ) {
+        ){
 
-            contenedor.innerHTML = `
-
-                <div class="detalle">
-
-                    <div class="detalle-titulo">
-
-                        📊 Detalles del 3er trimestre
-
-                    </div>
-
-
-                    <p style="
-                        text-align:center;
-                        color:#666;
-                        line-height:1.5;
-                    ">
-
-                        Todavía no hay actividades
-                        registradas.
-
-                    </p>
-
-                </div>
-
-            `;
-
-
-            await mostrarAsistenciaEnDetalle();
-
+            contenedor.innerHTML =
+                `<div class="info-box">
+                    No existen actividades registradas.
+                 </div>`;
 
             return;
 
         }
-
-
-        const ids =
-            actividades.map(
-                a => a.id
-            );
-
-
-        const respuestaNotas =
-            await fetch(
-
-                `${SUPABASE_URL}/rest/v1/calificaciones?` +
-
-                `estudiante_id=eq.${alumnoActual.id}` +
-
-                `&actividad_id=in.(${ids.join(",")})` +
-
-                `&select=actividad_id,nota,observacion`,
-
-                {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
-                }
-
-            );
-
-
-        const calificaciones =
-            await respuestaNotas.json();
-
-
-        const mapa = {};
-
-
-        calificaciones.forEach(
-            c => {
-
-                mapa[
-                    c.actividad_id
-                ] = {
-
-                    nota:
-                        c.nota,
-
-                    observacion:
-                        c.observacion
-
-                };
-
-            }
-        );
-
-
-        const categorias = [
-
-            {
-
-                codigo: "SER",
-
-                titulo:
-                    "🌟 Actitud y Responsabilidad",
-
-                clase: "ser"
-
-            },
-
-            {
-
-                codigo: "SABER",
-
-                titulo:
-                    "📝 Evaluaciones",
-
-                clase: "saber"
-
-            },
-
-            {
-
-                codigo: "HACER",
-
-                titulo:
-                    "📚 Tareas y Trabajos",
-
-                clase: "hacer"
-
-            },
-
-            {
-
-                codigo: "AUTOEVALUACION",
-
-                titulo:
-                    "🎯 Autoevaluación",
-
-                clase: "auto"
-
-            }
-
-        ];
 
 
         let html = `
-
-            <div class="detalle">
-
-                <div class="detalle-titulo">
-
-                    📊 ¿Cómo se calcula tu nota
-                    del 3er trimestre?
-
-                </div>
-
-
-                <p style="
-                    text-align:center;
-                    color:#666;
-                    font-size:14px;
-                    line-height:1.5;
-                ">
-
-                    Aquí puedes revisar las
-                    calificaciones registradas.
-
-                </p>
-
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actividad</th>
+                        <th>Categoría</th>
+                        <th>Nota</th>
+                        <th>Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
 
 
-        categorias.forEach(
-            categoria => {
+        actividades.forEach(
+            actividad => {
 
-                const lista =
-                    actividades.filter(
-                        a =>
-                            a.categoria ===
-                            categoria.codigo
-                    );
-
-
-                if (
-                    lista.length === 0
-                ) {
-
-                    return;
-
-                }
+                const calificacion =
+                    (calificaciones || [])
+                        .find(
+                            c =>
+                                String(
+                                    c.actividad_id
+                                ) ===
+                                String(
+                                    actividad.id
+                                )
+                        );
 
 
-                const limite =
-
-                    categoria.codigo === "SER"
-
-                    ? 10
-
-                    : categoria.codigo === "SABER"
-
-                    ? 45
-
-                    : categoria.codigo === "HACER"
-
-                    ? 40
-
-                    : 5;
+                const nota =
+                    calificacion
+                        ? calificacion.nota
+                        : "";
 
 
-                let suma = 0;
-
-                let cantidad = 0;
-
-
-                lista.forEach(
-                    actividad => {
-
-                        const registro =
-                            mapa[
-                                actividad.id
-                            ];
-
-
-                        const nota =
-                            registro
-                            ? registro.nota
-                            : null;
-
-
-                        if (
-                            nota !== null &&
-                            nota !== undefined &&
-                            nota !== ""
-                        ) {
-
-                            const numero =
-                                Number(nota);
-
-
-                            if (
-                                !isNaN(numero)
-                            ) {
-
-                                suma +=
-                                    numero;
-
-                                cantidad++;
-
-                            }
-
-                        }
-
-                    }
-                );
-
-
-                let promedio = 0;
-
-
-                if (
-                    cantidad > 0
-                ) {
-
-                    promedio =
-                        suma / cantidad;
-
-                }
-
-
-                const promedioMostrado =
-
-                    cantidad > 0
-
-                    ? Math.round(
-                        promedio
-                    )
-
-                    : null;
+                const observacion =
+                    calificacion &&
+                    calificacion.observacion
+                        ? calificacion.observacion
+                        : "";
 
 
                 html += `
+                    <tr>
+                        <td>
+                            ${escaparHTML(
+                                actividad.nombre ||
+                                actividad.titulo ||
+                                ""
+                            )}
+                        </td>
 
-                    <div class="categoria">
+                        <td>
+                            ${escaparHTML(
+                                actividad.categoria ||
+                                ""
+                            )}
+                        </td>
 
-                        <div class="
-                            categoria-titulo
-                            ${categoria.clase}
-                        ">
+                        <td
+                            class="nota-actividad"
+                            onclick="mostrarObservacion(
+                                '${escaparHTML(
+                                    observacion
+                                )}'
+                            )"
+                        >
+                            ${mostrarNota(nota)}
+                        </td>
 
-                            ${categoria.titulo}
-
-                        </div>
-
-                `;
-
-
-                lista.forEach(
-                    actividad => {
-
-                        const registro =
-                            mapa[
-                                actividad.id
-                            ];
-
-
-                        const nota =
-                            registro
-                            ? registro.nota
-                            : null;
-
-
-                        const observacion =
-
-                            registro &&
-                            registro.observacion
-
-                            ? escapeHTML(
-                                registro.observacion
-                            )
-
-                            : "";
-
-
-                        const valor =
-
-                            nota === null ||
-                            nota === undefined ||
-                            nota === ""
-
-                            ? "—"
-
-                            : Math.round(
-                                Number(nota)
-                            );
-
-
-                        html += `
-
-                            <div class="actividad-fila">
-
-                                <div class="actividad-nombre">
-
-                                    ${escapeHTML(
-                                        actividad.nombre
-                                    )}
-
-
-                                    <span class="actividad-fecha">
-
-                                        📅 ${
-                                            actividad.fecha
-                                            ? formatearFecha(
-                                                actividad.fecha
-                                            )
-                                            : "Sin fecha"
-                                        }
-
+                        <td>
+                            ${
+                                observacion
+                                    ? `
+                                    <span
+                                        class="observacion"
+                                    >
+                                        ${escaparHTML(
+                                            observacion
+                                        )}
                                     </span>
+                                    `
+                                    : "-"
+                            }
+                        </td>
 
-                                </div>
-
-
-                                <div class="actividad-nota">
-
-                                    <div>
-
-                                        ${valor}
-
-                                        / ${actividad.puntaje_maximo}
-
-                                    </div>
-
-
-                                    ${
-                                        observacion
-
-                                        ? `
-
-                                            <div class="actividad-observacion">
-
-                                                📝 ${observacion}
-
-                                            </div>
-
-                                        `
-
-                                        : ""
-
-                                    }
-
-                                </div>
-
-                            </div>
-
-                        `;
-
-                    }
-                );
-
-
-                html += `
-
-                        <div class="resumen-categoria">
-
-                            <span>
-
-                                Promedio de esta sección
-
-                            </span>
-
-
-                            <span class="promedio-valor">
-
-                                ${
-                                    promedioMostrado === null
-
-                                    ? "—"
-
-                                    : promedioMostrado
-                                }
-
-                                pts
-
-                            </span>
-
-                        </div>
-
-
-                    </div>
-
+                    </tr>
                 `;
 
             }
         );
 
 
-        const nota3 =
-            redondearNota(
-                alumnoActual.nota_3t
-            );
-
-
         html += `
-
-                <div class="resultado-3t">
-
-                    <div class="resultado-3t-titulo">
-
-                        ⭐ Nota del 3er trimestre
-                        provisional
-
-                    </div>
-
-
-                    <div class="resultado-3t-numero">
-
-                        ${
-                            nota3 === null
-
-                            ? "—"
-
-                            : nota3
-                        }
-
-                    </div>
-
-
-                    <div style="
-                        color:#666;
-                        font-size:13px;
-                        line-height:1.5;
-                    ">
-
-                        Resultado provisional.
-
-                        <br>
-
-                        Las calificaciones pueden modificarse
-                        con las próximas actividades y evaluaciones.
-
-                    </div>
-
-                </div>
-
-
-            </div>
-
+                </tbody>
+            </table>
         `;
 
 
@@ -3472,944 +2187,517 @@ async function mostrarDetalles() {
             html;
 
 
-        await mostrarAsistenciaEnDetalle();
-
-    }
-
-
-    catch(error) {
+    }catch(error){
 
         console.error(error);
 
-
-        contenedor.innerHTML = `
-
-            <div class="detalle">
-
-                <p class="error">
-
-                    No se pudo cargar el detalle
-                    del tercer trimestre.
-
-                </p>
-
-            </div>
-
-        `;
-
-
-        await mostrarAsistenciaEnDetalle();
+        contenedor.innerHTML =
+            `<div class="mensaje error">
+                No se pudieron cargar las actividades.
+             </div>`;
 
     }
 
 }
 
 
-/* =================================================
-   MOSTRAR ASISTENCIA
-================================================= */
+/* =========================================================
+   OBSERVACIÓN
+   ========================================================= */
 
-async function mostrarAsistenciaEnDetalle() {
+function mostrarObservacion(
+    texto
+){
 
-    const contenedor =
-        document.getElementById(
-            "detalle3T"
-        );
-
-
-    if (!contenedor) {
+    if(
+        !texto ||
+        texto === "undefined"
+    ){
 
         return;
 
     }
 
+    alert(
+        "📝 Observación:\n\n" +
+        texto
+    );
 
-    try {
+}
 
-        const respuesta =
-            await fetch(
 
-                `${SUPABASE_URL}/rest/v1/asistencia?` +
+/* =========================================================
+   CARGAR ASISTENCIA
+   ========================================================= */
 
-                `estudiante_id=eq.${alumnoActual.id}` +
+async function cargarAsistencia(
+    estudiante
+){
 
-                `&fecha=gte.${INICIO_3T}` +
+    const contenedor =
+        document.getElementById(
+            "tablaAsistencia"
+        );
 
-                `&fecha=lte.${FIN_3T}` +
+    contenedor.innerHTML =
+        "⏳ Cargando asistencia...";
 
-                `&select=id,fecha,estado,observacion` +
 
-                `&order=fecha.desc`,
+    try{
 
+        const {
+            data,
+            error
+        } =
+        await supabaseClient
+            .from("asistencia")
+            .select("*")
+            .eq(
+                "ci",
+                estudiante.ci
+            )
+            .order(
+                "fecha",
                 {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
+                    ascending:true
                 }
-
             );
 
 
-        if (
-            !respuesta.ok
-        ) {
+        if(error){
+            throw error;
+        }
 
-            throw new Error(
-                "Error asistencia"
-            );
+
+        if(
+            !data ||
+            data.length === 0
+        ){
+
+            contenedor.innerHTML =
+                `<div class="info-box">
+                    No existen registros de asistencia.
+                 </div>`;
+
+            return;
 
         }
 
 
-        const asistencias =
-            await respuesta.json();
+        let totalA = 0;
+        let totalR = 0;
+        let totalL = 0;
+        let totalF = 0;
 
 
-        let presentes = 0;
-
-        let atrasos = 0;
-
-        let licencias = 0;
-
-        let faltas = 0;
-
-
-        asistencias.forEach(
-            asistencia => {
+        data.forEach(
+            registro => {
 
                 const estado =
-                    normalizarEstado(
-                        asistencia.estado
-                    );
+                    String(
+                        registro.estado ||
+                        ""
+                    ).toUpperCase();
 
-
-                if (
-                    estado === "asistio"
-                ) {
-
-                    presentes++;
-
+                if(estado === "A"){
+                    totalA++;
                 }
 
-                else if (
-                    estado === "atraso"
-                ) {
-
-                    atrasos++;
-
+                if(estado === "R"){
+                    totalR++;
                 }
 
-                else if (
-                    estado === "licencia"
-                ) {
-
-                    licencias++;
-
+                if(estado === "L"){
+                    totalL++;
                 }
 
-                else if (
-                    estado === "falta"
-                ) {
-
-                    faltas++;
-
+                if(estado === "F"){
+                    totalF++;
                 }
 
             }
         );
 
 
-        let filas = "";
+        let html = `
+
+            <div class="info-box">
+
+                <strong>Resumen:</strong><br>
+
+                🟢 Asistencias:
+                ${totalA}
+                &nbsp;&nbsp;
+
+                🟠 Atrasos:
+                ${totalR}
+                &nbsp;&nbsp;
+
+                🔵 Licencias:
+                ${totalL}
+                &nbsp;&nbsp;
+
+                🔴 Faltas:
+                ${totalF}
+
+            </div>
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+        `;
 
 
-        asistencias.forEach(
-            asistencia => {
+        data.forEach(
+            registro => {
 
                 const estado =
-                    normalizarEstado(
-                        asistencia.estado
-                    );
+                    String(
+                        registro.estado ||
+                        ""
+                    ).toUpperCase();
 
 
-                const informacion =
-                    obtenerEstadoAsistencia(
-                        estado
-                    );
+                let clase =
+                    "asistencia-" +
+                    estado;
 
 
-                const observacion =
-
-                    asistencia.observacion
-
-                    ? escapeHTML(
-                        asistencia.observacion
-                    )
-
-                    : "—";
-
-
-                filas += `
-
+                html += `
                     <tr>
 
                         <td>
-
                             ${formatearFecha(
-                                asistencia.fecha
+                                registro.fecha
                             )}
-
                         </td>
 
-
-                        <td>
-
-                            <span class="
-                                estado-asistencia
-                                ${informacion.clase}
-                            ">
-
-                                ${informacion.icono}
-
-                                ${informacion.nombre}
-
-                            </span>
-
-                        </td>
-
-
-                        <td class="observacion">
-
-                            ${observacion}
-
+                        <td
+                            class="${clase}"
+                        >
+                            ${textoAsistencia(
+                                estado
+                            )}
                         </td>
 
                     </tr>
-
                 `;
 
             }
         );
 
 
-        let contenidoTabla = "";
-
-
-        if (
-            asistencias.length === 0
-        ) {
-
-            contenidoTabla = `
-
-                <div class="asistencia-vacia">
-
-                    Todavía no hay registros
-                    de asistencia.
-
-                </div>
-
-            `;
-
-        }
-
-        else {
-
-            contenidoTabla = `
-
-                <div class="tabla-asistencia-contenedor">
-
-                    <table class="tabla-asistencia">
-
-                        <thead>
-
-                            <tr>
-
-                                <th>
-
-                                    📅 Fecha
-
-                                </th>
-
-                                <th>
-
-                                    Estado
-
-                                </th>
-
-                                <th>
-
-                                    Observación
-
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            ${filas}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            `;
-
-        }
-
-
-        const asistenciaHTML = `
-
-            <div class="asistencia-box">
-
-
-                <div class="asistencia-titulo">
-
-                    🗓️ Asistencia del 3er Trimestre
-
-                </div>
-
-
-                <div class="asistencia-descripcion">
-
-                    Resumen de tu asistencia
-                    durante el tercer trimestre.
-
-                </div>
-
-
-                <div class="asistencia-resumen">
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🟢
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-presente
-                        ">
-
-                            ${presentes}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            ASISTENCIAS
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🟡
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-atraso
-                        ">
-
-                            ${atrasos}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            ATRASOS
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🔵
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-licencia
-                        ">
-
-                            ${licencias}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            CON LICENCIA
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🔴
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-falta
-                        ">
-
-                            ${faltas}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            SIN LICENCIA
-
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <button
-                    type="button"
-                    class="boton-asistencia"
-                    onclick="alternarDetalleAsistencia(this)"
-                >
-
-                    − Ocultar detalle de asistencia
-
-                </button>
-
-
-                <div
-                    class="detalle-asistencia"
-                    id="tablaDetalleAsistencia"
-                    style="display:block"
-                >
-
-                    ${contenidoTabla}
-
-                </div>
-
-
-            </div>
-
+        html += `
+                </tbody>
+            </table>
         `;
 
 
-        contenedor.insertAdjacentHTML(
-            "beforeend",
-            asistenciaHTML
-        );
-
-    }
+        contenedor.innerHTML =
+            html;
 
 
-    catch(error) {
+    }catch(error){
 
         console.error(error);
 
-
-        const asistenciaError = `
-
-            <div class="asistencia-box">
-
-
-                <div class="asistencia-titulo">
-
-                    🗓️ Asistencia del 3er Trimestre
-
-                </div>
-
-
-                <div class="asistencia-resumen">
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">🟢</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-presente
-                        ">0</span>
-
-                        <span class="texto">
-                            ASISTENCIAS
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">🟡</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-atraso
-                        ">0</span>
-
-                        <span class="texto">
-                            ATRASOS
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">🔵</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-licencia
-                        ">0</span>
-
-                        <span class="texto">
-                            CON LICENCIA
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">🔴</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-falta
-                        ">0</span>
-
-                        <span class="texto">
-                            SIN LICENCIA
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div class="asistencia-vacia">
-
-                    No se pudo cargar el detalle
-                    de asistencia.
-
-                </div>
-
-            </div>
-
-        `;
-
-
-        contenedor.insertAdjacentHTML(
-            "beforeend",
-            asistenciaError
-        );
+        contenedor.innerHTML =
+            `<div class="mensaje error">
+                No se pudo cargar la asistencia.
+             </div>`;
 
     }
 
 }
 
 
-/* =================================================
-   MOSTRAR / OCULTAR TABLA ASISTENCIA
-================================================= */
+/* =========================================================
+   TEXTO ASISTENCIA
+   ========================================================= */
 
-function alternarDetalleAsistencia(
-    boton
-) {
-
-    const tabla =
-        document.getElementById(
-            "tablaDetalleAsistencia"
-        );
-
-
-    if (!tabla) {
-
-        return;
-
-    }
-
-
-    if (
-        tabla.style.display ===
-        "block"
-    ) {
-
-        tabla.style.display =
-            "none";
-
-
-        boton.innerHTML =
-            "＋ Ver detalle de asistencia";
-
-    }
-
-    else {
-
-        tabla.style.display =
-            "block";
-
-
-        boton.innerHTML =
-            "− Ocultar detalle de asistencia";
-
-    }
-
-}
-
-
-/* =================================================
-   NORMALIZAR ESTADO
-================================================= */
-
-function normalizarEstado(
+function textoAsistencia(
     estado
-) {
+){
 
-    if (
-        estado === null ||
-        estado === undefined
-    ) {
+    const valores = {
 
-        return "";
+        A:"A — ASISTIÓ",
 
-    }
+        R:"R — ATRASO",
 
+        L:"L — LICENCIA",
 
-    return String(estado)
+        F:"F — FALTA"
 
-        .trim()
+    };
 
-        .toLowerCase()
-
-        .normalize("NFD")
-
-        .replace(
-            /[\u0300-\u036f]/g,
-            ""
-        );
+    return valores[estado] ||
+        estado ||
+        "-";
 
 }
 
 
-/* =================================================
-   ESTADOS DE ASISTENCIA
-================================================= */
-
-function obtenerEstadoAsistencia(
-    estado
-) {
-
-    switch (estado) {
-
-        case "asistio":
-
-            return {
-
-                nombre:
-                    "Asistencia",
-
-                icono:
-                    "🟢",
-
-                clase:
-                    "estado-presente"
-
-            };
-
-
-        case "atraso":
-
-            return {
-
-                nombre:
-                    "Atraso",
-
-                icono:
-                    "🟡",
-
-                clase:
-                    "estado-atraso"
-
-            };
-
-
-        case "licencia":
-
-            return {
-
-                nombre:
-                    "Falta con licencia",
-
-                icono:
-                    "🔵",
-
-                clase:
-                    "estado-licencia"
-
-            };
-
-
-        case "falta":
-
-            return {
-
-                nombre:
-                    "Falta sin licencia",
-
-                icono:
-                    "🔴",
-
-                clase:
-                    "estado-falta"
-
-            };
-
-
-        default:
-
-            return {
-
-                nombre:
-                    estado
-                    ? estado
-                    : "Sin registro",
-
-                icono:
-                    "⚪",
-
-                clase:
-                    ""
-
-            };
-
-    }
-
-}
-
-
-/* =================================================
+/* =========================================================
    FORMATEAR FECHA
-================================================= */
+   ========================================================= */
 
 function formatearFecha(
     fecha
-) {
+){
 
-    if (!fecha) {
-
-        return "—";
-
+    if(!fecha){
+        return "-";
     }
-
 
     const partes =
         String(fecha)
-        .split("-");
+            .split("-");
 
-
-    if (
+    if(
         partes.length === 3
-    ) {
+    ){
 
-        const anio =
-            Number(
-                partes[0]
-            );
-
-
-        const mes =
-            Number(
-                partes[1]
-            ) - 1;
-
-
-        const dia =
-            Number(
-                partes[2]
-            );
-
-
-        const fechaLocal =
-            new Date(
-                anio,
-                mes,
-                dia
-            );
-
-
-        const diasSemana = [
-
-            "Domingo",
-            "Lunes",
-            "Martes",
-            "Miércoles",
-            "Jueves",
-            "Viernes",
-            "Sábado"
-
-        ];
-
-
-        const nombreDia =
-            diasSemana[
-                fechaLocal.getDay()
-            ];
-
-
-        return `${nombreDia}, ${String(dia).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}/${anio}`;
+        return (
+            partes[2] +
+            "/" +
+            partes[1] +
+            "/" +
+            partes[0]
+        );
 
     }
-
 
     return fecha;
 
 }
 
 
-/* =================================================
-   CONVERTIR NOTA
-================================================= */
+/* =========================================================
+   CENTRALIZADOR
+   ========================================================= */
 
-function convertirNota(
-    nota
-) {
+async function cargarCentralizador(
+    estudiante
+){
 
-    if (
+    const contenedor =
+        document.getElementById(
+            "tablaCentralizador"
+        );
 
-        nota === null ||
+    contenedor.innerHTML =
+        "⏳ Cargando centralizador...";
 
-        nota === undefined ||
 
-        nota === ""
+    try{
 
-    ) {
+        const {
+            data,
+            error
+        } =
+        await supabaseClient
+            .from("centralizador")
+            .select("*")
+            .eq(
+                "ci",
+                estudiante.ci
+            );
 
-        return null;
+
+        if(error){
+            throw error;
+        }
+
+
+        if(
+            !data ||
+            data.length === 0
+        ){
+
+            contenedor.innerHTML =
+                `<div class="info-box">
+                    No existen datos del centralizador.
+                 </div>`;
+
+            return;
+
+        }
+
+
+        const columnas =
+            Object.keys(
+                data[0]
+            );
+
+
+        let html = `
+            <table>
+
+                <thead>
+                    <tr>
+        `;
+
+
+        columnas.forEach(
+            columna => {
+
+                html += `
+                    <th>
+                        ${escaparHTML(
+                            columna
+                        )}
+                    </th>
+                `;
+
+            }
+        );
+
+
+        html += `
+                    </tr>
+                </thead>
+
+                <tbody>
+        `;
+
+
+        data.forEach(
+            fila => {
+
+                html += `
+                    <tr>
+                `;
+
+
+                columnas.forEach(
+                    columna => {
+
+                        html += `
+                            <td>
+                                ${
+                                    fila[columna] ??
+                                    ""
+                                }
+                            </td>
+                        `;
+
+                    }
+                );
+
+
+                html += `
+                    </tr>
+                `;
+
+            }
+        );
+
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+
+        contenedor.innerHTML =
+            html;
+
+
+    }catch(error){
+
+        console.error(error);
+
+        contenedor.innerHTML =
+            `<div class="mensaje error">
+                No se pudo cargar el centralizador.
+             </div>`;
 
     }
-
-
-    const numero =
-        Number(nota);
-
-
-    if (
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return numero;
 
 }
 
 
-/* =================================================
-   REDONDEAR NOTA
-================================================= */
+/* =========================================================
+   CERRAR CONSULTA
+   ========================================================= */
 
-function redondearNota(
-    nota
-) {
+function cerrarConsulta(){
 
-    const numero =
-        convertirNota(
-            nota
+    document
+        .getElementById(
+            "resultado"
+        )
+        .classList.add(
+            "oculto"
         );
 
 
-    if (
-        numero === null
-    ) {
+    document
+        .getElementById(
+            "tarjetaLogin"
+        )
+        .classList.remove(
+            "oculto"
+        );
 
-        return null;
 
-    }
+    document
+        .getElementById(
+            "ci"
+        )
+        .value = "";
 
 
-    return Math.round(
-        numero
+    mostrarMensaje(
+        "",
+        "oculto"
     );
 
 }
 
 
-/* =================================================
+/* =========================================================
    ESCAPAR HTML
-================================================= */
+   ========================================================= */
 
-function escapeHTML(
+function escaparHTML(
     texto
-) {
+){
+
+    if(
+        texto === null ||
+        texto === undefined
+    ){
+
+        return "";
+
+    }
 
     return String(texto)
-
         .replace(
             /&/g,
             "&amp;"
         )
-
         .replace(
             /</g,
             "&lt;"
         )
-
         .replace(
             />/g,
             "&gt;"
         )
-
         .replace(
             /"/g,
             "&quot;"
         )
-
         .replace(
             /'/g,
             "&#039;"
@@ -4417,33 +2705,7 @@ function escapeHTML(
 
 }
 
-
-/* =================================================
-   OBTENER CI DESDE LA URL
-================================================= */
-
-const parametros =
-    new URLSearchParams(
-        window.location.search
-    );
-
-
-const ci =
-    parametros.get("ci");
-
-
-if (ci) {
-
-    document.getElementById(
-        "ci"
-    ).value =
-        ci;
-
-}
-
 </script>
 
-
 </body>
-
 </html>
