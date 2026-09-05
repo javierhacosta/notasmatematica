@@ -539,129 +539,300 @@ button:hover {
 
 
 /* =================================================
-   CANDADO DE FECHA DE NACIMIENTO
+   CANDADO DE MALETA - FECHA DE NACIMIENTO
 ================================================= */
 
-.candado-fecha {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    padding: 22px 10px 15px;
-    background: linear-gradient(#263238, #455a64);
-    border-radius: 15px;
+.maleta-lock {
+    margin-top: 8px;
+    border-radius: 17px;
+    overflow: hidden;
+    background:
+        linear-gradient(
+            145deg,
+            #263238,
+            #37474f 50%,
+            #20272b
+        );
+    border: 2px solid #455a64;
     box-shadow:
-        inset 0 2px 4px rgba(255,255,255,.15),
-        inset 0 -4px 8px rgba(0,0,0,.3),
-        0 4px 10px rgba(0,0,0,.2);
+        0 7px 18px rgba(0,0,0,.20),
+        inset 0 1px 0 rgba(255,255,255,.10);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
 }
 
-.candado-arco {
+.maleta-tapa {
+    padding: 11px 8px;
+    text-align: center;
+    color: #eceff1;
+    background:
+        linear-gradient(
+            #263238,
+            #1c2327
+        );
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: .7px;
+    border-bottom: 1px solid #546e7a;
+}
+
+.maleta-cuerpo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 15px 7px 9px;
+    position: relative;
+}
+
+/* Línea central que simula la abertura del candado */
+
+.maleta-cuerpo::before {
+    content: "";
     position: absolute;
-    width: 55px;
-    height: 28px;
-    border: 6px solid #cfd8dc;
-    border-bottom: none;
-    border-radius: 30px 30px 0 0;
-    top: -17px;
-    left: 50%;
-    transform: translateX(-50%);
-    box-shadow: inset 0 2px 3px rgba(0,0,0,.3);
+    left: 8px;
+    right: 8px;
+    top: 82px;
+    height: 2px;
+    background: rgba(0,0,0,.35);
+    pointer-events: none;
+    z-index: 4;
 }
 
-.rueda-contenedor {
+/* Cada rueda */
+
+.rueda-grupo {
+    width: 82px;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.rueda-anio {
+    width: 104px;
+}
+
+/* Ventana de la rueda */
+
+.rueda-ventana {
+    height: 86px;
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 7px;
+    border: 2px solid #90a4ae;
+    background:
+        linear-gradient(
+            90deg,
+            #b0bec5,
+            #eceff1 18%,
+            #f5f5f5 50%,
+            #cfd8dc 82%,
+            #90a4ae
+        );
+    box-shadow:
+        inset 0 8px 10px rgba(0,0,0,.16),
+        inset 0 -8px 10px rgba(0,0,0,.15),
+        0 2px 3px rgba(0,0,0,.25);
+    cursor: grab;
+    touch-action: none;
+}
+
+.rueda-ventana:active {
+    cursor: grabbing;
+}
+
+/* Degradado arriba y abajo */
+
+.rueda-ventana::before,
+.rueda-ventana::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 22px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.rueda-ventana::before {
+    top: 0;
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(207,216,220,.95),
+            rgba(207,216,220,0)
+        );
+}
+
+.rueda-ventana::after {
+    bottom: 0;
+    background:
+        linear-gradient(
+            to top,
+            rgba(207,216,220,.95),
+            rgba(207,216,220,0)
+        );
+}
+
+/* Los tres números visibles */
+
+.rueda-numeros {
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
-}
-
-.rueda {
-    width: 58px;
-    height: 78px;
-    background: linear-gradient(
-        to right,
-        #eeeeee,
-        #ffffff,
-        #eeeeee
-    );
-    border-radius: 7px;
-    overflow: hidden;
-    box-shadow:
-        inset 0 0 8px rgba(0,0,0,.25),
-        0 2px 4px rgba(0,0,0,.25);
-    user-select: none;
-    touch-action: none;
-    cursor: ns-resize;
-}
-
-.numero-rueda {
-    height: 26px;
-    display: flex;
     justify-content: center;
-    align-items: center;
-    font-size: 15px;
-    color: #999;
+    position: relative;
+    z-index: 2;
+    transition: transform .12s cubic-bezier(.2,.8,.3,1);
+}
+
+.numero-secundario {
+    height: 27px;
+    line-height: 27px;
+    font-family: "Courier New", monospace;
+    font-size: 17px;
     font-weight: bold;
+    color: #78909c;
+    opacity: .65;
 }
 
-.numero-rueda.seleccionado {
-    height: 26px;
-    color: #222;
-    font-size: 20px;
-    background: #f5f5f5;
-    border-top: 1px solid #ccc;
-    border-bottom: 1px solid #ccc;
-}
-
-.flecha {
-    width: 42px;
-    height: 24px;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: white;
-    font-size: 15px;
-    line-height: 20px;
-    cursor: pointer;
-}
-
-.flecha:hover {
-    background: transparent;
-    color: #90caf9;
-}
-
-.etiqueta-rueda {
-    margin-top: 7px;
-    color: white;
-    font-size: 10px;
+.numero-central {
+    height: 32px;
+    line-height: 32px;
+    font-family: "Courier New", monospace;
+    font-size: 29px;
     font-weight: bold;
+    color: #263238;
     letter-spacing: 1px;
+    text-shadow: 0 1px 0 white;
 }
 
-.separador {
-    color: white;
-    font-size: 24px;
+.rueda-titulo {
+    color: #cfd8dc;
+    font-size: 9px;
     font-weight: bold;
-    margin-top: -5px;
+    letter-spacing: 1.5px;
+    margin-top: 5px;
 }
 
-.candado-instruccion {
-    text-align: center;
-    color: #666;
-    font-size: 12px;
-    margin-top: 8px;
-    line-height: 1.4;
-}
+/* Pequeños remaches del candado */
 
-.candado-fecha.desbloqueado {
+.remache {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #90a4ae;
     box-shadow:
-        inset 0 2px 4px rgba(255,255,255,.15),
-        inset 0 -4px 8px rgba(0,0,0,.3),
-        0 0 12px rgba(46,125,50,.5);
+        inset 0 1px 1px rgba(255,255,255,.7),
+        0 1px 2px rgba(0,0,0,.5);
+    z-index: 8;
+}
+
+.remache.izquierda {
+    left: 6px;
+    top: 6px;
+}
+
+.remache.derecha {
+    right: 6px;
+    top: 6px;
+}
+
+/* Separadores */
+
+.separador-ruedas {
+    color: #cfd8dc;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: -3px;
+}
+
+/* Indicador */
+
+.maleta-indicador {
+    padding: 9px 10px 11px;
+    text-align: center;
+    color: #b0bec5;
+    font-size: 11px;
+    line-height: 1.4;
+    border-top: 1px solid #455a64;
+    background: rgba(0,0,0,.10);
+}
+
+.maleta-indicador strong {
+    color: #eceff1;
+}
+
+/* Animación al girar */
+
+.rueda-giro-arriba {
+    animation: giroArriba .13s ease-out;
+}
+
+.rueda-giro-abajo {
+    animation: giroAbajo .13s ease-out;
+}
+
+@keyframes giroArriba {
+
+    0% {
+        transform: translateY(14px);
+        opacity: .4;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+}
+
+@keyframes giroAbajo {
+
+    0% {
+        transform: translateY(-14px);
+        opacity: .4;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+}
+
+@media(max-width:500px) {
+
+    .maleta-cuerpo {
+        gap: 2px;
+        padding-left: 4px;
+        padding-right: 4px;
+    }
+
+    .rueda-grupo {
+        width: 73px;
+    }
+
+    .rueda-anio {
+        width: 91px;
+    }
+
+    .numero-central {
+        font-size: 27px;
+    }
+
+    .numero-secundario {
+        font-size: 16px;
+    }
+
+    .separador-ruedas {
+        font-size: 16px;
+    }
+
 }
 
 
@@ -738,56 +909,7 @@ button:hover {
     font-weight: normal;
 }
 
-
 @media(max-width:500px) {
-
-    .contenedor {
-        width: 94%;
-        padding: 20px;
-    }
-
-    .nota {
-        font-size: 75px;
-    }
-
-    .trimestres {
-        gap: 6px;
-    }
-
-    .trimestre-card {
-        padding: 10px 3px;
-    }
-
-    .asistencia-resumen {
-        grid-template-columns:
-        repeat(2, 1fr);
-        gap: 7px;
-    }
-
-    .tabla-asistencia {
-        font-size: 11px;
-    }
-
-    .tabla-asistencia th,
-    .tabla-asistencia td {
-        padding: 8px 3px;
-    }
-
-
-    .candado-fecha {
-        gap: 4px;
-        padding-left: 5px;
-        padding-right: 5px;
-    }
-
-    .rueda {
-        width: 55px;
-    }
-
-    .separador {
-        font-size: 20px;
-    }
-
 
     .centralizador-tabla {
         font-size: 11px;
@@ -865,208 +987,149 @@ button:hover {
     </label>
 
 
-    <div class="candado-fecha">
-
-        <div class="candado-arco"></div>
-
-
-        <div class="rueda-contenedor">
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('dia', -1)"
-            >
-                ▲
-            </button>
-
-
-            <div
-                class="rueda"
-                id="rueda-dia"
-            >
-
-                <div
-                    class="numero-rueda"
-                    id="dia-arriba"
-                >
-                    30
-                </div>
-
-                <div
-                    class="numero-rueda seleccionado"
-                    id="dia-actual"
-                >
-                    1
-                </div>
-
-                <div
-                    class="numero-rueda"
-                    id="dia-abajo"
-                >
-                    2
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('dia', 1)"
-            >
-                ▼
-            </button>
-
-
-            <span class="etiqueta-rueda">
-                DÍA
-            </span>
-
-        </div>
-
-
-        <div class="separador">
-            |
-        </div>
-
-
-        <div class="rueda-contenedor">
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('mes', -1)"
-            >
-                ▲
-            </button>
-
-
-            <div
-                class="rueda"
-                id="rueda-mes"
-            >
-
-                <div
-                    class="numero-rueda"
-                    id="mes-arriba"
-                >
-                    12
-                </div>
-
-                <div
-                    class="numero-rueda seleccionado"
-                    id="mes-actual"
-                >
-                    1
-                </div>
-
-                <div
-                    class="numero-rueda"
-                    id="mes-abajo"
-                >
-                    2
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('mes', 1)"
-            >
-                ▼
-            </button>
-
-
-            <span class="etiqueta-rueda">
-                MES
-            </span>
-
-        </div>
-
-
-        <div class="separador">
-            |
-        </div>
-
-
-        <div class="rueda-contenedor">
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('anio', -1)"
-            >
-                ▲
-            </button>
-
-
-            <div
-                class="rueda"
-                id="rueda-anio"
-            >
-
-                <div
-                    class="numero-rueda"
-                    id="anio-arriba"
-                >
-                    2007
-                </div>
-
-                <div
-                    class="numero-rueda seleccionado"
-                    id="anio-actual"
-                >
-                    2008
-                </div>
-
-                <div
-                    class="numero-rueda"
-                    id="anio-abajo"
-                >
-                    2009
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="flecha"
-                onclick="moverRueda('anio', 1)"
-            >
-                ▼
-            </button>
-
-
-            <span class="etiqueta-rueda">
-                AÑO
-            </span>
-
-        </div>
-
-    </div>
-
-
-    <div class="candado-instruccion">
-
-        🔐 Desliza las ruedas o utiliza las flechas
-        para colocar tu fecha
-
-    </div>
-
-
+    <!--
+        Este input oculto conserva exactamente el mismo ID
+        que utilizaba el sistema anterior.
+    -->
     <input
         type="hidden"
         id="fecha_nacimiento"
     >
 
 
-    <button
-        onclick="consultarNota()"
+    <!-- =================================================
+         CANDADO DE COMBINACIÓN
+    ================================================= -->
+
+    <div
+        class="maleta-lock"
+        aria-label="Candado de seguridad para fecha de nacimiento"
     >
+
+        <div class="maleta-tapa">
+
+            🔒 CÓDIGO DE SEGURIDAD
+
+        </div>
+
+
+        <div class="maleta-cuerpo">
+
+
+            <div class="rueda-grupo">
+
+                <div class="remache izquierda"></div>
+                <div class="remache derecha"></div>
+
+                <div
+                    class="rueda-ventana"
+                    id="rueda-dia-control"
+                    data-tipo="dia"
+                >
+
+                    <div
+                        class="rueda-numeros"
+                        id="rueda-dia"
+                    ></div>
+
+                </div>
+
+                <div class="rueda-titulo">
+
+                    DÍA
+
+                </div>
+
+            </div>
+
+
+            <div class="separador-ruedas">
+
+                •
+
+            </div>
+
+
+            <div class="rueda-grupo">
+
+                <div class="remache izquierda"></div>
+                <div class="remache derecha"></div>
+
+                <div
+                    class="rueda-ventana"
+                    id="rueda-mes-control"
+                    data-tipo="mes"
+                >
+
+                    <div
+                        class="rueda-numeros"
+                        id="rueda-mes"
+                    ></div>
+
+                </div>
+
+                <div class="rueda-titulo">
+
+                    MES
+
+                </div>
+
+            </div>
+
+
+            <div class="separador-ruedas">
+
+                •
+
+            </div>
+
+
+            <div class="rueda-grupo rueda-anio">
+
+                <div class="remache izquierda"></div>
+                <div class="remache derecha"></div>
+
+                <div
+                    class="rueda-ventana"
+                    id="rueda-anio-control"
+                    data-tipo="anio"
+                >
+
+                    <div
+                        class="rueda-numeros"
+                        id="rueda-anio"
+                    ></div>
+
+                </div>
+
+                <div class="rueda-titulo">
+
+                    AÑO
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+        <div class="maleta-indicador">
+
+            👆 <strong>Desliza el dedo</strong>
+            sobre los números para girar el candado
+
+            <br>
+
+            🔊 Cada giro produce un clic
+
+        </div>
+
+
+    </div>
+
+
+    <button onclick="consultarNota()">
 
         Consultar mi nota
 
@@ -1109,7 +1172,7 @@ const FIN_3T = "2026-12-31";
 
 
 /* =================================================
-   CANDADO DE FECHA DE NACIMIENTO
+   CANDADO DE MALETA
 ================================================= */
 
 const candadoFecha = {
@@ -1118,188 +1181,446 @@ const candadoFecha = {
 
     mes: 1,
 
-    anio: 2008
+    anio: 2000
 
 };
 
 
-const ANIO_MINIMO = 1990;
+/* -------------------------------------------------
+   SONIDO MECÁNICO DEL CANDADO
+------------------------------------------------- */
 
-const ANIO_MAXIMO = 2020;
-
-
-/* =================================================
-   ACTUALIZAR RUEDAS
-================================================= */
-
-function actualizarRuedas() {
-
-    let dia =
-        candadoFecha.dia;
-
-    let mes =
-        candadoFecha.mes;
-
-    let anio =
-        candadoFecha.anio;
+let audioContext = null;
 
 
-    const diasDelMes =
-        new Date(
-            anio,
-            mes,
-            0
-        ).getDate();
+function sonidoCandado() {
+
+    try {
+
+        if (!audioContext) {
+
+            audioContext =
+                new (
+                    window.AudioContext ||
+                    window.webkitAudioContext
+                )();
+
+        }
 
 
-    if (
-        dia > diasDelMes
-    ) {
+        if (
+            audioContext.state === "suspended"
+        ) {
 
-        candadoFecha.dia =
-            diasDelMes;
+            audioContext.resume();
 
-        dia =
-            diasDelMes;
+        }
+
+
+        const ahora =
+            audioContext.currentTime;
+
+
+        const oscilador =
+            audioContext.createOscillator();
+
+
+        const ganancia =
+            audioContext.createGain();
+
+
+        oscilador.type = "square";
+
+
+        oscilador.frequency.setValueAtTime(
+            1250,
+            ahora
+        );
+
+
+        oscilador.frequency.exponentialRampToValueAtTime(
+            520,
+            ahora + 0.045
+        );
+
+
+        ganancia.gain.setValueAtTime(
+            0.0001,
+            ahora
+        );
+
+
+        ganancia.gain.exponentialRampToValueAtTime(
+            0.08,
+            ahora + 0.004
+        );
+
+
+        ganancia.gain.exponentialRampToValueAtTime(
+            0.0001,
+            ahora + 0.055
+        );
+
+
+        oscilador.connect(ganancia);
+
+        ganancia.connect(
+            audioContext.destination
+        );
+
+
+        oscilador.start(ahora);
+
+        oscilador.stop(
+            ahora + 0.06
+        );
 
     }
 
+    catch(error) {
 
-    const diaArriba =
+        console.log(
+            "Audio no disponible"
+        );
 
-        dia === 1
-
-        ? diasDelMes
-
-        : dia - 1;
-
-
-    const diaAbajo =
-
-        dia === diasDelMes
-
-        ? 1
-
-        : dia + 1;
-
-
-    document.getElementById(
-        "dia-arriba"
-    ).textContent =
-        diaArriba;
-
-
-    document.getElementById(
-        "dia-actual"
-    ).textContent =
-        dia;
-
-
-    document.getElementById(
-        "dia-abajo"
-    ).textContent =
-        diaAbajo;
-
-
-    const mesArriba =
-
-        mes === 1
-
-        ? 12
-
-        : mes - 1;
-
-
-    const mesAbajo =
-
-        mes === 12
-
-        ? 1
-
-        : mes + 1;
-
-
-    document.getElementById(
-        "mes-arriba"
-    ).textContent =
-        mesArriba;
-
-
-    document.getElementById(
-        "mes-actual"
-    ).textContent =
-        mes;
-
-
-    document.getElementById(
-        "mes-abajo"
-    ).textContent =
-        mesAbajo;
-
-
-    const anioArriba =
-
-        anio <= ANIO_MINIMO
-
-        ? ANIO_MAXIMO
-
-        : anio - 1;
-
-
-    const anioAbajo =
-
-        anio >= ANIO_MAXIMO
-
-        ? ANIO_MINIMO
-
-        : anio + 1;
-
-
-    document.getElementById(
-        "anio-arriba"
-    ).textContent =
-        anioArriba;
-
-
-    document.getElementById(
-        "anio-actual"
-    ).textContent =
-        anio;
-
-
-    document.getElementById(
-        "anio-abajo"
-    ).textContent =
-        anioAbajo;
-
-
-    actualizarFechaOculta();
+    }
 
 }
 
 
-/* =================================================
-   MOVER RUEDA
-================================================= */
+/* -------------------------------------------------
+   VIBRACIÓN
+------------------------------------------------- */
+
+function vibrarCandado() {
+
+    try {
+
+        if (
+            navigator.vibrate
+        ) {
+
+            navigator.vibrate(8);
+
+        }
+
+    }
+
+    catch(error) {}
+
+}
+
+
+/* -------------------------------------------------
+   CANTIDAD DE DÍAS DEL MES
+------------------------------------------------- */
+
+function diasDelMes(
+    mes,
+    anio
+) {
+
+    return new Date(
+        anio,
+        mes,
+        0
+    ).getDate();
+
+}
+
+
+/* -------------------------------------------------
+   VALOR ANTERIOR
+------------------------------------------------- */
+
+function valorAnterior(
+    tipo
+) {
+
+    if (
+        tipo === "dia"
+    ) {
+
+        const maximo =
+            diasDelMes(
+                candadoFecha.mes,
+                candadoFecha.anio
+            );
+
+        return candadoFecha.dia <= 1
+            ? maximo
+            : candadoFecha.dia - 1;
+
+    }
+
+
+    if (
+        tipo === "mes"
+    ) {
+
+        return candadoFecha.mes <= 1
+            ? 12
+            : candadoFecha.mes - 1;
+
+    }
+
+
+    return candadoFecha.anio <= 1950
+        ? 2026
+        : candadoFecha.anio - 1;
+
+}
+
+
+/* -------------------------------------------------
+   VALOR SIGUIENTE
+------------------------------------------------- */
+
+function valorSiguiente(
+    tipo
+) {
+
+    if (
+        tipo === "dia"
+    ) {
+
+        const maximo =
+            diasDelMes(
+                candadoFecha.mes,
+                candadoFecha.anio
+            );
+
+        return candadoFecha.dia >= maximo
+            ? 1
+            : candadoFecha.dia + 1;
+
+    }
+
+
+    if (
+        tipo === "mes"
+    ) {
+
+        return candadoFecha.mes >= 12
+            ? 1
+            : candadoFecha.mes + 1;
+
+    }
+
+
+    return candadoFecha.anio >= 2026
+        ? 1950
+        : candadoFecha.anio + 1;
+
+}
+
+
+/* -------------------------------------------------
+   FORMATO DEL NÚMERO
+------------------------------------------------- */
+
+function formatoRueda(
+    tipo,
+    numero
+) {
+
+    if (
+        tipo === "anio"
+    ) {
+
+        return String(numero);
+
+    }
+
+    return String(numero)
+        .padStart(2, "0");
+
+}
+
+
+/* -------------------------------------------------
+   DIBUJAR RUEDA
+------------------------------------------------- */
+
+function dibujarRueda(
+    tipo,
+    direccion = 0
+) {
+
+    const elemento =
+        document.getElementById(
+            tipo === "dia"
+                ? "rueda-dia"
+                : tipo === "mes"
+                    ? "rueda-mes"
+                    : "rueda-anio"
+        );
+
+
+    if (!elemento) {
+
+        return;
+
+    }
+
+
+    const anterior =
+        formatoRueda(
+            tipo,
+            valorAnterior(tipo)
+        );
+
+
+    const actual =
+        formatoRueda(
+            tipo,
+            tipo === "dia"
+                ? candadoFecha.dia
+                : tipo === "mes"
+                    ? candadoFecha.mes
+                    : candadoFecha.anio
+        );
+
+
+    const siguiente =
+        formatoRueda(
+            tipo,
+            valorSiguiente(tipo)
+        );
+
+
+    elemento.innerHTML = `
+
+        <div class="numero-secundario">
+
+            ${anterior}
+
+        </div>
+
+
+        <div class="numero-central">
+
+            ${actual}
+
+        </div>
+
+
+        <div class="numero-secundario">
+
+            ${siguiente}
+
+        </div>
+
+    `;
+
+
+    elemento.classList.remove(
+        "rueda-giro-arriba",
+        "rueda-giro-abajo"
+    );
+
+
+    if (
+        direccion !== 0
+    ) {
+
+        void elemento.offsetWidth;
+
+
+        elemento.classList.add(
+
+            direccion > 0
+
+                ? "rueda-giro-arriba"
+
+                : "rueda-giro-abajo"
+
+        );
+
+    }
+
+}
+
+
+/* -------------------------------------------------
+   ACTUALIZAR FECHA OCULTA
+------------------------------------------------- */
+
+function actualizarFechaCandado() {
+
+    const dia =
+        String(
+            candadoFecha.dia
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    const mes =
+        String(
+            candadoFecha.mes
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    const anio =
+        String(
+            candadoFecha.anio
+        );
+
+
+    document.getElementById(
+        "fecha_nacimiento"
+    ).value =
+
+        `${anio}-${mes}-${dia}`;
+
+
+    dibujarRueda(
+        "dia"
+    );
+
+    dibujarRueda(
+        "mes"
+    );
+
+    dibujarRueda(
+        "anio"
+    );
+
+}
+
+
+/* -------------------------------------------------
+   MOVER UNA RUEDA
+------------------------------------------------- */
 
 function moverRueda(
     tipo,
     direccion
 ) {
 
+    if (
+        direccion === 0
+    ) {
+
+        return;
+
+    }
+
 
     if (
         tipo === "dia"
     ) {
 
-
-        const diasDelMes =
-
-            new Date(
-                candadoFecha.anio,
+        const maximo =
+            diasDelMes(
                 candadoFecha.mes,
-                0
-            ).getDate();
+                candadoFecha.anio
+            );
 
 
         candadoFecha.dia +=
@@ -1307,22 +1628,21 @@ function moverRueda(
 
 
         if (
-            candadoFecha.dia < 1
+            candadoFecha.dia >
+            maximo
         ) {
 
-            candadoFecha.dia =
-                diasDelMes;
+            candadoFecha.dia = 1;
 
         }
 
 
         if (
-            candadoFecha.dia >
-            diasDelMes
+            candadoFecha.dia < 1
         ) {
 
             candadoFecha.dia =
-                1;
+                maximo;
 
         }
 
@@ -1333,27 +1653,42 @@ function moverRueda(
         tipo === "mes"
     ) {
 
-
         candadoFecha.mes +=
             direccion;
-
-
-        if (
-            candadoFecha.mes < 1
-        ) {
-
-            candadoFecha.mes =
-                12;
-
-        }
 
 
         if (
             candadoFecha.mes > 12
         ) {
 
-            candadoFecha.mes =
-                1;
+            candadoFecha.mes = 1;
+
+        }
+
+
+        if (
+            candadoFecha.mes < 1
+        ) {
+
+            candadoFecha.mes = 12;
+
+        }
+
+
+        const maximo =
+            diasDelMes(
+                candadoFecha.mes,
+                candadoFecha.anio
+            );
+
+
+        if (
+            candadoFecha.dia >
+            maximo
+        ) {
+
+            candadoFecha.dia =
+                maximo;
 
         }
 
@@ -1364,214 +1699,234 @@ function moverRueda(
         tipo === "anio"
     ) {
 
-
         candadoFecha.anio +=
             direccion;
 
 
         if (
-            candadoFecha.anio <
-            ANIO_MINIMO
+            candadoFecha.anio > 2026
         ) {
 
             candadoFecha.anio =
-                ANIO_MAXIMO;
+                1950;
 
         }
 
 
         if (
-            candadoFecha.anio >
-            ANIO_MAXIMO
+            candadoFecha.anio < 1950
         ) {
 
             candadoFecha.anio =
-                ANIO_MINIMO;
+                2026;
+
+        }
+
+
+        const maximo =
+            diasDelMes(
+                candadoFecha.mes,
+                candadoFecha.anio
+            );
+
+
+        if (
+            candadoFecha.dia >
+            maximo
+        ) {
+
+            candadoFecha.dia =
+                maximo;
 
         }
 
     }
 
 
-    actualizarRuedas();
+    sonidoCandado();
+
+    vibrarCandado();
+
+    actualizarFechaCandado();
 
 }
 
 
 /* =================================================
-   FECHA OCULTA PARA SUPABASE
+   CONTROL DE DESLIZAMIENTO
 ================================================= */
 
-function actualizarFechaOculta() {
-
-
-    const dia =
-
-        String(
-            candadoFecha.dia
-        ).padStart(
-            2,
-            "0"
-        );
-
-
-    const mes =
-
-        String(
-            candadoFecha.mes
-        ).padStart(
-            2,
-            "0"
-        );
-
-
-    const anio =
-        candadoFecha.anio;
-
-
-    document.getElementById(
-        "fecha_nacimiento"
-    ).value =
-
-        `${anio}-${mes}-${dia}`;
-
-}
-
-
-/* =================================================
-   DESLIZAR LAS RUEDAS CON EL DEDO
-================================================= */
-
-function activarDeslizamientoRueda(
-    elemento,
-    tipo
-) {
-
-
-    let inicioY = null;
-
-
-    elemento.addEventListener(
-        "touchstart",
-        function(evento) {
-
-
-            inicioY =
-                evento.touches[0].clientY;
-
-
-        },
-        {
-            passive: true
-        }
+const controlesRuedas =
+    document.querySelectorAll(
+        ".rueda-ventana"
     );
 
 
-    elemento.addEventListener(
-        "touchend",
-        function(evento) {
+controlesRuedas.forEach(
+    rueda => {
+
+        let inicioY = 0;
+
+        let ultimoY = 0;
+
+        let arrastrando = false;
 
 
-            if (
-                inicioY === null
-            ) {
+        rueda.addEventListener(
+            "pointerdown",
+            function(event) {
 
-                return;
+                arrastrando = true;
+
+                inicioY =
+                    event.clientY;
+
+                ultimoY =
+                    event.clientY;
+
+
+                try {
+
+                    rueda.setPointerCapture(
+                        event.pointerId
+                    );
+
+                }
+
+                catch(error) {}
 
             }
+        );
 
 
-            const finalY =
-
-                evento.changedTouches[0]
-                .clientY;
-
-
-            const diferencia =
-
-                finalY -
-                inicioY;
-
-
-            if (
-                Math.abs(
-                    diferencia
-                ) >= 15
-            ) {
-
+        rueda.addEventListener(
+            "pointermove",
+            function(event) {
 
                 if (
-                    diferencia < 0
+                    !arrastrando
                 ) {
 
-                    moverRueda(
-                        tipo,
-                        1
-                    );
+                    return;
 
                 }
 
-                else {
+
+                const diferencia =
+                    event.clientY -
+                    ultimoY;
+
+
+                /*
+                   Se necesita un pequeño recorrido
+                   para producir un giro.
+                */
+
+                if (
+                    Math.abs(diferencia) >= 18
+                ) {
+
+                    /*
+                       Dedo hacia arriba = número siguiente.
+                       Dedo hacia abajo = número anterior.
+                    */
+
+                    const direccion =
+                        diferencia < 0
+                            ? 1
+                            : -1;
+
+
+                    const tipo =
+                        rueda.dataset.tipo;
+
 
                     moverRueda(
                         tipo,
-                        -1
+                        direccion
                     );
+
+
+                    ultimoY =
+                        event.clientY;
 
                 }
 
             }
+        );
 
 
-            inicioY = null;
+        rueda.addEventListener(
+            "pointerup",
+            function(event) {
 
-        },
-        {
-            passive: true
-        }
-    );
-
-}
+                arrastrando = false;
 
 
-/* =================================================
-   ACTIVAR RUEDAS
-================================================= */
+                try {
 
-activarDeslizamientoRueda(
+                    rueda.releasePointerCapture(
+                        event.pointerId
+                    );
 
-    document.getElementById(
-        "rueda-dia"
-    ),
+                }
 
-    "dia"
+                catch(error) {}
 
+            }
+        );
+
+
+        rueda.addEventListener(
+            "pointercancel",
+            function() {
+
+                arrastrando = false;
+
+            }
+        );
+
+
+        /*
+           También permite hacer clic/tocar
+           y arrastrar con el mouse en computadora.
+        */
+
+        rueda.addEventListener(
+            "wheel",
+            function(event) {
+
+                event.preventDefault();
+
+
+                const tipo =
+                    rueda.dataset.tipo;
+
+
+                const direccion =
+                    event.deltaY > 0
+                        ? -1
+                        : 1;
+
+
+                moverRueda(
+                    tipo,
+                    direccion
+                );
+
+            },
+            {
+                passive: false
+            }
+        );
+
+    }
 );
 
 
-activarDeslizamientoRueda(
+/* Inicializar candado */
 
-    document.getElementById(
-        "rueda-mes"
-    ),
-
-    "mes"
-
-);
-
-
-activarDeslizamientoRueda(
-
-    document.getElementById(
-        "rueda-anio"
-    ),
-
-    "anio"
-
-);
-
-
-actualizarRuedas();
+actualizarFechaCandado();
 
 
 /* =================================================
@@ -1580,23 +1935,19 @@ actualizarRuedas();
 
 async function consultarNota() {
 
-
     const ci =
-
         document.getElementById("ci")
         .value
         .trim();
 
 
     const fecha =
-
         document.getElementById(
             "fecha_nacimiento"
         ).value;
 
 
     const resultado =
-
         document.getElementById(
             "resultado"
         );
@@ -1607,13 +1958,9 @@ async function consultarNota() {
         !fecha
     ) {
 
-
         resultado.innerHTML =
-
             '<p class="error">' +
-
             'Ingresa tu CI y fecha de nacimiento.' +
-
             '</p>';
 
 
@@ -1623,38 +1970,37 @@ async function consultarNota() {
 
 
     resultado.innerHTML =
-
         '<p class="cargando">Buscando...</p>';
 
 
     try {
 
+        const respuesta =
+            await fetch(
 
-        const respuesta = await fetch(
+                `${SUPABASE_URL}/rest/v1/matematica?` +
 
-            `${SUPABASE_URL}/rest/v1/matematica?` +
+                `ci=eq.${encodeURIComponent(ci)}` +
 
-            `ci=eq.${encodeURIComponent(ci)}` +
+                `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
 
-            `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
+                `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,nota_3t,final`,
 
-            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,nota_3t,final`,
+                {
 
-            {
+                    headers: {
 
-                headers: {
+                        "apikey":
+                            SUPABASE_KEY,
 
-                    "apikey":
-                        SUPABASE_KEY,
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
 
-                    "Authorization":
-                        `Bearer ${SUPABASE_KEY}`
+                    }
 
                 }
 
-            }
-
-        );
+            );
 
 
         if (
@@ -1676,13 +2022,9 @@ async function consultarNota() {
             datos.length === 0
         ) {
 
-
             resultado.innerHTML =
-
                 '<p class="error">' +
-
                 'CI o fecha de nacimiento incorrectos.' +
-
                 '</p>';
 
 
@@ -1700,7 +2042,6 @@ async function consultarNota() {
         ================================================= */
 
         try {
-
 
             await fetch(
 
@@ -1734,19 +2075,13 @@ async function consultarNota() {
 
             );
 
-
         }
-
 
         catch (error) {
 
-
             console.error(
-
                 "No se pudo registrar la visita:",
-
                 error
-
             );
 
         }
@@ -1761,16 +2096,12 @@ async function consultarNota() {
 
     catch(error) {
 
-
         console.error(error);
 
 
         resultado.innerHTML =
-
             '<p class="error">' +
-
             'No se pudo conectar con el servidor.' +
-
             '</p>';
 
     }
@@ -1782,8 +2113,9 @@ async function consultarNota() {
    MOSTRAR RESULTADO
 ================================================= */
 
-function mostrarResultado(alumno) {
-
+function mostrarResultado(
+    alumno
+) {
 
     const nota1 =
         redondearNota(
@@ -1816,14 +2148,10 @@ function mostrarResultado(alumno) {
         final !== null
     ) {
 
-
         claseFinal =
-
             final <= 50
-
-            ? "reprobado"
-
-            : "aprobado";
+                ? "reprobado"
+                : "aprobado";
 
     }
 
@@ -2018,8 +2346,11 @@ function mostrarResultado(alumno) {
 
         </div>
 
+
         ${
-            String(alumno.curso || "").trim().toUpperCase() === "5A"
+            String(
+                alumno.curso || ""
+            ).trim().toUpperCase() === "5A"
 
             ? `
 
@@ -2032,6 +2363,7 @@ function mostrarResultado(alumno) {
                     📊 Ver mis notas de todas las materias
 
                 </button>
+
 
                 <div id="centralizador5A"></div>
 
@@ -2055,37 +2387,77 @@ function mostrarResultado(alumno) {
 
 const MATERIAS_CENTRALIZADOR = [
 
-    ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
+    [
+        "LCO",
+        "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"
+    ],
 
-    ["LEX", "LENGUA EXTRANJERA"],
+    [
+        "LEX",
+        "LENGUA EXTRANJERA"
+    ],
 
-    ["SOC", "CIENCIAS SOCIALES"],
+    [
+        "SOC",
+        "CIENCIAS SOCIALES"
+    ],
 
-    ["EFD", "EDUCACIÓN FÍSICA Y DEPORTES"],
+    [
+        "EFD",
+        "EDUCACIÓN FÍSICA Y DEPORTES"
+    ],
 
-    ["EMU", "EDUCACIÓN MUSICAL"],
+    [
+        "EMU",
+        "EDUCACIÓN MUSICAL"
+    ],
 
-    ["APV", "ARTES PLÁSTICAS Y VISUALES"],
+    [
+        "APV",
+        "ARTES PLÁSTICAS Y VISUALES"
+    ],
 
-    ["MAT", "MATEMÁTICA"],
+    [
+        "MAT",
+        "MATEMÁTICA"
+    ],
 
-    ["BIO", "CIENCIAS NATURALES: BIOLOGÍA GEOGRAFÍA"],
+    [
+        "BIO",
+        "CIENCIAS NATURALES: BIOLOGÍA GEOGRAFÍA"
+    ],
 
-    ["FIS", "CIENCIAS NATURALES: FÍSICA"],
+    [
+        "FIS",
+        "CIENCIAS NATURALES: FÍSICA"
+    ],
 
-    ["QMC", "CIENCIAS NATURALES: QUÍMICA"],
+    [
+        "QMC",
+        "CIENCIAS NATURALES: QUÍMICA"
+    ],
 
-    ["CFS", "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"],
+    [
+        "CFS",
+        "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"
+    ],
 
-    ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES"],
+    [
+        "VER",
+        "VALORES ESPIRITUALIDAD Y RELIGIONES"
+    ],
 
-    ["TTE", "TÉCNICA TECNOLÓGICA ESPECIALIZADA"]
+    [
+        "TTE",
+        "TÉCNICA TECNOLÓGICA ESPECIALIZADA"
+    ]
 
 ];
 
 
-function mostrarValorCentralizador(valor) {
-
+function mostrarValorCentralizador(
+    valor
+) {
 
     if (
         valor === null ||
@@ -2107,7 +2479,9 @@ function mostrarValorCentralizador(valor) {
     ) {
 
         return '<span class="sin-nota">' +
-            escapeHTML(String(valor)) +
+            escapeHTML(
+                String(valor)
+            ) +
             '</span>';
 
     }
@@ -2121,7 +2495,6 @@ function mostrarValorCentralizador(valor) {
 
 
 async function mostrarCentralizador() {
-
 
     const contenedor =
         document.getElementById(
@@ -2142,9 +2515,7 @@ async function mostrarCentralizador() {
     if (
         String(
             alumnoActual.curso || ""
-        )
-        .trim()
-        .toUpperCase() !== "5A"
+        ).trim().toUpperCase() !== "5A"
     ) {
 
         return;
@@ -2164,48 +2535,44 @@ async function mostrarCentralizador() {
 
 
     contenedor.innerHTML =
-
         '<p class="cargando">' +
-
         'Cargando notas de todas las materias...' +
-
         '</p>';
 
 
     try {
 
+        const respuesta =
+            await fetch(
 
-        const respuesta = await fetch(
+                `${SUPABASE_URL}/rest/v1/centralizador?` +
 
-            `${SUPABASE_URL}/rest/v1/centralizador?` +
+                `ci=eq.${encodeURIComponent(
+                    alumnoActual.ci || ""
+                )}` +
 
-            `ci=eq.${encodeURIComponent(
-                alumnoActual.ci || ""
-            )}` +
+                `&select=*`,
 
-            `&select=*`,
+                {
 
-            {
+                    headers: {
 
-                headers: {
+                        "apikey":
+                            SUPABASE_KEY,
 
-                    "apikey":
-                        SUPABASE_KEY,
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
 
-                    "Authorization":
-                        `Bearer ${SUPABASE_KEY}`
+                    }
 
                 }
 
-            }
-
-        );
+            );
 
 
         if (
             !respuesta.ok
         ) {
-
 
             const detalleError =
                 await respuesta.text();
@@ -2233,7 +2600,6 @@ async function mostrarCentralizador() {
             !datos.length
         ) {
 
-
             contenedor.innerHTML = `
 
                 <div class="centralizador-box">
@@ -2243,6 +2609,7 @@ async function mostrarCentralizador() {
                         📊 NOTAS DE TODAS LAS MATERIAS
 
                     </div>
+
 
                     <p style="
                         text-align:center;
@@ -2278,9 +2645,9 @@ async function mostrarCentralizador() {
                 periodo
             ) => {
 
-
                 const nombreColumna =
-                    codigo + periodo;
+                    codigo +
+                    periodo;
 
 
                 return centralizador[
@@ -2294,52 +2661,71 @@ async function mostrarCentralizador() {
 
 
         MATERIAS_CENTRALIZADOR.forEach(
-
-            ([codigo, nombre]) => {
-
+            (
+                [
+                    codigo,
+                    nombre
+                ]
+            ) => {
 
                 filas += `
 
                     <tr>
 
                         <td>
-                            ${escapeHTML(nombre)}
+
+                            ${escapeHTML(
+                                nombre
+                            )}
+
                         </td>
 
+
                         <td>
+
                             ${mostrarValorCentralizador(
                                 obtenerNotaCentralizador(
                                     codigo,
                                     "1"
                                 )
                             )}
+
                         </td>
 
+
                         <td>
+
                             ${mostrarValorCentralizador(
                                 obtenerNotaCentralizador(
                                     codigo,
                                     "2"
                                 )
                             )}
+
                         </td>
 
+
                         <td>
+
                             ${mostrarValorCentralizador(
                                 obtenerNotaCentralizador(
                                     codigo,
                                     "3"
                                 )
                             )}
+
                         </td>
 
+
                         <td>
+
                             ${mostrarValorCentralizador(
                                 obtenerNotaCentralizador(
                                     codigo,
                                     "A"
                                 )
                             )}
+
                         </td>
 
                     </tr>
@@ -2347,7 +2733,6 @@ async function mostrarCentralizador() {
                 `;
 
             }
-
         );
 
 
@@ -2361,6 +2746,7 @@ async function mostrarCentralizador() {
 
                 </div>
 
+
                 <div style="
                     text-align:center;
                     color:#666;
@@ -2371,6 +2757,7 @@ async function mostrarCentralizador() {
                     Curso: 5A
 
                 </div>
+
 
                 <div class="centralizador-tabla-contenedor">
 
@@ -2404,6 +2791,7 @@ async function mostrarCentralizador() {
 
                         </thead>
 
+
                         <tbody>
 
                             ${filas}
@@ -2423,7 +2811,6 @@ async function mostrarCentralizador() {
 
     catch (error) {
 
-
         console.error(error);
 
 
@@ -2437,12 +2824,14 @@ async function mostrarCentralizador() {
 
                 </div>
 
+
                 <p class="error">
 
-                    No se pudo cargar el centralizador
-                    de notas.
+                    No se pudo cargar
+                    el centralizador de notas.
 
                 </p>
+
 
                 <p style="
                     font-size:12px;
@@ -2471,7 +2860,6 @@ async function mostrarCentralizador() {
 
 async function mostrarDetalles() {
 
-
     const contenedor =
         document.getElementById(
             "detalle3T"
@@ -2486,14 +2874,10 @@ async function mostrarDetalles() {
 
 
     if (
-
         contenedor.style.display ===
         "block" &&
-
         contenedor.innerHTML.trim() !== ""
-
     ) {
-
 
         contenedor.style.display =
             "none";
@@ -2543,7 +2927,6 @@ async function mostrarDetalles() {
 
 
     try {
-
 
         const respuesta =
             await fetch(
@@ -2596,7 +2979,6 @@ async function mostrarDetalles() {
             actividades.length === 0
         ) {
 
-
             contenedor.innerHTML = `
 
                 <div class="detalle">
@@ -2606,6 +2988,7 @@ async function mostrarDetalles() {
                         📊 Detalles del 3er trimestre
 
                     </div>
+
 
                     <p style="
                         text-align:center;
@@ -2675,9 +3058,12 @@ async function mostrarDetalles() {
         calificaciones.forEach(
             c => {
 
-                mapa[c.actividad_id] = {
+                mapa[
+                    c.actividad_id
+                ] = {
 
-                    nota: c.nota,
+                    nota:
+                        c.nota,
 
                     observacion:
                         c.observacion
@@ -2767,7 +3153,6 @@ async function mostrarDetalles() {
         categorias.forEach(
             categoria => {
 
-
                 const lista =
                     actividades.filter(
                         a =>
@@ -2785,6 +3170,23 @@ async function mostrarDetalles() {
                 }
 
 
+                const limite =
+
+                    categoria.codigo === "SER"
+
+                    ? 10
+
+                    : categoria.codigo === "SABER"
+
+                    ? 45
+
+                    : categoria.codigo === "HACER"
+
+                    ? 40
+
+                    : 5;
+
+
                 let suma = 0;
 
                 let cantidad = 0;
@@ -2792,7 +3194,6 @@ async function mostrarDetalles() {
 
                 lista.forEach(
                     actividad => {
-
 
                         const registro =
                             mapa[
@@ -2807,15 +3208,10 @@ async function mostrarDetalles() {
 
 
                         if (
-
                             nota !== null &&
-
                             nota !== undefined &&
-
                             nota !== ""
-
                         ) {
-
 
                             const numero =
                                 Number(nota);
@@ -2825,10 +3221,8 @@ async function mostrarDetalles() {
                                 !isNaN(numero)
                             ) {
 
-
                                 suma +=
                                     numero;
-
 
                                 cantidad++;
 
@@ -2857,7 +3251,9 @@ async function mostrarDetalles() {
 
                     cantidad > 0
 
-                    ? Math.round(promedio)
+                    ? Math.round(
+                        promedio
+                    )
 
                     : null;
 
@@ -2880,7 +3276,6 @@ async function mostrarDetalles() {
 
                 lista.forEach(
                     actividad => {
-
 
                         const registro =
                             mapa[
@@ -2928,6 +3323,7 @@ async function mostrarDetalles() {
                                     ${escapeHTML(
                                         actividad.nombre
                                     )}
+
 
                                     <span class="actividad-fecha">
 
@@ -3083,7 +3479,6 @@ async function mostrarDetalles() {
 
     catch(error) {
 
-
         console.error(error);
 
 
@@ -3116,7 +3511,6 @@ async function mostrarDetalles() {
 
 async function mostrarAsistenciaEnDetalle() {
 
-
     const contenedor =
         document.getElementById(
             "detalle3T"
@@ -3131,7 +3525,6 @@ async function mostrarAsistenciaEnDetalle() {
 
 
     try {
-
 
         const respuesta =
             await fetch(
@@ -3192,7 +3585,6 @@ async function mostrarAsistenciaEnDetalle() {
         asistencias.forEach(
             asistencia => {
 
-
                 const estado =
                     normalizarEstado(
                         asistencia.estado
@@ -3240,7 +3632,6 @@ async function mostrarAsistenciaEnDetalle() {
 
         asistencias.forEach(
             asistencia => {
-
 
                 const estado =
                     normalizarEstado(
@@ -3315,7 +3706,6 @@ async function mostrarAsistenciaEnDetalle() {
             asistencias.length === 0
         ) {
 
-
             contenidoTabla = `
 
                 <div class="asistencia-vacia">
@@ -3329,9 +3719,7 @@ async function mostrarAsistenciaEnDetalle() {
 
         }
 
-
         else {
-
 
             contenidoTabla = `
 
@@ -3556,7 +3944,6 @@ async function mostrarAsistenciaEnDetalle() {
 
     catch(error) {
 
-
         console.error(error);
 
 
@@ -3672,7 +4059,6 @@ function alternarDetalleAsistencia(
     boton
 ) {
 
-
     const tabla =
         document.getElementById(
             "tablaDetalleAsistencia"
@@ -3691,7 +4077,6 @@ function alternarDetalleAsistencia(
         "block"
     ) {
 
-
         tabla.style.display =
             "none";
 
@@ -3701,9 +4086,7 @@ function alternarDetalleAsistencia(
 
     }
 
-
     else {
-
 
         tabla.style.display =
             "block";
@@ -3724,7 +4107,6 @@ function alternarDetalleAsistencia(
 function normalizarEstado(
     estado
 ) {
-
 
     if (
         estado === null ||
@@ -3760,19 +4142,20 @@ function obtenerEstadoAsistencia(
     estado
 ) {
 
-
     switch (estado) {
-
 
         case "asistio":
 
             return {
 
-                nombre: "Asistencia",
+                nombre:
+                    "Asistencia",
 
-                icono: "🟢",
+                icono:
+                    "🟢",
 
-                clase: "estado-presente"
+                clase:
+                    "estado-presente"
 
             };
 
@@ -3781,11 +4164,14 @@ function obtenerEstadoAsistencia(
 
             return {
 
-                nombre: "Atraso",
+                nombre:
+                    "Atraso",
 
-                icono: "🟡",
+                icono:
+                    "🟡",
 
-                clase: "estado-atraso"
+                clase:
+                    "estado-atraso"
 
             };
 
@@ -3794,11 +4180,14 @@ function obtenerEstadoAsistencia(
 
             return {
 
-                nombre: "Falta con licencia",
+                nombre:
+                    "Falta con licencia",
 
-                icono: "🔵",
+                icono:
+                    "🔵",
 
-                clase: "estado-licencia"
+                clase:
+                    "estado-licencia"
 
             };
 
@@ -3807,11 +4196,14 @@ function obtenerEstadoAsistencia(
 
             return {
 
-                nombre: "Falta sin licencia",
+                nombre:
+                    "Falta sin licencia",
 
-                icono: "🔴",
+                icono:
+                    "🔴",
 
-                clase: "estado-falta"
+                clase:
+                    "estado-falta"
 
             };
 
@@ -3825,9 +4217,11 @@ function obtenerEstadoAsistencia(
                     ? estado
                     : "Sin registro",
 
-                icono: "⚪",
+                icono:
+                    "⚪",
 
-                clase: ""
+                clase:
+                    ""
 
             };
 
@@ -3843,7 +4237,6 @@ function obtenerEstadoAsistencia(
 function formatearFecha(
     fecha
 ) {
-
 
     if (!fecha) {
 
@@ -3861,17 +4254,22 @@ function formatearFecha(
         partes.length === 3
     ) {
 
-
         const anio =
-            Number(partes[0]);
+            Number(
+                partes[0]
+            );
 
 
         const mes =
-            Number(partes[1]) - 1;
+            Number(
+                partes[1]
+            ) - 1;
 
 
         const dia =
-            Number(partes[2]);
+            Number(
+                partes[2]
+            );
 
 
         const fechaLocal =
@@ -3885,17 +4283,11 @@ function formatearFecha(
         const diasSemana = [
 
             "Domingo",
-
             "Lunes",
-
             "Martes",
-
             "Miércoles",
-
             "Jueves",
-
             "Viernes",
-
             "Sábado"
 
         ];
@@ -3924,7 +4316,6 @@ function formatearFecha(
 function convertirNota(
     nota
 ) {
-
 
     if (
 
@@ -3967,7 +4358,6 @@ function redondearNota(
     nota
 ) {
 
-
     const numero =
         convertirNota(
             nota
@@ -3997,7 +4387,6 @@ function redondearNota(
 function escapeHTML(
     texto
 ) {
-
 
     return String(texto)
 
@@ -4045,14 +4434,12 @@ const ci =
 
 if (ci) {
 
-
     document.getElementById(
         "ci"
     ).value =
         ci;
 
 }
-
 
 </script>
 
