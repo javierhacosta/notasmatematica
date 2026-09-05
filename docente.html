@@ -1146,6 +1146,26 @@ td:first-child {
     background: rgba(255,255,255,.14);
 }
 
+/* AVISO VISUAL: hay estudiantes sin estado de asistencia */
+@keyframes parpadearResumenAsistencia {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: .35;
+        transform: scale(1.08);
+    }
+}
+
+.resumen-asistencia.pendiente-asistencia span {
+    animation: parpadearResumenAsistencia 1s infinite;
+}
+
+.resumen-asistencia.pendiente-asistencia {
+    border-radius: 6px;
+}
+
 /* BOTÓN + */
 
 .boton-asistencia {
@@ -3984,6 +4004,7 @@ function actualizarResumenAsistencia() {
 
     Object.values(registrosAsistencia || {}).forEach(registro => {
         const estado = String(registro.estado || "").toLowerCase();
+
         if (totales[estado] !== undefined) {
             totales[estado]++;
         }
@@ -3996,11 +4017,46 @@ function actualizarResumenAsistencia() {
         <span>✕ ${totales.falta}</span>
     `;
 
+    /*
+     * AVISO VISUAL:
+     * Si algún estudiante del curso todavía no tiene marcado
+     * asistencia, atraso, permiso/licencia o falta, los iconos
+     * y cantidades del resumen comienzan a parpadear.
+     *
+     * No se crea ni modifica ningún estado automáticamente.
+     */
+    let hayEstudiantesSinEstado = false;
+
+    if (cursoSeleccionado) {
+        const estudiantesCurso = estudiantes.filter(
+            estudiante => estudiante.curso === cursoSeleccionado
+        );
+
+        hayEstudiantesSinEstado = estudiantesCurso.some(estudiante => {
+            const registro = registrosAsistencia[estudiante.id];
+            const estado = String(
+                registro && registro.estado ? registro.estado : ""
+            ).toLowerCase();
+
+            return !["asistio", "atraso", "licencia", "permiso", "falta"].includes(estado);
+        });
+    }
+
+    resumen.classList.toggle(
+        "pendiente-asistencia",
+        hayEstudiantesSinEstado
+    );
+
     const fecha = document.getElementById("fechaAsistencia");
+
     if (fecha && fecha.value) {
-        resumen.title = `Resumen de asistencia del ${formatearFechaActividad(fecha.value)}`;
+        resumen.title = hayEstudiantesSinEstado
+            ? `Hay estudiantes sin marcar en la asistencia del ${formatearFechaActividad(fecha.value)}`
+            : `Resumen de asistencia del ${formatearFechaActividad(fecha.value)}`;
     } else {
-        resumen.title = "Resumen de la fecha seleccionada";
+        resumen.title = hayEstudiantesSinEstado
+            ? "Hay estudiantes sin marcar en la asistencia"
+            : "Resumen de la fecha seleccionada";
     }
 }
 
