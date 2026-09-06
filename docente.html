@@ -3088,6 +3088,13 @@ Cancelar
                 class="info-estudiante-qr">
             </div>
 
+            <div class="qr-entrega-selector" style="margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:8px;background:#f8f9fa">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <button type="button" class="entrega-boton" title="Elegir fecha y día de entrega" onclick="abrirSelectorEntregaQR()">📅</button>
+                    <strong id="infoEntregaQR">Día 1 · 100% · Máx. sugerido</strong>
+                </div>
+            </div>
+
             <div class="qr-notas-rapidas">
 
                 <label>Notas rápidas</label>
@@ -10620,6 +10627,11 @@ async function prepararCalificacionQR(
     notaInput.max =
     puntajeMaximo;
 
+    fechaEntregaQR = actividadQRSeleccionada.fecha || "";
+    diaEntregaQR = 1;
+    await cargarConfiguracionEntregas(actividadQRSeleccionada.id);
+    actualizarSeleccionEntregaQR();
+
     /* Activar/desactivar las notas rápidas según el máximo de la actividad. */
     const botonesNotasRapidasQR =
     document.querySelectorAll(
@@ -10709,6 +10721,29 @@ function seleccionarNotaRapidaQR(nota) {
 }
 
 
+function actualizarSeleccionEntregaQR(){
+    if(!actividadQRSeleccionada) return;
+    configuracionEntregaQR=configuracionEntregaActual||normalizarConfigEntrega(null);
+    const factor=obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR);
+    const max=obtenerMaximoActividad(actividadQRSeleccionada)*factor;
+    const el=document.getElementById("infoEntregaQR");
+    if(el) el.textContent=`Día ${diaEntregaQR <= 4 ? diaEntregaQR : "Después"} · ${(factor*100).toFixed(0)}% · Máx. sugerido ${max.toFixed(2)} puntos`;
+}
+
+function abrirSelectorEntregaQR(){
+    if(!actividadQRSeleccionada)return;
+    const m=document.getElementById("modalSelectorEntregaQR");
+    document.getElementById("fechaEntregaQR").value=fechaEntregaQR||actividadQRSeleccionada.fecha||"";
+    document.getElementById("diaEntregaQR").value=diaEntregaQR;
+    actualizarMaximoSelectorQR();
+    m.classList.remove("oculto");
+}
+function actualizarMaximoSelectorQR(){
+    const d=Number(document.getElementById("diaEntregaQR").value); const f=obtenerFactorEntregaPorDia(d,configuracionEntregaQR||configuracionEntregaActual); const max=obtenerMaximoActividad(actividadQRSeleccionada)*f; document.getElementById("maximoSelectorQR").textContent=`Máximo sugerido: ${max.toFixed(2)} puntos`;
+}
+function guardarSelectorEntregaQR(){ fechaEntregaQR=document.getElementById("fechaEntregaQR").value; diaEntregaQR=Number(document.getElementById("diaEntregaQR").value); actualizarSeleccionEntregaQR(); document.getElementById("modalSelectorEntregaQR").classList.add("oculto"); const n=document.getElementById("notaQR"); if(n){const max=obtenerMaximoActividad(actividadQRSeleccionada)*obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR||configuracionEntregaActual);n.max=max;} }
+function cerrarSelectorEntregaQR(){document.getElementById("modalSelectorEntregaQR").classList.add("oculto");}
+
 async function guardarCalificacionQR() {
 
     if (guardandoCalificacionQR) {
@@ -10766,15 +10801,16 @@ async function guardarCalificacionQR() {
 
     }
 
+    const maximoEntregaQR = obtenerMaximoActividad(actividadQRSeleccionada) * obtenerFactorEntregaPorDia(diaEntregaQR, configuracionEntregaQR || configuracionEntregaActual);
     if (
         isNaN(nota) ||
         nota < 0 ||
-        nota > puntajeMaximo
+        nota > maximoEntregaQR
     ) {
 
         alert(
             "La calificación debe estar entre 0 y " +
-            puntajeMaximo +
+            maximoEntregaQR.toFixed(2) +
             "."
         );
 
@@ -11024,6 +11060,10 @@ function cerrarModalCalificacionQR(
 let entregaActividadActual = null;
 let entregaEstudianteActual = null;
 let entregasActuales = [];
+let configuracionEntregaActual = null;
+let configuracionEntregaQR = null;
+let diaEntregaQR = 1;
+let fechaEntregaQR = "";
 
 const CONFIG_ENTREGAS_DEFAULT = [
     { dia: 1, factor: 1.00, etiqueta: "Día 1", porcentaje: 100 },
@@ -11033,14 +11073,35 @@ const CONFIG_ENTREGAS_DEFAULT = [
     { dia: 5, factor: 0.00, etiqueta: "Después", porcentaje: 0 }
 ];
 
-function obtenerFactorEntregaPorDia(dia) {
-    const item = CONFIG_ENTREGAS_DEFAULT.find(x => x.dia === dia);
+function normalizarConfigEntrega(config) {
+    return CONFIG_ENTREGAS_DEFAULT.map(d => {
+        const v = config && config["dia" + d.dia] !== undefined ? Number(config["dia" + d.dia]) : d.porcentaje;
+        const porcentaje = isFinite(v) ? Math.max(0, Math.min(100, v)) : d.porcentaje;
+        return { ...d, porcentaje, factor: porcentaje / 100 };
+    });
+}
+
+async function cargarConfiguracionEntregas(actividadId) {
+    const { data, error } = await supabaseClient.from("config_entregas_actividades").select("actividad_id,dia1,dia2,dia3,dia4,dia5").eq("actividad_id", Number(actividadId)).maybeSingle();
+    if (error && !String(error.message || '').toLowerCase().includes('does not exist')) console.error(error);
+    configuracionEntregaActual = normalizarConfigEntrega(data || null);
+    return configuracionEntregaActual;
+}
+
+function obtenerFactorEntregaPorDia(dia, config = configuracionEntregaActual) {
+    const lista = config && Array.isArray(config) ? config : normalizarConfigEntrega(null);
+    const item = lista.find(x => x.dia === Number(dia));
     return item ? item.factor : 0;
 }
 
-function obtenerEtiquetaEntregaPorDia(dia) {
-    const item = CONFIG_ENTREGAS_DEFAULT.find(x => x.dia === dia);
+function obtenerEtiquetaEntregaPorDia(dia, config = configuracionEntregaActual) {
+    const lista = config && Array.isArray(config) ? config : normalizarConfigEntrega(null);
+    const item = lista.find(x => x.dia === Number(dia));
     return item ? item.etiqueta : "Después";
+}
+
+function obtenerPorcentajeEntregaPorDia(dia, config = configuracionEntregaActual) {
+    return obtenerFactorEntregaPorDia(dia, config) * 100;
 }
 
 function calcularDiaEntrega(fechaActividad, fechaEntrega) {
@@ -11066,7 +11127,55 @@ function obtenerMaximoActividad(actividad) {
     return maximo;
 }
 
+function renderizarProgramaEntrega(config = configuracionEntregaActual) {
+    const cont = document.getElementById("entregaProgramaActividad");
+    if (!cont) return;
+    const lista = config || normalizarConfigEntrega(null);
+    const actividad = entregaActividadActual;
+    const max = actividad ? obtenerMaximoActividad(actividad) : 0;
+    cont.innerHTML = lista.map(x => {
+        const maxDia = max * x.factor;
+        return `<div class="entrega-dia"><strong>${x.etiqueta}</strong><span class="factor">${x.porcentaje.toFixed(0)}%</span><br>máx. sugerido ${maxDia.toFixed(2)} pts</div>`;
+    }).join("");
+}
+
+async function abrirConfiguracionPorcentajesEntrega() {
+    if (!entregaActividadActual) return;
+    const config = configuracionEntregaActual || await cargarConfiguracionEntregas(entregaActividadActual.id);
+    document.getElementById("configEntregaActividadNombre").textContent = entregaActividadActual.nombre;
+    config.forEach(x => {
+        const el = document.getElementById("configEntregaDia" + x.dia);
+        if (el) el.value = x.porcentaje;
+    });
+    document.getElementById("modalConfigEntregas").classList.remove("oculto");
+    actualizarMaximosConfiguracionEntrega();
+}
+
+function actualizarMaximosConfiguracionEntrega() {
+    const max = obtenerMaximoActividad(entregaActividadActual);
+    for (let d=1; d<=5; d++) {
+        const inp=document.getElementById("configEntregaDia"+d), out=document.getElementById("configEntregaMax"+d);
+        if(inp&&out) out.textContent=(max*Number(inp.value||0)/100).toFixed(2)+" pts";
+    }
+}
+
+async function guardarConfiguracionPorcentajesEntrega() {
+    if (!entregaActividadActual) return;
+    const valores={};
+    for(let d=1;d<=5;d++){ const v=Number(document.getElementById("configEntregaDia"+d).value); if(!isFinite(v)||v<0||v>100){alert("Los porcentajes deben estar entre 0 y 100.");return;} valores["dia"+d]=v; }
+    const {data,error}=await supabaseClient.from("config_entregas_actividades").upsert({actividad_id:Number(entregaActividadActual.id),...valores},{onConflict:"actividad_id"}).select("actividad_id,dia1,dia2,dia3,dia4,dia5").single();
+    if(error){alert("No se pudo guardar la configuración: "+error.message);return;}
+    configuracionEntregaActual=normalizarConfigEntrega(data);
+    renderizarProgramaEntrega(configuracionEntregaActual);
+    cerrarConfigEntregas();
+    actualizarCalculoEntrega();
+    actualizarSeleccionEntregaQR();
+}
+
+function cerrarConfigEntregas(){document.getElementById("modalConfigEntregas").classList.add("oculto");}
+
 async function abrirControlEntregasActividad(actividad) {
+    await cargarConfiguracionEntregas(actividad.id);
     const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
     if (!estudiantesCurso.length) {
         alert("No hay estudiantes cargados para este curso.");
@@ -11076,6 +11185,7 @@ async function abrirControlEntregasActividad(actividad) {
     // El botón del encabezado abre el control mostrando la configuración.
     entregaActividadActual = actividad;
     entregaEstudianteActual = null;
+    renderizarProgramaEntrega(configuracionEntregaActual);
 
     const modal = document.getElementById("modalEntregas");
     modal.classList.remove("oculto");
@@ -11097,6 +11207,7 @@ async function abrirControlEntregasEstudiante(estudianteId, actividadId) {
 
     entregaActividadActual = actividad;
     entregaEstudianteActual = estudiante;
+    await cargarConfiguracionEntregas(actividad.id);
 
     const modal = document.getElementById("modalEntregas");
     modal.classList.remove("oculto");
@@ -11106,12 +11217,15 @@ async function abrirControlEntregasEstudiante(estudianteId, actividadId) {
         <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
         <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)} puntos</strong></div>`;
 
+    renderizarProgramaEntrega(configuracionEntregaActual);
     document.getElementById("entregaFormulario").style.display = "block";
     document.getElementById("entregaEstudianteNombre").textContent = estudiante.nombre;
 
     const hoy = new Date();
     const isoHoy = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
     document.getElementById("entregaFecha").value = isoHoy;
+    const diaInicial = calcularDiaEntrega(actividad.fecha, isoHoy);
+    document.getElementById("entregaDiaManual").value = Math.min(5, diaInicial);
     document.querySelector('input[name="estadoEntrega"][value="incompleto"]').checked = true;
     document.getElementById("entregaAvance").value = 100;
 
@@ -11171,7 +11285,7 @@ function actualizarCalculoEntrega() {
     if (!entregaActividadActual || !entregaEstudianteActual) return;
 
     const fecha = document.getElementById("entregaFecha").value;
-    const dia = calcularDiaEntrega(entregaActividadActual.fecha, fecha);
+    const dia = Number(document.getElementById("entregaDiaManual")?.value || calcularDiaEntrega(entregaActividadActual.fecha, fecha));
     const factor = obtenerFactorEntregaPorDia(dia);
     const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
     const acumulado = obtenerAvanceAcumulado();
@@ -11191,6 +11305,10 @@ function actualizarCalculoEntrega() {
     const maximoAplicable = maximoActividad * (avance / 100) * factor;
     const acumuladoDespues = Math.min(100, acumulado + avance);
     const puntajeDespues = obtenerPuntajeAcumulado() + maximoAplicable;
+
+    const maximoDiaManual = maximoActividad * factor;
+    const maxDiaEl = document.getElementById("entregaMaxDiaManual");
+    if (maxDiaEl) maxDiaEl.textContent = `Máximo sugerido este día: ${maximoDiaManual.toFixed(2)} puntos`;
 
     document.getElementById("entregaCalculoResumen").innerHTML = `
         <div class="entrega-tarjeta"><small>Corresponde</small><strong>${escapeHTML(obtenerEtiquetaEntregaPorDia(dia))}</strong></div>
@@ -11316,6 +11434,43 @@ comprobarSesion();
 
 
 <!-- =====================================================
+     MODAL CONFIGURAR PORCENTAJES POR ACTIVIDAD
+===================================================== -->
+<div id="modalConfigEntregas" class="modal-fondo oculto" onclick="if(event.target===this)cerrarConfigEntregas()">
+  <div class="modal-entregas" onclick="event.stopPropagation()">
+    <div class="modal-cabecera"><h3>⚙️ Porcentajes de entrega</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigEntregas()">×</button></div>
+    <div class="modal-cuerpo">
+      <p><strong id="configEntregaActividadNombre"></strong></p>
+      <p style="color:#666">Estos porcentajes son propios de esta actividad. También muestran el máximo de puntos sugerido según su valor total.</p>
+      <div class="config-entrega-grid">
+        <label>Día 1 (%) <input id="configEntregaDia1" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax1"></span></label>
+        <label>Día 2 (%) <input id="configEntregaDia2" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax2"></span></label>
+        <label>Día 3 (%) <input id="configEntregaDia3" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax3"></span></label>
+        <label>Día 4 (%) <input id="configEntregaDia4" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax4"></span></label>
+        <label>Después (%) <input id="configEntregaDia5" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax5"></span></label>
+      </div>
+      <div class="modal-acciones"><button type="button" class="boton-cancelar" onclick="cerrarConfigEntregas()">Cancelar</button><button type="button" class="boton-crear-modal" onclick="guardarConfiguracionPorcentajesEntrega()">💾 Guardar porcentajes</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     MODAL ELEGIR DÍA EN QR
+===================================================== -->
+<div id="modalSelectorEntregaQR" class="modal-fondo oculto" onclick="if(event.target===this)cerrarSelectorEntregaQR()">
+  <div class="modal-entregas" onclick="event.stopPropagation()">
+    <div class="modal-cabecera"><h3>📅 Fecha y día de entrega</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarSelectorEntregaQR()">×</button></div>
+    <div class="modal-cuerpo">
+      <label>Fecha presentada</label><input type="date" id="fechaEntregaQR">
+      <label style="display:block;margin-top:12px">Día que desea aplicar</label>
+      <select id="diaEntregaQR" onchange="actualizarMaximoSelectorQR()"><option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option><option value="4">Día 4</option><option value="5">Después</option></select>
+      <div id="maximoSelectorQR" class="entrega-calculo" style="margin-top:12px"></div>
+      <div class="modal-acciones"><button type="button" class="boton-cancelar" onclick="cerrarSelectorEntregaQR()">Cancelar</button><button type="button" class="boton-crear-modal" onclick="guardarSelectorEntregaQR()">✓ Aplicar</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
      MODAL CONTROL DE ENTREGAS
 ===================================================== -->
 <div id="modalEntregas" class="modal-fondo oculto" onclick="cerrarModalEntregas(event)">
@@ -11327,12 +11482,9 @@ comprobarSesion();
     <div class="modal-cuerpo">
       <div id="entregaActividadInfo" class="entrega-resumen"></div>
 
-      <div class="entrega-programa">
-        <div class="entrega-dia"><strong>Día 1</strong><span class="factor">100%</span><br>máximo completo</div>
-        <div class="entrega-dia"><strong>Día 2</strong><span class="factor">50%</span><br>del valor entregado</div>
-        <div class="entrega-dia"><strong>Día 3</strong><span class="factor">25%</span><br>del valor entregado</div>
-        <div class="entrega-dia"><strong>Día 4</strong><span class="factor">10%</span><br>del valor entregado</div>
-        <div class="entrega-dia"><strong>Después</strong><span class="factor">0%</span><br>sin puntaje</div>
+      <div class="entrega-programa" id="entregaProgramaActividad"></div>
+      <div style="display:flex;justify-content:flex-end;margin:8px 0 12px">
+        <button type="button" class="boton-crear-modal" onclick="abrirConfiguracionPorcentajesEntrega()">⚙️ Cambiar porcentajes de esta actividad</button>
       </div>
 
       <div id="entregaFormulario">
@@ -11344,6 +11496,13 @@ comprobarSesion();
         <div class="entrega-campo">
           <label for="entregaFecha">Fecha en que presentó</label>
           <input type="date" id="entregaFecha" onchange="actualizarCalculoEntrega()">
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <label style="margin:0">📅 Día a aplicar</label>
+            <select id="entregaDiaManual" onchange="actualizarCalculoEntrega()">
+              <option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option><option value="4">Día 4</option><option value="5">Después</option>
+            </select>
+            <span id="entregaMaxDiaManual" style="font-weight:700"></span>
+          </div>
         </div>
 
         <div class="entrega-resumen" id="entregaCalculoResumen"></div>
