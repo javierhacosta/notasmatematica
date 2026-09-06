@@ -3464,6 +3464,10 @@ function registrarCambioHistorial(datos) {
         cambio: datos.cambio || "",
         notaAnterior: datos.notaAnterior ?? null,
         notaNueva: datos.notaNueva ?? null,
+        observacionAnterior: datos.observacionAnterior ?? null,
+        observacionNueva: datos.observacionNueva ?? null,
+        estadoAnterior: datos.estadoAnterior ?? null,
+        estadoNuevo: datos.estadoNuevo ?? null,
         restaurable: datos.restaurable === true,
         actividadId: datos.actividadId ?? null,
         estudianteId: datos.estudianteId ?? null,
@@ -3536,9 +3540,12 @@ function renderizarHistorialCambios(historial, titulo) {
         contenido.innerHTML = `<div class="historial-vacio">No hay cambios registrados todavía.</div>`;
     } else {
         contenido.innerHTML = historial.map(registro => {
-            const puedeRestaurar = registro.restaurable === true && registro.tipo === "actividad" && registro.actividadId != null && registro.estudianteId != null;
+            const puedeRestaurar = registro.restaurable === true && registro.estudianteId != null && (
+                (registro.tipo === "actividad" && registro.actividadId != null) ||
+                (registro.tipo === "asistencia" && registro.fechaActividad)
+            );
             const botonRestaurar = puedeRestaurar
-                ? `<button type="button" class="boton-restaurar-historial" data-historial-id="${escaparHTMLHistorial(registro.id)}" title="Restaurar nota anterior">↩️ Restaurar</button>`
+                ? `<button type="button" class="boton-restaurar-historial" data-historial-id="${escaparHTMLHistorial(registro.id)}" title="Restaurar los valores anteriores">↩️ Restaurar</button>`
                 : "";
             return `<div class="historial-item">
                 <div class="historial-fecha">${escaparHTMLHistorial(formatearFechaHoraHistorial(registro.fechaHora))}</div>
@@ -3557,67 +3564,171 @@ function renderizarHistorialCambios(historial, titulo) {
 
     // Asignar el evento después de crear los botones dinámicamente.
     // Así la restauración funciona también cuando el historial se vuelve a renderizar.
-    contenido.querySelectorAll(".boton-restaurar-historial").forEach(boton => {
-        boton.addEventListener("click", function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            const id = this.getAttribute("data-historial-id");
-            confirmarRestauracionHistorial(id);
-        });
-    });
+    contenido.onclick = function(event) {
+        const boton = event.target.closest(".boton-restaurar-historial");
+        if (!boton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        confirmarRestauracionHistorial(boton.getAttribute("data-historial-id"));
+    };
 }
 
 async function confirmarRestauracionHistorial(historialId) {
     const registro = obtenerHistorialCambios().find(r => String(r.id) === String(historialId));
-    if (!registro || registro.restaurable !== true || registro.tipo !== "actividad") return;
 
-    const anterior = textoHistorial(registro.notaAnterior, "sin nota");
-    const actual = textoHistorial(registro.notaNueva, "sin nota");
-    const fecha = registro.fechaActividad || registro.fechaCambio || registro.fechaHora;
-    const fechaMostrar = fecha && /^\d{4}-\d{2}-\d{2}$/.test(String(fecha))
-        ? formatearFechaGuardadaAsistencia(String(fecha))
-        : formatearFechaHoraHistorial(fecha);
+    if (!registro) {
+        alert("No se encontró este cambio en el historial.");
+        return;
+    }
 
-    if (!confirm("¿Está seguro de restaurar la nota de " + anterior + " en lugar de " + actual + " en fecha " + fechaMostrar + "?")) return;
+    const puedeRestaurarActividad =
+        registro.tipo === "actividad" &&
+        registro.restaurable === true &&
+        registro.actividadId != null &&
+        registro.estudianteId != null;
+
+    const puedeRestaurarAsistencia =
+        registro.tipo === "asistencia" &&
+        registro.restaurable === true &&
+        registro.estudianteId != null &&
+        registro.fechaActividad;
+
+    if (!puedeRestaurarActividad && !puedeRestaurarAsistencia) {
+        alert("Este cambio no puede restaurarse.");
+        return;
+    }
 
     try {
-        const notaRestaurada = registro.notaAnterior === null || registro.notaAnterior === "" ? null : Number(registro.notaAnterior);
-        const { error } = await supabaseClient.from("calificaciones").upsert({
-            actividad_id: Number(registro.actividadId),
-            estudiante_id: Number(registro.estudianteId),
-            nota: notaRestaurada
-        }, { onConflict: "actividad_id,estudiante_id" });
+        if (puedeRestaurarActividad) {
+            const notaAnterior = textoHistorial(registro.notaAnterior, "sin nota");
+            const notaNueva = textoHistorial(registro.notaNueva, "sin nota");
+            const obsAnterior = textoHistorial(registro.observacionAnterior, "sin observación");
+            const obsNueva = textoHistorial(registro.observacionNueva, "sin observación");
+            const huboNota = String(registro.notaAnterior ?? "").trim() !== String(registro.notaNueva ?? "").trim();
+            const huboObservacion = String(registro.observacionAnterior ?? "").trim() !== String(registro.observacionNueva ?? "").trim();
+            const detalle = huboNota && huboObservacion
+                ? "nota y observación"
+                : huboObservacion ? "observación" : "nota";
+
+            if (!confirm(
+                "¿Está seguro de restaurar la " + detalle + " anterior?\n\n" +
+                "Nota: " + notaNueva + " → " + notaAnterior + "\n" +
+                "Observación: " + obsNueva + " → " + obsAnterior
+            )) return;
+
+            const notaRestaurada = registro.notaAnterior === null || registro.notaAnterior === ""
+                ? null
+                : Number(registro.notaAnterior);
+            const observacionRestaurada = registro.observacionAnterior === null || registro.observacionAnterior === undefined
+                ? null
+                : String(registro.observacionAnterior).trim() || null;
+
+            const { error } = await supabaseClient
+                .from("calificaciones")
+                .upsert({
+                    actividad_id: Number(registro.actividadId),
+                    estudiante_id: Number(registro.estudianteId),
+                    nota: notaRestaurada,
+                    observacion: observacionRestaurada
+                }, { onConflict: "actividad_id,estudiante_id" });
+
+            if (error) throw error;
+
+            if (!calificaciones[registro.estudianteId]) calificaciones[registro.estudianteId] = {};
+            calificaciones[registro.estudianteId][registro.actividadId] = {
+                nota: notaRestaurada,
+                observacion: observacionRestaurada || ""
+            };
+
+            registrarCambioHistorial({
+                tipo: "actividad",
+                scopeId: registro.actividadId,
+                curso: registro.curso,
+                elemento: registro.actividad,
+                actividad: registro.actividad,
+                categoria: registro.categoria,
+                estudiante: registro.estudiante,
+                estudianteId: registro.estudianteId,
+                actividadId: registro.actividadId,
+                notaAnterior: registro.notaNueva,
+                notaNueva: registro.notaAnterior,
+                observacionAnterior: registro.observacionNueva,
+                observacionNueva: registro.observacionAnterior,
+                fechaActividad: registro.fechaActividad,
+                fechaCambio: new Date().toISOString(),
+                cambio: "Restaurado: " + detalle + " anterior",
+                restaurable: false
+            });
+
+            await cargarCalificaciones();
+            mostrarActividades();
+            mostrarMensaje("✓ " + (detalle.charAt(0).toUpperCase() + detalle.slice(1)) + " restaurada correctamente.");
+            mostrarHistorialCambiosGlobal();
+            return;
+        }
+
+        const estadoAnterior = registro.estadoAnterior || "";
+        const estadoNuevo = registro.estadoNuevo || "";
+        const observacionAnterior = registro.observacionAnterior == null ? "" : String(registro.observacionAnterior);
+        const observacionNueva = registro.observacionNueva == null ? "" : String(registro.observacionNueva);
+
+        if (!estadoAnterior && !observacionAnterior) {
+            alert("No hay valores anteriores suficientes para restaurar esta asistencia.");
+            return;
+        }
+
+        if (!confirm(
+            "¿Está seguro de restaurar la asistencia anterior?\n\n" +
+            "Estado: " + textoEstadoAsistenciaHistorial(estadoNuevo) + " → " + textoEstadoAsistenciaHistorial(estadoAnterior) + "\n" +
+            "Observación: " + textoHistorial(observacionNueva, "sin observación") + " → " + textoHistorial(observacionAnterior, "sin observación")
+        )) return;
+
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert({
+                estudiante_id: Number(registro.estudianteId),
+                fecha: String(registro.fechaActividad),
+                estado: estadoAnterior || null,
+                observacion: observacionAnterior.trim() || null
+            }, { onConflict: "estudiante_id,fecha" });
+
         if (error) throw error;
 
-        if (!calificaciones[registro.estudianteId]) calificaciones[registro.estudianteId] = {};
-        const localAnterior = calificaciones[registro.estudianteId][registro.actividadId] || {};
-        calificaciones[registro.estudianteId][registro.actividadId] = { nota: notaRestaurada, observacion: localAnterior.observacion || "" };
+        registrosAsistencia[registro.estudianteId] = {
+            estado: estadoAnterior,
+            observacion: observacionAnterior
+        };
 
         registrarCambioHistorial({
-            tipo: "actividad",
-            scopeId: registro.actividadId,
-            curso: registro.curso,
-            elemento: registro.actividad,
-            actividad: registro.actividad,
-            categoria: registro.categoria,
+            tipo: "asistencia",
+            scopeId: String(registro.curso || cursoSeleccionado) + "|" + String(registro.fechaActividad),
+            curso: registro.curso || cursoSeleccionado,
+            elemento: registro.fechaActividad,
+            actividad: "—",
+            categoria: "Asistencia",
             estudiante: registro.estudiante,
             estudianteId: registro.estudianteId,
-            actividadId: registro.actividadId,
-            notaAnterior: registro.notaNueva,
-            notaNueva: registro.notaAnterior,
-            fechaActividad: registro.fechaActividad,
             fechaCambio: new Date().toISOString(),
-            cambio: "Nota restaurada: " + actual + " → " + anterior,
+            fechaActividad: registro.fechaActividad,
+            estadoAnterior: estadoNuevo,
+            estadoNuevo: estadoAnterior,
+            observacionAnterior: observacionNueva,
+            observacionNueva: observacionAnterior,
+            cambio: "Restaurado: asistencia y observación anteriores",
             restaurable: false
         });
 
-        await cargarCalificaciones();
-        mostrarActividades();
-        mostrarMensaje("✓ Nota restaurada correctamente.");
+        const fechaActual = document.getElementById("fechaAsistencia")?.value;
+        if (fechaActual === String(registro.fechaActividad) && cursoSeleccionado === registro.curso) {
+            await cargarAsistencia();
+            actualizarResumenAsistencia();
+        }
+
+        mostrarMensaje("✓ Asistencia restaurada correctamente.");
         mostrarHistorialCambiosGlobal();
     } catch (error) {
-        console.error("Error al restaurar nota:", error);
-        alert("No se pudo restaurar la nota: " + error.message);
+        console.error("Error al restaurar cambio:", error);
+        alert("No se pudo restaurar el cambio: " + (error.message || error));
     }
 }
 
@@ -5195,6 +5306,11 @@ async function guardarAsistenciaIndividual(control) {
                     estudianteId: estudianteId,
                     fechaCambio: new Date().toISOString(),
                     fechaActividad: fecha,
+                    estadoAnterior: estadoAnteriorHistorial,
+                    estadoNuevo: seleccionado.value,
+                    observacionAnterior: observacionAnteriorHistorial,
+                    observacionNueva: observacion,
+                    restaurable: true,
                     cambio: cambiosAsistenciaHistorial.join(" | ")
                 });
             }
@@ -5419,10 +5535,21 @@ async function guardarAsistencia() {
                 registrarCambioHistorial({
                     tipo: "asistencia",
                     scopeId: String(cursoSeleccionado) + "|" + String(fecha),
+                    curso: cursoSeleccionado,
                     elemento: fecha,
+                    actividad: "—",
+                    categoria: "Asistencia",
                     estudiante: estudiante
                         ? estudiante.nombre
                         : "Estudiante " + registro.estudiante_id,
+                    estudianteId: registro.estudiante_id,
+                    fechaActividad: fecha,
+                    fechaCambio: new Date().toISOString(),
+                    estadoAnterior: anterior.estado || "",
+                    estadoNuevo: registro.estado || "",
+                    observacionAnterior: anterior.observacion || "",
+                    observacionNueva: registro.observacion || "",
+                    restaurable: true,
                     cambio: cambios.join(" | ")
                 });
             }
@@ -8464,9 +8591,14 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
                     actividadId: actividadId,
                     notaAnterior: notaAnteriorHistorial,
                     notaNueva: nota,
+                    observacionAnterior: observacionAnteriorHistorial,
+                    observacionNueva: observacion,
                     fechaActividad: actividad.fecha,
                     fechaCambio: new Date().toISOString(),
-                    restaurable: String(notaAnteriorHistorial ?? "").trim() !== String(nota ?? "").trim(),
+                    restaurable: (
+                        String(notaAnteriorHistorial ?? "").trim() !== String(nota ?? "").trim() ||
+                        String(observacionAnteriorHistorial || "").trim() !== String(observacion || "").trim()
+                    ),
                     cambio: cambiosActividadHistorial.join(" | ")
                 });
             }
@@ -11597,9 +11729,14 @@ async function guardarCalificacionQR() {
                 actividadId: actividadQRSeleccionada.id,
                 notaAnterior: notaAnteriorHistorialQR,
                 notaNueva: nota,
+                observacionAnterior: observacionAnteriorHistorialQR,
+                observacionNueva: observacion,
                 fechaActividad: actividadQRSeleccionada.fecha,
                 fechaCambio: new Date().toISOString(),
-                restaurable: String(notaAnteriorHistorialQR ?? "").trim() !== String(nota ?? "").trim(),
+                restaurable: (
+                    String(notaAnteriorHistorialQR ?? "").trim() !== String(nota ?? "").trim() ||
+                    String(observacionAnteriorHistorialQR || "").trim() !== String(observacion || "").trim()
+                ),
                 cambio: cambiosActividadHistorialQR.join(" | ")
             });
         }
