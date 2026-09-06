@@ -2132,113 +2132,6 @@ table tbody tr:nth-child(10n+10) td {
 
 /* Guardado automático: ocultar botones manuales de guardado */
 button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
-
-
-/* =====================================================
-   CONTROL DE ENTREGAS PARCIALES / ATRASADAS
-   NUEVO - NO ALTERA EL FUNCIONAMIENTO EXISTENTE
-===================================================== */
-.entrega-boton {
-    border: none;
-    border-radius: 7px;
-    padding: 7px 9px;
-    margin-left: 5px;
-    cursor: pointer;
-    background: #eef5ff;
-    color: #1557a6;
-    font-size: 15px;
-}
-.entrega-boton:hover { transform: scale(1.05); }
-.entrega-info-actividad {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 3px 7px;
-    border-radius: 12px;
-    background: #fff3cd;
-    color: #795900;
-    font-size: 11px;
-    font-weight: 700;
-}
-.modal-entregas {
-    width: 100%;
-    max-width: 760px;
-    max-height: 92vh;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-.entrega-programa {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 7px;
-    margin: 0 0 16px;
-}
-.entrega-dia {
-    border: 1px solid #ddd;
-    border-radius: 9px;
-    padding: 9px 5px;
-    text-align: center;
-    background: #f8f9fa;
-    font-size: 12px;
-}
-.entrega-dia strong { display:block; font-size: 13px; margin-bottom: 3px; }
-.entrega-dia .factor { font-size: 17px; font-weight: 800; }
-.entrega-resumen {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 15px;
-}
-.entrega-tarjeta {
-    padding: 10px;
-    border-radius: 9px;
-    background: #f1f4f7;
-    text-align: center;
-}
-.entrega-tarjeta small { display:block; color:#666; }
-.entrega-tarjeta strong { font-size: 19px; }
-.entrega-campo { margin-bottom: 14px; }
-.entrega-campo label { display:block; font-weight:700; margin-bottom:6px; }
-.entrega-campo input, .entrega-campo select {
-    width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid #ccc; border-radius:7px; font-size:15px;
-}
-.entrega-opciones-estado { display:flex; gap:10px; flex-wrap:wrap; }
-.entrega-estado {
-    flex:1; min-width:145px; border:1px solid #ddd; border-radius:8px; padding:10px; cursor:pointer; text-align:center; font-weight:700;
-}
-.entrega-estado input { width:auto !important; margin-right:5px; }
-.entrega-calculo {
-    padding: 12px;
-    border-radius: 9px;
-    background: #eaf7ee;
-    border: 1px solid #b7dfc3;
-    margin-bottom: 14px;
-}
-.entrega-calculo strong { font-size: 20px; }
-.entrega-historial {
-    max-height: 220px;
-    overflow:auto;
-    border:1px solid #ddd;
-    border-radius:8px;
-    margin-top:8px;
-}
-.entrega-registro {
-    padding:10px;
-    border-bottom:1px solid #eee;
-    font-size:13px;
-}
-.entrega-registro:last-child { border-bottom:none; }
-.entrega-registro .linea { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-.entrega-vacio { padding:15px; text-align:center; color:#777; }
-@media (max-width: 600px) {
-    .entrega-programa { grid-template-columns: repeat(2, 1fr); }
-    .entrega-resumen { grid-template-columns: 1fr; }
-    .modal-entregas { max-height: 96vh; border-radius: 10px; }
-}
-
 </style>
 
 </head>
@@ -3086,13 +2979,6 @@ Cancelar
             <div
                 id="infoEstudianteQR"
                 class="info-estudiante-qr">
-            </div>
-
-            <div class="qr-entrega-selector" style="margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:8px;background:#f8f9fa">
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <button type="button" class="entrega-boton" title="Elegir fecha y día de entrega" onclick="abrirSelectorEntregaQR()">📅</button>
-                    <strong id="infoEntregaQR">Día 1 · 100% · Máx. sugerido</strong>
-                </div>
             </div>
 
             <div class="qr-notas-rapidas">
@@ -5807,40 +5693,6 @@ function crearActividadHTML(
     );
 
 
-    const botonEntregasActividad =
-    document.createElement("button");
-
-    botonEntregasActividad.className =
-    "boton-bloquear entrega-boton";
-
-    botonEntregasActividad.textContent = "📅";
-    botonEntregasActividad.title =
-    "Ver control de entregas y porcentajes";
-
-    botonEntregasActividad.addEventListener(
-        "click",
-        function(event) {
-            event.stopPropagation();
-            abrirControlEntregasActividad(actividad);
-        }
-    );
-
-    derecha.appendChild(
-        botonEntregasActividad
-    );
-
-    const botonConfigEntregasActividad = document.createElement("button");
-    botonConfigEntregasActividad.className = "boton-bloquear entrega-boton";
-    botonConfigEntregasActividad.textContent = "⚙️";
-    botonConfigEntregasActividad.title = "Configurar porcentajes de entrega de esta actividad";
-    botonConfigEntregasActividad.addEventListener("click", async function(event) {
-        event.stopPropagation();
-        entregaActividadActual = actividad;
-        await cargarConfiguracionEntregas(actividad.id);
-        await abrirConfiguracionPorcentajesEntrega();
-    });
-    derecha.appendChild(botonConfigEntregasActividad);
-
     derecha.appendChild(
         botonOcultar
     );
@@ -6049,14 +5901,6 @@ function crearActividadHTML(
                     onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
 
                 >
-
-                <button
-                    type="button"
-                    class="entrega-boton"
-                    title="Registrar entrega completa o incompleta y ver historial"
-                    onclick="abrirControlEntregasEstudiante(${estudiante.id}, ${actividad.id})">
-                    📅
-                </button>
 
             </td>
 
@@ -9841,16 +9685,6 @@ async function abrirEscanerQR(actividad) {
     modoQRAsistencia = false;
     actividadQRSeleccionada = actividad;
 
-    // La configuración de porcentajes pertenece a la actividad, no al estudiante.
-    try {
-        configuracionEntregaActual = await cargarConfiguracionEntregas(actividad.id);
-    } catch (e) {
-        configuracionEntregaActual = normalizarConfigEntrega(null);
-    }
-    configuracionEntregaQR = configuracionEntregaActual;
-    diaEntregaQR = 1;
-    fechaEntregaQR = "";
-
     const checkboxCamara =
     document.getElementById("mantenerCamaraQR");
 
@@ -10648,11 +10482,6 @@ async function prepararCalificacionQR(
     notaInput.max =
     puntajeMaximo;
 
-    fechaEntregaQR = actividadQRSeleccionada.fecha || "";
-    diaEntregaQR = 1;
-    await cargarConfiguracionEntregas(actividadQRSeleccionada.id);
-    actualizarSeleccionEntregaQR();
-
     /* Activar/desactivar las notas rápidas según el máximo de la actividad. */
     const botonesNotasRapidasQR =
     document.querySelectorAll(
@@ -10742,50 +10571,6 @@ function seleccionarNotaRapidaQR(nota) {
 }
 
 
-function actualizarSeleccionEntregaQR(){
-    if(!actividadQRSeleccionada) return;
-    configuracionEntregaQR=configuracionEntregaActual||normalizarConfigEntrega(null);
-    const factor=obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR);
-    const max=obtenerMaximoActividad(actividadQRSeleccionada)*factor;
-    const el=document.getElementById("infoEntregaQR");
-    if(el) el.textContent=`Día ${diaEntregaQR <= 4 ? diaEntregaQR : "Después"} · ${(factor*100).toFixed(0)}% · Máx. sugerido ${max.toFixed(2)} puntos`;
-}
-
-function actualizarVisibilidadFechaQR(){
-    const dia=Number(document.getElementById("diaEntregaQR")?.value || 1);
-    const cont=document.getElementById("fechaEntregaQRContenedor");
-    if(cont) cont.style.display=dia===1 ? "none" : "block";
-}
-
-function abrirSelectorEntregaQR(){
-    if(!actividadQRSeleccionada)return;
-    const m=document.getElementById("modalSelectorEntregaQR");
-    document.getElementById("diaEntregaQR").value=diaEntregaQR || 1;
-    document.getElementById("fechaEntregaQR").value=fechaEntregaQR || "";
-    actualizarVisibilidadFechaQR();
-    actualizarMaximoSelectorQR();
-    m.classList.remove("oculto");
-}
-function actualizarMaximoSelectorQR(){
-    const d=Number(document.getElementById("diaEntregaQR").value);
-    const f=obtenerFactorEntregaPorDia(d,configuracionEntregaQR||configuracionEntregaActual);
-    const max=obtenerMaximoActividad(actividadQRSeleccionada)*f;
-    actualizarVisibilidadFechaQR();
-    document.getElementById("maximoSelectorQR").textContent=`Máximo sugerido para ${d<=4 ? "Día "+d : "Después"}: ${max.toFixed(2)} puntos`;
-}
-function guardarSelectorEntregaQR(){
-    const d=Number(document.getElementById("diaEntregaQR").value);
-    const fecha=document.getElementById("fechaEntregaQR").value;
-    if(d>1 && !fecha){ alert("Seleccione la fecha de presentación para este día."); return; }
-    diaEntregaQR=d;
-    fechaEntregaQR=d===1 ? "" : fecha;
-    actualizarSeleccionEntregaQR();
-    document.getElementById("modalSelectorEntregaQR").classList.add("oculto");
-    const n=document.getElementById("notaQR");
-    if(n){const max=obtenerMaximoActividad(actividadQRSeleccionada)*obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR||configuracionEntregaActual);n.max=max;}
-}
-function cerrarSelectorEntregaQR(){document.getElementById("modalSelectorEntregaQR").classList.add("oculto");}
-
 async function guardarCalificacionQR() {
 
     if (guardandoCalificacionQR) {
@@ -10843,16 +10628,15 @@ async function guardarCalificacionQR() {
 
     }
 
-    const maximoEntregaQR = obtenerMaximoActividad(actividadQRSeleccionada) * obtenerFactorEntregaPorDia(diaEntregaQR, configuracionEntregaQR || configuracionEntregaActual);
     if (
         isNaN(nota) ||
         nota < 0 ||
-        nota > maximoEntregaQR
+        nota > puntajeMaximo
     ) {
 
         alert(
             "La calificación debe estar entre 0 y " +
-            maximoEntregaQR.toFixed(2) +
+            puntajeMaximo +
             "."
         );
 
@@ -11093,303 +10877,6 @@ function cerrarModalCalificacionQR(
 
 
 
-
-/* =====================================================
-   CONTROL DE ENTREGAS PARCIALES / ATRASADAS
-   NUEVO - SE GUARDA EN LA TABLA entregas_actividades
-===================================================== */
-
-let entregaActividadActual = null;
-let entregaEstudianteActual = null;
-let entregasActuales = [];
-let configuracionEntregaActual = null;
-let configuracionEntregaQR = null;
-let diaEntregaQR = 1;
-let fechaEntregaQR = "";
-
-const CONFIG_ENTREGAS_DEFAULT = [
-    { dia: 1, factor: 1.00, etiqueta: "Día 1", porcentaje: 100 },
-    { dia: 2, factor: 0.50, etiqueta: "Día 2", porcentaje: 50 },
-    { dia: 3, factor: 0.25, etiqueta: "Día 3", porcentaje: 25 },
-    { dia: 4, factor: 0.10, etiqueta: "Día 4", porcentaje: 10 },
-    { dia: 5, factor: 0.00, etiqueta: "Después", porcentaje: 0 }
-];
-
-function normalizarConfigEntrega(config) {
-    return CONFIG_ENTREGAS_DEFAULT.map(d => {
-        const v = config && config["dia" + d.dia] !== undefined ? Number(config["dia" + d.dia]) : d.porcentaje;
-        const porcentaje = isFinite(v) ? Math.max(0, Math.min(100, v)) : d.porcentaje;
-        return { ...d, porcentaje, factor: porcentaje / 100 };
-    });
-}
-
-async function cargarConfiguracionEntregas(actividadId) {
-    const { data, error } = await supabaseClient.from("config_entregas_actividades").select("actividad_id,dia1,dia2,dia3,dia4,dia5").eq("actividad_id", Number(actividadId)).maybeSingle();
-    if (error && !String(error.message || '').toLowerCase().includes('does not exist')) console.error(error);
-    configuracionEntregaActual = normalizarConfigEntrega(data || null);
-    return configuracionEntregaActual;
-}
-
-function obtenerFactorEntregaPorDia(dia, config = configuracionEntregaActual) {
-    const lista = config && Array.isArray(config) ? config : normalizarConfigEntrega(null);
-    const item = lista.find(x => x.dia === Number(dia));
-    return item ? item.factor : 0;
-}
-
-function obtenerEtiquetaEntregaPorDia(dia, config = configuracionEntregaActual) {
-    const lista = config && Array.isArray(config) ? config : normalizarConfigEntrega(null);
-    const item = lista.find(x => x.dia === Number(dia));
-    return item ? item.etiqueta : "Después";
-}
-
-function obtenerPorcentajeEntregaPorDia(dia, config = configuracionEntregaActual) {
-    return obtenerFactorEntregaPorDia(dia, config) * 100;
-}
-
-function calcularDiaEntrega(fechaActividad, fechaEntrega) {
-    if (!fechaActividad || !fechaEntrega) return 1;
-    const a = String(fechaActividad).split("-").map(Number);
-    const b = String(fechaEntrega).split("-").map(Number);
-    if (a.length !== 3 || b.length !== 3 || b.some(isNaN) || a.some(isNaN)) return 1;
-    const inicio = new Date(a[0], a[1] - 1, a[2]);
-    const entrega = new Date(b[0], b[1] - 1, b[2]);
-    const diferencia = Math.round((entrega - inicio) / 86400000);
-    return Math.max(1, diferencia + 1);
-}
-
-function formatearFechaEntrega(fecha) {
-    if (!fecha) return "";
-    const p = String(fecha).split("-");
-    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fecha;
-}
-
-function obtenerMaximoActividad(actividad) {
-    let maximo = Number(actividad?.puntaje_maximo);
-    if (!maximo || maximo <= 0) maximo = Number(LIMITES[actividad?.categoria] || 0);
-    return maximo;
-}
-
-function renderizarProgramaEntrega(config = configuracionEntregaActual) {
-    const cont = document.getElementById("entregaProgramaActividad");
-    if (!cont) return;
-    const lista = config || normalizarConfigEntrega(null);
-    const actividad = entregaActividadActual;
-    const max = actividad ? obtenerMaximoActividad(actividad) : 0;
-    cont.innerHTML = lista.map(x => {
-        const maxDia = max * x.factor;
-        return `<div class="entrega-dia"><strong>${x.etiqueta}</strong><span class="factor">${x.porcentaje.toFixed(0)}%</span><br>máx. sugerido ${maxDia.toFixed(2)} pts</div>`;
-    }).join("");
-}
-
-async function abrirConfiguracionPorcentajesEntrega() {
-    if (!entregaActividadActual) return;
-    const config = configuracionEntregaActual || await cargarConfiguracionEntregas(entregaActividadActual.id);
-    document.getElementById("configEntregaActividadNombre").textContent = entregaActividadActual.nombre;
-    config.forEach(x => {
-        const el = document.getElementById("configEntregaDia" + x.dia);
-        if (el) el.value = x.porcentaje;
-    });
-    document.getElementById("modalConfigEntregas").classList.remove("oculto");
-    actualizarMaximosConfiguracionEntrega();
-}
-
-function actualizarMaximosConfiguracionEntrega() {
-    const max = obtenerMaximoActividad(entregaActividadActual);
-    for (let d=1; d<=5; d++) {
-        const inp=document.getElementById("configEntregaDia"+d), out=document.getElementById("configEntregaMax"+d);
-        if(inp&&out) out.textContent=(max*Number(inp.value||0)/100).toFixed(2)+" pts";
-    }
-}
-
-async function guardarConfiguracionPorcentajesEntrega() {
-    if (!entregaActividadActual) return;
-    const valores={};
-    for(let d=1;d<=5;d++){ const v=Number(document.getElementById("configEntregaDia"+d).value); if(!isFinite(v)||v<0||v>100){alert("Los porcentajes deben estar entre 0 y 100.");return;} valores["dia"+d]=v; }
-    const {data,error}=await supabaseClient.from("config_entregas_actividades").upsert({actividad_id:Number(entregaActividadActual.id),...valores},{onConflict:"actividad_id"}).select("actividad_id,dia1,dia2,dia3,dia4,dia5").single();
-    if(error){alert("No se pudo guardar la configuración: "+error.message);return;}
-    configuracionEntregaActual=normalizarConfigEntrega(data);
-    renderizarProgramaEntrega(configuracionEntregaActual);
-    cerrarConfigEntregas();
-    actualizarCalculoEntrega();
-    actualizarSeleccionEntregaQR();
-}
-
-function cerrarConfigEntregas(){document.getElementById("modalConfigEntregas").classList.add("oculto");}
-
-async function abrirControlEntregasActividad(actividad) {
-    await cargarConfiguracionEntregas(actividad.id);
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    if (!estudiantesCurso.length) {
-        alert("No hay estudiantes cargados para este curso.");
-        return;
-    }
-
-    // El botón del encabezado abre el control mostrando la configuración.
-    entregaActividadActual = actividad;
-    entregaEstudianteActual = null;
-    renderizarProgramaEntrega(configuracionEntregaActual);
-
-    const modal = document.getElementById("modalEntregas");
-    modal.classList.remove("oculto");
-    document.getElementById("entregaTitulo").textContent = "📅 Control de entregas — " + actividad.nombre;
-    document.getElementById("entregaActividadInfo").innerHTML = `
-        <div class="entrega-tarjeta"><small>Actividad</small><strong style="font-size:15px">${escapeHTML(actividad.nombre)}</strong></div>
-        <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
-        <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)}</strong></div>`;
-
-    document.getElementById("entregaProgramaActividad").style.display = "grid";
-    document.getElementById("entregaFormulario").style.display = "none";
-    document.getElementById("entregaEstudianteNombre").textContent = "Seleccione 📅 junto al estudiante para registrar su entrega.";
-    document.getElementById("entregaHistorial").innerHTML = `<div class="entrega-vacio">El control se realiza individualmente desde el botón 📅 de cada estudiante.</div>`;
-}
-
-async function abrirControlEntregasEstudiante(estudianteId, actividadId) {
-    const actividad = actividades.find(a => Number(a.id) === Number(actividadId));
-    const estudiante = estudiantes.find(e => Number(e.id) === Number(estudianteId));
-    if (!actividad || !estudiante) return;
-
-    entregaActividadActual = actividad;
-    entregaEstudianteActual = estudiante;
-    await cargarConfiguracionEntregas(actividad.id);
-
-    const modal = document.getElementById("modalEntregas");
-    modal.classList.remove("oculto");
-    document.getElementById("entregaTitulo").textContent = "📅 Registrar día de entrega";
-    document.getElementById("entregaActividadInfo").innerHTML = `
-        <div class="entrega-tarjeta"><small>Actividad</small><strong style="font-size:15px">${escapeHTML(actividad.nombre)}</strong></div>
-        <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
-        <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)} puntos</strong></div>`;
-
-    renderizarProgramaEntrega(configuracionEntregaActual);
-    document.getElementById("entregaProgramaActividad").style.display = "none";
-    document.getElementById("entregaFormulario").style.display = "block";
-    document.getElementById("entregaEstudianteNombre").textContent = estudiante.nombre;
-    document.getElementById("entregaDiaManual").value = "1";
-    document.getElementById("entregaFecha").value = "";
-    document.getElementById("entregaFechaContenedor").style.display = "none";
-    document.getElementById("entregaMaxDiaManual").textContent = `Máximo sugerido Día 1: ${(obtenerMaximoActividad(actividad) * obtenerFactorEntregaPorDia(1, configuracionEntregaActual)).toFixed(2)} puntos`;
-
-    await cargarHistorialEntregas();
-    actualizarCalculoEntrega();
-}
-
-async function cargarHistorialEntregas() {
-    if (!entregaActividadActual || !entregaEstudianteActual) return;
-
-    const { data, error } = await supabaseClient
-        .from("entregas_actividades")
-        .select("id,actividad_id,estudiante_id,fecha_entrega,dia_entrega,avance_porcentaje,estado,factor,puntaje_maximo_aplicable,puntaje_obtenido,created_at")
-        .eq("actividad_id", Number(entregaActividadActual.id))
-        .eq("estudiante_id", Number(entregaEstudianteActual.id))
-        .order("fecha_entrega", { ascending: true })
-        .order("id", { ascending: true });
-
-    if (error) {
-        console.error(error);
-        entregasActuales = [];
-        document.getElementById("entregaHistorial").innerHTML = `
-            <div class="entrega-vacio">No se pudo cargar el historial. Si es la primera vez, verifique que haya creado la tabla <b>entregas_actividades</b> en Supabase.</div>`;
-        return;
-    }
-
-    entregasActuales = data || [];
-    renderizarHistorialEntregas();
-}
-
-function renderizarHistorialEntregas() {
-    const cont = document.getElementById("entregaHistorial");
-    if (!entregasActuales.length) {
-        cont.innerHTML = `<div class="entrega-vacio">Todavía no hay días de entrega registrados.</div>`;
-        return;
-    }
-
-    cont.innerHTML = entregasActuales.map(r => `
-        <div class="entrega-registro">
-            <div class="linea"><strong>${r.dia_entrega <= 4 ? "Día " + r.dia_entrega : "Después"}</strong><span>${r.dia_entrega === 1 ? "Fecha de la actividad" : formatearFechaEntrega(r.fecha_entrega)}</span></div>
-            <div class="linea"><span>Factor: ${(Number(r.factor || 0) * 100).toFixed(0)}%</span><span>Máximo sugerido: ${Number(r.puntaje_maximo_aplicable || 0).toFixed(2)} puntos</span></div>
-        </div>`).join("");
-}
-
-function actualizarCalculoEntrega() {
-    if (!entregaActividadActual || !entregaEstudianteActual) return;
-
-    const dia = Number(document.getElementById("entregaDiaManual")?.value || 1);
-    const factor = obtenerFactorEntregaPorDia(dia);
-    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
-    const maximoDia = maximoActividad * factor;
-    const fechaCont = document.getElementById("entregaFechaContenedor");
-    if (fechaCont) fechaCont.style.display = dia === 1 ? "none" : "block";
-
-    const maxDiaEl = document.getElementById("entregaMaxDiaManual");
-    if (maxDiaEl) maxDiaEl.textContent = `Máximo sugerido ${dia <= 4 ? "Día " + dia : "Después"}: ${maximoDia.toFixed(2)} puntos`;
-
-    const fecha = document.getElementById("entregaFecha")?.value || "";
-    document.getElementById("entregaCalculo").innerHTML = `
-        <div><strong>${dia <= 4 ? "Día " + dia : "Después"} · ${(factor*100).toFixed(0)}%</strong></div>
-        <div style="margin-top:6px">Máximo sugerido que puede registrar: <strong>${maximoDia.toFixed(2)} puntos</strong></div>
-        ${dia > 1 ? `<div style="margin-top:6px">Fecha: <strong>${fecha ? formatearFechaEntrega(fecha) : "Seleccione una fecha"}</strong></div>` : `<div style="margin-top:6px">Día 1 utiliza la fecha inicial de la actividad.</div>`}`;
-}
-
-async function guardarEntrega() {
-    if (!entregaActividadActual || !entregaEstudianteActual) return;
-
-    const boton = document.getElementById("botonGuardarEntrega");
-    const dia = Number(document.getElementById("entregaDiaManual").value || 1);
-    const fechaSeleccionada = document.getElementById("entregaFecha").value || "";
-    const fecha = dia === 1 ? entregaActividadActual.fecha : fechaSeleccionada;
-
-    if (dia > 1 && !fecha) {
-        alert("Seleccione la fecha de presentación para este día.");
-        return;
-    }
-
-    const factor = obtenerFactorEntregaPorDia(dia);
-    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
-    const maximoDia = maximoActividad * factor;
-
-    boton.disabled = true;
-    boton.textContent = "💾 Guardando...";
-
-    try {
-        const { data, error } = await supabaseClient
-            .from("entregas_actividades")
-            .insert({
-                actividad_id: Number(entregaActividadActual.id),
-                estudiante_id: Number(entregaEstudianteActual.id),
-                fecha_entrega: fecha,
-                dia_entrega: dia,
-                avance_porcentaje: 0,
-                estado: "incompleto",
-                factor: factor,
-                puntaje_maximo_aplicable: Number(maximoDia.toFixed(4)),
-                puntaje_obtenido: 0
-            })
-            .select("id,actividad_id,estudiante_id,fecha_entrega,dia_entrega,avance_porcentaje,estado,factor,puntaje_maximo_aplicable,puntaje_obtenido,created_at")
-            .single();
-
-        if (error) throw error;
-
-        entregasActuales.push(data);
-        entregasActuales.sort((a,b) => String(a.fecha_entrega).localeCompare(String(b.fecha_entrega)) || Number(a.id)-Number(b.id));
-        renderizarHistorialEntregas();
-        mostrarMensaje("✓ Día de entrega registrado: " + entregaEstudianteActual.nombre);
-    } catch (error) {
-        console.error(error);
-        alert("Error al registrar el día de entrega: " + error.message + "\n\nVerifique que exista la tabla entregas_actividades en Supabase.");
-    } finally {
-        boton.disabled = false;
-        boton.textContent = "💾 Registrar entrega";
-    }
-}
-
-function cerrarModalEntregas(event) {
-    if (event && event.target !== document.getElementById("modalEntregas")) return;
-    document.getElementById("modalEntregas").classList.add("oculto");
-    entregaActividadActual = null;
-    entregaEstudianteActual = null;
-    entregasActuales = [];
-}
-
 /* =====================================================
    INICIAR
 ===================================================== */
@@ -11397,99 +10884,6 @@ function cerrarModalEntregas(event) {
 comprobarSesion();
 
 </script>
-
-
-
-<!-- =====================================================
-     MODAL CONFIGURAR PORCENTAJES POR ACTIVIDAD
-===================================================== -->
-<div id="modalConfigEntregas" class="modal-fondo oculto" onclick="if(event.target===this)cerrarConfigEntregas()">
-  <div class="modal-entregas" onclick="event.stopPropagation()">
-    <div class="modal-cabecera"><h3>⚙️ Porcentajes de entrega</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigEntregas()">×</button></div>
-    <div class="modal-cuerpo">
-      <p><strong id="configEntregaActividadNombre"></strong></p>
-      <p style="color:#666">Estos porcentajes son propios de esta actividad. También muestran el máximo de puntos sugerido según su valor total.</p>
-      <div class="config-entrega-grid">
-        <label>Día 1 (%) <input id="configEntregaDia1" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax1"></span></label>
-        <label>Día 2 (%) <input id="configEntregaDia2" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax2"></span></label>
-        <label>Día 3 (%) <input id="configEntregaDia3" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax3"></span></label>
-        <label>Día 4 (%) <input id="configEntregaDia4" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax4"></span></label>
-        <label>Después (%) <input id="configEntregaDia5" type="number" min="0" max="100" step="1" oninput="actualizarMaximosConfiguracionEntrega()"><span id="configEntregaMax5"></span></label>
-      </div>
-      <div class="modal-acciones"><button type="button" class="boton-cancelar" onclick="cerrarConfigEntregas()">Cancelar</button><button type="button" class="boton-crear-modal" onclick="guardarConfiguracionPorcentajesEntrega()">💾 Guardar porcentajes</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================
-     MODAL ELEGIR DÍA EN QR
-===================================================== -->
-<div id="modalSelectorEntregaQR" class="modal-fondo oculto" onclick="if(event.target===this)cerrarSelectorEntregaQR()">
-  <div class="modal-entregas" onclick="event.stopPropagation()">
-    <div class="modal-cabecera"><h3>📅 Fecha y día de entrega</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarSelectorEntregaQR()">×</button></div>
-    <div class="modal-cuerpo">
-      <label>Día que desea aplicar</label>
-      <select id="diaEntregaQR" onchange="actualizarMaximoSelectorQR()"><option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option><option value="4">Día 4</option><option value="5">Después</option></select>
-      <div id="fechaEntregaQRContenedor" style="display:none;margin-top:12px">
-        <label>Fecha presentada</label>
-        <input type="date" id="fechaEntregaQR">
-      </div>
-      <div id="maximoSelectorQR" class="entrega-calculo" style="margin-top:12px"></div>
-      <div class="modal-acciones"><button type="button" class="boton-cancelar" onclick="cerrarSelectorEntregaQR()">Cancelar</button><button type="button" class="boton-crear-modal" onclick="guardarSelectorEntregaQR()">✓ Aplicar</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================
-     MODAL CONTROL DE ENTREGAS
-===================================================== -->
-<div id="modalEntregas" class="modal-fondo oculto" onclick="cerrarModalEntregas(event)">
-  <div class="modal-entregas" onclick="event.stopPropagation()">
-    <div class="modal-cabecera">
-      <h3 id="entregaTitulo">📅 Control de entregas</h3>
-      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalEntregas()">×</button>
-    </div>
-    <div class="modal-cuerpo">
-      <div id="entregaActividadInfo" class="entrega-resumen"></div>
-
-      <div class="entrega-programa" id="entregaProgramaActividad"></div>
-      <div id="entregaFormulario">
-        <div class="entrega-campo">
-          <label>Estudiante</label>
-          <div id="entregaEstudianteNombre" style="font-weight:700;font-size:16px"></div>
-        </div>
-
-        <div class="entrega-campo">
-          <label for="entregaDiaManual">Día de entrega</label>
-          <select id="entregaDiaManual" onchange="actualizarCalculoEntrega()">
-            <option value="1">Día 1</option>
-            <option value="2">Día 2</option>
-            <option value="3">Día 3</option>
-            <option value="4">Día 4</option>
-            <option value="5">Después</option>
-          </select>
-          <div id="entregaFechaContenedor" style="display:none;margin-top:10px">
-            <label for="entregaFecha">Fecha en que presentó</label>
-            <input type="date" id="entregaFecha" onchange="actualizarCalculoEntrega()">
-          </div>
-          <div id="entregaMaxDiaManual" style="font-weight:700;margin-top:10px"></div>
-        </div>
-
-        <div class="entrega-calculo" id="entregaCalculo"></div>
-
-        <div class="modal-acciones">
-          <button type="button" class="boton-cancelar" onclick="cerrarModalEntregas()">Cancelar</button>
-          <button type="button" class="boton-crear-modal" id="botonGuardarEntrega" onclick="guardarEntrega()">💾 Registrar entrega</button>
-        </div>
-      </div>
-
-      <div style="margin-top:18px">
-        <h4 style="margin:0 0 7px">📋 Historial de entregas</h4>
-        <div id="entregaHistorial" class="entrega-historial"><div class="entrega-vacio">Seleccione un estudiante.</div></div>
-      </div>
-    </div>
-  </div>
-</div>
 
 </body>
 
