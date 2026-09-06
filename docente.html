@@ -5829,6 +5829,17 @@ function crearActividadHTML(
         botonEntregasActividad
     );
 
+    const botonConfigEntregasActividad = document.createElement("button");
+    botonConfigEntregasActividad.className = "boton-bloquear entrega-boton";
+    botonConfigEntregasActividad.textContent = "⚙️";
+    botonConfigEntregasActividad.title = "Configurar porcentajes de entrega de esta actividad";
+    botonConfigEntregasActividad.addEventListener("click", async function(event) {
+        event.stopPropagation();
+        entregaActividadActual = actividad;
+        await cargarConfiguracionEntregas(actividad.id);
+        await abrirConfiguracionPorcentajesEntrega();
+    });
+    derecha.appendChild(botonConfigEntregasActividad);
 
     derecha.appendChild(
         botonOcultar
@@ -9830,6 +9841,16 @@ async function abrirEscanerQR(actividad) {
     modoQRAsistencia = false;
     actividadQRSeleccionada = actividad;
 
+    // La configuración de porcentajes pertenece a la actividad, no al estudiante.
+    try {
+        configuracionEntregaActual = await cargarConfiguracionEntregas(actividad.id);
+    } catch (e) {
+        configuracionEntregaActual = normalizarConfigEntrega(null);
+    }
+    configuracionEntregaQR = configuracionEntregaActual;
+    diaEntregaQR = 1;
+    fechaEntregaQR = "";
+
     const checkboxCamara =
     document.getElementById("mantenerCamaraQR");
 
@@ -10730,18 +10751,39 @@ function actualizarSeleccionEntregaQR(){
     if(el) el.textContent=`Día ${diaEntregaQR <= 4 ? diaEntregaQR : "Después"} · ${(factor*100).toFixed(0)}% · Máx. sugerido ${max.toFixed(2)} puntos`;
 }
 
+function actualizarVisibilidadFechaQR(){
+    const dia=Number(document.getElementById("diaEntregaQR")?.value || 1);
+    const cont=document.getElementById("fechaEntregaQRContenedor");
+    if(cont) cont.style.display=dia===1 ? "none" : "block";
+}
+
 function abrirSelectorEntregaQR(){
     if(!actividadQRSeleccionada)return;
     const m=document.getElementById("modalSelectorEntregaQR");
-    document.getElementById("fechaEntregaQR").value=fechaEntregaQR||actividadQRSeleccionada.fecha||"";
-    document.getElementById("diaEntregaQR").value=diaEntregaQR;
+    document.getElementById("diaEntregaQR").value=diaEntregaQR || 1;
+    document.getElementById("fechaEntregaQR").value=fechaEntregaQR || "";
+    actualizarVisibilidadFechaQR();
     actualizarMaximoSelectorQR();
     m.classList.remove("oculto");
 }
 function actualizarMaximoSelectorQR(){
-    const d=Number(document.getElementById("diaEntregaQR").value); const f=obtenerFactorEntregaPorDia(d,configuracionEntregaQR||configuracionEntregaActual); const max=obtenerMaximoActividad(actividadQRSeleccionada)*f; document.getElementById("maximoSelectorQR").textContent=`Máximo sugerido: ${max.toFixed(2)} puntos`;
+    const d=Number(document.getElementById("diaEntregaQR").value);
+    const f=obtenerFactorEntregaPorDia(d,configuracionEntregaQR||configuracionEntregaActual);
+    const max=obtenerMaximoActividad(actividadQRSeleccionada)*f;
+    actualizarVisibilidadFechaQR();
+    document.getElementById("maximoSelectorQR").textContent=`Máximo sugerido para ${d<=4 ? "Día "+d : "Después"}: ${max.toFixed(2)} puntos`;
 }
-function guardarSelectorEntregaQR(){ fechaEntregaQR=document.getElementById("fechaEntregaQR").value; diaEntregaQR=Number(document.getElementById("diaEntregaQR").value); actualizarSeleccionEntregaQR(); document.getElementById("modalSelectorEntregaQR").classList.add("oculto"); const n=document.getElementById("notaQR"); if(n){const max=obtenerMaximoActividad(actividadQRSeleccionada)*obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR||configuracionEntregaActual);n.max=max;} }
+function guardarSelectorEntregaQR(){
+    const d=Number(document.getElementById("diaEntregaQR").value);
+    const fecha=document.getElementById("fechaEntregaQR").value;
+    if(d>1 && !fecha){ alert("Seleccione la fecha de presentación para este día."); return; }
+    diaEntregaQR=d;
+    fechaEntregaQR=d===1 ? "" : fecha;
+    actualizarSeleccionEntregaQR();
+    document.getElementById("modalSelectorEntregaQR").classList.add("oculto");
+    const n=document.getElementById("notaQR");
+    if(n){const max=obtenerMaximoActividad(actividadQRSeleccionada)*obtenerFactorEntregaPorDia(diaEntregaQR,configuracionEntregaQR||configuracionEntregaActual);n.max=max;}
+}
 function cerrarSelectorEntregaQR(){document.getElementById("modalSelectorEntregaQR").classList.add("oculto");}
 
 async function guardarCalificacionQR() {
@@ -11195,6 +11237,7 @@ async function abrirControlEntregasActividad(actividad) {
         <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
         <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)}</strong></div>`;
 
+    document.getElementById("entregaProgramaActividad").style.display = "grid";
     document.getElementById("entregaFormulario").style.display = "none";
     document.getElementById("entregaEstudianteNombre").textContent = "Seleccione 📅 junto al estudiante para registrar su entrega.";
     document.getElementById("entregaHistorial").innerHTML = `<div class="entrega-vacio">El control se realiza individualmente desde el botón 📅 de cada estudiante.</div>`;
@@ -11211,23 +11254,20 @@ async function abrirControlEntregasEstudiante(estudianteId, actividadId) {
 
     const modal = document.getElementById("modalEntregas");
     modal.classList.remove("oculto");
-    document.getElementById("entregaTitulo").textContent = "📅 Control de entregas";
+    document.getElementById("entregaTitulo").textContent = "📅 Registrar día de entrega";
     document.getElementById("entregaActividadInfo").innerHTML = `
         <div class="entrega-tarjeta"><small>Actividad</small><strong style="font-size:15px">${escapeHTML(actividad.nombre)}</strong></div>
         <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
         <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)} puntos</strong></div>`;
 
     renderizarProgramaEntrega(configuracionEntregaActual);
+    document.getElementById("entregaProgramaActividad").style.display = "none";
     document.getElementById("entregaFormulario").style.display = "block";
     document.getElementById("entregaEstudianteNombre").textContent = estudiante.nombre;
-
-    const hoy = new Date();
-    const isoHoy = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
-    document.getElementById("entregaFecha").value = isoHoy;
-    const diaInicial = calcularDiaEntrega(actividad.fecha, isoHoy);
-    document.getElementById("entregaDiaManual").value = Math.min(5, diaInicial);
-    document.querySelector('input[name="estadoEntrega"][value="incompleto"]').checked = true;
-    document.getElementById("entregaAvance").value = 100;
+    document.getElementById("entregaDiaManual").value = "1";
+    document.getElementById("entregaFecha").value = "";
+    document.getElementById("entregaFechaContenedor").style.display = "none";
+    document.getElementById("entregaMaxDiaManual").textContent = `Máximo sugerido Día 1: ${(obtenerMaximoActividad(actividad) * obtenerFactorEntregaPorDia(1, configuracionEntregaActual)).toFixed(2)} puntos`;
 
     await cargarHistorialEntregas();
     actualizarCalculoEntrega();
@@ -11256,98 +11296,56 @@ async function cargarHistorialEntregas() {
     renderizarHistorialEntregas();
 }
 
-function obtenerAvanceAcumulado() {
-    return entregasActuales.reduce((s, r) => s + Number(r.avance_porcentaje || 0), 0);
-}
-
-function obtenerPuntajeAcumulado() {
-    return entregasActuales.reduce((s, r) => s + Number(r.puntaje_obtenido || 0), 0);
-}
-
 function renderizarHistorialEntregas() {
     const cont = document.getElementById("entregaHistorial");
     if (!entregasActuales.length) {
-        cont.innerHTML = `<div class="entrega-vacio">Todavía no hay entregas registradas.</div>`;
+        cont.innerHTML = `<div class="entrega-vacio">Todavía no hay días de entrega registrados.</div>`;
         return;
     }
 
-    cont.innerHTML = entregasActuales.map((r, i) => `
+    cont.innerHTML = entregasActuales.map(r => `
         <div class="entrega-registro">
-            <div class="linea"><strong>${formatearFechaEntrega(r.fecha_entrega)} — ${escapeHTML(r.dia_entrega <= 4 ? "Día " + r.dia_entrega : "Después")}</strong><span>${escapeHTML(String(r.estado || "").toUpperCase())}</span></div>
-            <div class="linea"><span>Avance: ${Number(r.avance_porcentaje || 0).toFixed(2)}%</span><span>Factor: ${(Number(r.factor || 0) * 100).toFixed(0)}%</span><span>Máximo: ${Number(r.puntaje_maximo_aplicable || 0).toFixed(2)}</span><strong>Obtenido: ${Number(r.puntaje_obtenido || 0).toFixed(2)}</strong></div>
-        </div>`).join("") + `
-        <div class="entrega-registro" style="background:#f7f7f7">
-            <div class="linea"><strong>TOTAL ACUMULADO</strong><strong>${obtenerAvanceAcumulado().toFixed(2)}% — ${obtenerPuntajeAcumulado().toFixed(2)} / ${obtenerMaximoActividad(entregaActividadActual)}</strong></div>
-        </div>`;
+            <div class="linea"><strong>${r.dia_entrega <= 4 ? "Día " + r.dia_entrega : "Después"}</strong><span>${r.dia_entrega === 1 ? "Fecha de la actividad" : formatearFechaEntrega(r.fecha_entrega)}</span></div>
+            <div class="linea"><span>Factor: ${(Number(r.factor || 0) * 100).toFixed(0)}%</span><span>Máximo sugerido: ${Number(r.puntaje_maximo_aplicable || 0).toFixed(2)} puntos</span></div>
+        </div>`).join("");
 }
 
 function actualizarCalculoEntrega() {
     if (!entregaActividadActual || !entregaEstudianteActual) return;
 
-    const fecha = document.getElementById("entregaFecha").value;
-    const dia = Number(document.getElementById("entregaDiaManual")?.value || calcularDiaEntrega(entregaActividadActual.fecha, fecha));
+    const dia = Number(document.getElementById("entregaDiaManual")?.value || 1);
     const factor = obtenerFactorEntregaPorDia(dia);
     const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
-    const acumulado = obtenerAvanceAcumulado();
-    const restante = Math.max(0, 100 - acumulado);
-    const completo = document.querySelector('input[name="estadoEntrega"]:checked')?.value === "completo";
-    const avanceInput = document.getElementById("entregaAvance");
+    const maximoDia = maximoActividad * factor;
+    const fechaCont = document.getElementById("entregaFechaContenedor");
+    if (fechaCont) fechaCont.style.display = dia === 1 ? "none" : "block";
 
-    if (completo) {
-        avanceInput.value = restante.toFixed(2);
-        avanceInput.disabled = true;
-    } else {
-        avanceInput.disabled = false;
-        if (Number(avanceInput.value) > restante) avanceInput.value = restante.toFixed(2);
-    }
-
-    const avance = Math.max(0, Math.min(restante, Number(avanceInput.value || 0)));
-    const maximoAplicable = maximoActividad * (avance / 100) * factor;
-    const acumuladoDespues = Math.min(100, acumulado + avance);
-    const puntajeDespues = obtenerPuntajeAcumulado() + maximoAplicable;
-
-    const maximoDiaManual = maximoActividad * factor;
     const maxDiaEl = document.getElementById("entregaMaxDiaManual");
-    if (maxDiaEl) maxDiaEl.textContent = `Máximo sugerido este día: ${maximoDiaManual.toFixed(2)} puntos`;
+    if (maxDiaEl) maxDiaEl.textContent = `Máximo sugerido ${dia <= 4 ? "Día " + dia : "Después"}: ${maximoDia.toFixed(2)} puntos`;
 
-    document.getElementById("entregaCalculoResumen").innerHTML = `
-        <div class="entrega-tarjeta"><small>Corresponde</small><strong>${escapeHTML(obtenerEtiquetaEntregaPorDia(dia))}</strong></div>
-        <div class="entrega-tarjeta"><small>Factor</small><strong>${(factor*100).toFixed(0)}%</strong></div>
-        <div class="entrega-tarjeta"><small>Restante</small><strong>${restante.toFixed(2)}%</strong></div>`;
-
-    document.getElementById("entregaAvanceAyuda").textContent =
-        `Máximo que todavía puede registrar: ${restante.toFixed(2)}%. No se puede superar el 100% acumulado.`;
-
+    const fecha = document.getElementById("entregaFecha")?.value || "";
     document.getElementById("entregaCalculo").innerHTML = `
-        <div><strong>Máximo calificable en esta entrega: ${maximoAplicable.toFixed(2)} puntos</strong></div>
-        <div style="margin-top:5px">${avance.toFixed(2)}% de avance × ${maximoActividad} puntos × ${(factor*100).toFixed(0)}% de factor.</div>
-        <div style="margin-top:7px;font-weight:700">Total acumulado después de guardar: ${acumuladoDespues.toFixed(2)}% — ${puntajeDespues.toFixed(2)} / ${maximoActividad}</div>
-        ${factor === 0 ? '<div style="margin-top:6px;color:#b00020;font-weight:700">Esta entrega corresponde a un plazo posterior al Día 4 y no suma puntos.</div>' : ''}`;
+        <div><strong>${dia <= 4 ? "Día " + dia : "Después"} · ${(factor*100).toFixed(0)}%</strong></div>
+        <div style="margin-top:6px">Máximo sugerido que puede registrar: <strong>${maximoDia.toFixed(2)} puntos</strong></div>
+        ${dia > 1 ? `<div style="margin-top:6px">Fecha: <strong>${fecha ? formatearFechaEntrega(fecha) : "Seleccione una fecha"}</strong></div>` : `<div style="margin-top:6px">Día 1 utiliza la fecha inicial de la actividad.</div>`}`;
 }
 
 async function guardarEntrega() {
     if (!entregaActividadActual || !entregaEstudianteActual) return;
 
     const boton = document.getElementById("botonGuardarEntrega");
-    const fecha = document.getElementById("entregaFecha").value;
-    if (!fecha) { alert("Seleccione la fecha en que presentó."); return; }
+    const dia = Number(document.getElementById("entregaDiaManual").value || 1);
+    const fechaSeleccionada = document.getElementById("entregaFecha").value || "";
+    const fecha = dia === 1 ? entregaActividadActual.fecha : fechaSeleccionada;
 
-    const dia = calcularDiaEntrega(entregaActividadActual.fecha, fecha);
-    const factor = obtenerFactorEntregaPorDia(dia);
-    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
-    const acumulado = obtenerAvanceAcumulado();
-    const restante = Math.max(0, 100 - acumulado);
-    const estado = document.querySelector('input[name="estadoEntrega"]:checked')?.value || "incompleto";
-    let avance = estado === "completo" ? restante : Number(document.getElementById("entregaAvance").value || 0);
-
-    if (!isFinite(avance) || avance < 0) { alert("El avance debe ser válido."); return; }
-    if (avance > restante + 0.000001) {
-        alert(`No puede registrar más de ${restante.toFixed(2)}% porque ya existe un avance acumulado de ${acumulado.toFixed(2)}%.`);
+    if (dia > 1 && !fecha) {
+        alert("Seleccione la fecha de presentación para este día.");
         return;
     }
-    if (avance <= 0) { alert("Registre un avance mayor que 0%."); return; }
 
-    const puntajeMaximoAplicable = maximoActividad * (avance / 100) * factor;
+    const factor = obtenerFactorEntregaPorDia(dia);
+    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
+    const maximoDia = maximoActividad * factor;
 
     boton.disabled = true;
     boton.textContent = "💾 Guardando...";
@@ -11360,11 +11358,11 @@ async function guardarEntrega() {
                 estudiante_id: Number(entregaEstudianteActual.id),
                 fecha_entrega: fecha,
                 dia_entrega: dia,
-                avance_porcentaje: Number(avance.toFixed(4)),
-                estado: estado,
+                avance_porcentaje: 0,
+                estado: "registrado",
                 factor: factor,
-                puntaje_maximo_aplicable: Number(puntajeMaximoAplicable.toFixed(4)),
-                puntaje_obtenido: Number(puntajeMaximoAplicable.toFixed(4))
+                puntaje_maximo_aplicable: Number(maximoDia.toFixed(4)),
+                puntaje_obtenido: 0
             })
             .select("id,actividad_id,estudiante_id,fecha_entrega,dia_entrega,avance_porcentaje,estado,factor,puntaje_maximo_aplicable,puntaje_obtenido,created_at")
             .single();
@@ -11373,45 +11371,14 @@ async function guardarEntrega() {
 
         entregasActuales.push(data);
         entregasActuales.sort((a,b) => String(a.fecha_entrega).localeCompare(String(b.fecha_entrega)) || Number(a.id)-Number(b.id));
-
-        const total = Number(obtenerPuntajeAcumulado().toFixed(4));
-        const notaInput = document.querySelector(`.nota-input[data-estudiante="${Number(entregaEstudianteActual.id)}"][data-actividad="${Number(entregaActividadActual.id)}"]`);
-        const observacionInput = document.querySelector(`.observacion-actividad[data-estudiante="${Number(entregaEstudianteActual.id)}"][data-actividad="${Number(entregaActividadActual.id)}"]`);
-        const observacion = observacionInput ? observacionInput.value.trim() : "";
-
-        const { error: errorCal } = await supabaseClient
-            .from("calificaciones")
-            .upsert({
-                actividad_id: Number(entregaActividadActual.id),
-                estudiante_id: Number(entregaEstudianteActual.id),
-                nota: total,
-                observacion: observacion || null
-            }, { onConflict: "actividad_id,estudiante_id" });
-
-        if (errorCal) throw errorCal;
-
-        if (notaInput) notaInput.value = total;
-        if (!calificaciones[entregaEstudianteActual.id]) calificaciones[entregaEstudianteActual.id] = {};
-        calificaciones[entregaEstudianteActual.id][entregaActividadActual.id] = { nota: total, observacion: observacion };
-
-        await actualizarMatematicaEstudianteIndividual(Number(entregaEstudianteActual.id));
         renderizarHistorialEntregas();
-        actualizarCalculoEntrega();
-        mostrarMensaje("✓ Entrega registrada: " + entregaEstudianteActual.nombre);
-
-        // Si ya llegó al 100%, deja visible el historial y evita registrar más.
-        if (obtenerAvanceAcumulado() >= 99.9999) {
-            document.getElementById("botonGuardarEntrega").disabled = true;
-            document.getElementById("botonGuardarEntrega").textContent = "✓ Actividad completada";
-        }
+        mostrarMensaje("✓ Día de entrega registrado: " + entregaEstudianteActual.nombre);
     } catch (error) {
         console.error(error);
-        alert("Error al registrar la entrega: " + error.message + "\n\nSi es la primera vez que usa esta función, ejecute en Supabase el SQL indicado debajo del código.");
+        alert("Error al registrar el día de entrega: " + error.message + "\n\nVerifique que exista la tabla entregas_actividades en Supabase.");
     } finally {
-        if (obtenerAvanceAcumulado() < 99.9999) {
-            boton.disabled = false;
-            boton.textContent = "💾 Registrar entrega";
-        }
+        boton.disabled = false;
+        boton.textContent = "💾 Registrar entrega";
     }
 }
 
@@ -11461,9 +11428,12 @@ comprobarSesion();
   <div class="modal-entregas" onclick="event.stopPropagation()">
     <div class="modal-cabecera"><h3>📅 Fecha y día de entrega</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarSelectorEntregaQR()">×</button></div>
     <div class="modal-cuerpo">
-      <label>Fecha presentada</label><input type="date" id="fechaEntregaQR">
-      <label style="display:block;margin-top:12px">Día que desea aplicar</label>
+      <label>Día que desea aplicar</label>
       <select id="diaEntregaQR" onchange="actualizarMaximoSelectorQR()"><option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option><option value="4">Día 4</option><option value="5">Después</option></select>
+      <div id="fechaEntregaQRContenedor" style="display:none;margin-top:12px">
+        <label>Fecha presentada</label>
+        <input type="date" id="fechaEntregaQR">
+      </div>
       <div id="maximoSelectorQR" class="entrega-calculo" style="margin-top:12px"></div>
       <div class="modal-acciones"><button type="button" class="boton-cancelar" onclick="cerrarSelectorEntregaQR()">Cancelar</button><button type="button" class="boton-crear-modal" onclick="guardarSelectorEntregaQR()">✓ Aplicar</button></div>
     </div>
@@ -11483,10 +11453,6 @@ comprobarSesion();
       <div id="entregaActividadInfo" class="entrega-resumen"></div>
 
       <div class="entrega-programa" id="entregaProgramaActividad"></div>
-      <div style="display:flex;justify-content:flex-end;margin:8px 0 12px">
-        <button type="button" class="boton-crear-modal" onclick="abrirConfiguracionPorcentajesEntrega()">⚙️ Cambiar porcentajes de esta actividad</button>
-      </div>
-
       <div id="entregaFormulario">
         <div class="entrega-campo">
           <label>Estudiante</label>
@@ -11494,31 +11460,19 @@ comprobarSesion();
         </div>
 
         <div class="entrega-campo">
-          <label for="entregaFecha">Fecha en que presentó</label>
-          <input type="date" id="entregaFecha" onchange="actualizarCalculoEntrega()">
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-            <label style="margin:0">📅 Día a aplicar</label>
-            <select id="entregaDiaManual" onchange="actualizarCalculoEntrega()">
-              <option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option><option value="4">Día 4</option><option value="5">Después</option>
-            </select>
-            <span id="entregaMaxDiaManual" style="font-weight:700"></span>
+          <label for="entregaDiaManual">Día de entrega</label>
+          <select id="entregaDiaManual" onchange="actualizarCalculoEntrega()">
+            <option value="1">Día 1</option>
+            <option value="2">Día 2</option>
+            <option value="3">Día 3</option>
+            <option value="4">Día 4</option>
+            <option value="5">Después</option>
+          </select>
+          <div id="entregaFechaContenedor" style="display:none;margin-top:10px">
+            <label for="entregaFecha">Fecha en que presentó</label>
+            <input type="date" id="entregaFecha" onchange="actualizarCalculoEntrega()">
           </div>
-        </div>
-
-        <div class="entrega-resumen" id="entregaCalculoResumen"></div>
-
-        <div class="entrega-campo">
-          <label>Estado de esta entrega</label>
-          <div class="entrega-opciones-estado">
-            <label class="entrega-estado"><input type="radio" name="estadoEntrega" value="incompleto" checked onchange="actualizarCalculoEntrega()"> Incompleto</label>
-            <label class="entrega-estado"><input type="radio" name="estadoEntrega" value="completo" onchange="actualizarCalculoEntrega()"> Completo</label>
-          </div>
-        </div>
-
-        <div class="entrega-campo" id="entregaAvanceCampo">
-          <label for="entregaAvance">Avance entregado en esta presentación (%)</label>
-          <input type="number" id="entregaAvance" min="0" max="100" step="0.01" value="100" oninput="actualizarCalculoEntrega()">
-          <small id="entregaAvanceAyuda" style="display:block;margin-top:5px;color:#666"></small>
+          <div id="entregaMaxDiaManual" style="font-weight:700;margin-top:10px"></div>
         </div>
 
         <div class="entrega-calculo" id="entregaCalculo"></div>
