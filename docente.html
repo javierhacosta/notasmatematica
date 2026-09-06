@@ -3591,9 +3591,6 @@ function bloquearDesbloquearAsistencia() {
         "Desbloquear tabla de asistencia";
 
 
-        mostrarMensaje(
-            "🔒 Tabla de asistencia bloqueada."
-        );
 
     }
 
@@ -3624,9 +3621,6 @@ function bloquearDesbloquearAsistencia() {
         "Bloquear tabla de asistencia";
 
 
-        mostrarMensaje(
-            "🔓 Tabla de asistencia desbloqueada."
-        );
 
     }
 
@@ -6147,10 +6141,6 @@ function crearActividadHTML(
             "Desbloquear notas y observaciones";
 
 
-            mostrarMensaje(
-                "🔒 Notas y observaciones bloqueadas: " +
-                actividad.nombre
-            );
 
         }
 
@@ -6181,10 +6171,6 @@ function crearActividadHTML(
             "Bloquear notas y observaciones";
 
 
-            mostrarMensaje(
-                "🔓 Notas y observaciones desbloqueadas: " +
-                actividad.nombre
-            );
 
         }
 
@@ -9586,78 +9572,25 @@ function mostrarMensaje(
     texto,
     error = false
 ) {
-    const contenedor =
-        document.getElementById(
-            "notificacionesGuardado"
-        );
+    const contenedor = document.getElementById("notificacionesGuardado");
+    if (!contenedor) return;
 
-    if (!contenedor) {
-        return;
-    }
+    const notificacion = document.createElement("div");
+    notificacion.className = "notificacion-guardado" + (error ? " error" : "");
+    notificacion.textContent = texto;
+    contenedor.appendChild(notificacion);
 
-    const notificacion =
-        document.createElement("div");
+    // Todas las notificaciones desaparecen rápidamente.
+    const tiempoVisible = 1500;
 
-    notificacion.className =
-        "notificacion-guardado" +
-        (error ? " error" : "");
+    setTimeout(() => {
+        notificacion.classList.add("ocultando");
+        setTimeout(() => notificacion.remove(), 250);
+    }, tiempoVisible);
 
-    notificacion.textContent =
-        texto;
-
-    contenedor.appendChild(
-        notificacion
-    );
-
-    /*
-       Los mensajes de progreso permanecen visibles
-       mientras se está guardando. Los mensajes finales
-       se retiran automáticamente después de 3 segundos.
-    */
-    const esMensajeFinal =
-        texto.includes("guardadas correctamente") ||
-        texto.includes("guardada correctamente") ||
-        texto.includes("actualizada correctamente") ||
-        texto.includes("creada correctamente") ||
-        texto.includes("eliminada correctamente") ||
-        texto.includes("exportado correctamente") ||
-        texto.includes("✓ Guardado") ||
-        texto.includes("✓ Asistencia guardada");
-
-    if (esMensajeFinal) {
-        setTimeout(
-            function() {
-                if (notificacion.parentNode) {
-                    notificacion.style.opacity = "0";
-                    notificacion.style.transform =
-                        "translateY(-10px)";
-                    notificacion.style.transition =
-                        "opacity .2s ease, transform .2s ease";
-
-                    setTimeout(
-                        function() {
-                            notificacion.remove();
-                        },
-                        220
-                    );
-                }
-            },
-            3000
-        );
-    }
-
-    /*
-       Si ya existen demasiadas notificaciones de progreso,
-       conservar solamente las más recientes para no llenar
-       la pantalla.
-    */
-    const notificaciones =
-        contenedor.querySelectorAll(
-            ".notificacion-guardado"
-        );
-
-    if (notificaciones.length > 6) {
-        notificaciones[0].remove();
+    // Evita que muchas acciones seguidas acumulen notificaciones.
+    while (contenedor.children.length > 3) {
+        contenedor.firstElementChild.remove();
     }
 }
 
