@@ -5949,11 +5949,13 @@ function crearActividadHTML(
                     data-maximo="${
                         puntajeMaximo
                     }"
+                    data-valor-inicial="${
+                        nota === null ? "" : nota
+                    }"
 
                     disabled
 
-                    oninput="validarNota(this)"
-                    onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
+                    oninput="validarNota(this); programarGuardadoCambioActividad(this)"
 
                 >
 
@@ -5981,7 +5983,8 @@ function crearActividadHTML(
                     }"
 
                     placeholder="-"
-                    onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
+                    data-valor-inicial="${escapeHTML(observacion)}"
+                    oninput="programarGuardadoCambioActividad(this)"
 
                     disabled
 
@@ -7583,7 +7586,151 @@ function aplicarBusqueda() {
 
 const guardadosActividadIndividual = new Map();
 
-async function guardarCambioActividadIndividual(input) {
+/*
+   GUARDADO AUTOMÁTICO SOLO CUANDO REALMENTE CAMBIA UNA NOTA
+   O UNA OBSERVACIÓN.
+
+   Importante:
+   - Se dispara por escritura/input.
+   - No se usa blur ni change, porque esos eventos pueden dispararse
+     al minimizar/maximizar o al cambiar el foco.
+   - Si el valor vuelve a ser el último valor guardado, no se envía nada.
+*/
+const valoresActividadGuardados = new Map();
+const temporizadoresActividad = new Map();
+
+function obtenerClaveActividadInput(input) {
+    if (!input) return "";
+    return String(input.dataset.estudiante || "") + "|" +
+           String(input.dataset.actividad || "");
+}
+
+function obtenerValoresActividadActual(input) {
+    if (!input) return null;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const actividadId = Number(input.dataset.actividad);
+
+    if (!estudianteId || !actividadId) return null;
+
+    const notaInput = document.querySelector(
+        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    const observacionInput = document.querySelector(
+        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    return {
+        nota: notaInput ? notaInput.value.trim() : "",
+        observacion: observacionInput ? observacionInput.value.trim() : ""
+    };
+}
+
+function obtenerFirmaActividad(input) {
+    const valores = obtenerValoresActividadActual(input);
+    if (!valores) return "";
+
+    return JSON.stringify({
+        nota: valores.nota,
+        observacion: valores.observacion
+    });
+}
+
+function programarGuardadoCambioActividad(input) {
+    if (!input) return;
+
+    const clave = obtenerClaveActividadInput(input);
+    if (!clave) return;
+
+    /*
+       Si validarNota acaba de detectar una nota fuera de rango,
+       no programamos ningún guardado.
+    */
+    if (
+        input.classList.contains("nota-input") &&
+        input.value !== ""
+    ) {
+        const nota = Number(input.value);
+        const maximo = Number(input.dataset.maximo);
+
+        if (
+            isNaN(nota) ||
+            isNaN(maximo) ||
+            nota < 0 ||
+            nota > maximo
+        ) {
+            return;
+        }
+    }
+
+    const firmaActual = obtenerFirmaActividad(input);
+    if (!firmaActual) return;
+
+    /*
+       Primera vez que vemos esta celda: tomar el valor existente
+       como valor ya guardado para no provocar un guardado simplemente
+       por renderizar la tabla.
+    */
+    if (!valoresActividadGuardados.has(clave)) {
+        const notaInicial = document.querySelector(
+            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
+        )?.dataset.valorInicial ?? "";
+
+        const observacionInicialInput = document.querySelector(
+            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
+        );
+
+        const observacionInicial =
+            observacionInicialInput?.dataset.valorInicial ?? "";
+
+        valoresActividadGuardados.set(
+            clave,
+            JSON.stringify({
+                nota: String(notaInicial).trim(),
+                observacion: String(observacionInicial).trim()
+            })
+        );
+
+        if (valoresActividadGuardados.get(clave) === firmaActual) {
+            return;
+        }
+    }
+
+    /*
+       Si no hay cambio real, no guardar.
+    */
+    if (valoresActividadGuardados.get(clave) === firmaActual) {
+        return;
+    }
+
+    /*
+       Debounce corto: mientras se escribe no hacemos una petición
+       por cada carácter; guardamos cuando termina la escritura.
+    */
+    if (temporizadoresActividad.has(clave)) {
+        clearTimeout(temporizadoresActividad.get(clave));
+    }
+
+    const temporizador = setTimeout(async () => {
+        temporizadoresActividad.delete(clave);
+
+        const firmaAntesDeGuardar = obtenerFirmaActividad(input);
+
+        if (
+            !firmaAntesDeGuardar ||
+            valoresActividadGuardados.get(clave) === firmaAntesDeGuardar
+        ) {
+            return;
+        }
+
+        await guardarCambioActividadIndividual(input, firmaAntesDeGuardar);
+    }, 600);
+
+    temporizadoresActividad.set(clave, temporizador);
+}
+
+async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 
     if (!input) return;
 
@@ -7591,6 +7738,33 @@ async function guardarCambioActividadIndividual(input) {
     const actividadId = Number(input.dataset.actividad);
 
     if (!estudianteId || !actividadId) return;
+
+    const clave = obtenerClaveActividadInput(input);
+    const firmaActualInicial = obtenerFirmaActividad(input);
+
+    if (!firmaActualInicial) return;
+
+    /*
+       Segunda protección: si entre la escritura y el momento del
+       guardado el valor volvió al último valor guardado, no hacemos
+       ninguna petición.
+    */
+    if (
+        valoresActividadGuardados.get(clave) === firmaActualInicial
+    ) {
+        return;
+    }
+
+    if (
+        firmaEsperada &&
+        firmaEsperada !== firmaActualInicial
+    ) {
+        /*
+           El usuario siguió escribiendo antes de que comenzara este
+           guardado. No guardamos una versión antigua.
+        */
+        return;
+    }
 
     const actividad = actividades.find(
         a => Number(a.id) === actividadId
@@ -7639,8 +7813,6 @@ async function guardarCambioActividadIndividual(input) {
         ? observacionInput.value.trim()
         : "";
 
-    const clave = estudianteId + "|" + actividadId;
-
     const anterior =
         guardadosActividadIndividual.get(clave) ||
         Promise.resolve();
@@ -7673,6 +7845,19 @@ async function guardarCambioActividadIndividual(input) {
                 nota: nota,
                 observacion: observacion
             };
+
+            /*
+               Marcar exactamente esta combinación nota+observación como
+               guardada. Así, perder el foco, minimizar/maximizar o
+               bloquear/desbloquear no provoca otro guardado.
+            */
+            valoresActividadGuardados.set(
+                clave,
+                JSON.stringify({
+                    nota: notaInput ? notaInput.value.trim() : "",
+                    observacion: observacionInput ? observacionInput.value.trim() : ""
+                })
+            );
 
             /*
                Recalcular SOLO al estudiante modificado.
