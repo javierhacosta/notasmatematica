@@ -1369,8 +1369,67 @@ td:first-child {
 ===================================================== */
 
 .mensaje {
-    margin-top: 15px;
+    display: none !important;
+}
+
+/* =====================================================
+   NOTIFICACIONES DE GUARDADO EN LA PARTE SUPERIOR
+   Solo cambia la forma de mostrar los avisos; no cambia
+   la lógica de guardado.
+===================================================== */
+#notificacionesGuardado {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92%, 520px);
+    z-index: 20000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.notificacion-guardado {
+    background: white;
+    border: 1px solid #ddd;
+    border-left: 5px solid #16803c;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,.18);
+    padding: 12px 15px;
     font-weight: bold;
+    font-size: 14px;
+    color: #16803c;
+    animation: aparecerNotificacion .22s ease-out;
+    pointer-events: auto;
+}
+
+.notificacion-guardado.error {
+    border-left-color: #c62828;
+    color: #c62828;
+}
+
+@keyframes aparecerNotificacion {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 600px) {
+    #notificacionesGuardado {
+        top: 10px;
+        width: calc(100% - 20px);
+    }
+
+    .notificacion-guardado {
+        font-size: 13px;
+        padding: 11px 13px;
+    }
 }
 
 .oculto {
@@ -2138,6 +2197,8 @@ button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], butto
 
 
 <body>
+
+<div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
 
 <div class="contenedor">
 
@@ -4824,7 +4885,6 @@ async function guardarAsistencia() {
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
-        alert("✓ Asistencia guardada correctamente.");
         return true;
 
     } catch (error) {
@@ -4832,9 +4892,10 @@ async function guardarAsistencia() {
 
         actualizarProgresoGuardado("asistencia", 0, false);
 
-        alert(
-            "Error al guardar asistencia: " +
-            (error.message || error)
+        mostrarMensaje(
+            "✕ Error al guardar asistencia: " +
+            (error.message || error),
+            true
         );
 
         return false;
@@ -9522,92 +9583,83 @@ async function cerrarSesion() {
 ===================================================== */
 
 function mostrarMensaje(
-
     texto,
     error = false
-
 ) {
+    const contenedor =
+        document.getElementById(
+            "notificacionesGuardado"
+        );
 
-    const mensaje =
-    document.getElementById(
-        "mensaje"
-    );
-
-
-    if (!mensaje) {
+    if (!contenedor) {
         return;
     }
 
+    const notificacion =
+        document.createElement("div");
 
-    mensaje.textContent =
-    texto;
+    notificacion.className =
+        "notificacion-guardado" +
+        (error ? " error" : "");
 
+    notificacion.textContent =
+        texto;
 
-    mensaje.style.color =
-    error
-    ? "#c62828"
-    : "#16803c";
+    contenedor.appendChild(
+        notificacion
+    );
 
+    /*
+       Los mensajes de progreso permanecen visibles
+       mientras se está guardando. Los mensajes finales
+       se retiran automáticamente después de 3 segundos.
+    */
+    const esMensajeFinal =
+        texto.includes("guardadas correctamente") ||
+        texto.includes("guardada correctamente") ||
+        texto.includes("actualizada correctamente") ||
+        texto.includes("creada correctamente") ||
+        texto.includes("eliminada correctamente") ||
+        texto.includes("exportado correctamente") ||
+        texto.includes("✓ Guardado") ||
+        texto.includes("✓ Asistencia guardada");
 
-    mensaje.style.display =
-    "block";
+    if (esMensajeFinal) {
+        setTimeout(
+            function() {
+                if (notificacion.parentNode) {
+                    notificacion.style.opacity = "0";
+                    notificacion.style.transform =
+                        "translateY(-10px)";
+                    notificacion.style.transition =
+                        "opacity .2s ease, transform .2s ease";
 
+                    setTimeout(
+                        function() {
+                            notificacion.remove();
+                        },
+                        220
+                    );
+                }
+            },
+            3000
+        );
+    }
 
-    if (
-        mensaje._temporizador
-    ) {
-
-        clearTimeout(
-            mensaje._temporizador
+    /*
+       Si ya existen demasiadas notificaciones de progreso,
+       conservar solamente las más recientes para no llenar
+       la pantalla.
+    */
+    const notificaciones =
+        contenedor.querySelectorAll(
+            ".notificacion-guardado"
         );
 
+    if (notificaciones.length > 6) {
+        notificaciones[0].remove();
     }
-
-
-    if (
-
-        texto.includes(
-            "guardadas correctamente"
-        ) ||
-
-        texto.includes(
-            "guardada correctamente"
-        ) ||
-
-        texto.includes(
-            "actualizada correctamente"
-        ) ||
-
-        texto.includes(
-            "creada correctamente"
-        ) ||
-
-        texto.includes(
-            "eliminada correctamente"
-        ) ||
-
-        texto.includes(
-            "exportado correctamente"
-        )
-
-    ) {
-
-        mensaje._temporizador =
-        setTimeout(
-        function() {
-
-            mensaje.textContent =
-            "";
-
-            mensaje.style.display =
-            "none";
-
-        }, 3000);
-
-    }
-
 }
-
 
 /* =====================================================
    ESCAPAR HTML
