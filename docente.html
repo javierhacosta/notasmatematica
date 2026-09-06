@@ -1409,22 +1409,6 @@ td:first-child {
     color: #c62828;
 }
 
-.notificacion-guardado {
-    opacity: 0;
-    transform: translateY(-12px);
-    transition: opacity .18s ease, transform .18s ease;
-}
-
-.notificacion-guardado.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.notificacion-guardado.ocultando {
-    opacity: 0;
-    transform: translateY(-8px);
-}
-
 @keyframes aparecerNotificacion {
     from {
         opacity: 0;
@@ -5968,7 +5952,7 @@ function crearActividadHTML(
 
                     disabled
 
-                    onfocus="recordarNotaAnterior(this)"
+                    onfocus="registrarUltimaNotaValida(this)"
                     oninput="validarNota(this)"
                     onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
 
@@ -6394,12 +6378,15 @@ async function editarNombreActividad(
    VALIDAR NOTA
 ===================================================== */
 
-/* Guarda la nota que existía antes de comenzar a editarla.
-   Si se introduce un valor inválido, se restaura esa nota. */
-function recordarNotaAnterior(input) {
-    if (!input) return;
-    input.dataset.notaAnterior = input.value;
+function registrarUltimaNotaValida(input) {
+
+    if (!input) {
+        return;
+    }
+
+    input.dataset.ultimaNotaValida = input.value;
 }
+
 
 function validarNota(input) {
 
@@ -6409,41 +6396,44 @@ function validarNota(input) {
 
     const valor = Number(input.value);
     const maximo = Number(input.dataset.maximo);
-    const notaAnterior =
-        input.dataset.notaAnterior !== undefined
-        ? input.dataset.notaAnterior
-        : input.value;
 
     if (valor < 0) {
-        mostrarMensaje(
-            "⚠️ La nota no puede ser menor que 0.",
-            true
+
+        alert(
+            "La nota no puede ser menor que 0."
         );
-        input.value = notaAnterior;
+
+        input.value =
+            input.dataset.ultimaNotaValida ?? "";
+
         input.focus();
-        input.select();
         return false;
     }
 
     if (valor > maximo) {
-        mostrarMensaje(
-            "⚠️ NOTA NO VÁLIDA: \"" +
-            obtenerNombreActividad(input.dataset.actividad) +
+
+        alert(
+            "⚠️ NOTA NO VÁLIDA\n\n" +
+            "La actividad \"" +
+            obtenerNombreActividad(
+                input.dataset.actividad
+            ) +
             "\" tiene un máximo de " +
             maximo +
-            " puntos.",
-            true
+            " puntos."
         );
 
-        /* Nunca borrar la nota que ya tenía el estudiante. */
-        input.value = notaAnterior;
+        /* Mantener la nota que estaba antes del cambio inválido. */
+        input.value =
+            input.dataset.ultimaNotaValida ?? "";
+
         input.focus();
-        input.select();
         return false;
     }
 
-    /* Cada valor válido pasa a ser el nuevo valor anterior. */
-    input.dataset.notaAnterior = input.value;
+    /* La nueva nota válida pasa a ser la nota de respaldo. */
+    input.dataset.ultimaNotaValida = input.value;
+
     return true;
 }
 
@@ -9565,9 +9555,6 @@ async function cerrarSesion() {
    MENSAJES
 ===================================================== */
 
-let temporizadorNotificacion = null;
-let secuenciaNotificacion = 0;
-
 function mostrarMensaje(
     texto,
     error = false
@@ -9575,46 +9562,23 @@ function mostrarMensaje(
     const contenedor = document.getElementById("notificacionesGuardado");
     if (!contenedor) return;
 
-    /* Una sola notificación activa evita que mensajes rápidos se
-       eliminen entre sí y garantiza que el último aviso se vea. */
-    const secuencia = ++secuenciaNotificacion;
-
-    if (temporizadorNotificacion) {
-        clearTimeout(temporizadorNotificacion);
-        temporizadorNotificacion = null;
-    }
-
-    contenedor.innerHTML = "";
-
     const notificacion = document.createElement("div");
-    notificacion.className =
-        "notificacion-guardado" +
-        (error ? " error" : "");
+    notificacion.className = "notificacion-guardado" + (error ? " error" : "");
     notificacion.textContent = texto;
-    notificacion.setAttribute("role", error ? "alert" : "status");
-
     contenedor.appendChild(notificacion);
 
-    /* Forzar un ciclo de pintado para que el aviso aparezca incluso
-       cuando mostrarMensaje() es llamado varias veces seguidas. */
-    void notificacion.offsetWidth;
+    // Todas las notificaciones desaparecen rápidamente.
+    const tiempoVisible = 1500;
 
-    requestAnimationFrame(() => {
-        if (secuencia === secuenciaNotificacion) {
-            notificacion.classList.add("visible");
-        }
-    });
-
-    temporizadorNotificacion = setTimeout(() => {
-        if (secuencia !== secuenciaNotificacion) return;
+    setTimeout(() => {
         notificacion.classList.add("ocultando");
+        setTimeout(() => notificacion.remove(), 250);
+    }, tiempoVisible);
 
-        setTimeout(() => {
-            if (secuencia === secuenciaNotificacion) {
-                notificacion.remove();
-            }
-        }, 220);
-    }, 1500);
+    // Evita que muchas acciones seguidas acumulen notificaciones.
+    while (contenedor.children.length > 3) {
+        contenedor.firstElementChild.remove();
+    }
 }
 
 /* =====================================================
