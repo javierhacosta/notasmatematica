@@ -3538,7 +3538,7 @@ function renderizarHistorialCambios(historial, titulo) {
         contenido.innerHTML = historial.map(registro => {
             const puedeRestaurar = registro.restaurable === true && registro.tipo === "actividad" && registro.actividadId != null && registro.estudianteId != null;
             const botonRestaurar = puedeRestaurar
-                ? `<button type="button" class="boton-restaurar-historial" onclick="confirmarRestauracionHistorial(${JSON.stringify(registro.id)})" title="Restaurar nota anterior">↩️ Restaurar</button>`
+                ? `<button type="button" class="boton-restaurar-historial" data-historial-id="${escaparHTMLHistorial(registro.id)}" title="Restaurar nota anterior">↩️ Restaurar</button>`
                 : "";
             return `<div class="historial-item">
                 <div class="historial-fecha">${escaparHTMLHistorial(formatearFechaHoraHistorial(registro.fechaHora))}</div>
@@ -3554,6 +3554,17 @@ function renderizarHistorialCambios(historial, titulo) {
         }).join("");
     }
     modal.classList.remove("oculto");
+
+    // Asignar el evento después de crear los botones dinámicamente.
+    // Así la restauración funciona también cuando el historial se vuelve a renderizar.
+    contenido.querySelectorAll(".boton-restaurar-historial").forEach(boton => {
+        boton.addEventListener("click", function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const id = this.getAttribute("data-historial-id");
+            confirmarRestauracionHistorial(id);
+        });
+    });
 }
 
 async function confirmarRestauracionHistorial(historialId) {
