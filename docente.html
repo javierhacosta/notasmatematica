@@ -2132,6 +2132,113 @@ table tbody tr:nth-child(10n+10) td {
 
 /* Guardado automático: ocultar botones manuales de guardado */
 button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
+
+
+/* =====================================================
+   CONTROL DE ENTREGAS PARCIALES / ATRASADAS
+   NUEVO - NO ALTERA EL FUNCIONAMIENTO EXISTENTE
+===================================================== */
+.entrega-boton {
+    border: none;
+    border-radius: 7px;
+    padding: 7px 9px;
+    margin-left: 5px;
+    cursor: pointer;
+    background: #eef5ff;
+    color: #1557a6;
+    font-size: 15px;
+}
+.entrega-boton:hover { transform: scale(1.05); }
+.entrega-info-actividad {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 3px 7px;
+    border-radius: 12px;
+    background: #fff3cd;
+    color: #795900;
+    font-size: 11px;
+    font-weight: 700;
+}
+.modal-entregas {
+    width: 100%;
+    max-width: 760px;
+    max-height: 92vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.entrega-programa {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+    margin: 0 0 16px;
+}
+.entrega-dia {
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    padding: 9px 5px;
+    text-align: center;
+    background: #f8f9fa;
+    font-size: 12px;
+}
+.entrega-dia strong { display:block; font-size: 13px; margin-bottom: 3px; }
+.entrega-dia .factor { font-size: 17px; font-weight: 800; }
+.entrega-resumen {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+.entrega-tarjeta {
+    padding: 10px;
+    border-radius: 9px;
+    background: #f1f4f7;
+    text-align: center;
+}
+.entrega-tarjeta small { display:block; color:#666; }
+.entrega-tarjeta strong { font-size: 19px; }
+.entrega-campo { margin-bottom: 14px; }
+.entrega-campo label { display:block; font-weight:700; margin-bottom:6px; }
+.entrega-campo input, .entrega-campo select {
+    width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid #ccc; border-radius:7px; font-size:15px;
+}
+.entrega-opciones-estado { display:flex; gap:10px; flex-wrap:wrap; }
+.entrega-estado {
+    flex:1; min-width:145px; border:1px solid #ddd; border-radius:8px; padding:10px; cursor:pointer; text-align:center; font-weight:700;
+}
+.entrega-estado input { width:auto !important; margin-right:5px; }
+.entrega-calculo {
+    padding: 12px;
+    border-radius: 9px;
+    background: #eaf7ee;
+    border: 1px solid #b7dfc3;
+    margin-bottom: 14px;
+}
+.entrega-calculo strong { font-size: 20px; }
+.entrega-historial {
+    max-height: 220px;
+    overflow:auto;
+    border:1px solid #ddd;
+    border-radius:8px;
+    margin-top:8px;
+}
+.entrega-registro {
+    padding:10px;
+    border-bottom:1px solid #eee;
+    font-size:13px;
+}
+.entrega-registro:last-child { border-bottom:none; }
+.entrega-registro .linea { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.entrega-vacio { padding:15px; text-align:center; color:#777; }
+@media (max-width: 600px) {
+    .entrega-programa { grid-template-columns: repeat(2, 1fr); }
+    .entrega-resumen { grid-template-columns: 1fr; }
+    .modal-entregas { max-height: 96vh; border-radius: 10px; }
+}
+
 </style>
 
 </head>
@@ -5693,6 +5800,29 @@ function crearActividadHTML(
     );
 
 
+    const botonEntregasActividad =
+    document.createElement("button");
+
+    botonEntregasActividad.className =
+    "boton-bloquear entrega-boton";
+
+    botonEntregasActividad.textContent = "📅";
+    botonEntregasActividad.title =
+    "Ver control de entregas y porcentajes";
+
+    botonEntregasActividad.addEventListener(
+        "click",
+        function(event) {
+            event.stopPropagation();
+            abrirControlEntregasActividad(actividad);
+        }
+    );
+
+    derecha.appendChild(
+        botonEntregasActividad
+    );
+
+
     derecha.appendChild(
         botonOcultar
     );
@@ -5901,6 +6031,14 @@ function crearActividadHTML(
                     onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
 
                 >
+
+                <button
+                    type="button"
+                    class="entrega-boton"
+                    title="Registrar entrega completa o incompleta y ver historial"
+                    onclick="abrirControlEntregasEstudiante(${estudiante.id}, ${actividad.id})">
+                    📅
+                </button>
 
             </td>
 
@@ -10877,6 +11015,296 @@ function cerrarModalCalificacionQR(
 
 
 
+
+/* =====================================================
+   CONTROL DE ENTREGAS PARCIALES / ATRASADAS
+   NUEVO - SE GUARDA EN LA TABLA entregas_actividades
+===================================================== */
+
+let entregaActividadActual = null;
+let entregaEstudianteActual = null;
+let entregasActuales = [];
+
+const CONFIG_ENTREGAS_DEFAULT = [
+    { dia: 1, factor: 1.00, etiqueta: "Día 1", porcentaje: 100 },
+    { dia: 2, factor: 0.50, etiqueta: "Día 2", porcentaje: 50 },
+    { dia: 3, factor: 0.25, etiqueta: "Día 3", porcentaje: 25 },
+    { dia: 4, factor: 0.10, etiqueta: "Día 4", porcentaje: 10 },
+    { dia: 5, factor: 0.00, etiqueta: "Después", porcentaje: 0 }
+];
+
+function obtenerFactorEntregaPorDia(dia) {
+    const item = CONFIG_ENTREGAS_DEFAULT.find(x => x.dia === dia);
+    return item ? item.factor : 0;
+}
+
+function obtenerEtiquetaEntregaPorDia(dia) {
+    const item = CONFIG_ENTREGAS_DEFAULT.find(x => x.dia === dia);
+    return item ? item.etiqueta : "Después";
+}
+
+function calcularDiaEntrega(fechaActividad, fechaEntrega) {
+    if (!fechaActividad || !fechaEntrega) return 1;
+    const a = String(fechaActividad).split("-").map(Number);
+    const b = String(fechaEntrega).split("-").map(Number);
+    if (a.length !== 3 || b.length !== 3 || b.some(isNaN) || a.some(isNaN)) return 1;
+    const inicio = new Date(a[0], a[1] - 1, a[2]);
+    const entrega = new Date(b[0], b[1] - 1, b[2]);
+    const diferencia = Math.round((entrega - inicio) / 86400000);
+    return Math.max(1, diferencia + 1);
+}
+
+function formatearFechaEntrega(fecha) {
+    if (!fecha) return "";
+    const p = String(fecha).split("-");
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fecha;
+}
+
+function obtenerMaximoActividad(actividad) {
+    let maximo = Number(actividad?.puntaje_maximo);
+    if (!maximo || maximo <= 0) maximo = Number(LIMITES[actividad?.categoria] || 0);
+    return maximo;
+}
+
+async function abrirControlEntregasActividad(actividad) {
+    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
+    if (!estudiantesCurso.length) {
+        alert("No hay estudiantes cargados para este curso.");
+        return;
+    }
+
+    // El botón del encabezado abre el control mostrando la configuración.
+    entregaActividadActual = actividad;
+    entregaEstudianteActual = null;
+
+    const modal = document.getElementById("modalEntregas");
+    modal.classList.remove("oculto");
+    document.getElementById("entregaTitulo").textContent = "📅 Control de entregas — " + actividad.nombre;
+    document.getElementById("entregaActividadInfo").innerHTML = `
+        <div class="entrega-tarjeta"><small>Actividad</small><strong style="font-size:15px">${escapeHTML(actividad.nombre)}</strong></div>
+        <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
+        <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)}</strong></div>`;
+
+    document.getElementById("entregaFormulario").style.display = "none";
+    document.getElementById("entregaEstudianteNombre").textContent = "Seleccione 📅 junto al estudiante para registrar su entrega.";
+    document.getElementById("entregaHistorial").innerHTML = `<div class="entrega-vacio">El control se realiza individualmente desde el botón 📅 de cada estudiante.</div>`;
+}
+
+async function abrirControlEntregasEstudiante(estudianteId, actividadId) {
+    const actividad = actividades.find(a => Number(a.id) === Number(actividadId));
+    const estudiante = estudiantes.find(e => Number(e.id) === Number(estudianteId));
+    if (!actividad || !estudiante) return;
+
+    entregaActividadActual = actividad;
+    entregaEstudianteActual = estudiante;
+
+    const modal = document.getElementById("modalEntregas");
+    modal.classList.remove("oculto");
+    document.getElementById("entregaTitulo").textContent = "📅 Control de entregas";
+    document.getElementById("entregaActividadInfo").innerHTML = `
+        <div class="entrega-tarjeta"><small>Actividad</small><strong style="font-size:15px">${escapeHTML(actividad.nombre)}</strong></div>
+        <div class="entrega-tarjeta"><small>Fecha inicial</small><strong style="font-size:15px">${escapeHTML(formatearFechaActividad(actividad.fecha))}</strong></div>
+        <div class="entrega-tarjeta"><small>Máximo</small><strong>${obtenerMaximoActividad(actividad)} puntos</strong></div>`;
+
+    document.getElementById("entregaFormulario").style.display = "block";
+    document.getElementById("entregaEstudianteNombre").textContent = estudiante.nombre;
+
+    const hoy = new Date();
+    const isoHoy = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
+    document.getElementById("entregaFecha").value = isoHoy;
+    document.querySelector('input[name="estadoEntrega"][value="incompleto"]').checked = true;
+    document.getElementById("entregaAvance").value = 100;
+
+    await cargarHistorialEntregas();
+    actualizarCalculoEntrega();
+}
+
+async function cargarHistorialEntregas() {
+    if (!entregaActividadActual || !entregaEstudianteActual) return;
+
+    const { data, error } = await supabaseClient
+        .from("entregas_actividades")
+        .select("id,actividad_id,estudiante_id,fecha_entrega,dia_entrega,avance_porcentaje,estado,factor,puntaje_maximo_aplicable,puntaje_obtenido,created_at")
+        .eq("actividad_id", Number(entregaActividadActual.id))
+        .eq("estudiante_id", Number(entregaEstudianteActual.id))
+        .order("fecha_entrega", { ascending: true })
+        .order("id", { ascending: true });
+
+    if (error) {
+        console.error(error);
+        entregasActuales = [];
+        document.getElementById("entregaHistorial").innerHTML = `
+            <div class="entrega-vacio">No se pudo cargar el historial. Si es la primera vez, verifique que haya creado la tabla <b>entregas_actividades</b> en Supabase.</div>`;
+        return;
+    }
+
+    entregasActuales = data || [];
+    renderizarHistorialEntregas();
+}
+
+function obtenerAvanceAcumulado() {
+    return entregasActuales.reduce((s, r) => s + Number(r.avance_porcentaje || 0), 0);
+}
+
+function obtenerPuntajeAcumulado() {
+    return entregasActuales.reduce((s, r) => s + Number(r.puntaje_obtenido || 0), 0);
+}
+
+function renderizarHistorialEntregas() {
+    const cont = document.getElementById("entregaHistorial");
+    if (!entregasActuales.length) {
+        cont.innerHTML = `<div class="entrega-vacio">Todavía no hay entregas registradas.</div>`;
+        return;
+    }
+
+    cont.innerHTML = entregasActuales.map((r, i) => `
+        <div class="entrega-registro">
+            <div class="linea"><strong>${formatearFechaEntrega(r.fecha_entrega)} — ${escapeHTML(r.dia_entrega <= 4 ? "Día " + r.dia_entrega : "Después")}</strong><span>${escapeHTML(String(r.estado || "").toUpperCase())}</span></div>
+            <div class="linea"><span>Avance: ${Number(r.avance_porcentaje || 0).toFixed(2)}%</span><span>Factor: ${(Number(r.factor || 0) * 100).toFixed(0)}%</span><span>Máximo: ${Number(r.puntaje_maximo_aplicable || 0).toFixed(2)}</span><strong>Obtenido: ${Number(r.puntaje_obtenido || 0).toFixed(2)}</strong></div>
+        </div>`).join("") + `
+        <div class="entrega-registro" style="background:#f7f7f7">
+            <div class="linea"><strong>TOTAL ACUMULADO</strong><strong>${obtenerAvanceAcumulado().toFixed(2)}% — ${obtenerPuntajeAcumulado().toFixed(2)} / ${obtenerMaximoActividad(entregaActividadActual)}</strong></div>
+        </div>`;
+}
+
+function actualizarCalculoEntrega() {
+    if (!entregaActividadActual || !entregaEstudianteActual) return;
+
+    const fecha = document.getElementById("entregaFecha").value;
+    const dia = calcularDiaEntrega(entregaActividadActual.fecha, fecha);
+    const factor = obtenerFactorEntregaPorDia(dia);
+    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
+    const acumulado = obtenerAvanceAcumulado();
+    const restante = Math.max(0, 100 - acumulado);
+    const completo = document.querySelector('input[name="estadoEntrega"]:checked')?.value === "completo";
+    const avanceInput = document.getElementById("entregaAvance");
+
+    if (completo) {
+        avanceInput.value = restante.toFixed(2);
+        avanceInput.disabled = true;
+    } else {
+        avanceInput.disabled = false;
+        if (Number(avanceInput.value) > restante) avanceInput.value = restante.toFixed(2);
+    }
+
+    const avance = Math.max(0, Math.min(restante, Number(avanceInput.value || 0)));
+    const maximoAplicable = maximoActividad * (avance / 100) * factor;
+    const acumuladoDespues = Math.min(100, acumulado + avance);
+    const puntajeDespues = obtenerPuntajeAcumulado() + maximoAplicable;
+
+    document.getElementById("entregaCalculoResumen").innerHTML = `
+        <div class="entrega-tarjeta"><small>Corresponde</small><strong>${escapeHTML(obtenerEtiquetaEntregaPorDia(dia))}</strong></div>
+        <div class="entrega-tarjeta"><small>Factor</small><strong>${(factor*100).toFixed(0)}%</strong></div>
+        <div class="entrega-tarjeta"><small>Restante</small><strong>${restante.toFixed(2)}%</strong></div>`;
+
+    document.getElementById("entregaAvanceAyuda").textContent =
+        `Máximo que todavía puede registrar: ${restante.toFixed(2)}%. No se puede superar el 100% acumulado.`;
+
+    document.getElementById("entregaCalculo").innerHTML = `
+        <div><strong>Máximo calificable en esta entrega: ${maximoAplicable.toFixed(2)} puntos</strong></div>
+        <div style="margin-top:5px">${avance.toFixed(2)}% de avance × ${maximoActividad} puntos × ${(factor*100).toFixed(0)}% de factor.</div>
+        <div style="margin-top:7px;font-weight:700">Total acumulado después de guardar: ${acumuladoDespues.toFixed(2)}% — ${puntajeDespues.toFixed(2)} / ${maximoActividad}</div>
+        ${factor === 0 ? '<div style="margin-top:6px;color:#b00020;font-weight:700">Esta entrega corresponde a un plazo posterior al Día 4 y no suma puntos.</div>' : ''}`;
+}
+
+async function guardarEntrega() {
+    if (!entregaActividadActual || !entregaEstudianteActual) return;
+
+    const boton = document.getElementById("botonGuardarEntrega");
+    const fecha = document.getElementById("entregaFecha").value;
+    if (!fecha) { alert("Seleccione la fecha en que presentó."); return; }
+
+    const dia = calcularDiaEntrega(entregaActividadActual.fecha, fecha);
+    const factor = obtenerFactorEntregaPorDia(dia);
+    const maximoActividad = obtenerMaximoActividad(entregaActividadActual);
+    const acumulado = obtenerAvanceAcumulado();
+    const restante = Math.max(0, 100 - acumulado);
+    const estado = document.querySelector('input[name="estadoEntrega"]:checked')?.value || "incompleto";
+    let avance = estado === "completo" ? restante : Number(document.getElementById("entregaAvance").value || 0);
+
+    if (!isFinite(avance) || avance < 0) { alert("El avance debe ser válido."); return; }
+    if (avance > restante + 0.000001) {
+        alert(`No puede registrar más de ${restante.toFixed(2)}% porque ya existe un avance acumulado de ${acumulado.toFixed(2)}%.`);
+        return;
+    }
+    if (avance <= 0) { alert("Registre un avance mayor que 0%."); return; }
+
+    const puntajeMaximoAplicable = maximoActividad * (avance / 100) * factor;
+
+    boton.disabled = true;
+    boton.textContent = "💾 Guardando...";
+
+    try {
+        const { data, error } = await supabaseClient
+            .from("entregas_actividades")
+            .insert({
+                actividad_id: Number(entregaActividadActual.id),
+                estudiante_id: Number(entregaEstudianteActual.id),
+                fecha_entrega: fecha,
+                dia_entrega: dia,
+                avance_porcentaje: Number(avance.toFixed(4)),
+                estado: estado,
+                factor: factor,
+                puntaje_maximo_aplicable: Number(puntajeMaximoAplicable.toFixed(4)),
+                puntaje_obtenido: Number(puntajeMaximoAplicable.toFixed(4))
+            })
+            .select("id,actividad_id,estudiante_id,fecha_entrega,dia_entrega,avance_porcentaje,estado,factor,puntaje_maximo_aplicable,puntaje_obtenido,created_at")
+            .single();
+
+        if (error) throw error;
+
+        entregasActuales.push(data);
+        entregasActuales.sort((a,b) => String(a.fecha_entrega).localeCompare(String(b.fecha_entrega)) || Number(a.id)-Number(b.id));
+
+        const total = Number(obtenerPuntajeAcumulado().toFixed(4));
+        const notaInput = document.querySelector(`.nota-input[data-estudiante="${Number(entregaEstudianteActual.id)}"][data-actividad="${Number(entregaActividadActual.id)}"]`);
+        const observacionInput = document.querySelector(`.observacion-actividad[data-estudiante="${Number(entregaEstudianteActual.id)}"][data-actividad="${Number(entregaActividadActual.id)}"]`);
+        const observacion = observacionInput ? observacionInput.value.trim() : "";
+
+        const { error: errorCal } = await supabaseClient
+            .from("calificaciones")
+            .upsert({
+                actividad_id: Number(entregaActividadActual.id),
+                estudiante_id: Number(entregaEstudianteActual.id),
+                nota: total,
+                observacion: observacion || null
+            }, { onConflict: "actividad_id,estudiante_id" });
+
+        if (errorCal) throw errorCal;
+
+        if (notaInput) notaInput.value = total;
+        if (!calificaciones[entregaEstudianteActual.id]) calificaciones[entregaEstudianteActual.id] = {};
+        calificaciones[entregaEstudianteActual.id][entregaActividadActual.id] = { nota: total, observacion: observacion };
+
+        await actualizarMatematicaEstudianteIndividual(Number(entregaEstudianteActual.id));
+        renderizarHistorialEntregas();
+        actualizarCalculoEntrega();
+        mostrarMensaje("✓ Entrega registrada: " + entregaEstudianteActual.nombre);
+
+        // Si ya llegó al 100%, deja visible el historial y evita registrar más.
+        if (obtenerAvanceAcumulado() >= 99.9999) {
+            document.getElementById("botonGuardarEntrega").disabled = true;
+            document.getElementById("botonGuardarEntrega").textContent = "✓ Actividad completada";
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Error al registrar la entrega: " + error.message + "\n\nSi es la primera vez que usa esta función, ejecute en Supabase el SQL indicado debajo del código.");
+    } finally {
+        if (obtenerAvanceAcumulado() < 99.9999) {
+            boton.disabled = false;
+            boton.textContent = "💾 Registrar entrega";
+        }
+    }
+}
+
+function cerrarModalEntregas(event) {
+    if (event && event.target !== document.getElementById("modalEntregas")) return;
+    document.getElementById("modalEntregas").classList.add("oculto");
+    entregaActividadActual = null;
+    entregaEstudianteActual = null;
+    entregasActuales = [];
+}
+
 /* =====================================================
    INICIAR
 ===================================================== */
@@ -10884,6 +11312,71 @@ function cerrarModalCalificacionQR(
 comprobarSesion();
 
 </script>
+
+
+
+<!-- =====================================================
+     MODAL CONTROL DE ENTREGAS
+===================================================== -->
+<div id="modalEntregas" class="modal-fondo oculto" onclick="cerrarModalEntregas(event)">
+  <div class="modal-entregas" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <h3 id="entregaTitulo">📅 Control de entregas</h3>
+      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalEntregas()">×</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div id="entregaActividadInfo" class="entrega-resumen"></div>
+
+      <div class="entrega-programa">
+        <div class="entrega-dia"><strong>Día 1</strong><span class="factor">100%</span><br>máximo completo</div>
+        <div class="entrega-dia"><strong>Día 2</strong><span class="factor">50%</span><br>del valor entregado</div>
+        <div class="entrega-dia"><strong>Día 3</strong><span class="factor">25%</span><br>del valor entregado</div>
+        <div class="entrega-dia"><strong>Día 4</strong><span class="factor">10%</span><br>del valor entregado</div>
+        <div class="entrega-dia"><strong>Después</strong><span class="factor">0%</span><br>sin puntaje</div>
+      </div>
+
+      <div id="entregaFormulario">
+        <div class="entrega-campo">
+          <label>Estudiante</label>
+          <div id="entregaEstudianteNombre" style="font-weight:700;font-size:16px"></div>
+        </div>
+
+        <div class="entrega-campo">
+          <label for="entregaFecha">Fecha en que presentó</label>
+          <input type="date" id="entregaFecha" onchange="actualizarCalculoEntrega()">
+        </div>
+
+        <div class="entrega-resumen" id="entregaCalculoResumen"></div>
+
+        <div class="entrega-campo">
+          <label>Estado de esta entrega</label>
+          <div class="entrega-opciones-estado">
+            <label class="entrega-estado"><input type="radio" name="estadoEntrega" value="incompleto" checked onchange="actualizarCalculoEntrega()"> Incompleto</label>
+            <label class="entrega-estado"><input type="radio" name="estadoEntrega" value="completo" onchange="actualizarCalculoEntrega()"> Completo</label>
+          </div>
+        </div>
+
+        <div class="entrega-campo" id="entregaAvanceCampo">
+          <label for="entregaAvance">Avance entregado en esta presentación (%)</label>
+          <input type="number" id="entregaAvance" min="0" max="100" step="0.01" value="100" oninput="actualizarCalculoEntrega()">
+          <small id="entregaAvanceAyuda" style="display:block;margin-top:5px;color:#666"></small>
+        </div>
+
+        <div class="entrega-calculo" id="entregaCalculo"></div>
+
+        <div class="modal-acciones">
+          <button type="button" class="boton-cancelar" onclick="cerrarModalEntregas()">Cancelar</button>
+          <button type="button" class="boton-crear-modal" id="botonGuardarEntrega" onclick="guardarEntrega()">💾 Registrar entrega</button>
+        </div>
+      </div>
+
+      <div style="margin-top:18px">
+        <h4 style="margin:0 0 7px">📋 Historial de entregas</h4>
+        <div id="entregaHistorial" class="entrega-historial"><div class="entrega-vacio">Seleccione un estudiante.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 
