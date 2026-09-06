@@ -1790,6 +1790,118 @@ td,
     max-width: 55px;
 }
 
+/* =====================================================
+   HISTORIAL DE NOTAS ANTERIORES
+   Muestra hasta 3 notas previas del mismo casillero
+   cuando se intenta superar la nota máxima.
+===================================================== */
+.modal-historial-nota {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.48);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    z-index: 30000;
+}
+
+.modal-historial-nota.oculto {
+    display: none !important;
+}
+
+.caja-historial-nota {
+    width: 100%;
+    max-width: 390px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    animation: aparecerModal .18s ease-out;
+}
+
+.cabecera-historial-nota {
+    background: #c62828;
+    color: white;
+    padding: 14px 16px;
+    font-weight: bold;
+    font-size: 17px;
+}
+
+.cuerpo-historial-nota {
+    padding: 17px;
+    color: #333;
+}
+
+.mensaje-maximo-nota {
+    margin: 0 0 14px;
+    line-height: 1.45;
+}
+
+.lista-notas-anteriores {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.boton-nota-anterior {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #1565c0;
+    border-radius: 8px;
+    background: #e8f1fb;
+    color: #1557a6;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: .15s;
+}
+
+.boton-nota-anterior:hover {
+    background: #1565c0;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.boton-nota-anterior:active {
+    transform: scale(.98);
+}
+
+.sin-notas-anteriores {
+    padding: 10px;
+    text-align: center;
+    color: #777;
+    background: #f5f5f5;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.acciones-historial-nota {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+.boton-cerrar-historial-nota {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 15px;
+    background: #777;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+@media (max-width: 600px) {
+    .caja-historial-nota {
+        max-width: 100%;
+    }
+
+    .cabecera-historial-nota {
+        font-size: 16px;
+    }
+}
+
 /* ICONO DE ASISTENCIA DEL DÍA DE LA ACTIVIDAD */
 .icono-asistencia-actividad {
     display: inline-flex;
@@ -5952,9 +6064,12 @@ function crearActividadHTML(
 
                     disabled
 
-                    onfocus="registrarUltimaNotaValida(this)"
+                    data-valor-inicial="${nota === null ? "" : nota}"
+
+                    onfocus="iniciarHistorialNota(this)"
                     oninput="validarNota(this)"
-                    onchange="guardarCambioActividadIndividual(this)" onblur="guardarCambioActividadIndividual(this)"
+                    onchange="finalizarCambioNota(this)"
+                    onblur="finalizarCambioNota(this)"
 
                 >
 
@@ -6219,69 +6334,417 @@ async function editarNombreActividad(
     nuevoNombre.trim();
 
 
-    if (!nombre) {
+ /* =====================================================
+   HISTORIAL DE NOTAS ANTERIORES
+   Guarda hasta 3 valores anteriores por casillero.
+===================================================== */
 
-        alert(
-            "El nombre no puede estar vacío."
-        );
+const historialNotasActividad = new Map();
+let inputNotaConAdvertencia = null;
 
-        return;
+function claveHistorialNota(input) {
+    if (!input) return "";
+    return (
+        String(input.dataset.estudiante || "") +
+        "|" +
+        String(input.dataset.actividad || "")
+    );
+}
 
+function obtenerHistorialNota(input) {
+    const clave = claveHistorialNota(input);
+
+    if (!clave) return [];
+
+    if (!historialNotasActividad.has(clave)) {
+        historialNotasActividad.set(clave, []);
     }
 
+    return historialNotasActividad.get(clave);
+}
 
-    const fechaActual =
-    actividad.fecha || "";
+function agregarNotaAlHistorial(input, valor) {
+    if (!input) return;
 
-
-    const nuevaFecha =
-    prompt(
-        "Escribe la nueva fecha de la actividad (AAAA-MM-DD):",
-        fechaActual
-    );
-
+    const numero = Number(valor);
 
     if (
-        nuevaFecha === null
+        valor === "" ||
+        valor === null ||
+        valor === undefined ||
+        isNaN(numero)
     ) {
         return;
     }
 
+    const historial = obtenerHistorialNota(input);
 
-    const fecha =
-    nuevaFecha.trim();
-
-
-    if (!fecha) {
-
-        alert(
-            "La fecha no puede estar vacía."
-        );
-
+    /* No repetir consecutivamente la misma nota. */
+    if (
+        historial.length > 0 &&
+        Number(historial[0]) === numero
+    ) {
         return;
-
     }
 
+    historial.unshift(numero);
 
-    const fechaValida =
-    /^\d{4}-\d{2}-\d{2}$/.test(
-        fecha
-    );
-
-
-    if (!fechaValida) {
-
-        alert(
-            "La fecha debe tener el formato AAAA-MM-DD.\n\nEjemplo: 28/08/2026 se escribe como 2026-08-28."
-        );
-
-        return;
-
+    /* Conservar solamente las 3 notas anteriores. */
+    if (historial.length > 3) {
+        historial.splice(3);
     }
+}
 
+function iniciarHistorialNota(input) {
+    if (!input) return;
+
+    /*
+       Guarda la nota que tenía el casillero al comenzar
+       esta edición. Esa será la nota anterior si el docente
+       cambia el valor.
+    */
+    input.dataset.valorInicial =
+        input.value === ""
+        ? ""
+        : input.value;
+}
+
+function finalizarCambioNota(input) {
+    if (!input) return;
+
+    const valorInicial =
+        input.dataset.valorInicial ?? "";
+
+    const valorActual =
+        input.value.trim();
 
     if (
-        nombre === actividad.nombre &&
+        valorInicial !== "" &&
+        valorActual !== "" &&
+        Number(valorInicial) !== Number(valorActual)
+    ) {
+        agregarNotaAlHistorial(
+            input,
+            valorInicial
+        );
+    }
+
+    /*
+       Si se borró la nota, también se conserva la nota
+       anterior para poder recuperarla.
+    */
+    if (
+        valorInicial !== "" &&
+        valorActual === ""
+    ) {
+        agregarNotaAlHistorial(
+            input,
+            valorInicial
+        );
+    }
+
+    input.dataset.valorInicial =
+        valorActual;
+
+    if (valorActual !== "") {
+        guardarCambioActividadIndividual(input);
+    }
+}
+
+function mostrarHistorialNotasAnteriores(
+    input,
+    maximo
+) {
+    inputNotaConAdvertencia = input;
+
+    const historial =
+        obtenerHistorialNota(input)
+        .filter(
+            valor =>
+                !isNaN(Number(valor)) &&
+                Number(valor) >= 0 &&
+                Number(valor) <= maximo
+        )
+        .slice(0, 3);
+
+    let modal =
+        document.getElementById(
+            "modalHistorialNota"
+        );
+
+    if (!modal) {
+        modal =
+            document.createElement("div");
+
+        modal.id =
+            "modalHistorialNota";
+
+        modal.className =
+            "modal-historial-nota";
+
+        modal.innerHTML = `
+            <div class="caja-historial-nota">
+                <div class="cabecera-historial-nota">
+                    ⚠️ Nota máxima superada
+                </div>
+
+                <div class="cuerpo-historial-nota">
+                    <p
+                        id="mensajeHistorialNota"
+                        class="mensaje-maximo-nota">
+                    </p>
+
+                    <strong>
+                        Volver a una nota anterior:
+                    </strong>
+
+                    <div
+                        id="listaNotasAnteriores"
+                        class="lista-notas-anteriores">
+                    </div>
+
+                    <div class="acciones-historial-nota">
+                        <button
+                            type="button"
+                            class="boton-cerrar-historial-nota"
+                            onclick="cerrarHistorialNotas()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    const mensaje =
+        document.getElementById(
+            "mensajeHistorialNota"
+        );
+
+    const lista =
+        document.getElementById(
+            "listaNotasAnteriores"
+        );
+
+    const nombreActividad =
+        obtenerNombreActividad(
+            input.dataset.actividad
+        );
+
+    mensaje.innerHTML =
+        `La actividad <strong>"${
+            escapeHTML(nombreActividad)
+        }"</strong> tiene un máximo de <strong>${
+            maximo
+        }</strong> puntos.`;
+
+    lista.innerHTML = "";
+
+    if (historial.length === 0) {
+        lista.innerHTML =
+            `<div class="sin-notas-anteriores">
+                No hay notas anteriores disponibles
+                para este casillero.
+             </div>`;
+    } else {
+        historial.forEach(
+            (nota, indice) => {
+                const boton =
+                    document.createElement("button");
+
+                boton.type = "button";
+                boton.className =
+                    "boton-nota-anterior";
+
+                boton.textContent =
+                    `↩️ ${nota} puntos` +
+                    (
+                        indice === 0
+                        ? " — última anterior"
+                        : ""
+                    );
+
+                boton.title =
+                    "Volver a esta nota";
+
+                boton.onclick =
+                    function() {
+                        restaurarNotaAnterior(
+                            nota
+                        );
+                    };
+
+                lista.appendChild(
+                    boton
+                );
+            }
+        );
+    }
+
+    modal.classList.remove("oculto");
+
+    const primerBoton =
+        lista.querySelector(
+            ".boton-nota-anterior"
+        );
+
+    if (primerBoton) {
+        setTimeout(
+            () => primerBoton.focus(),
+            0
+        );
+    }
+}
+
+function restaurarNotaAnterior(nota) {
+    const input =
+        inputNotaConAdvertencia;
+
+    if (!input) {
+        cerrarHistorialNotas();
+        return;
+    }
+
+    const valorActual =
+        input.value === ""
+        ? ""
+        : Number(input.value);
+
+    /*
+       Si existe un valor actual válido distinto,
+       también se conserva para poder deshacerlo.
+    */
+    if (
+        valorActual !== "" &&
+        !isNaN(valorActual)
+    ) {
+        agregarNotaAlHistorial(
+            input,
+            valorActual
+        );
+    }
+
+    input.value = nota;
+    input.dataset.valorInicial = String(nota);
+
+    cerrarHistorialNotas();
+
+    /*
+       Guarda automáticamente la nota restaurada,
+       respetando el guardado individual que ya utiliza
+       este archivo.
+    */
+    guardarCambioActividadIndividual(input);
+}
+
+function cerrarHistorialNotas() {
+    const modal =
+        document.getElementById(
+            "modalHistorialNota"
+        );
+
+    if (modal) {
+        modal.classList.add("oculto");
+    }
+
+    inputNotaConAdvertencia = null;
+}
+
+/* Cerrar al tocar fuera de la caja. */
+document.addEventListener(
+    "click",
+    function(event) {
+        const modal =
+            document.getElementById(
+                "modalHistorialNota"
+            );
+
+        if (
+            modal &&
+            event.target === modal
+        ) {
+            cerrarHistorialNotas();
+        }
+    }
+);
+
+/* =====================================================
+   VALIDAR NOTA
+===================================================== */
+
+function validarNota(input) {
+
+    if (
+        input.value === ""
+    ) {
+        return true;
+    }
+
+    const valor =
+    Number(
+        input.value
+    );
+
+    const maximo =
+    Number(
+        input.dataset.maximo
+    );
+
+    if (
+        isNaN(valor)
+    ) {
+        return false;
+    }
+
+    if (
+        valor < 0
+    ) {
+
+        alert(
+            "La nota no puede ser menor que 0."
+        );
+
+        input.value = "";
+
+        return false;
+    }
+
+    if (
+        valor > maximo
+    ) {
+
+        /*
+           Mantener el valor anterior en el historial
+           antes de limpiar el casillero.
+        */
+        const valorAnterior =
+            input.dataset.valorInicial;
+
+        if (
+            valorAnterior !== undefined &&
+            valorAnterior !== ""
+        ) {
+            agregarNotaAlHistorial(
+                input,
+                valorAnterior
+            );
+        }
+
+        input.value = "";
+
+        mostrarHistorialNotasAnteriores(
+            input,
+            maximo
+        );
+
+        return false;
+    }
+
+    return true;
+}
+ad.nombre &&
         fecha === fechaActual
     ) {
         return;
@@ -6371,70 +6834,6 @@ async function editarNombreActividad(
         "✓ Actividad actualizada correctamente."
     );
 
-}
-
-
-/* =====================================================
-   VALIDAR NOTA
-===================================================== */
-
-function registrarUltimaNotaValida(input) {
-
-    if (!input) {
-        return;
-    }
-
-    input.dataset.ultimaNotaValida = input.value;
-}
-
-
-function validarNota(input) {
-
-    if (input.value === "") {
-        return true;
-    }
-
-    const valor = Number(input.value);
-    const maximo = Number(input.dataset.maximo);
-
-    if (valor < 0) {
-
-        alert(
-            "La nota no puede ser menor que 0."
-        );
-
-        input.value =
-            input.dataset.ultimaNotaValida ?? "";
-
-        input.focus();
-        return false;
-    }
-
-    if (valor > maximo) {
-
-        alert(
-            "⚠️ NOTA NO VÁLIDA\n\n" +
-            "La actividad \"" +
-            obtenerNombreActividad(
-                input.dataset.actividad
-            ) +
-            "\" tiene un máximo de " +
-            maximo +
-            " puntos."
-        );
-
-        /* Mantener la nota que estaba antes del cambio inválido. */
-        input.value =
-            input.dataset.ultimaNotaValida ?? "";
-
-        input.focus();
-        return false;
-    }
-
-    /* La nueva nota válida pasa a ser la nota de respaldo. */
-    input.dataset.ultimaNotaValida = input.value;
-
-    return true;
 }
 
 
