@@ -537,6 +537,31 @@ button:hover {
     color: #1557a6;
 }
 
+/* Aviso de día sin clases en asistencia */
+.dia-no-clases {
+    background: #fff8e1;
+}
+
+.dia-no-clases .estado-no-clases {
+    display: inline-block;
+    background: #fff3cd;
+    color: #8a5a00;
+    border: 1px solid #ffe08a;
+    font-weight: bold;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.motivo-no-clases-detalle {
+    color: #795548;
+    line-height: 1.4;
+}
+
+.motivo-no-clases-detalle strong {
+    color: #5d4037;
+}
+
 @media(max-width:500px) {
 
     .contenedor {
@@ -1995,6 +2020,32 @@ async function mostrarAsistenciaEnDetalle() {
         const asistencias =
             await respuesta.json();
 
+        // También se consultan los días en los que no se pasó clases.
+        // Estos registros no pertenecen a la tabla "asistencia", por eso
+        // se cargan desde "asistencia_tipos_dia".
+        const respuestaTiposDia = await fetch(
+            `${SUPABASE_URL}/rest/v1/asistencia_tipos_dia?` +
+            `curso=eq.${encodeURIComponent(alumnoActual.curso || "")}` +
+            `&fecha=gte.${INICIO_3T}` +
+            `&fecha=lte.${FIN_3T}` +
+            `&tipo=eq.no_clases` +
+            `&select=fecha,tipo,motivo` +
+            `&order=fecha.desc`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuestaTiposDia.ok) {
+            throw new Error("Error al consultar los días sin clases");
+        }
+
+        const diasNoClases =
+            await respuestaTiposDia.json();
+
 
         let presentes = 0;
 
@@ -2122,12 +2173,63 @@ async function mostrarAsistenciaEnDetalle() {
         );
 
 
+        // Agregar a la misma tabla los días en que no se pasó clases.
+        diasNoClases.forEach(
+            dia => {
+
+                const motivo =
+                    dia.motivo && String(dia.motivo).trim()
+                    ? escapeHTML(String(dia.motivo).trim())
+                    : "No se registró el motivo.";
+
+                filas += `
+
+                    <tr class="dia-no-clases">
+
+                        <td>
+
+                            ${formatearFecha(
+                                dia.fecha
+                            )}
+
+                        </td>
+
+
+                        <td>
+
+                            <span class="estado-no-clases">
+
+                                🚫 No se pasó clases
+
+                            </span>
+
+                        </td>
+
+
+                        <td class="observacion motivo-no-clases-detalle">
+
+                            <strong>Motivo:</strong> ${motivo}
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        // Se muestra la tabla si existe asistencia normal o algún día sin clases.
+        const hayRegistrosAsistencia =
+            asistencias.length > 0 ||
+            diasNoClases.length > 0;
+
+
         let contenidoTabla = "";
 
 
-        if (
-            asistencias.length === 0
-        ) {
+        if (!hayRegistrosAsistencia) {
 
             contenidoTabla = `
 
