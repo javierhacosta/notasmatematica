@@ -3990,11 +3990,17 @@ async function guardarTipoDiaAsistencia() {
         return false;
     }
 
+    // La base de datos solo permite los estados normales de asistencia.
+    // Guardamos el tipo de día con un estado válido y una marca en observacion.
+    const marcaTipoDia = tipo === "no_clases"
+        ? "__TIPO_DIA_NO_CLASES__"
+        : "__TIPO_DIA_CLASE_INFORMAL__";
+
     const registrosEspeciales = estudiantesCurso.map(estudiante => ({
         estudiante_id: estudiante.id,
         fecha: fecha,
-        estado: tipo,
-        observacion: null
+        estado: "permiso",
+        observacion: marcaTipoDia
     }));
 
     try {
@@ -4366,12 +4372,16 @@ async function cargarAsistencia() {
 
     });
 
-    const estadosEspeciales = (data || [])
-        .map(registro => String(registro.estado || "").toLowerCase())
-        .filter(estado => ["no_clases", "clase_informal"].includes(estado));
+    // Detectar el tipo de día mediante la marca guardada en observacion.
+    const observacionesEspeciales = (data || [])
+        .map(registro => String(registro.observacion || ""))
+        .filter(observacion =>
+            observacion === "__TIPO_DIA_NO_CLASES__" ||
+            observacion === "__TIPO_DIA_CLASE_INFORMAL__"
+        );
 
-    if (estadosEspeciales.length > 0) {
-        tipoDiaAsistencia = estadosEspeciales.includes("no_clases")
+    if (observacionesEspeciales.length > 0) {
+        tipoDiaAsistencia = observacionesEspeciales.includes("__TIPO_DIA_NO_CLASES__")
             ? "no_clases"
             : "clase_informal";
     }
@@ -4447,6 +4457,15 @@ function actualizarResumenAsistencia() {
 
     Object.values(registrosAsistencia || {}).forEach(registro => {
         const estado = String(registro.estado || "").toLowerCase();
+        const observacion = String(registro.observacion || "");
+
+        // No contar como permiso los registros que representan un tipo de día.
+        if (
+            observacion === "__TIPO_DIA_NO_CLASES__" ||
+            observacion === "__TIPO_DIA_CLASE_INFORMAL__"
+        ) {
+            return;
+        }
 
         if (totales[estado] !== undefined) {
             totales[estado]++;
