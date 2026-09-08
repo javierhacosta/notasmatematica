@@ -1155,15 +1155,6 @@ td:first-child {
     color: #222;
 }
 
-/* ESTADO DEL DÍA DE ASISTENCIA */
-.estado-dia-asistencia { width:165px; padding:7px 8px; border:none; border-radius:6px; font-size:14px; background:white; color:#222; cursor:pointer; }
-.aviso-estado-dia-asistencia { margin:0; padding:10px 12px; font-weight:bold; text-align:center; border-bottom:1px solid #ddd; display:none; }
-.aviso-estado-dia-asistencia.no-clases { display:block; background:#fff3e0; color:#a94800; }
-.aviso-estado-dia-asistencia.informal { display:block; background:#e8f1fb; color:#1557a6; }
-.contenido-asistencia.dia-sin-clases { opacity:.68; }
-@media (max-width:600px) { .estado-dia-asistencia { width:100%; min-width:0; max-width:none; } }
-
-
 .boton-eliminar-fecha-asistencia {
     width: 34px;
     height: 34px;
@@ -1182,6 +1173,14 @@ td:first-child {
 .boton-eliminar-fecha-asistencia:hover {
     background: #a91f1f;
 }
+
+/* BOTÓN: DÍA SIN CLASES */
+.boton-dia-sin-clases {
+    width: 34px; height: 34px; border: none; border-radius: 7px;
+    background: #616161; color: white; font-size: 17px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.boton-dia-sin-clases:hover { background: #424242; }
 
 
 /* =====================================================
@@ -2421,12 +2420,6 @@ Fechas guardadas
     class="fecha-asistencia"
 >
 
-<select id="estadoDiaAsistencia" class="estado-dia-asistencia" onchange="cambiarEstadoDiaAsistencia()" title="Indicar si ese día hubo clases">
-    <option value="normal">Día normal</option>
-    <option value="no_clases">🚫 No se pasó clases</option>
-    <option value="informal">ℹ️ Clase informal</option>
-</select>
-
 
 <div class="botones-fecha-asistencia">
 
@@ -2438,6 +2431,17 @@ Fechas guardadas
     title="Eliminar la asistencia de esta fecha del curso">
 
 🗑️
+
+</button>
+
+<button
+    type="button"
+    id="botonDiaSinClases"
+    class="boton-dia-sin-clases"
+    onclick="anotarDiaSinClases()"
+    title="Anotar que este día no hubo clases">
+
+🚫
 
 </button>
 
@@ -2506,8 +2510,6 @@ Fechas guardadas
 
 </div>
 
-
-<div id="avisoEstadoDiaAsistencia" class="aviso-estado-dia-asistencia"></div>
 
 <div
     id="contenidoAsistencia"
@@ -3308,7 +3310,6 @@ let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
-let estadoDiaAsistencia = "normal";
 let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
@@ -3836,57 +3837,6 @@ function mostrarOcultarAsistencia() {
 
 
 /* =====================================================
-   ESTADO DEL DÍA DE ASISTENCIA
-   Se guarda automáticamente en el navegador, sin modificar
-   la estructura actual de Supabase.
-===================================================== */
-function claveEstadoDiaAsistencia() {
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!cursoSeleccionado || !fecha) return "";
-    return `estadoDiaAsistencia_${cursoSeleccionado}_${fecha}`;
-}
-function cargarEstadoDiaAsistenciaLocal() {
-    const select = document.getElementById("estadoDiaAsistencia");
-    if (!select) return;
-    const clave = claveEstadoDiaAsistencia();
-    const guardado = clave ? localStorage.getItem(clave) : null;
-    estadoDiaAsistencia = ["normal","no_clases","informal"].includes(guardado) ? guardado : "normal";
-    select.value = estadoDiaAsistencia;
-    actualizarAvisoEstadoDiaAsistencia();
-}
-function actualizarAvisoEstadoDiaAsistencia() {
-    const aviso = document.getElementById("avisoEstadoDiaAsistencia");
-    const contenido = document.getElementById("contenidoAsistencia");
-    if (!aviso) return;
-    aviso.className = "aviso-estado-dia-asistencia";
-    if (contenido) contenido.classList.remove("dia-sin-clases");
-    if (estadoDiaAsistencia === "no_clases") {
-        aviso.textContent = "🚫 Este día no se pasó clases. No se registrará asistencia.";
-        aviso.classList.add("no-clases");
-        if (contenido) contenido.classList.add("dia-sin-clases");
-    } else if (estadoDiaAsistencia === "informal") {
-        aviso.textContent = "ℹ️ Este día fue registrado como clase informal.";
-        aviso.classList.add("informal");
-    }
-}
-function cambiarEstadoDiaAsistencia() {
-    if (!cursoSeleccionado) return;
-    const fecha = document.getElementById("fechaAsistencia")?.value;
-    const select = document.getElementById("estadoDiaAsistencia");
-    if (!fecha || !select) return;
-    estadoDiaAsistencia = select.value;
-    const clave = claveEstadoDiaAsistencia();
-    if (clave) {
-        if (estadoDiaAsistencia === "normal") localStorage.removeItem(clave);
-        else localStorage.setItem(clave, estadoDiaAsistencia);
-    }
-    actualizarAvisoEstadoDiaAsistencia();
-    actualizarResumenAsistencia();
-    mostrarTablaAsistencia();
-    mostrarMensaje(estadoDiaAsistencia === "no_clases" ? "✓ Día guardado: no se pasó clases." : estadoDiaAsistencia === "informal" ? "✓ Día guardado: clase informal." : "✓ Día guardado como día normal.");
-}
-
-/* =====================================================
    FECHAS DE ASISTENCIA
 ===================================================== */
 
@@ -4000,9 +3950,54 @@ function seleccionarFechaAsistencia() {
     select.value;
 
     cargarAsistencia();
+    actualizarBotonDiaSinClases();
 
 }
 
+
+function claveDiaSinClases() {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    const curso = cursoSeleccionado || "";
+    return `diaSinClases_${curso}_${fecha}`;
+}
+
+function actualizarBotonDiaSinClases() {
+    const boton = document.getElementById("botonDiaSinClases");
+    if (!boton) return;
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha || !cursoSeleccionado) {
+        boton.textContent = "🚫";
+        boton.title = "Anotar que este día no hubo clases";
+        return;
+    }
+    const motivo = localStorage.getItem(claveDiaSinClases());
+    if (motivo) {
+        boton.textContent = "📌";
+        boton.title = `Día sin clases: ${motivo}`;
+    } else {
+        boton.textContent = "🚫";
+        boton.title = "Anotar que este día no hubo clases";
+    }
+}
+
+function anotarDiaSinClases() {
+    if (!cursoSeleccionado) { alert("Primero selecciona un curso."); return; }
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+    if (!fecha) { alert("Selecciona una fecha."); return; }
+    const clave = claveDiaSinClases();
+    const motivoActual = localStorage.getItem(clave) || "";
+    const motivo = prompt(`Anota el motivo por el que no se pasó clases el ${fecha}:`, motivoActual);
+    if (motivo === null) return;
+    const texto = motivo.trim();
+    if (texto) {
+        localStorage.setItem(clave, texto);
+        mostrarMensaje("✓ Día marcado como sin clases.");
+    } else {
+        localStorage.removeItem(clave);
+        mostrarMensaje("✓ Anotación del día eliminada.");
+    }
+    actualizarBotonDiaSinClases();
+}
 
 async function eliminarFechaAsistencia() {
 
@@ -4097,6 +4092,11 @@ async function eliminarFechaAsistencia() {
    CAMBIO DE FECHA
 ===================================================== */
 
+document.getElementById("buscarCurso")?.addEventListener("change", function() {
+    setTimeout(actualizarBotonDiaSinClases, 0);
+});
+
+
 document.getElementById(
     "fechaAsistencia"
 ).addEventListener(
@@ -4108,6 +4108,7 @@ document.getElementById(
         }
 
         await cargarAsistencia();
+        actualizarBotonDiaSinClases();
 
     }
 );
@@ -4121,7 +4122,6 @@ async function cargarAsistencia() {
 
     registrosAsistencia = {};
     escaneoAsistenciaQRRealizado = false;
-    cargarEstadoDiaAsistenciaLocal();
 
     if (!cursoSeleccionado) {
         return;
@@ -4273,14 +4273,12 @@ function actualizarResumenAsistencia() {
         }
     });
 
-    resumen.innerHTML = estadoDiaAsistencia === "no_clases"
-        ? `<span>🚫 No se pasó clases</span>`
-        : `
-            <span>✓ ${totales.asistio}</span>
-            <span>⏰ ${totales.atraso}</span>
-            <span>📄 ${totales.licencia}</span>
-            <span>✕ ${totales.falta}</span>
-        `;
+    resumen.innerHTML = `
+        <span>✓ ${totales.asistio}</span>
+        <span>⏰ ${totales.atraso}</span>
+        <span>📄 ${totales.licencia}</span>
+        <span>✕ ${totales.falta}</span>
+    `;
 
     /*
      * AVISO VISUAL:
@@ -4292,9 +4290,7 @@ function actualizarResumenAsistencia() {
      */
     let hayEstudiantesSinEstado = false;
 
-    if (estadoDiaAsistencia === "no_clases") {
-        hayEstudiantesSinEstado = false;
-    } else if (cursoSeleccionado) {
+    if (cursoSeleccionado) {
         const estudiantesCurso = estudiantes.filter(
             estudiante => estudiante.curso === cursoSeleccionado
         );
@@ -4431,7 +4427,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4469,7 +4465,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4507,7 +4503,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4545,7 +4541,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4577,7 +4573,7 @@ function mostrarTablaAsistencia() {
                     )}"
                     placeholder="-"
                     onchange="guardarObservacionAsistenciaIndividual(this)"
-                    ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                    disabled
                 >
 
             </td>
@@ -4693,7 +4689,7 @@ function actualizarProgresoGuardado(
 ===================================================== */
 
 function obtenerEstudiantesSinEstadoAsistencia() {
-    if (!cursoSeleccionado || estadoDiaAsistencia === "no_clases") return [];
+    if (!cursoSeleccionado) return [];
 
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
@@ -4847,7 +4843,7 @@ const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
 
-    if (!control || !asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") return;
+    if (!control || !asistenciaDesbloqueada) return;
 
     const estudianteId = Number(
         control.dataset.estudiante ||
@@ -4935,7 +4931,7 @@ async function guardarAsistenciaIndividual(control) {
 
 async function guardarObservacionAsistenciaIndividual(input) {
 
-    if (!input || !asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") return;
+    if (!input || !asistenciaDesbloqueada) return;
 
     const estudianteId = Number(input.dataset.estudiante);
     const fecha = document.getElementById("fechaAsistencia")?.value;
@@ -4982,11 +4978,6 @@ async function guardarAsistencia() {
     if (!fecha) {
         alert("Selecciona una fecha.");
         return false;
-    }
-
-    if (estadoDiaAsistencia === "no_clases") {
-        mostrarMensaje("✓ El día está marcado como no se pasó clases.");
-        return true;
     }
 
     const estudiantesCurso = estudiantes.filter(
