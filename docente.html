@@ -3990,29 +3990,35 @@ async function guardarTipoDiaAsistencia() {
         return false;
     }
 
-    // La base de datos solo permite los estados normales de asistencia.
-    // Guardamos el tipo de día con un estado válido y una marca en observacion.
-    const marcaTipoDia = tipo === "no_clases"
-        ? "__TIPO_DIA_NO_CLASES__"
-        : "__TIPO_DIA_CLASE_INFORMAL__";
-
-    const registrosEspeciales = estudiantesCurso.map(estudiante => ({
-        estudiante_id: estudiante.id,
-        fecha: fecha,
-        estado: "permiso",
-        observacion: marcaTipoDia
-    }));
-
     try {
         mostrarMensaje("Guardando tipo de clase...");
 
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(registrosEspeciales, {
-                onConflict: "estudiante_id,fecha"
+        // Los tipos especiales NO deben guardarse en asistencia.estado,
+        // porque esa columna solo acepta los estados normales.
+        // Se guardan en la tabla asistencia_tipos_dia.
+        const { error: errorTipo } = await supabaseClient
+            .from("asistencia_tipos_dia")
+            .upsert({
+                curso: cursoSeleccionado,
+                fecha: fecha,
+                tipo: tipo
+            }, {
+                onConflict: "curso,fecha"
             });
 
-        if (error) throw error;
+        if (errorTipo) throw errorTipo;
+
+        // Si se marca un día especial, se eliminan los estados normales
+        // que pudiera tener esa fecha para evitar datos contradictorios.
+        const ids = estudiantesCurso.map(estudiante => estudiante.id);
+
+        const { error: errorAsistencia } = await supabaseClient
+            .from("asistencia")
+            .delete()
+            .eq("fecha", fecha)
+            .in("estudiante_id", ids);
+
+        if (errorAsistencia) throw errorAsistencia;
 
         tipoDiaAsistencia = tipo;
 
@@ -4056,91 +4062,57 @@ async function guardarTipoDiaAsistencia() {
 
 async function cargarFechasAsistencia() {
 
-    const select =
-    document.getElementById(
-        "listaFechasAsistencia"
-    );
+    const select = document.getElementById("listaFechasAsistencia");
 
-    if (!select) {
-        return;
-    }
+    if (!select) return;
 
-    select.innerHTML =
-    `<option value="">
-        Fechas guardadas
-    </option>`;
+    select.innerHTML = `<option value="">Fechas guardadas</option>`;
 
-    if (!cursoSeleccionado) {
-        return;
-    }
+    if (!cursoSeleccionado) return;
 
-    const estudiantesCurso =
-    estudiantes.filter(
+    const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
     );
 
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
+    const ids = estudiantesCurso.map(e => e.id);
 
-    if (ids.length === 0) {
+    if (ids.length === 0) return;
+
+    const { data: dataAsistencia, error: errorAsistencia } = await supabaseClient
+        .from("asistencia")
+        .select("fecha")
+        .in("estudiante_id", ids)
+        .order("fecha", { ascending: false });
+
+    if (errorAsistencia) {
+        console.error(errorAsistencia);
+        alert("Error al cargar las fechas de asistencia: " + errorAsistencia.message);
         return;
     }
 
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .select("fecha")
-    .in("estudiante_id", ids)
-    .order("fecha", {
-        ascending: false
-    });
+    const { data: dataTipos, error: errorTipos } = await supabaseClient
+        .from("asistencia_tipos_dia")
+        .select("fecha")
+        .eq("curso", cursoSeleccionado)
+        .order("fecha", { ascending: false });
 
-    if (error) {
-
-        console.error(error);
-
-        alert(
-            "Error al cargar las fechas de asistencia: " +
-            error.message
-        );
-
+    if (errorTipos) {
+        console.error(errorTipos);
+        alert("Error al cargar los tipos de día: " + errorTipos.message);
         return;
-
     }
 
-    const fechas =
-    [...new Set(
-        (data || [])
-        .map(r => r.fecha)
-        .filter(Boolean)
-    )];
+    const fechas = [...new Set([
+        ...(dataAsistencia || []).map(r => r.fecha),
+        ...(dataTipos || []).map(r => r.fecha)
+    ].filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a)));
 
-
-    fechas.forEach(
-    fecha => {
-
-        const opcion =
-        document.createElement(
-            "option"
-        );
-
-        opcion.value =
-        fecha;
-
-        opcion.textContent =
-        formatearFechaGuardadaAsistencia(fecha);
-
-        select.appendChild(
-            opcion
-        );
-
+    fechas.forEach(fecha => {
+        const opcion = document.createElement("option");
+        opcion.value = fecha;
+        opcion.textContent = formatearFechaGuardadaAsistencia(fecha);
+        select.appendChild(opcion);
     });
-
 }
 
 
@@ -4171,89 +4143,62 @@ function seleccionarFechaAsistencia() {
 async function eliminarFechaAsistencia() {
 
     if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
+        alert("Primero selecciona un curso.");
         return;
-
     }
 
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
+    const fecha = document.getElementById("fechaAsistencia").value;
 
     if (!fecha) {
-
-        alert(
-            "Selecciona una fecha de asistencia."
-        );
-
+        alert("Selecciona una fecha de asistencia.");
         return;
-
     }
 
-    const confirmar =
-    confirm(
-        `¿Deseas eliminar toda la asistencia del curso "${cursoSeleccionado}" correspondiente al ${fecha}?\n\nEsta acción eliminará los registros de todos los estudiantes de esa fecha.`
+    const confirmar = confirm(
+        `¿Deseas eliminar toda la asistencia del curso "${cursoSeleccionado}" correspondiente al ${fecha}?\n\nEsta acción eliminará los registros de todos los estudiantes y, si existe, el tipo especial de esa fecha.`
     );
 
-    if (!confirmar) {
-        return;
-    }
+    if (!confirmar) return;
 
-    const estudiantesCurso =
-    estudiantes.filter(
+    const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
     );
 
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
+    const ids = estudiantesCurso.map(e => e.id);
 
-    if (ids.length === 0) {
+    if (ids.length === 0) return;
+
+    mostrarMensaje("Eliminando asistencia...");
+
+    const { error: errorAsistencia } = await supabaseClient
+        .from("asistencia")
+        .delete()
+        .eq("fecha", fecha)
+        .in("estudiante_id", ids);
+
+    if (errorAsistencia) {
+        console.error(errorAsistencia);
+        alert("Error al eliminar asistencia: " + errorAsistencia.message);
         return;
     }
 
-    mostrarMensaje(
-        "Eliminando asistencia..."
-    );
+    const { error: errorTipo } = await supabaseClient
+        .from("asistencia_tipos_dia")
+        .delete()
+        .eq("curso", cursoSeleccionado)
+        .eq("fecha", fecha);
 
-    const {
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .delete()
-    .eq("fecha", fecha)
-    .in("estudiante_id", ids);
-
-    if (error) {
-
-        console.error(error);
-
-        alert(
-            "Error al eliminar asistencia: " +
-            error.message
-        );
-
+    if (errorTipo) {
+        console.error(errorTipo);
+        alert("Error al eliminar el tipo de día: " + errorTipo.message);
         return;
-
     }
 
     establecerFechaActual();
-
     await cargarFechasAsistencia();
-
     await cargarAsistencia();
 
-    alert(
-        "✓ Asistencia de la fecha eliminada correctamente."
-    );
-
+    mostrarMensaje("✓ Asistencia de la fecha eliminada correctamente.");
 }
 
 
@@ -4287,103 +4232,54 @@ async function cargarAsistencia() {
     tipoDiaAsistencia = "";
     escaneoAsistenciaQRRealizado = false;
 
-    if (!cursoSeleccionado) {
-        return;
-    }
+    if (!cursoSeleccionado) return;
 
-    const fecha =
-    document.getElementById(
-        "fechaAsistencia"
-    ).value;
+    const fecha = document.getElementById("fechaAsistencia").value;
+    if (!fecha) return;
 
-    if (!fecha) {
-        return;
-    }
-
-    const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
     );
 
-    const ids =
-    estudiantesCurso.map(
-        e => e.id
-    );
+    const ids = estudiantesCurso.map(e => e.id);
 
-    if (
-        ids.length === 0
-    ) {
-
+    if (ids.length === 0) {
         mostrarTablaAsistencia();
-
         return;
-
     }
 
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("asistencia")
-    .select(
-        "id,estudiante_id,fecha,estado,observacion"
-    )
-    .eq(
-        "fecha",
-        fecha
-    )
-    .in(
-        "estudiante_id",
-        ids
-    );
+    const { data, error } = await supabaseClient
+        .from("asistencia")
+        .select("id,estudiante_id,fecha,estado,observacion")
+        .eq("fecha", fecha)
+        .in("estudiante_id", ids);
 
     if (error) {
-
         console.error(error);
-
-        alert(
-            "Error al cargar asistencia: " +
-            error.message
-        );
-
+        alert("Error al cargar asistencia: " + error.message);
         mostrarTablaAsistencia();
-
         return;
-
     }
 
-    (data || []).forEach(
-    registro => {
-
-        registrosAsistencia[
-            registro.estudiante_id
-        ] = {
-
-            estado:
-            registro.estado,
-
-            observacion:
-            registro.observacion || ""
-
+    (data || []).forEach(registro => {
+        registrosAsistencia[registro.estudiante_id] = {
+            estado: registro.estado,
+            observacion: registro.observacion || ""
         };
-
     });
 
-    // Detectar el tipo de día mediante la marca guardada en observacion.
-    const observacionesEspeciales = (data || [])
-        .map(registro => String(registro.observacion || ""))
-        .filter(observacion =>
-            observacion === "__TIPO_DIA_NO_CLASES__" ||
-            observacion === "__TIPO_DIA_CLASE_INFORMAL__"
-        );
+    // El tipo especial se consulta en su propia tabla.
+    const { data: tipoData, error: tipoError } = await supabaseClient
+        .from("asistencia_tipos_dia")
+        .select("tipo")
+        .eq("curso", cursoSeleccionado)
+        .eq("fecha", fecha)
+        .maybeSingle();
 
-    if (observacionesEspeciales.length > 0) {
-        tipoDiaAsistencia = observacionesEspeciales.includes("__TIPO_DIA_NO_CLASES__")
-            ? "no_clases"
-            : "clase_informal";
+    if (tipoError) {
+        console.error("Error al cargar el tipo de día:", tipoError);
+    } else if (tipoData?.tipo) {
+        tipoDiaAsistencia = tipoData.tipo;
     }
 
     const opcionesTipoDia = document.getElementById("opcionesTipoDiaAsistencia");
@@ -4399,7 +4295,6 @@ async function cargarAsistencia() {
     }
 
     mostrarTablaAsistencia();
-
 }
 
 
@@ -4457,15 +4352,6 @@ function actualizarResumenAsistencia() {
 
     Object.values(registrosAsistencia || {}).forEach(registro => {
         const estado = String(registro.estado || "").toLowerCase();
-        const observacion = String(registro.observacion || "");
-
-        // No contar como permiso los registros que representan un tipo de día.
-        if (
-            observacion === "__TIPO_DIA_NO_CLASES__" ||
-            observacion === "__TIPO_DIA_CLASE_INFORMAL__"
-        ) {
-            return;
-        }
 
         if (totales[estado] !== undefined) {
             totales[estado]++;
