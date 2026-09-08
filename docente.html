@@ -4021,11 +4021,17 @@ function seleccionarTipoDiaAsistencia(tipo) {
     const campoMotivo = document.getElementById("motivoNoClases");
 
     if (contenedorMotivo) {
-        contenedorMotivo.classList.toggle("visible", tipo === "no_clases");
+        contenedorMotivo.classList.toggle(
+            "visible",
+            tipo === "no_clases" || tipo === "clase_informal"
+        );
     }
 
-    if (campoMotivo && tipo === "no_clases") {
+    if (campoMotivo) {
         campoMotivo.value = motivoNoClases || "";
+        campoMotivo.placeholder = tipo === "clase_informal"
+            ? "Escribe el motivo o detalle de la clase informal (opcional)..."
+            : "Escribe por qué no hubo clases (opcional)...";
         setTimeout(() => campoMotivo.focus(), 50);
     }
 }
@@ -4062,9 +4068,7 @@ async function guardarTipoDiaAsistencia() {
         mostrarMensaje("Guardando tipo de clase...");
 
         const campoMotivo = document.getElementById("motivoNoClases");
-        const motivo = tipo === "no_clases"
-            ? String(campoMotivo?.value || "").trim()
-            : null;
+        const motivo = String(campoMotivo?.value || "").trim() || null;
 
         // Los tipos especiales NO deben guardarse en asistencia.estado,
         // porque esa columna solo acepta los estados normales.
