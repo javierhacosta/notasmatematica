@@ -977,6 +977,44 @@ td:first-child {
     margin-left: auto;
 }
 
+/* =====================================================
+   CONFIGURACIÓN DE GUARDADO
+===================================================== */
+.boton-configuracion-guardado {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px 8px;
+}
+.boton-configuracion-guardado:hover {
+    transform: scale(1.08);
+}
+.modal-configuracion-guardado {
+    width: min(420px, 92vw);
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.configuracion-opcion-guardado {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 4px;
+    font-size: 16px;
+}
+.configuracion-opcion-guardado input {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+.configuracion-ayuda-guardado {
+    margin: 4px 0 0 36px;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+}
 .boton-nueva-actividad {
     background: rgba(255,255,255,.20);
     color: white;
@@ -2495,6 +2533,15 @@ Selecciona un curso
 
 <button
     type="button"
+    id="botonConfiguracionGuardado"
+    class="boton-configuracion-guardado"
+    onclick="abrirConfiguracionGuardado()"
+    title="Configuración de guardado">
+    ⚙️
+</button>
+
+<button
+    type="button"
     class="boton-historial"
     onclick="abrirHistorial()"
     title="Historial de cambios">
@@ -3398,6 +3445,44 @@ Cancelar
 </div>
 
 <!-- =====================================================
+     MODAL CONFIGURACIÓN DE GUARDADO
+===================================================== -->
+<div
+    id="modalConfiguracionGuardado"
+    class="modal-fondo oculto"
+    onclick="cerrarConfiguracionGuardado(event)">
+
+    <div
+        class="modal-configuracion-guardado"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+            <h3>⚙️ Configuración de guardado</h3>
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarConfiguracionGuardado()">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-cuerpo">
+            <label class="configuracion-opcion-guardado">
+                <input
+                    type="checkbox"
+                    id="checkboxGuardadoAutomatico"
+                    checked
+                    onchange="cambiarGuardadoAutomatico(this.checked)">
+                <span>Guardado automático</span>
+            </label>
+            <div class="configuracion-ayuda-guardado">
+                Activado: funciona como actualmente. Desactivado: los cambios se mantienen temporalmente en el panel y se guardan únicamente al pulsar los botones de guardado.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
      MODAL HISTORIAL DE CAMBIOS
 ===================================================== -->
 <div
@@ -3449,6 +3534,48 @@ window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
+
+/* =====================================================
+   CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
+===================================================== */
+let guardadoAutomatico = localStorage.getItem("panel_guardado_automatico") !== "false";
+let guardadoManualEnCurso = false;
+
+function actualizarInterfazGuardado() {
+    const checkbox = document.getElementById("checkboxGuardadoAutomatico");
+    if (checkbox) checkbox.checked = guardadoAutomatico;
+
+    document.querySelectorAll(
+        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, .boton-guardar-notas"
+    ).forEach(boton => {
+        boton.classList.toggle("oculto", guardadoAutomatico);
+    });
+}
+
+function cambiarGuardadoAutomatico(activado) {
+    guardadoAutomatico = !!activado;
+    localStorage.setItem("panel_guardado_automatico", String(guardadoAutomatico));
+    actualizarInterfazGuardado();
+    mostrarMensaje(
+        guardadoAutomatico
+            ? "✓ Guardado automático activado."
+            : "ℹ️ Guardado automático desactivado. Usa los botones 💾 Guardar para enviar los cambios."
+    );
+}
+
+function abrirConfiguracionGuardado() {
+    const modal = document.getElementById("modalConfiguracionGuardado");
+    const checkbox = document.getElementById("checkboxGuardadoAutomatico");
+    if (checkbox) checkbox.checked = guardadoAutomatico;
+    if (modal) modal.classList.remove("oculto");
+}
+
+function cerrarConfiguracionGuardado(event) {
+    if (event && event.target !== document.getElementById("modalConfiguracionGuardado")) return;
+    const modal = document.getElementById("modalConfiguracionGuardado");
+    if (modal) modal.classList.add("oculto");
+}
+
 
 
 /* =====================================================
@@ -5136,6 +5263,7 @@ const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
 
+    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
     if (!control || !asistenciaDesbloqueada) return;
 
     if (esDiaSinClasesAsistencia()) {
@@ -5231,6 +5359,7 @@ async function guardarAsistenciaIndividual(control) {
 
 async function guardarObservacionAsistenciaIndividual(input) {
 
+    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
     if (!input || !asistenciaDesbloqueada) return;
 
     const estudianteId = Number(input.dataset.estudiante);
@@ -5257,6 +5386,8 @@ async function guardarObservacionAsistenciaIndividual(input) {
 ===================================================== */
 
 async function guardarAsistencia() {
+
+    const contextoManualAnterior = guardadoManualEnCurso;
 
     /* =====================================================
        PROTECCIÓN CONTRA DOBLE GUARDADO
@@ -5317,6 +5448,8 @@ async function guardarAsistencia() {
         mostrarPendientesAsistencia();
         return false;
     }
+
+    guardadoManualEnCurso = true;
 
     const botonesGuardar = [
         document.getElementById("botonGuardarAsistencia"),
@@ -5419,6 +5552,7 @@ async function guardarAsistencia() {
 
     } finally {
         guardandoAsistenciaEnProceso = false;
+        guardadoManualEnCurso = contextoManualAnterior;
 
         botonesGuardar.forEach(boton => {
             boton.disabled = false;
@@ -5550,6 +5684,7 @@ document.addEventListener(
         ) {
 
             cerrarModalActividad();
+            cerrarConfiguracionGuardado();
 
         }
 
@@ -7888,6 +8023,7 @@ document.addEventListener(
     function() {
 
         iniciarPanelesMinimizados();
+        actualizarInterfazGuardado();
 
         if (cursoSeleccionado) {
             mostrarPanelInforme();
@@ -8161,6 +8297,7 @@ function obtenerFirmaActividad(input) {
 }
 
 function programarGuardadoCambioActividad(input) {
+    if (!guardadoAutomatico) return;
     if (!input) return;
 
     const clave = obtenerClaveActividadInput(input);
@@ -8255,6 +8392,7 @@ function programarGuardadoCambioActividad(input) {
 
 async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 
+    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
     if (!input) return;
 
     const estudianteId = Number(input.dataset.estudiante);
@@ -8555,6 +8693,8 @@ async function guardarNotas() {
         )
     );
 
+
+    guardadoManualEnCurso = true;
 
     /*
        El bloqueo se hace en JavaScript y no solamente con CSS.
@@ -10920,14 +11060,16 @@ async function continuarEscaneoAsistenciaQR() {
                 (registrosAsistencia[estudiante.id] || {}).observacion || null
         };
 
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(registro, {
-                onConflict: "estudiante_id,fecha"
-            });
+        if (guardadoAutomatico || guardadoManualEnCurso) {
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert(registro, {
+                    onConflict: "estudiante_id,fecha"
+                });
 
-        if (error) {
-            throw error;
+            if (error) {
+                throw error;
+            }
         }
 
         /* Mantener la información local sincronizada */
@@ -10947,7 +11089,9 @@ async function continuarEscaneoAsistenciaQR() {
         escaneoAsistenciaQRRealizado = true;
 
         mostrarMensaje(
-            "✓ Asistencia guardada: " + estudiante.nombre
+            guardadoAutomatico || guardadoManualEnCurso
+                ? "✓ Asistencia guardada: " + estudiante.nombre
+                : "✓ Asistencia preparada: " + estudiante.nombre
         );
 
         document.getElementById("modalAsistenciaQR").classList.add("oculto");
@@ -10973,6 +11117,7 @@ async function continuarEscaneoAsistenciaQR() {
         );
 
     } finally {
+        guardadoManualEnCurso = false;
 
         if (boton) {
             boton.disabled = false;
@@ -11374,33 +11519,27 @@ async function guardarCalificacionQR() {
 
     try {
 
-        const {
-            error
-        } =
-        await supabaseClient
-        .from("calificaciones")
-        .upsert(
-            {
-                actividad_id:
-                actividadQRSeleccionada.id,
+        if (guardadoAutomatico || guardadoManualEnCurso) {
+            const {
+                error
+            } =
+            await supabaseClient
+            .from("calificaciones")
+            .upsert(
+                {
+                    actividad_id: actividadQRSeleccionada.id,
+                    estudiante_id: estudianteQRSeleccionado.id,
+                    nota: nota,
+                    observacion: observacion || null
+                },
+                {
+                    onConflict: "actividad_id,estudiante_id"
+                }
+            );
 
-                estudiante_id:
-                estudianteQRSeleccionado.id,
-
-                nota:
-                nota,
-
-                observacion:
-                observacion || null
-            },
-            {
-                onConflict:
-                "actividad_id,estudiante_id"
+            if (error) {
+                throw error;
             }
-        );
-
-        if (error) {
-            throw error;
         }
 
         if (
