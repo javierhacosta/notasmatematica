@@ -11,8 +11,17 @@
 <title>Panel Docente</title>
 
 
-<style>
+<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=vMWtG3dtQOQkekItF21nin5oVD8ts3sgeGgdiJ8r4HkxxLWwWkx0LqWMkzw9P4v11XaeBRNxmF11kUu3khdcyuD3lL4ScdGEOP3GJDxF5tV28jyCjwYAoMb-o2Ir5-ZV8XK4OHCCXo8jv711Vcw7VAbUv6iIYfBuerGJDLoC0Pf4-1aJFp4KPGZy4Eoh0F-GUawPGuwH7_BjDEZ-rbkSZA78PkaMVQXoGSeusmlJp_S-SWinCRU2dPBytmSEhLHqkJhg9WGImBJBy3Ln5Ao5bEL1SDwogsP1aKf5a8fIBRD_yP2C7RMRv8YpiGu2a5N9sVE3LYYKbfcnm2zuwnnfGB3fWUXno40m4o_0OZf6HQM" charset="UTF-8"></script><style>
+#botonContinuarAsistenciaQR {
+    width: 100%;
+    min-height: 60px;
+    font-size: 20px;
+    padding: 14px 20px;
+    margin-top: 10px;
+}
 
+
+      
 /* =====================================================
    GENERAL
 ===================================================== */
@@ -1137,6 +1146,26 @@ td:first-child {
     background: rgba(255,255,255,.14);
 }
 
+/* AVISO VISUAL: hay estudiantes sin estado de asistencia */
+@keyframes parpadearResumenAsistencia {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: .35;
+        transform: scale(1.08);
+    }
+}
+
+.resumen-asistencia.pendiente-asistencia span {
+    animation: parpadearResumenAsistencia 1s infinite;
+}
+
+.resumen-asistencia.pendiente-asistencia {
+    border-radius: 6px;
+}
+
 /* BOTÓN + */
 
 .boton-asistencia {
@@ -1340,8 +1369,67 @@ td:first-child {
 ===================================================== */
 
 .mensaje {
-    margin-top: 15px;
+    display: none !important;
+}
+
+/* =====================================================
+   NOTIFICACIONES DE GUARDADO EN LA PARTE SUPERIOR
+   Solo cambia la forma de mostrar los avisos; no cambia
+   la lógica de guardado.
+===================================================== */
+#notificacionesGuardado {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92%, 520px);
+    z-index: 20000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.notificacion-guardado {
+    background: white;
+    border: 1px solid #ddd;
+    border-left: 5px solid #16803c;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,.18);
+    padding: 12px 15px;
     font-weight: bold;
+    font-size: 14px;
+    color: #16803c;
+    animation: aparecerNotificacion .22s ease-out;
+    pointer-events: auto;
+}
+
+.notificacion-guardado.error {
+    border-left-color: #c62828;
+    color: #c62828;
+}
+
+@keyframes aparecerNotificacion {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 600px) {
+    #notificacionesGuardado {
+        top: 10px;
+        width: calc(100% - 20px);
+    }
+
+    .notificacion-guardado {
+        font-size: 13px;
+        padding: 11px 13px;
+    }
 }
 
 .oculto {
@@ -2087,12 +2175,82 @@ td,
     .modal-contenido, .modal-content { padding: 12px !important; }
 }
 
+/* =====================================================
+   FRANJAS VISUALES CADA 5 ESTUDIANTES
+   1-5 blanco | 6-10 plomo | 11-15 blanco | etc.
+   Solo modifica el fondo visual de las filas.
+===================================================== */
+table tbody tr:nth-child(10n+6) td,
+table tbody tr:nth-child(10n+7) td,
+table tbody tr:nth-child(10n+8) td,
+table tbody tr:nth-child(10n+9) td,
+table tbody tr:nth-child(10n+10) td {
+    background: #e5e5e5;
+}
+
+
+/* Guardado automático: ocultar botones manuales de guardado */
+button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
+
+/* =====================================================
+   HISTORIAL LOCAL DE CAMBIOS - SIN BASE DE DATOS
+===================================================== */
+.boton-historial {
+    background: rgba(255,255,255,.20);
+    color: white;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.boton-historial:hover { background: rgba(255,255,255,.30); }
+.modal-historial-fondo {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:15px; z-index:30000;
+}
+.modal-historial {
+    width:100%; max-width:760px; max-height:90vh; background:#fff;
+    border-radius:14px; box-shadow:0 10px 35px rgba(0,0,0,.30);
+    overflow:hidden; display:flex; flex-direction:column;
+}
+.historial-cabecera {
+    background:#1557a6; color:#fff; padding:13px 16px;
+    display:flex; align-items:center; justify-content:space-between;
+    font-weight:bold; font-size:18px;
+}
+.historial-cerrar { border:none; background:rgba(255,255,255,.18); color:#fff;
+    width:32px; height:32px; border-radius:7px; font-size:20px; cursor:pointer; }
+.historial-cuerpo { padding:15px; overflow:auto; }
+.historial-item { border:1px solid #ddd; border-radius:10px; padding:12px; margin-bottom:10px; background:#fafafa; }
+.historial-item:last-child { margin-bottom:0; }
+.historial-tipo { font-weight:bold; color:#1557a6; margin-bottom:6px; }
+.historial-detalle { line-height:1.5; font-size:14px; }
+.historial-cambio { margin-top:7px; padding:8px; background:#fff; border-radius:7px; border:1px solid #e1e1e1; }
+.historial-restaurar { margin-top:9px; border:none; border-radius:7px; background:#16803c; color:#fff;
+    padding:8px 12px; cursor:pointer; font-weight:bold; }
+.historial-restaurar:hover { background:#11652f; }
+.historial-vacio { text-align:center; color:#666; padding:25px 10px; }
+@media(max-width:600px){
+    .modal-historial { max-width:100%; max-height:94vh; }
+    .historial-cuerpo { padding:10px; }
+    .historial-detalle { font-size:13px; }
+}
+
 </style>
 
 </head>
 
 
 <body>
+
+<div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
 
 <div class="contenedor">
 
@@ -2166,6 +2324,16 @@ Selecciona un curso
     title="Crear nueva actividad">
 
 📝
+
+</button>
+
+<button
+    type="button"
+    class="boton-historial"
+    onclick="abrirHistorialCambios()"
+    title="Historial de cambios">
+
+↩️
 
 </button>
 
@@ -3485,9 +3653,6 @@ function bloquearDesbloquearAsistencia() {
         "Desbloquear tabla de asistencia";
 
 
-        mostrarMensaje(
-            "🔒 Tabla de asistencia bloqueada."
-        );
 
     }
 
@@ -3518,9 +3683,6 @@ function bloquearDesbloquearAsistencia() {
         "Bloquear tabla de asistencia";
 
 
-        mostrarMensaje(
-            "🔓 Tabla de asistencia desbloqueada."
-        );
 
     }
 
@@ -3959,6 +4121,7 @@ function actualizarResumenAsistencia() {
 
     Object.values(registrosAsistencia || {}).forEach(registro => {
         const estado = String(registro.estado || "").toLowerCase();
+
         if (totales[estado] !== undefined) {
             totales[estado]++;
         }
@@ -3971,11 +4134,46 @@ function actualizarResumenAsistencia() {
         <span>✕ ${totales.falta}</span>
     `;
 
+    /*
+     * AVISO VISUAL:
+     * Si algún estudiante del curso todavía no tiene marcado
+     * asistencia, atraso, permiso/licencia o falta, los iconos
+     * y cantidades del resumen comienzan a parpadear.
+     *
+     * No se crea ni modifica ningún estado automáticamente.
+     */
+    let hayEstudiantesSinEstado = false;
+
+    if (cursoSeleccionado) {
+        const estudiantesCurso = estudiantes.filter(
+            estudiante => estudiante.curso === cursoSeleccionado
+        );
+
+        hayEstudiantesSinEstado = estudiantesCurso.some(estudiante => {
+            const registro = registrosAsistencia[estudiante.id];
+            const estado = String(
+                registro && registro.estado ? registro.estado : ""
+            ).toLowerCase();
+
+            return !["asistio", "atraso", "licencia", "permiso", "falta"].includes(estado);
+        });
+    }
+
+    resumen.classList.toggle(
+        "pendiente-asistencia",
+        hayEstudiantesSinEstado
+    );
+
     const fecha = document.getElementById("fechaAsistencia");
+
     if (fecha && fecha.value) {
-        resumen.title = `Resumen de asistencia del ${formatearFechaActividad(fecha.value)}`;
+        resumen.title = hayEstudiantesSinEstado
+            ? `Hay estudiantes sin marcar en la asistencia del ${formatearFechaActividad(fecha.value)}`
+            : `Resumen de asistencia del ${formatearFechaActividad(fecha.value)}`;
     } else {
-        resumen.title = "Resumen de la fecha seleccionada";
+        resumen.title = hayEstudiantesSinEstado
+            ? "Hay estudiantes sin marcar en la asistencia"
+            : "Resumen de la fecha seleccionada";
     }
 }
 
@@ -4077,6 +4275,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="asistio-${estudiante.id}"
                             value="asistio"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "asistio"
                                 ? "checked"
@@ -4114,6 +4313,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="atraso-${estudiante.id}"
                             value="atraso"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "atraso"
                                 ? "checked"
@@ -4151,6 +4351,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="licencia-${estudiante.id}"
                             value="licencia"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "licencia"
                                 ? "checked"
@@ -4188,6 +4389,7 @@ function mostrarTablaAsistencia() {
                             name="asistencia-${estudiante.id}"
                             id="falta-${estudiante.id}"
                             value="falta"
+                            onchange="guardarAsistenciaIndividual(this)"
                             ${
                                 estado === "falta"
                                 ? "checked"
@@ -4224,6 +4426,7 @@ function mostrarTablaAsistencia() {
                         observacion
                     )}"
                     placeholder="-"
+                    onchange="guardarObservacionAsistenciaIndividual(this)"
                     disabled
                 >
 
@@ -4414,7 +4617,7 @@ function mostrarPendientesAsistencia() {
     return pendientes.length;
 }
 
-function confirmarPendientesAsistencia() {
+async function confirmarPendientesAsistencia() {
     const pendientes = obtenerEstudiantesSinEstadoAsistencia();
     const faltantes = [];
 
@@ -4459,11 +4662,20 @@ function confirmarPendientesAsistencia() {
         return false;
     }
 
+    actualizarResumenAsistencia();
+    mostrarTablaAsistencia();
+
+    // Además de confirmar las elecciones, guardar inmediatamente
+    // las asistencias faltantes que se acaban de completar.
+    const guardadoCorrecto = await guardarAsistencia();
+
+    if (!guardadoCorrecto) {
+        return false;
+    }
+
     const modal = document.getElementById("modalPendientesAsistencia");
     if (modal) modal.classList.add("oculto");
 
-    actualizarResumenAsistencia();
-    mostrarTablaAsistencia();
     return true;
 }
 
@@ -4475,6 +4687,134 @@ function cerrarModalPendientesAsistencia(event) {
     const modal = document.getElementById("modalPendientesAsistencia");
     if (modal) modal.classList.add("oculto");
 }
+
+/* =====================================================
+   GUARDADO AUTOMÁTICO INDIVIDUAL DE ASISTENCIA
+   Solo envía a Supabase el estudiante que fue cambiado.
+===================================================== */
+
+const guardadosAsistenciaIndividual = new Map();
+
+async function guardarAsistenciaIndividual(control) {
+
+    if (!control || !asistenciaDesbloqueada) return;
+
+    const estudianteId = Number(
+        control.dataset.estudiante ||
+        String(control.name || "").replace("asistencia-", "")
+    );
+
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+
+    if (!estudianteId || !fecha) return;
+
+    const seleccionado = document.querySelector(
+        `input[name="asistencia-${estudianteId}"]:checked`
+    );
+
+    if (!seleccionado) return;
+
+    const observacionInput = document.querySelector(
+        `.observacion-asistencia[data-estudiante="${estudianteId}"]`
+    );
+
+    const observacion = observacionInput
+        ? observacionInput.value.trim()
+        : "";
+
+    const clave = estudianteId + "|" + fecha;
+
+    /* Si ya había un guardado del mismo estudiante, esperamos a que termine. */
+    const anterior = guardadosAsistenciaIndividual.get(clave) || Promise.resolve();
+
+    const promesa = anterior
+        .catch(() => {})
+        .then(async () => {
+
+            
+
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert({
+                    estudiante_id: estudianteId,
+                    fecha: fecha,
+                    estado: seleccionado.value,
+                    observacion: observacion || null
+                }, {
+                    onConflict: "estudiante_id,fecha"
+                });
+
+            if (error) throw error;
+
+            const anteriorAsistencia = registrosAsistencia[estudianteId] || {};
+            registrarHistorialAsistencia({
+                estudianteId,
+                fecha,
+                anteriorEstado: anteriorAsistencia.estado || "",
+                nuevoEstado: seleccionado.value,
+                anteriorObservacion: anteriorAsistencia.observacion || "",
+                nuevaObservacion: observacion
+            });
+
+            registrosAsistencia[estudianteId] = {
+                estado: seleccionado.value,
+                observacion: observacion
+            };
+
+            actualizarResumenAsistencia();
+
+            const estudiante = estudiantes.find(
+                e => Number(e.id) === estudianteId
+            );
+
+            mostrarMensaje(
+                "✓ Asistencia guardada" +
+                (estudiante ? ": " + estudiante.nombre : ".")
+            );
+        })
+        .catch(error => {
+
+            console.error("Error al guardar asistencia individual:", error);
+
+            mostrarMensaje(
+                "✕ Error al guardar la asistencia.",
+                true
+            );
+
+        });
+
+    guardadosAsistenciaIndividual.set(clave, promesa);
+
+    await promesa;
+
+    if (guardadosAsistenciaIndividual.get(clave) === promesa) {
+        guardadosAsistenciaIndividual.delete(clave);
+    }
+}
+
+
+async function guardarObservacionAsistenciaIndividual(input) {
+
+    if (!input || !asistenciaDesbloqueada) return;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+
+    if (!estudianteId || !fecha) return;
+
+    const seleccionado = document.querySelector(
+        `input[name="asistencia-${estudianteId}"]:checked`
+    );
+
+    /*
+       Si todavía no existe un estado, no se crea una asistencia
+       solo por escribir una observación.
+    */
+    if (!seleccionado) return;
+
+    await guardarAsistenciaIndividual(seleccionado);
+}
+
 
 /* =====================================================
    GUARDAR ASISTENCIA
@@ -4545,6 +4885,7 @@ async function guardarAsistencia() {
         mostrarMensaje("Preparando asistencia... 0%");
 
         const registros = [];
+        const historialAsistenciaAnterior = {};
 
         estudiantesCurso.forEach(estudiante => {
             const seleccionado = document.querySelector(
@@ -4568,6 +4909,12 @@ async function guardarAsistencia() {
             if (escaneoAsistenciaQRRealizado && !seleccionado) {
                 return;
             }
+
+            const anterior = registrosAsistencia[estudiante.id] || {};
+            historialAsistenciaAnterior[estudiante.id] = {
+                estado: anterior.estado || "",
+                observacion: anterior.observacion || ""
+            };
 
             registros.push({
                 estudiante_id: estudiante.id,
@@ -4596,6 +4943,18 @@ async function guardarAsistencia() {
             throw error;
         }
 
+        registros.forEach(registro => {
+            const anterior = historialAsistenciaAnterior[registro.estudiante_id] || {};
+            registrarHistorialAsistencia({
+                estudianteId: registro.estudiante_id,
+                fecha,
+                anteriorEstado: anterior.estado || "",
+                nuevoEstado: registro.estado || "",
+                anteriorObservacion: anterior.observacion || "",
+                nuevaObservacion: registro.observacion || ""
+            });
+        });
+
         actualizarProgresoGuardado("asistencia", 90, true);
         mostrarMensaje("Actualizando asistencia... 90%");
 
@@ -4611,7 +4970,6 @@ async function guardarAsistencia() {
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
-        alert("✓ Asistencia guardada correctamente.");
         return true;
 
     } catch (error) {
@@ -4619,9 +4977,10 @@ async function guardarAsistencia() {
 
         actualizarProgresoGuardado("asistencia", 0, false);
 
-        alert(
-            "Error al guardar asistencia: " +
-            (error.message || error)
+        mostrarMensaje(
+            "✕ Error al guardar asistencia: " +
+            (error.message || error),
+            true
         );
 
         return false;
@@ -5681,10 +6040,13 @@ function crearActividadHTML(
                     data-maximo="${
                         puntajeMaximo
                     }"
+                    data-valor-inicial="${
+                        nota === null ? "" : nota
+                    }"
 
                     disabled
 
-                    oninput="validarNota(this)"
+                    oninput="validarNota(this); programarGuardadoCambioActividad(this)"
 
                 >
 
@@ -5712,6 +6074,8 @@ function crearActividadHTML(
                     }"
 
                     placeholder="-"
+                    data-valor-inicial="${escapeHTML(observacion)}"
+                    oninput="programarGuardadoCambioActividad(this)"
 
                     disabled
 
@@ -5871,10 +6235,6 @@ function crearActividadHTML(
             "Desbloquear notas y observaciones";
 
 
-            mostrarMensaje(
-                "🔒 Notas y observaciones bloqueadas: " +
-                actividad.nombre
-            );
 
         }
 
@@ -5905,10 +6265,6 @@ function crearActividadHTML(
             "Bloquear notas y observaciones";
 
 
-            mostrarMensaje(
-                "🔓 Notas y observaciones desbloqueadas: " +
-                actividad.nombre
-            );
 
         }
 
@@ -7095,6 +7451,210 @@ function iniciarPanelesMinimizados() {
    ACTUALIZACIÓN INICIAL
 ===================================================== */
 
+
+/* =====================================================
+   HISTORIAL DE CAMBIOS - LOCALSTORAGE, SIN BD
+   Conserva únicamente los últimos 5 cambios.
+===================================================== */
+const CLAVE_HISTORIAL_CAMBIOS = "panelDocente_historialCambios_v1";
+
+function leerHistorialCambios() {
+    try {
+        const datos = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL_CAMBIOS) || "[]");
+        return Array.isArray(datos) ? datos : [];
+    } catch (e) { return []; }
+}
+
+function guardarHistorialCambiosLocal(item) {
+    try {
+        const historial = leerHistorialCambios();
+        historial.unshift({
+            ...item,
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+            momento: new Date().toISOString()
+        });
+        localStorage.setItem(CLAVE_HISTORIAL_CAMBIOS, JSON.stringify(historial.slice(0, 5)));
+    } catch (e) {
+        console.warn("No se pudo guardar el historial local:", e);
+    }
+}
+
+function escaparHistorial(valor) {
+    return escapeHTML(String(valor ?? ""));
+}
+
+function formatearMomentoHistorial(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("es-BO", {
+        day:"2-digit", month:"2-digit", year:"numeric",
+        hour:"2-digit", minute:"2-digit", second:"2-digit"
+    });
+}
+
+function nombreEstudianteHistorial(id) {
+    const e = estudiantes.find(x => Number(x.id) === Number(id));
+    return e ? e.nombre : "Estudiante";
+}
+
+function abrirHistorialCambios() {
+    const modal = document.getElementById("modalHistorialCambios");
+    const lista = document.getElementById("listaHistorialCambios");
+    if (!modal || !lista) return;
+
+    const historial = leerHistorialCambios().slice(0,5);
+    if (!historial.length) {
+        lista.innerHTML = '<div class="historial-vacio">No hay cambios registrados todavía.</div>';
+    } else {
+        lista.innerHTML = historial.map((h, indice) => {
+            const esAsistencia = h.tipo === "asistencia";
+            const titulo = esAsistencia ? "🗓️ Asistencia" : "📝 Actividad";
+            const campo = h.campo === "nota" ? "Nota" : h.campo === "observacion" ? "Observación" : h.campo === "asistencia" ? "Estado de asistencia" : "Cambio";
+            const antes = h.campo === "nota" && (h.anterior === "" || h.anterior === null || h.anterior === undefined) ? "sin nota" : (h.anterior ?? "vacío");
+            const despues = h.campo === "nota" && (h.nuevo === "" || h.nuevo === null || h.nuevo === undefined) ? "sin nota" : (h.nuevo ?? "vacío");
+            const categoria = h.categoria ? ` · Categoría: <strong>${escaparHistorial(h.categoria)}</strong>` : "";
+            const actividad = h.actividad ? `<br>Actividad: <strong>${escaparHistorial(h.actividad)}</strong>${categoria}` : (categoria ? `<br>${categoria.slice(5)}` : "");
+            const fecha = h.fecha ? `<br>Fecha: <strong>${escaparHistorial(h.fecha)}</strong>` : "";
+            return `
+                <div class="historial-item">
+                    <div class="historial-tipo">${titulo} · ${escaparHistorial(h.curso || cursoSeleccionado || "")}</div>
+                    <div class="historial-detalle">
+                        Estudiante: <strong>${escaparHistorial(h.estudianteNombre || nombreEstudianteHistorial(h.estudianteId))}</strong>
+                        ${actividad}${fecha}<br>
+                        ${campo}: <strong>${escaparHistorial(antes)}</strong> → <strong>${escaparHistorial(despues)}</strong><br>
+                        Fecha del cambio: <strong>${escaparHistorial(formatearMomentoHistorial(h.momento))}</strong>
+                    </div>
+                    <div class="historial-cambio">¿Deseas volver al valor anterior?</div>
+                    <button type="button" class="historial-restaurar" onclick="restaurarCambioHistorial('${escaparHistorial(h.id)}')">↩️ Volver / restaurar</button>
+                </div>`;
+        }).join("");
+    }
+    modal.classList.remove("oculto");
+}
+
+function cerrarHistorialCambios(event) {
+    if (event && event.target !== document.getElementById("modalHistorialCambios")) return;
+    document.getElementById("modalHistorialCambios")?.classList.add("oculto");
+}
+
+function buscarHistorialPorId(id) {
+    return leerHistorialCambios().find(h => String(h.id) === String(id));
+}
+
+async function restaurarCambioHistorial(id) {
+    const h = buscarHistorialPorId(id);
+    if (!h) return;
+
+    const fechaTexto = formatearMomentoHistorial(h.momento);
+    const pregunta = h.campo === "nota"
+        ? `¿Está seguro de restaurar la nota de ${h.nuevo} por ${h.anterior} en fecha ${fechaTexto}?`
+        : `¿Está seguro de restaurar ${h.campo} de "${h.nuevo ?? "vacío"}" por "${h.anterior ?? "vacío"}" en fecha ${fechaTexto}?`;
+
+    if (!confirm(pregunta)) return;
+
+    try {
+        if (h.tipo === "actividad") {
+            const actividad = actividades.find(a => Number(a.id) === Number(h.actividadId));
+            if (!actividad) throw new Error("La actividad ya no está disponible.");
+
+            const notaActual = h.estadoActual?.nota ?? h.nuevo;
+            const obsActual = h.estadoActual?.observacion ?? "";
+            let notaRestaurada = h.anteriorNota;
+            let obsRestaurada = h.anteriorObservacion;
+
+            if (h.campo === "nota") notaRestaurada = h.anterior;
+            if (h.campo === "observacion") obsRestaurada = h.anterior;
+
+            const { error } = await supabaseClient.from("calificaciones").upsert({
+                actividad_id: Number(h.actividadId),
+                estudiante_id: Number(h.estudianteId),
+                nota: (notaRestaurada === "" || notaRestaurada === null || notaRestaurada === undefined) ? null : Number(notaRestaurada),
+                observacion: (obsRestaurada || "").trim() || null
+            }, { onConflict: "actividad_id,estudiante_id" });
+            if (error) throw error;
+
+            if (!calificaciones[h.estudianteId]) calificaciones[h.estudianteId] = {};
+            calificaciones[h.estudianteId][h.actividadId] = {
+                nota: (notaRestaurada === "" || notaRestaurada === null || notaRestaurada === undefined) ? null : Number(notaRestaurada),
+                observacion: obsRestaurada || ""
+            };
+
+            const notaInput = document.querySelector(`.nota-input[data-estudiante="${h.estudianteId}"][data-actividad="${h.actividadId}"]`);
+            const obsInput = document.querySelector(`.observacion-actividad[data-estudiante="${h.estudianteId}"][data-actividad="${h.actividadId}"]`);
+            if (notaInput) { notaInput.value = notaRestaurada ?? ""; notaInput.dataset.valorInicial = notaRestaurada ?? ""; }
+            if (obsInput) { obsInput.value = obsRestaurada || ""; obsInput.dataset.valorInicial = obsRestaurada || ""; }
+            valoresActividadGuardados.set(h.estudianteId + "_" + h.actividadId, JSON.stringify({ nota: notaRestaurada ?? "", observacion: obsRestaurada || "" }));
+            await actualizarMatematicaEstudianteIndividual(Number(h.estudianteId));
+
+        } else if (h.tipo === "asistencia") {
+            const estado = h.anteriorEstado || "";
+            const observacion = h.anteriorObservacion || "";
+            if (estado) {
+                const { error } = await supabaseClient.from("asistencia").upsert({
+                    estudiante_id: Number(h.estudianteId), fecha: h.fecha,
+                    estado: estado, observacion: observacion || null
+                }, { onConflict: "estudiante_id,fecha" });
+                if (error) throw error;
+            } else {
+                const { error } = await supabaseClient.from("asistencia").delete()
+                    .eq("estudiante_id", Number(h.estudianteId)).eq("fecha", h.fecha);
+                if (error) throw error;
+            }
+            registrosAsistencia[h.estudianteId] = { estado, observacion };
+            const radio = document.querySelector(`input[name="asistencia-${h.estudianteId}"][value="${CSS.escape(estado)}"]`);
+            document.querySelectorAll(`input[name="asistencia-${h.estudianteId}"]`).forEach(r => r.checked = false);
+            if (radio) radio.checked = true;
+            const obs = document.querySelector(`.observacion-asistencia[data-estudiante="${h.estudianteId}"]`);
+            if (obs) obs.value = observacion;
+            actualizarResumenAsistencia();
+        }
+
+        mostrarMensaje("✓ Cambio restaurado correctamente.");
+        document.getElementById("modalHistorialCambios")?.classList.add("oculto");
+    } catch (error) {
+        console.error("Error al restaurar historial:", error);
+        mostrarMensaje("✕ No se pudo restaurar el cambio.", true);
+    }
+}
+
+function registrarHistorialActividad({estudianteId, actividad, anteriorNota, nuevaNota, anteriorObservacion, nuevaObservacion}) {
+    const curso = cursoSeleccionado || estudiantes.find(e => Number(e.id) === Number(estudianteId))?.curso || "";
+    const estudianteNombre = nombreEstudianteHistorial(estudianteId);
+    if (String(anteriorNota ?? "") !== String(nuevaNota ?? "")) {
+        guardarHistorialCambiosLocal({
+            tipo:"actividad", curso, estudianteId, estudianteNombre,
+            actividadId:actividad.id, actividad:actividad.nombre,
+            categoria:actividad.categoria, fecha:actividad.fecha,
+            campo:"nota", anterior:anteriorNota ?? "", nuevo:nuevaNota ?? "",
+            anteriorNota:anteriorNota ?? "", anteriorObservacion:nuevaObservacion === undefined ? (anteriorObservacion ?? "") : (anteriorObservacion ?? ""),
+            nuevoNota:nuevaNota ?? "", nuevoObservacion:nuevaObservacion ?? ""
+        });
+    }
+    if (String(anteriorObservacion ?? "") !== String(nuevaObservacion ?? "")) {
+        guardarHistorialCambiosLocal({
+            tipo:"actividad", curso, estudianteId, estudianteNombre,
+            actividadId:actividad.id, actividad:actividad.nombre,
+            categoria:actividad.categoria, fecha:actividad.fecha,
+            campo:"observacion", anterior:anteriorObservacion ?? "", nuevo:nuevaObservacion ?? "",
+            anteriorNota:anteriorNota ?? "", anteriorObservacion:anteriorObservacion ?? "",
+            nuevoNota:nuevaNota ?? "", nuevoObservacion:nuevaObservacion ?? ""
+        });
+    }
+}
+
+function registrarHistorialAsistencia({estudianteId, fecha, anteriorEstado, nuevoEstado, anteriorObservacion, nuevaObservacion}) {
+    if (String(anteriorEstado ?? "") === String(nuevoEstado ?? "") && String(anteriorObservacion ?? "") === String(nuevaObservacion ?? "")) return;
+    guardarHistorialCambiosLocal({
+        tipo:"asistencia", curso:cursoSeleccionado || estudiantes.find(e => Number(e.id) === Number(estudianteId))?.curso || "",
+        estudianteId, estudianteNombre:nombreEstudianteHistorial(estudianteId),
+        fecha, campo: String(anteriorEstado ?? "") !== String(nuevoEstado ?? "") ? "asistencia" : "observacion",
+        anterior: String(anteriorEstado ?? "") !== String(nuevoEstado ?? "") ? (anteriorEstado || "sin estado") : (anteriorObservacion || "vacío"),
+        nuevo: String(anteriorEstado ?? "") !== String(nuevoEstado ?? "") ? (nuevoEstado || "sin estado") : (nuevaObservacion || "vacío"),
+        anteriorEstado:anteriorEstado || "", nuevoEstado:nuevoEstado || "",
+        anteriorObservacion:anteriorObservacion || "", nuevaObservacion:nuevaObservacion || ""
+    });
+}
+
 document.addEventListener(
     "DOMContentLoaded",
     function() {
@@ -7311,6 +7871,424 @@ function aplicarBusqueda() {
 
     actualizarEstudiantesInforme();
 
+}
+
+
+/* =====================================================
+   GUARDADO AUTOMÁTICO INDIVIDUAL DE ACTIVIDADES
+   Solo guarda la actividad y el estudiante modificados.
+===================================================== */
+
+const guardadosActividadIndividual = new Map();
+
+/*
+   GUARDADO AUTOMÁTICO SOLO CUANDO REALMENTE CAMBIA UNA NOTA
+   O UNA OBSERVACIÓN.
+
+   Importante:
+   - Se dispara por escritura/input.
+   - No se usa blur ni change, porque esos eventos pueden dispararse
+     al minimizar/maximizar o al cambiar el foco.
+   - Si el valor vuelve a ser el último valor guardado, no se envía nada.
+*/
+const valoresActividadGuardados = new Map();
+const temporizadoresActividad = new Map();
+
+function obtenerClaveActividadInput(input) {
+    if (!input) return "";
+    return String(input.dataset.estudiante || "") + "|" +
+           String(input.dataset.actividad || "");
+}
+
+function obtenerValoresActividadActual(input) {
+    if (!input) return null;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const actividadId = Number(input.dataset.actividad);
+
+    if (!estudianteId || !actividadId) return null;
+
+    const notaInput = document.querySelector(
+        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    const observacionInput = document.querySelector(
+        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    return {
+        nota: notaInput ? notaInput.value.trim() : "",
+        observacion: observacionInput ? observacionInput.value.trim() : ""
+    };
+}
+
+function obtenerFirmaActividad(input) {
+    const valores = obtenerValoresActividadActual(input);
+    if (!valores) return "";
+
+    return JSON.stringify({
+        nota: valores.nota,
+        observacion: valores.observacion
+    });
+}
+
+function programarGuardadoCambioActividad(input) {
+    if (!input) return;
+
+    const clave = obtenerClaveActividadInput(input);
+    if (!clave) return;
+
+    /*
+       Si validarNota acaba de detectar una nota fuera de rango,
+       no programamos ningún guardado.
+    */
+    if (
+        input.classList.contains("nota-input") &&
+        input.value !== ""
+    ) {
+        const nota = Number(input.value);
+        const maximo = Number(input.dataset.maximo);
+
+        if (
+            isNaN(nota) ||
+            isNaN(maximo) ||
+            nota < 0 ||
+            nota > maximo
+        ) {
+            return;
+        }
+    }
+
+    const firmaActual = obtenerFirmaActividad(input);
+    if (!firmaActual) return;
+
+    /*
+       Primera vez que vemos esta celda: tomar el valor existente
+       como valor ya guardado para no provocar un guardado simplemente
+       por renderizar la tabla.
+    */
+    if (!valoresActividadGuardados.has(clave)) {
+        const notaInicial = document.querySelector(
+            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
+        )?.dataset.valorInicial ?? "";
+
+        const observacionInicialInput = document.querySelector(
+            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
+        );
+
+        const observacionInicial =
+            observacionInicialInput?.dataset.valorInicial ?? "";
+
+        valoresActividadGuardados.set(
+            clave,
+            JSON.stringify({
+                nota: String(notaInicial).trim(),
+                observacion: String(observacionInicial).trim()
+            })
+        );
+
+        if (valoresActividadGuardados.get(clave) === firmaActual) {
+            return;
+        }
+    }
+
+    /*
+       Si no hay cambio real, no guardar.
+    */
+    if (valoresActividadGuardados.get(clave) === firmaActual) {
+        return;
+    }
+
+    /*
+       Debounce corto: mientras se escribe no hacemos una petición
+       por cada carácter; guardamos cuando termina la escritura.
+    */
+    if (temporizadoresActividad.has(clave)) {
+        clearTimeout(temporizadoresActividad.get(clave));
+    }
+
+    const temporizador = setTimeout(async () => {
+        temporizadoresActividad.delete(clave);
+
+        const firmaAntesDeGuardar = obtenerFirmaActividad(input);
+
+        if (
+            !firmaAntesDeGuardar ||
+            valoresActividadGuardados.get(clave) === firmaAntesDeGuardar
+        ) {
+            return;
+        }
+
+        await guardarCambioActividadIndividual(input, firmaAntesDeGuardar);
+    }, 600);
+
+    temporizadoresActividad.set(clave, temporizador);
+}
+
+async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
+
+    if (!input) return;
+
+    const estudianteId = Number(input.dataset.estudiante);
+    const actividadId = Number(input.dataset.actividad);
+
+    if (!estudianteId || !actividadId) return;
+
+    const clave = obtenerClaveActividadInput(input);
+    const firmaActualInicial = obtenerFirmaActividad(input);
+
+    if (!firmaActualInicial) return;
+
+    /*
+       Segunda protección: si entre la escritura y el momento del
+       guardado el valor volvió al último valor guardado, no hacemos
+       ninguna petición.
+    */
+    if (
+        valoresActividadGuardados.get(clave) === firmaActualInicial
+    ) {
+        return;
+    }
+
+    if (
+        firmaEsperada &&
+        firmaEsperada !== firmaActualInicial
+    ) {
+        /*
+           El usuario siguió escribiendo antes de que comenzara este
+           guardado. No guardamos una versión antigua.
+        */
+        return;
+    }
+
+    const actividad = actividades.find(
+        a => Number(a.id) === actividadId
+    );
+
+    if (!actividad) return;
+
+    const notaInput = document.querySelector(
+        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    const observacionInput = document.querySelector(
+        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
+    );
+
+    let nota = null;
+
+    if (notaInput && notaInput.value.trim() !== "") {
+
+        nota = Number(notaInput.value);
+
+        const maximo = Number(
+            notaInput.dataset.maximo ||
+            actividad.puntaje_maximo ||
+            LIMITES[actividad.categoria]
+        );
+
+        if (
+            isNaN(nota) ||
+            nota < 0 ||
+            nota > maximo
+        ) {
+            alert(
+                "La calificación debe estar entre 0 y " +
+                maximo +
+                "."
+            );
+
+            notaInput.focus();
+            return;
+        }
+    }
+
+    const observacion =
+        observacionInput
+        ? observacionInput.value.trim()
+        : "";
+
+    const anterior =
+        guardadosActividadIndividual.get(clave) ||
+        Promise.resolve();
+
+    const promesa = anterior
+        .catch(() => {})
+        .then(async () => {
+
+            
+
+            const { error } = await supabaseClient
+                .from("calificaciones")
+                .upsert({
+                    actividad_id: actividadId,
+                    estudiante_id: estudianteId,
+                    nota: nota,
+                    observacion: observacion || null
+                }, {
+                    onConflict: "actividad_id,estudiante_id"
+                });
+
+            if (error) throw error;
+
+            /* Registrar el cambio ANTES de actualizar el valor local. */
+            let datosAnterioresActividad = { nota: "", observacion: "" };
+            try {
+                datosAnterioresActividad = JSON.parse(valoresActividadGuardados.get(clave) || "{}") || {};
+            } catch (e) {}
+            registrarHistorialActividad({
+                estudianteId,
+                actividad,
+                anteriorNota: datosAnterioresActividad.nota ?? "",
+                nuevaNota: notaInput ? notaInput.value.trim() : "",
+                anteriorObservacion: datosAnterioresActividad.observacion ?? "",
+                nuevaObservacion: observacionInput ? observacionInput.value.trim() : ""
+            });
+
+            /* Mantener la memoria local sincronizada */
+            if (!calificaciones[estudianteId]) {
+                calificaciones[estudianteId] = {};
+            }
+
+            calificaciones[estudianteId][actividadId] = {
+                nota: nota,
+                observacion: observacion
+            };
+
+            /*
+               Marcar exactamente esta combinación nota+observación como
+               guardada. Así, perder el foco, minimizar/maximizar o
+               bloquear/desbloquear no provoca otro guardado.
+            */
+            valoresActividadGuardados.set(
+                clave,
+                JSON.stringify({
+                    nota: notaInput ? notaInput.value.trim() : "",
+                    observacion: observacionInput ? observacionInput.value.trim() : ""
+                })
+            );
+
+            /*
+               Recalcular SOLO al estudiante modificado.
+               Ya no se recorren todos los estudiantes del curso.
+            */
+            await actualizarMatematicaEstudianteIndividual(estudianteId);
+
+            const estudiante = estudiantes.find(
+                e => Number(e.id) === estudianteId
+            );
+
+            mostrarMensaje(
+                "✓ Guardado" +
+                (estudiante ? ": " + estudiante.nombre : ".")
+            );
+        })
+        .catch(error => {
+
+            console.error(
+                "Error al guardar actividad individual:",
+                error
+            );
+
+            mostrarMensaje(
+                "✕ No se pudo guardar el cambio.",
+                true
+            );
+        });
+
+    guardadosActividadIndividual.set(clave, promesa);
+
+    await promesa;
+
+    if (guardadosActividadIndividual.get(clave) === promesa) {
+        guardadosActividadIndividual.delete(clave);
+    }
+}
+
+
+async function actualizarMatematicaEstudianteIndividual(estudianteId) {
+
+    const estudiante = estudiantes.find(
+        e => Number(e.id) === Number(estudianteId)
+    );
+
+    if (!estudiante) return;
+
+    const actividadesSER = actividades.filter(
+        a => a.categoria === "SER"
+    );
+
+    const actividadesSABER = actividades.filter(
+        a => a.categoria === "SABER"
+    );
+
+    const actividadesHACER = actividades.filter(
+        a => a.categoria === "HACER"
+    );
+
+    const actividadesAUTO = actividades.filter(
+        a => a.categoria === "AUTOEVALUACION"
+    );
+
+    const puntosSER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesSER,
+        LIMITES.SER
+    );
+
+    const puntosSABER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesSABER,
+        LIMITES.SABER
+    );
+
+    const puntosHACER = calcularPuntosCategoria(
+        estudianteId,
+        actividadesHACER,
+        LIMITES.HACER
+    );
+
+    const puntosAUTO = calcularPuntosCategoria(
+        estudianteId,
+        actividadesAUTO,
+        LIMITES.AUTOEVALUACION
+    );
+
+    const nota3T = redondear(
+        puntosSER +
+        puntosSABER +
+        puntosHACER +
+        puntosAUTO
+    );
+
+    const nota1T = convertirNumero(estudiante.nota_1t);
+    const nota2T = convertirNumero(estudiante.nota_2t);
+
+    let notaFinal = null;
+
+    if (
+        nota1T !== null &&
+        nota2T !== null &&
+        nota3T !== null
+    ) {
+        notaFinal = redondear(
+            (nota1T + nota2T + nota3T) / 3
+        );
+    }
+
+    const { error } = await supabaseClient
+        .from("matematica")
+        .update({
+            nota_3t: nota3T,
+            final: notaFinal
+        })
+        .eq("id", estudiante.id);
+
+    if (error) throw error;
+
+    /* Actualizar también los datos locales. */
+    estudiante.nota_3t = nota3T;
+    estudiante.final = notaFinal;
 }
 
 
@@ -9085,92 +10063,30 @@ async function cerrarSesion() {
 ===================================================== */
 
 function mostrarMensaje(
-
     texto,
     error = false
-
 ) {
+    const contenedor = document.getElementById("notificacionesGuardado");
+    if (!contenedor) return;
 
-    const mensaje =
-    document.getElementById(
-        "mensaje"
-    );
+    const notificacion = document.createElement("div");
+    notificacion.className = "notificacion-guardado" + (error ? " error" : "");
+    notificacion.textContent = texto;
+    contenedor.appendChild(notificacion);
 
+    // Todas las notificaciones desaparecen rápidamente.
+    const tiempoVisible = 1500;
 
-    if (!mensaje) {
-        return;
+    setTimeout(() => {
+        notificacion.classList.add("ocultando");
+        setTimeout(() => notificacion.remove(), 250);
+    }, tiempoVisible);
+
+    // Evita que muchas acciones seguidas acumulen notificaciones.
+    while (contenedor.children.length > 3) {
+        contenedor.firstElementChild.remove();
     }
-
-
-    mensaje.textContent =
-    texto;
-
-
-    mensaje.style.color =
-    error
-    ? "#c62828"
-    : "#16803c";
-
-
-    mensaje.style.display =
-    "block";
-
-
-    if (
-        mensaje._temporizador
-    ) {
-
-        clearTimeout(
-            mensaje._temporizador
-        );
-
-    }
-
-
-    if (
-
-        texto.includes(
-            "guardadas correctamente"
-        ) ||
-
-        texto.includes(
-            "guardada correctamente"
-        ) ||
-
-        texto.includes(
-            "actualizada correctamente"
-        ) ||
-
-        texto.includes(
-            "creada correctamente"
-        ) ||
-
-        texto.includes(
-            "eliminada correctamente"
-        ) ||
-
-        texto.includes(
-            "exportado correctamente"
-        )
-
-    ) {
-
-        mensaje._temporizador =
-        setTimeout(
-        function() {
-
-            mensaje.textContent =
-            "";
-
-            mensaje.style.display =
-            "none";
-
-        }, 3000);
-
-    }
-
 }
-
 
 /* =====================================================
    ESCAPAR HTML
@@ -9743,33 +10659,103 @@ function seleccionarEstadoAsistenciaQR(estado) {
 }
 
 
-function continuarEscaneoAsistenciaQR() {
+async function continuarEscaneoAsistenciaQR() {
 
     if (!estudianteQRAsistencia) return;
 
-    registrosAsistencia[estudianteQRAsistencia.id] = {
-        estado: estadoQRAsistencia,
-        observacion: (registrosAsistencia[estudianteQRAsistencia.id] || {}).observacion || ""
-    };
+    const boton = document.getElementById("botonContinuarAsistenciaQR");
+    const estudiante = estudianteQRAsistencia;
 
-    escaneoAsistenciaQRRealizado = true;
+    /*
+       IMPORTANTE:
+       Al pulsar "Continuar escaneando" se guarda INMEDIATAMENTE
+       solamente el estudiante que acaba de ser escaneado.
+       No se guarda toda la lista ni se vuelve a cargar la tabla.
+    */
+    if (boton) {
+        boton.disabled = true;
+        boton.dataset.textoOriginal = boton.innerHTML;
+        boton.innerHTML = "💾 Guardando...";
+    }
 
-    const radio = document.querySelector(
-        `input[name="asistencia-${estudianteQRAsistencia.id}"][value="${estadoQRAsistencia}"]`
-    );
+    try {
 
-    if (radio) radio.checked = true;
+        const fecha = document.getElementById("fechaAsistencia")?.value;
 
-    actualizarResumenAsistencia();
+        if (!fecha) {
+            throw new Error("Selecciona una fecha de asistencia.");
+        }
 
-    document.getElementById("modalAsistenciaQR").classList.add("oculto");
-    estudianteQRAsistencia = null;
+        const registro = {
+            estudiante_id: estudiante.id,
+            fecha: fecha,
+            estado: estadoQRAsistencia,
+            observacion:
+                (registrosAsistencia[estudiante.id] || {}).observacion || null
+        };
 
-    if (streamQR) {
-        escaneandoQR = true;
-        requestAnimationFrame(solicitarLecturaQR);
-    } else {
-        abrirEscanerAsistenciaQR();
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert(registro, {
+                onConflict: "estudiante_id,fecha"
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        /* Mantener la información local sincronizada */
+        registrosAsistencia[estudiante.id] = {
+            estado: estadoQRAsistencia,
+            observacion: registro.observacion || ""
+        };
+
+        const radio = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"][value="${estadoQRAsistencia}"]`
+        );
+
+        if (radio) radio.checked = true;
+
+        actualizarResumenAsistencia();
+
+        escaneoAsistenciaQRRealizado = true;
+
+        mostrarMensaje(
+            "✓ Asistencia guardada: " + estudiante.nombre
+        );
+
+        document.getElementById("modalAsistenciaQR").classList.add("oculto");
+        estudianteQRAsistencia = null;
+
+        /* La cámara continúa sin volver a cargar estudiantes/asistencia. */
+        if (streamQR) {
+            escaneandoQR = true;
+            requestAnimationFrame(solicitarLecturaQR);
+        } else {
+            abrirEscanerAsistenciaQR();
+        }
+
+    } catch (error) {
+
+        console.error("Error al guardar asistencia QR:", error);
+
+        alert(
+            "No se pudo guardar la asistencia de " +
+            estudiante.nombre +
+            ": " +
+            (error.message || error)
+        );
+
+    } finally {
+
+        if (boton) {
+            boton.disabled = false;
+
+            if (boton.dataset.textoOriginal !== undefined) {
+                boton.innerHTML = boton.dataset.textoOriginal;
+                delete boton.dataset.textoOriginal;
+            }
+        }
     }
 }
 
@@ -10010,13 +10996,24 @@ async function prepararCalificacionQR(
         "oculto"
     );
 
-    setTimeout(
-        function() {
-            notaInput.focus();
-            notaInput.select();
-        },
-        100
-    );
+    /* En celular no enfocar automáticamente la calificación.
+       Así el teclado no aparece después de escanear el QR.
+       El teclado aparecerá solamente cuando el docente toque
+       el cuadro de calificación u observación. */
+    if (window.matchMedia("(max-width: 600px)").matches) {
+        notaInput.blur();
+        if (observacionInputQR) {
+            observacionInputQR.blur();
+        }
+    } else {
+        setTimeout(
+            function() {
+                notaInput.focus();
+                notaInput.select();
+            },
+            100
+        );
+    }
 
     procesandoQR = false;
 
@@ -10043,7 +11040,12 @@ function seleccionarNotaRapidaQR(nota) {
 
     notaInput.value = nota;
 
-    notaInput.focus();
+    /* En celular, las notas rápidas no deben abrir el teclado.
+       El teclado aparecerá únicamente al tocar el cuadro de calificación
+       o el cuadro de observación. */
+    if (window.matchMedia("(max-width: 600px)").matches) {
+        notaInput.blur();
+    }
 
 }
 
@@ -10361,6 +11363,20 @@ function cerrarModalCalificacionQR(
 comprobarSesion();
 
 </script>
+
+
+<!-- =====================================================
+     MODAL HISTORIAL DE CAMBIOS - SOLO LOCAL
+===================================================== -->
+<div id="modalHistorialCambios" class="modal-historial-fondo oculto" onclick="cerrarHistorialCambios(event)">
+    <div class="modal-historial" onclick="event.stopPropagation()">
+        <div class="historial-cabecera">
+            <span>↩️ Historial de cambios</span>
+            <button type="button" class="historial-cerrar" onclick="cerrarHistorialCambios()">×</button>
+        </div>
+        <div id="listaHistorialCambios" class="historial-cuerpo"></div>
+    </div>
+</div>
 
 </body>
 
