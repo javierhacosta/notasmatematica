@@ -2182,10 +2182,17 @@ async function mostrarAsistenciaEnDetalle() {
                         estado
                     );
 
+                const claseInformalMismaFecha = diasNoClases.find(
+                    dia => String(dia.tipo || "").toLowerCase() === "clase_informal" &&
+                           String(dia.fecha || "") === String(asistencia.fecha || "")
+                );
+
                 const observacion =
                     asistencia.observacion
                     ? escapeHTML(asistencia.observacion)
-                    : "—";
+                    : (claseInformalMismaFecha?.motivo
+                        ? `<strong>Motivo:</strong> ${escapeHTML(String(claseInformalMismaFecha.motivo).trim())}`
+                        : "—");
 
 
                 filas += `
@@ -2213,6 +2220,9 @@ async function mostrarAsistenciaEnDetalle() {
                                 ${informacion.nombre}
 
                             </span>
+                            ${claseInformalMismaFecha
+                                ? `<div class="estado-clase-informal" style="margin-top:5px;">ℹ️ Clase informal</div>`
+                                : ""}
 
                         </td>
 
@@ -2243,6 +2253,14 @@ async function mostrarAsistenciaEnDetalle() {
 
 
             if (esClaseInformal) {
+
+                const tieneAsistenciaMismaFecha = asistencias.some(
+                    asistencia => String(asistencia.fecha || "") === String(dia.fecha || "")
+                );
+
+                if (tieneAsistenciaMismaFecha) {
+                    return;
+                }
 
                 filas += `
 
