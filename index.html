@@ -2083,6 +2083,13 @@ async function mostrarAsistenciaEnDetalle() {
         asistencias.forEach(
             asistencia => {
 
+                // La asistencia de una clase informal se muestra, pero no se cuenta.
+                const esClaseInformal = diasNoClases.some(
+                    dia => String(dia.fecha) === String(asistencia.fecha) &&
+                           String(dia.tipo || '').toLowerCase() === 'clase_informal'
+                );
+                if (esClaseInformal) return;
+
                 const estado =
                     normalizarEstado(
                         asistencia.estado
@@ -2236,29 +2243,8 @@ async function mostrarAsistenciaEnDetalle() {
 
 
             if (esClaseInformal) {
-                const asistenciaInformal = asistencias.find(a => String(a.fecha || "") === String(dia.fecha || ""));
 
-                if (asistenciaInformal) {
-                    const estadoInformal = normalizarEstado(asistenciaInformal.estado);
-                    const informacionInformal = obtenerEstadoAsistencia(estadoInformal);
-                    const observacionInformal = asistenciaInformal.observacion
-                        ? escapeHTML(asistenciaInformal.observacion)
-                        : (motivo ? `<strong>Clase informal:</strong> ${motivo}` : "Clase informal registrada.");
-
-                    filas += `
-                        <tr class="dia-clase-informal">
-                            <td>${formatearFecha(asistenciaInformal.fecha)}</td>
-                            <td>
-                                <span class="estado-asistencia ${informacionInformal.clase}">
-                                    ${informacionInformal.icono} ${informacionInformal.nombre}
-                                </span>
-                                <div style="margin-top:4px;font-size:11px;color:#1565c0;font-weight:bold;">ℹ️ Clase informal</div>
-                            </td>
-                            <td class="observacion motivo-clase-informal-detalle">${observacionInformal}</td>
-                        </tr>
-                    `;
-                } else {
-                    filas += `
+                filas += `
 
                     <tr class="dia-clase-informal">
 
@@ -2294,12 +2280,6 @@ async function mostrarAsistenciaEnDetalle() {
                     </tr>
 
                 `;
-
-                return;
-            }
-
-
-                }
 
                 return;
             }
