@@ -2191,141 +2191,6 @@ table tbody tr:nth-child(10n+10) td {
 
 /* Guardado automático: ocultar botones manuales de guardado */
 button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
-
-/* =====================================================
-   HISTORIAL DE CAMBIOS
-   Solo agrega visualización del historial; no modifica
-   la lógica existente de guardado.
-===================================================== */
-.boton-historial-cambios {
-    width: 38px;
-    height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: 7px;
-    background: #6a1b9a;
-    color: white;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.boton-historial-cambios:hover {
-    background: #4a148c;
-}
-.historial-modal {
-    width: 100%;
-    max-width: 560px;
-    max-height: 90vh;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
-}
-.historial-cabecera {
-    background: #6a1b9a;
-    color: white;
-    padding: 13px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-.historial-cabecera strong {
-    font-size: 17px;
-}
-.historial-cerrar {
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: 7px;
-    background: rgba(255,255,255,.18);
-    color: white;
-    font-size: 22px;
-    cursor: pointer;
-}
-.historial-cuerpo {
-    padding: 14px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-.historial-item {
-    border: 1px solid #ddd;
-    border-left: 4px solid #6a1b9a;
-    border-radius: 9px;
-    padding: 10px 12px;
-    margin-bottom: 9px;
-    background: #fafafa;
-}
-.historial-item:last-child {
-    margin-bottom: 0;
-}
-.historial-fecha {
-    font-size: 11px;
-    color: #777;
-    margin-bottom: 4px;
-}
-.historial-usuario {
-    font-weight: bold;
-    color: #1557a6;
-    margin-bottom: 4px;
-    overflow-wrap: anywhere;
-}
-.historial-estudiante {
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 4px;
-}
-.historial-cambio {
-    color: #444;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-}
-
-.historial-dato {
-    margin-top: 4px;
-    font-size: 13px;
-    color: #455a64;
-}
-
-.boton-restaurar-historial {
-    margin-top: 10px;
-    border: none;
-    border-radius: 7px;
-    padding: 7px 10px;
-    background: #1565c0;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.boton-restaurar-historial:hover {
-    background: #0d47a1;
-}
-.historial-vacio {
-    text-align: center;
-    color: #666;
-    padding: 22px 10px;
-}
-@media (max-width: 600px) {
-    .boton-historial-cambios {
-        width: 36px;
-        height: 34px;
-        font-size: 17px;
-    }
-    .historial-modal {
-        max-width: 100%;
-        max-height: 94vh;
-    }
-    .historial-cuerpo {
-        max-height: 76vh;
-        padding: 10px;
-    }
-}
-
 </style>
 
 </head>
@@ -2412,14 +2277,6 @@ Selecciona un curso
 
 <button
     type="button"
-    class="boton-historial-cambios"
-    onclick="mostrarHistorialCambiosGlobal()"
-    title="Ver últimos 5 cambios">
-    🕘
-</button>
-
-<button
-    type="button"
     class="boton-bloquear boton-escanear-qr"
     onclick="abrirEscanerAsistenciaQR()"
     title="Tomar asistencia mediante QR">
@@ -2427,7 +2284,6 @@ Selecciona un curso
 📷
 
 </button>
-
 
 <select
     id="listaFechasAsistencia"
@@ -3262,39 +3118,6 @@ Cancelar
 
 </div>
 
-
-<!-- =====================================================
-     MODAL HISTORIAL DE CAMBIOS
-===================================================== -->
-<div
-    id="modalHistorialCambios"
-    class="modal-fondo oculto"
-    onclick="cerrarHistorialCambios(event)">
-
-    <div class="historial-modal">
-
-        <div class="historial-cabecera">
-            <strong id="tituloHistorialCambios">
-                Historial de cambios
-            </strong>
-
-            <button
-                type="button"
-                class="historial-cerrar"
-                onclick="cerrarHistorialCambios()"
-                title="Cerrar">
-                ×
-            </button>
-        </div>
-
-        <div
-            id="contenidoHistorialCambios"
-            class="historial-cuerpo">
-        </div>
-
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -3332,7 +3155,6 @@ let cursoSeleccionado = "";
 let registrosAsistencia = {};
 let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
-let usuarioActualHistorial = "";
 
 
 /* =====================================================
@@ -3396,395 +3218,12 @@ async function comprobarSesion() {
     ).textContent =
     user.email;
 
-    usuarioActualHistorial = user.email || "Usuario actual";
-
 
     establecerFechaActual();
 
     await cargarEstudiantes();
 
 }
-
-
-
-/* =====================================================
-   HISTORIAL DE CAMBIOS
-   Guarda los cambios recientes en el navegador para
-   poder mostrar quién hizo el cambio y qué modificó.
-   Se conservan los últimos 100 registros y se muestran
-   solo los 5 más recientes del elemento consultado.
-===================================================== */
-
-const CLAVE_HISTORIAL_CAMBIOS = "panelDocente_historialCambios_v1";
-
-function obtenerHistorialCambios() {
-    try {
-        const datos = JSON.parse(
-            localStorage.getItem(CLAVE_HISTORIAL_CAMBIOS) || "[]"
-        );
-        return Array.isArray(datos) ? datos : [];
-    } catch (error) {
-        console.warn("No se pudo leer el historial de cambios:", error);
-        return [];
-    }
-}
-
-function guardarHistorialCambios(historial) {
-    try {
-        localStorage.setItem(
-            CLAVE_HISTORIAL_CAMBIOS,
-            JSON.stringify(historial.slice(0, 100))
-        );
-    } catch (error) {
-        console.warn("No se pudo guardar el historial de cambios:", error);
-    }
-}
-
-function escaparHTMLHistorial(valor) {
-    const div = document.createElement("div");
-    div.textContent = valor === null || valor === undefined ? "" : String(valor);
-    return div.innerHTML;
-}
-
-function registrarCambioHistorial(datos) {
-    if (!datos || !datos.tipo || !datos.scopeId || !datos.cambio) return;
-
-    const historial = obtenerHistorialCambios();
-
-    historial.unshift({
-        id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-        fechaHora: new Date().toISOString(),
-        tipo: datos.tipo,
-        scopeId: String(datos.scopeId),
-        curso: datos.curso || cursoSeleccionado || "",
-        elemento: datos.elemento || "",
-        actividad: datos.actividad || datos.elemento || "",
-        categoria: datos.categoria || (datos.tipo === "asistencia" ? "Asistencia" : ""),
-        estudiante: datos.estudiante || "",
-        cambio: datos.cambio || "",
-        notaAnterior: datos.notaAnterior ?? null,
-        notaNueva: datos.notaNueva ?? null,
-        observacionAnterior: datos.observacionAnterior ?? null,
-        observacionNueva: datos.observacionNueva ?? null,
-        estadoAnterior: datos.estadoAnterior ?? null,
-        estadoNuevo: datos.estadoNuevo ?? null,
-        restaurable: datos.restaurable === true,
-        actividadId: datos.actividadId ?? null,
-        estudianteId: datos.estudianteId ?? null,
-        fechaCambio: datos.fechaCambio || "",
-        fechaActividad: datos.fechaActividad || "",
-        usuario: usuarioActualHistorial ||
-                 document.getElementById("usuario")?.textContent ||
-                 "Usuario actual"
-    });
-
-    guardarHistorialCambios(historial);
-}
-
-function textoHistorial(valor, vacio = "—") {
-    const texto = valor === null || valor === undefined
-        ? ""
-        : String(valor).trim();
-
-    return texto === "" ? vacio : texto;
-}
-
-function textoEstadoAsistenciaHistorial(estado) {
-    const estados = {
-        asistio: "Asistió",
-        atraso: "Atraso",
-        licencia: "Licencia / permiso",
-        permiso: "Permiso",
-        falta: "Falta"
-    };
-
-    const clave = String(estado || "").toLowerCase();
-    return estados[clave] || textoHistorial(estado, "Sin estado");
-}
-
-function formatearFechaHoraHistorial(fechaHora) {
-    if (!fechaHora) return "Fecha no disponible";
-
-    const fecha = new Date(fechaHora);
-
-    if (isNaN(fecha.getTime())) {
-        return String(fechaHora);
-    }
-
-    return fecha.toLocaleString("es-BO", {
-        dateStyle: "short",
-        timeStyle: "short"
-    });
-}
-
-function mostrarHistorialCambios(tipo, scopeId, titulo) {
-    const historial = obtenerHistorialCambios()
-        .filter(registro => registro.tipo === tipo && String(registro.scopeId) === String(scopeId))
-        .slice(0, 5);
-    renderizarHistorialCambios(historial, titulo);
-}
-
-function mostrarHistorialCambiosGlobal() {
-    renderizarHistorialCambios(obtenerHistorialCambios().slice(0, 5), "Últimos 5 cambios");
-}
-
-function renderizarHistorialCambios(historial, titulo) {
-    const modal = document.getElementById("modalHistorialCambios");
-    const contenido = document.getElementById("contenidoHistorialCambios");
-    const tituloElemento = document.getElementById("tituloHistorialCambios");
-    if (!modal || !contenido || !tituloElemento) return;
-
-    tituloElemento.textContent = "Historial de cambios" + (titulo ? " — " + titulo : "");
-
-    if (!historial.length) {
-        contenido.innerHTML = `<div class="historial-vacio">No hay cambios registrados todavía.</div>`;
-    } else {
-        contenido.innerHTML = historial.map(registro => {
-            const puedeRestaurar = registro.restaurable === true && registro.estudianteId != null && (
-                (registro.tipo === "actividad" && registro.actividadId != null) ||
-                (registro.tipo === "asistencia" && registro.fechaActividad)
-            );
-            const botonRestaurar = puedeRestaurar
-                ? `<button type="button" class="boton-restaurar-historial" data-historial-id="${escaparHTMLHistorial(registro.id)}" title="Restaurar los valores anteriores">↩️ Restaurar</button>`
-                : "";
-            return `<div class="historial-item">
-                <div class="historial-fecha">${escaparHTMLHistorial(formatearFechaHoraHistorial(registro.fechaHora))}</div>
-                <div class="historial-usuario">👤 ${escaparHTMLHistorial(registro.usuario)}</div>
-                <div class="historial-dato">🏫 Curso: ${escaparHTMLHistorial(textoHistorial(registro.curso))}</div>
-                <div class="historial-dato">📌 Tipo: ${escaparHTMLHistorial(registro.tipo === "asistencia" ? "Asistencia" : "Actividad")}</div>
-                <div class="historial-dato">📝 Actividad: ${escaparHTMLHistorial(textoHistorial(registro.actividad))}</div>
-                <div class="historial-dato">🏷️ Categoría: ${escaparHTMLHistorial(textoHistorial(registro.categoria))}</div>
-                <div class="historial-estudiante">🎓 Estudiante: ${escaparHTMLHistorial(textoHistorial(registro.estudiante, "Sin estudiante"))}</div>
-                <div class="historial-cambio">${escaparHTMLHistorial(registro.cambio)}</div>
-                ${botonRestaurar}
-            </div>`;
-        }).join("");
-    }
-    modal.classList.remove("oculto");
-
-    // Asignar el evento después de crear los botones dinámicamente.
-    // Así la restauración funciona también cuando el historial se vuelve a renderizar.
-    contenido.onclick = function(event) {
-        const boton = event.target.closest(".boton-restaurar-historial");
-        if (!boton) return;
-        event.preventDefault();
-        event.stopPropagation();
-        confirmarRestauracionHistorial(boton.getAttribute("data-historial-id"));
-    };
-}
-
-async function confirmarRestauracionHistorial(historialId) {
-    const registro = obtenerHistorialCambios().find(r => String(r.id) === String(historialId));
-
-    if (!registro) {
-        alert("No se encontró este cambio en el historial.");
-        return;
-    }
-
-    const puedeRestaurarActividad =
-        registro.tipo === "actividad" &&
-        registro.restaurable === true &&
-        registro.actividadId != null &&
-        registro.estudianteId != null;
-
-    const puedeRestaurarAsistencia =
-        registro.tipo === "asistencia" &&
-        registro.restaurable === true &&
-        registro.estudianteId != null &&
-        registro.fechaActividad;
-
-    if (!puedeRestaurarActividad && !puedeRestaurarAsistencia) {
-        alert("Este cambio no puede restaurarse.");
-        return;
-    }
-
-    try {
-        if (puedeRestaurarActividad) {
-            const notaAnterior = textoHistorial(registro.notaAnterior, "sin nota");
-            const notaNueva = textoHistorial(registro.notaNueva, "sin nota");
-            const obsAnterior = textoHistorial(registro.observacionAnterior, "sin observación");
-            const obsNueva = textoHistorial(registro.observacionNueva, "sin observación");
-            const huboNota = String(registro.notaAnterior ?? "").trim() !== String(registro.notaNueva ?? "").trim();
-            const huboObservacion = String(registro.observacionAnterior ?? "").trim() !== String(registro.observacionNueva ?? "").trim();
-            const detalle = huboNota && huboObservacion
-                ? "nota y observación"
-                : huboObservacion ? "observación" : "nota";
-
-            if (!confirm(
-                "¿Está seguro de restaurar la " + detalle + " anterior?\n\n" +
-                "Nota: " + notaNueva + " → " + notaAnterior + "\n" +
-                "Observación: " + obsNueva + " → " + obsAnterior
-            )) return;
-
-            const notaRestaurada = registro.notaAnterior === null || registro.notaAnterior === ""
-                ? null
-                : Number(registro.notaAnterior);
-            const observacionRestaurada = registro.observacionAnterior === null || registro.observacionAnterior === undefined
-                ? null
-                : String(registro.observacionAnterior).trim() || null;
-
-            const { error } = await supabaseClient
-                .from("calificaciones")
-                .upsert({
-                    actividad_id: Number(registro.actividadId),
-                    estudiante_id: Number(registro.estudianteId),
-                    nota: notaRestaurada,
-                    observacion: observacionRestaurada
-                }, { onConflict: "actividad_id,estudiante_id" });
-
-            if (error) throw error;
-
-            if (!calificaciones[registro.estudianteId]) calificaciones[registro.estudianteId] = {};
-            calificaciones[registro.estudianteId][registro.actividadId] = {
-                nota: notaRestaurada,
-                observacion: observacionRestaurada || ""
-            };
-
-            registrarCambioHistorial({
-                tipo: "actividad",
-                scopeId: registro.actividadId,
-                curso: registro.curso,
-                elemento: registro.actividad,
-                actividad: registro.actividad,
-                categoria: registro.categoria,
-                estudiante: registro.estudiante,
-                estudianteId: registro.estudianteId,
-                actividadId: registro.actividadId,
-                notaAnterior: registro.notaNueva,
-                notaNueva: registro.notaAnterior,
-                observacionAnterior: registro.observacionNueva,
-                observacionNueva: registro.observacionAnterior,
-                fechaActividad: registro.fechaActividad,
-                fechaCambio: new Date().toISOString(),
-                cambio: "Restaurado: " + detalle + " anterior",
-                restaurable: false
-            });
-
-            await cargarCalificaciones();
-            mostrarActividades();
-            mostrarMensaje("✓ " + (detalle.charAt(0).toUpperCase() + detalle.slice(1)) + " restaurada correctamente.");
-            mostrarHistorialCambiosGlobal();
-            return;
-        }
-
-        const estadoAnterior = registro.estadoAnterior || "";
-        const estadoNuevo = registro.estadoNuevo || "";
-        const observacionAnterior = registro.observacionAnterior == null ? "" : String(registro.observacionAnterior);
-        const observacionNueva = registro.observacionNueva == null ? "" : String(registro.observacionNueva);
-
-        if (!estadoAnterior && !observacionAnterior) {
-            alert("No hay valores anteriores suficientes para restaurar esta asistencia.");
-            return;
-        }
-
-        if (!confirm(
-            "¿Está seguro de restaurar la asistencia anterior?\n\n" +
-            "Estado: " + textoEstadoAsistenciaHistorial(estadoNuevo) + " → " + textoEstadoAsistenciaHistorial(estadoAnterior) + "\n" +
-            "Observación: " + textoHistorial(observacionNueva, "sin observación") + " → " + textoHistorial(observacionAnterior, "sin observación")
-        )) return;
-
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert({
-                estudiante_id: Number(registro.estudianteId),
-                fecha: String(registro.fechaActividad),
-                estado: estadoAnterior || null,
-                observacion: observacionAnterior.trim() || null
-            }, { onConflict: "estudiante_id,fecha" });
-
-        if (error) throw error;
-
-        registrosAsistencia[registro.estudianteId] = {
-            estado: estadoAnterior,
-            observacion: observacionAnterior
-        };
-
-        registrarCambioHistorial({
-            tipo: "asistencia",
-            scopeId: String(registro.curso || cursoSeleccionado) + "|" + String(registro.fechaActividad),
-            curso: registro.curso || cursoSeleccionado,
-            elemento: registro.fechaActividad,
-            actividad: "—",
-            categoria: "Asistencia",
-            estudiante: registro.estudiante,
-            estudianteId: registro.estudianteId,
-            fechaCambio: new Date().toISOString(),
-            fechaActividad: registro.fechaActividad,
-            estadoAnterior: estadoNuevo,
-            estadoNuevo: estadoAnterior,
-            observacionAnterior: observacionNueva,
-            observacionNueva: observacionAnterior,
-            cambio: "Restaurado: asistencia y observación anteriores",
-            restaurable: false
-        });
-
-        const fechaActual = document.getElementById("fechaAsistencia")?.value;
-        if (fechaActual === String(registro.fechaActividad) && cursoSeleccionado === registro.curso) {
-            await cargarAsistencia();
-            actualizarResumenAsistencia();
-        }
-
-        mostrarMensaje("✓ Asistencia restaurada correctamente.");
-        mostrarHistorialCambiosGlobal();
-    } catch (error) {
-        console.error("Error al restaurar cambio:", error);
-        alert("No se pudo restaurar el cambio: " + (error.message || error));
-    }
-}
-
-function abrirHistorialActividad(actividadId) {
-    const actividad = actividades.find(
-        a => Number(a.id) === Number(actividadId)
-    );
-
-    if (!actividad) return;
-
-    mostrarHistorialCambios(
-        "actividad",
-        actividad.id,
-        "Actividad: " + actividad.nombre
-    );
-}
-
-function abrirHistorialAsistencia() {
-    const fecha = document.getElementById("fechaAsistencia")?.value;
-
-    if (!fecha || !cursoSeleccionado) {
-        mostrarHistorialCambios(
-            "asistencia",
-            String(cursoSeleccionado || "") + "|",
-            "Asistencia"
-        );
-        return;
-    }
-
-    mostrarHistorialCambios(
-        "asistencia",
-        cursoSeleccionado + "|" + fecha,
-        "Asistencia: " + formatearFechaGuardadaAsistencia(fecha)
-    );
-}
-
-function cerrarHistorialCambios(event) {
-    const modal = document.getElementById("modalHistorialCambios");
-
-    if (
-        event &&
-        event.target !== modal
-    ) {
-        return;
-    }
-
-    if (modal) {
-        modal.classList.add("oculto");
-    }
-}
-
-document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") {
-        cerrarHistorialCambios();
-    }
-});
 
 
 /* =====================================================
@@ -5230,14 +4669,7 @@ async function guardarAsistenciaIndividual(control) {
         .catch(() => {})
         .then(async () => {
 
-            const registroAnteriorHistorial =
-                registrosAsistencia[estudianteId] || {};
-
-            const estadoAnteriorHistorial =
-                registroAnteriorHistorial.estado || "";
-
-            const observacionAnteriorHistorial =
-                registroAnteriorHistorial.observacion || "";
+            
 
             const { error } = await supabaseClient
                 .from("asistencia")
@@ -5256,64 +4688,6 @@ async function guardarAsistenciaIndividual(control) {
                 estado: seleccionado.value,
                 observacion: observacion
             };
-
-            const cambiosAsistenciaHistorial = [];
-
-            if (
-                String(estadoAnteriorHistorial).toLowerCase() !==
-                String(seleccionado.value || "").toLowerCase()
-            ) {
-                cambiosAsistenciaHistorial.push(
-                    "Estado: " +
-                    textoEstadoAsistenciaHistorial(estadoAnteriorHistorial) +
-                    " → " +
-                    textoEstadoAsistenciaHistorial(seleccionado.value)
-                );
-            }
-
-            if (
-                String(observacionAnteriorHistorial || "").trim() !==
-                String(observacion || "").trim()
-            ) {
-                cambiosAsistenciaHistorial.push(
-                    "Observación: " +
-                    textoHistorial(
-                        observacionAnteriorHistorial,
-                        "sin observación"
-                    ) +
-                    " → " +
-                    textoHistorial(
-                        observacion,
-                        "sin observación"
-                    )
-                );
-            }
-
-            const estudianteAsistenciaHistorial =
-                estudiantes.find(e => Number(e.id) === estudianteId);
-
-            if (cambiosAsistenciaHistorial.length > 0) {
-                registrarCambioHistorial({
-                    tipo: "asistencia",
-                    scopeId: String(cursoSeleccionado) + "|" + String(fecha),
-                    curso: cursoSeleccionado,
-                    elemento: fecha,
-                    actividad: "—",
-                    categoria: "Asistencia",
-                    estudiante: estudianteAsistenciaHistorial
-                        ? estudianteAsistenciaHistorial.nombre
-                        : "Estudiante " + estudianteId,
-                    estudianteId: estudianteId,
-                    fechaCambio: new Date().toISOString(),
-                    fechaActividad: fecha,
-                    estadoAnterior: estadoAnteriorHistorial,
-                    estadoNuevo: seleccionado.value,
-                    observacionAnterior: observacionAnteriorHistorial,
-                    observacionNueva: observacion,
-                    restaurable: true,
-                    cambio: cambiosAsistenciaHistorial.join(" | ")
-                });
-            }
 
             actualizarResumenAsistencia();
 
@@ -5440,15 +4814,6 @@ async function guardarAsistencia() {
 
         const registros = [];
 
-        const estadosAnterioresHistorial = {};
-        estudiantesCurso.forEach(estudiante => {
-            const anterior = registrosAsistencia[estudiante.id] || {};
-            estadosAnterioresHistorial[estudiante.id] = {
-                estado: anterior.estado || "",
-                observacion: anterior.observacion || ""
-            };
-        });
-
         estudiantesCurso.forEach(estudiante => {
             const seleccionado = document.querySelector(
                 `input[name="asistencia-${estudiante.id}"]:checked`
@@ -5498,62 +4863,6 @@ async function guardarAsistencia() {
         if (error) {
             throw error;
         }
-
-        registros.forEach(registro => {
-            const anterior = estadosAnterioresHistorial[registro.estudiante_id] || {};
-            const cambios = [];
-
-            if (
-                String(anterior.estado || "").toLowerCase() !==
-                String(registro.estado || "").toLowerCase()
-            ) {
-                cambios.push(
-                    "Estado: " +
-                    textoEstadoAsistenciaHistorial(anterior.estado) +
-                    " → " +
-                    textoEstadoAsistenciaHistorial(registro.estado)
-                );
-            }
-
-            if (
-                String(anterior.observacion || "").trim() !==
-                String(registro.observacion || "").trim()
-            ) {
-                cambios.push(
-                    "Observación: " +
-                    textoHistorial(anterior.observacion, "sin observación") +
-                    " → " +
-                    textoHistorial(registro.observacion, "sin observación")
-                );
-            }
-
-            if (cambios.length > 0) {
-                const estudiante = estudiantes.find(
-                    e => Number(e.id) === Number(registro.estudiante_id)
-                );
-
-                registrarCambioHistorial({
-                    tipo: "asistencia",
-                    scopeId: String(cursoSeleccionado) + "|" + String(fecha),
-                    curso: cursoSeleccionado,
-                    elemento: fecha,
-                    actividad: "—",
-                    categoria: "Asistencia",
-                    estudiante: estudiante
-                        ? estudiante.nombre
-                        : "Estudiante " + registro.estudiante_id,
-                    estudianteId: registro.estudiante_id,
-                    fechaActividad: fecha,
-                    fechaCambio: new Date().toISOString(),
-                    estadoAnterior: anterior.estado || "",
-                    estadoNuevo: registro.estado || "",
-                    observacionAnterior: anterior.observacion || "",
-                    observacionNueva: registro.observacion || "",
-                    restaurable: true,
-                    cambio: cambios.join(" | ")
-                });
-            }
-        });
 
         actualizarProgresoGuardado("asistencia", 90, true);
         mostrarMensaje("Actualizando asistencia... 90%");
@@ -6431,6 +5740,11 @@ function crearActividadHTML(
             event.stopPropagation();
             abrirEscanerQR(actividad);
         }
+    );
+
+
+    derecha.appendChild(
+        botonEscanearQR
     );
 
 
@@ -8527,81 +7841,10 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
                 calificaciones[estudianteId] = {};
             }
 
-            const registroAnteriorHistorial =
-                calificaciones[estudianteId][actividadId];
-
-            const notaAnteriorHistorial =
-                registroAnteriorHistorial &&
-                typeof registroAnteriorHistorial === "object"
-                ? registroAnteriorHistorial.nota
-                : registroAnteriorHistorial;
-
-            const observacionAnteriorHistorial =
-                registroAnteriorHistorial &&
-                typeof registroAnteriorHistorial === "object"
-                ? (registroAnteriorHistorial.observacion || "")
-                : "";
-
             calificaciones[estudianteId][actividadId] = {
                 nota: nota,
                 observacion: observacion
             };
-
-            const cambiosActividadHistorial = [];
-
-            if (
-                String(notaAnteriorHistorial ?? "").trim() !==
-                String(nota ?? "").trim()
-            ) {
-                cambiosActividadHistorial.push(
-                    "Nota: " +
-                    textoHistorial(notaAnteriorHistorial, "sin nota") +
-                    " → " +
-                    textoHistorial(nota, "sin nota")
-                );
-            }
-
-            if (
-                String(observacionAnteriorHistorial || "").trim() !==
-                String(observacion || "").trim()
-            ) {
-                cambiosActividadHistorial.push(
-                    "Observación: " +
-                    textoHistorial(observacionAnteriorHistorial, "sin observación") +
-                    " → " +
-                    textoHistorial(observacion, "sin observación")
-                );
-            }
-
-            const estudianteHistorial =
-                estudiantes.find(e => Number(e.id) === estudianteId);
-
-            if (cambiosActividadHistorial.length > 0) {
-                registrarCambioHistorial({
-                    tipo: "actividad",
-                    scopeId: actividadId,
-                    curso: actividad.curso || cursoSeleccionado,
-                    elemento: actividad.nombre,
-                    actividad: actividad.nombre,
-                    categoria: actividad.categoria,
-                    estudiante: estudianteHistorial
-                        ? estudianteHistorial.nombre
-                        : "Estudiante " + estudianteId,
-                    estudianteId: estudianteId,
-                    actividadId: actividadId,
-                    notaAnterior: notaAnteriorHistorial,
-                    notaNueva: nota,
-                    observacionAnterior: observacionAnteriorHistorial,
-                    observacionNueva: observacion,
-                    fechaActividad: actividad.fecha,
-                    fechaCambio: new Date().toISOString(),
-                    restaurable: (
-                        String(notaAnteriorHistorial ?? "").trim() !== String(nota ?? "").trim() ||
-                        String(observacionAnteriorHistorial || "").trim() !== String(observacion || "").trim()
-                    ),
-                    cambio: cambiosActividadHistorial.join(" | ")
-                });
-            }
 
             /*
                Marcar exactamente esta combinación nota+observación como
@@ -11596,28 +10839,6 @@ async function guardarCalificacionQR() {
 
     try {
 
-        const registroAnteriorHistorialQR =
-            calificaciones[
-                estudianteQRSeleccionado.id
-            ] &&
-            calificaciones[
-                estudianteQRSeleccionado.id
-            ][
-                actividadQRSeleccionada.id
-            ];
-
-        const notaAnteriorHistorialQR =
-            registroAnteriorHistorialQR &&
-            typeof registroAnteriorHistorialQR === "object"
-            ? registroAnteriorHistorialQR.nota
-            : registroAnteriorHistorialQR;
-
-        const observacionAnteriorHistorialQR =
-            registroAnteriorHistorialQR &&
-            typeof registroAnteriorHistorialQR === "object"
-            ? (registroAnteriorHistorialQR.observacion || "")
-            : "";
-
         const {
             error
         } =
@@ -11683,63 +10904,6 @@ async function guardarCalificacionQR() {
             observacion:
             observacion
         };
-
-        const cambiosActividadHistorialQR = [];
-
-        if (
-            String(notaAnteriorHistorialQR ?? "").trim() !==
-            String(nota ?? "").trim()
-        ) {
-            cambiosActividadHistorialQR.push(
-                "Nota: " +
-                textoHistorial(notaAnteriorHistorialQR, "sin nota") +
-                " → " +
-                textoHistorial(nota, "sin nota")
-            );
-        }
-
-        if (
-            String(observacionAnteriorHistorialQR || "").trim() !==
-            String(observacion || "").trim()
-        ) {
-            cambiosActividadHistorialQR.push(
-                "Observación: " +
-                textoHistorial(
-                    observacionAnteriorHistorialQR,
-                    "sin observación"
-                ) +
-                " → " +
-                textoHistorial(
-                    observacion,
-                    "sin observación"
-                )
-            );
-        }
-
-        if (cambiosActividadHistorialQR.length > 0) {
-            registrarCambioHistorial({
-                tipo: "actividad",
-                scopeId: actividadQRSeleccionada.id,
-                curso: actividadQRSeleccionada.curso || cursoSeleccionado,
-                elemento: actividadQRSeleccionada.nombre,
-                actividad: actividadQRSeleccionada.nombre,
-                categoria: actividadQRSeleccionada.categoria,
-                estudiante: estudianteQRSeleccionado.nombre,
-                estudianteId: estudianteQRSeleccionado.id,
-                actividadId: actividadQRSeleccionada.id,
-                notaAnterior: notaAnteriorHistorialQR,
-                notaNueva: nota,
-                observacionAnterior: observacionAnteriorHistorialQR,
-                observacionNueva: observacion,
-                fechaActividad: actividadQRSeleccionada.fecha,
-                fechaCambio: new Date().toISOString(),
-                restaurable: (
-                    String(notaAnteriorHistorialQR ?? "").trim() !== String(nota ?? "").trim() ||
-                    String(observacionAnteriorHistorialQR || "").trim() !== String(observacion || "").trim()
-                ),
-                cambio: cambiosActividadHistorialQR.join(" | ")
-            });
-        }
 
         const nombreEstudianteQR =
         estudianteQRSeleccionado.nombre;
