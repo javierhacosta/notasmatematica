@@ -2125,32 +2125,59 @@ async function mostrarAsistenciaEnDetalle() {
         );
 
 
+        /*
+         * Unir asistencia normal + días especiales y ordenar TODO por fecha.
+         * Así "Clase informal" y "No se pasó clases" aparecen en su lugar
+         * cronológico correspondiente.
+         */
+        const registrosAsistencia = [
+            ...asistencias.map(asistencia => ({
+                fecha: asistencia.fecha,
+                tipoRegistro: "asistencia",
+                datos: asistencia
+            })),
+            ...diasNoClases.map(dia => ({
+                fecha: dia.fecha,
+                tipoRegistro: String(dia.tipo || "").toLowerCase(),
+                datos: dia
+            }))
+        ].sort((a, b) => {
+            const comparacion =
+                String(a.fecha || "").localeCompare(String(b.fecha || ""));
+
+            if (comparacion !== 0) return comparacion;
+
+            // Si dos registros tienen la misma fecha, la asistencia
+            // normal aparece primero.
+            if (a.tipoRegistro === "asistencia" && b.tipoRegistro !== "asistencia") return -1;
+            if (a.tipoRegistro !== "asistencia" && b.tipoRegistro === "asistencia") return 1;
+
+            return 0;
+        });
+
+
         let filas = "";
 
 
-        asistencias.forEach(
-            asistencia => {
+        registrosAsistencia.forEach(registro => {
+
+            if (registro.tipoRegistro === "asistencia") {
+
+                const asistencia = registro.datos;
 
                 const estado =
                     normalizarEstado(
                         asistencia.estado
                     );
 
-
                 const informacion =
                     obtenerEstadoAsistencia(
                         estado
                     );
 
-
                 const observacion =
-
                     asistencia.observacion
-
-                    ? escapeHTML(
-                        asistencia.observacion
-                    )
-
+                    ? escapeHTML(asistencia.observacion)
                     : "—";
 
 
@@ -2193,71 +2220,26 @@ async function mostrarAsistenciaEnDetalle() {
 
                 `;
 
+                return;
             }
-        );
 
 
-        // Agregar a la misma tabla los días especiales.
-        diasNoClases.forEach(
-            dia => {
+            const dia = registro.datos;
 
-                const esClaseInformal =
-                    String(dia.tipo || "").toLowerCase() === "clase_informal";
+            const esClaseInformal =
+                registro.tipoRegistro === "clase_informal";
 
-                const motivo =
-                    dia.motivo && String(dia.motivo).trim()
-                    ? escapeHTML(String(dia.motivo).trim())
-                    : "";
-
-                if (esClaseInformal) {
-
-                    filas += `
-
-                        <tr class="dia-clase-informal">
-
-                            <td>
-
-                                ${formatearFecha(
-                                    dia.fecha
-                                )}
-
-                            </td>
+            const motivo =
+                dia.motivo && String(dia.motivo).trim()
+                ? escapeHTML(String(dia.motivo).trim())
+                : "";
 
 
-                            <td>
-
-                                <span class="estado-clase-informal">
-
-                                    ℹ️ Clase informal
-
-                                </span>
-
-                            </td>
-
-
-                            <td class="observacion motivo-clase-informal-detalle">
-
-                                ${motivo
-                                    ? `<strong>Motivo:</strong> ${motivo}`
-                                    : "Clase informal registrada."
-                                }
-
-                            </td>
-
-                        </tr>
-
-                    `;
-
-                    return;
-
-                }
-
-                const motivoNoClases =
-                    motivo || "No se registró el motivo.";
+            if (esClaseInformal) {
 
                 filas += `
 
-                    <tr class="dia-no-clases">
+                    <tr class="dia-clase-informal">
 
                         <td>
 
@@ -2270,18 +2252,21 @@ async function mostrarAsistenciaEnDetalle() {
 
                         <td>
 
-                            <span class="estado-no-clases">
+                            <span class="estado-clase-informal">
 
-                                🚫 No se pasó clases
+                                ℹ️ Clase informal
 
                             </span>
 
                         </td>
 
 
-                        <td class="observacion motivo-no-clases-detalle">
+                        <td class="observacion motivo-clase-informal-detalle">
 
-                            <strong>Motivo:</strong> ${motivoNoClases}
+                            ${motivo
+                                ? `<strong>Motivo:</strong> ${motivo}`
+                                : "Clase informal registrada."
+                            }
 
                         </td>
 
@@ -2289,8 +2274,49 @@ async function mostrarAsistenciaEnDetalle() {
 
                 `;
 
+                return;
             }
-        );
+
+
+            const motivoNoClases =
+                motivo || "No se registró el motivo.";
+
+
+            filas += `
+
+                <tr class="dia-no-clases">
+
+                    <td>
+
+                        ${formatearFecha(
+                            dia.fecha
+                        )}
+
+                    </td>
+
+
+                    <td>
+
+                        <span class="estado-no-clases">
+
+                            🚫 No se pasó clases
+
+                        </span>
+
+                    </td>
+
+
+                    <td class="observacion motivo-no-clases-detalle">
+
+                        <strong>Motivo:</strong> ${motivoNoClases}
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        });
 
 
         // Se muestra la tabla si existe asistencia normal o algún día sin clases.
