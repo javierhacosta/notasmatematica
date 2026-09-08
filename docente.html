@@ -1155,15 +1155,6 @@ td:first-child {
     color: #222;
 }
 
-/* ESTADO DEL DÍA DE ASISTENCIA */
-.estado-dia-asistencia { width:165px; padding:7px 8px; border:none; border-radius:6px; font-size:14px; background:white; color:#222; cursor:pointer; }
-.aviso-estado-dia-asistencia { margin:0; padding:10px 12px; font-weight:bold; text-align:center; border-bottom:1px solid #ddd; display:none; }
-.aviso-estado-dia-asistencia.no-clases { display:block; background:#fff3e0; color:#a94800; }
-.aviso-estado-dia-asistencia.informal { display:block; background:#e8f1fb; color:#1557a6; }
-.contenido-asistencia.dia-sin-clases { opacity:.68; }
-@media (max-width:600px) { .estado-dia-asistencia { width:100%; min-width:0; max-width:none; } }
-
-
 .boton-eliminar-fecha-asistencia {
     width: 34px;
     height: 34px;
@@ -1182,6 +1173,84 @@ td:first-child {
 .boton-eliminar-fecha-asistencia:hover {
     background: #a91f1f;
 }
+
+
+/* =====================================================
+   TIPO DE CLASE / DÍA DE ASISTENCIA
+===================================================== */
+
+.boton-tipo-dia-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #1565c0;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.boton-tipo-dia-asistencia:hover {
+    background: #0d47a1;
+}
+
+.opciones-tipo-dia-asistencia {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.opciones-tipo-dia-asistencia button {
+    min-height: 34px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    background: white;
+    color: #222;
+    padding: 5px 9px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.opciones-tipo-dia-asistencia button:hover {
+    background: #f0f4f8;
+}
+
+.boton-guardar-tipo-dia-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none !important;
+    border-radius: 7px !important;
+    background: #16803c !important;
+    color: white !important;
+    font-size: 18px !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boton-guardar-tipo-dia-asistencia:hover {
+    background: #11652f !important;
+}
+
+@media (max-width: 600px) {
+    .opciones-tipo-dia-asistencia {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .opciones-tipo-dia-asistencia button {
+        font-size: 12px;
+        padding: 5px 7px;
+    }
+}
+
 
 
 /* =====================================================
@@ -2421,12 +2490,6 @@ Fechas guardadas
     class="fecha-asistencia"
 >
 
-<select id="estadoDiaAsistencia" class="estado-dia-asistencia" onchange="cambiarEstadoDiaAsistencia()" title="Indicar si ese día hubo clases">
-    <option value="normal">Día normal</option>
-    <option value="no_clases">🚫 No se pasó clases</option>
-    <option value="informal">ℹ️ Clase informal</option>
-</select>
-
 
 <div class="botones-fecha-asistencia">
 
@@ -2440,6 +2503,44 @@ Fechas guardadas
 🗑️
 
 </button>
+
+<button
+    type="button"
+    id="botonTipoDiaAsistencia"
+    class="boton-tipo-dia-asistencia"
+    onclick="mostrarOpcionesTipoDiaAsistencia()"
+    title="Indicar tipo de clase">
+    📅
+</button>
+
+<div
+    id="opcionesTipoDiaAsistencia"
+    class="opciones-tipo-dia-asistencia oculto">
+
+    <button
+        type="button"
+        onclick="seleccionarTipoDiaAsistencia('no_clases')"
+        title="No se pasó clases">
+        🚫 No se pasó clases
+    </button>
+
+    <button
+        type="button"
+        onclick="seleccionarTipoDiaAsistencia('clase_informal')"
+        title="Clase informal">
+        ℹ️ Clase informal
+    </button>
+
+    <button
+        type="button"
+        id="botonGuardarTipoDiaAsistencia"
+        class="boton-guardar-tipo-dia-asistencia oculto"
+        onclick="guardarTipoDiaAsistencia()"
+        title="Guardar cambio">
+        💾
+    </button>
+
+</div>
 
 
 <!-- =====================================================
@@ -2506,8 +2607,6 @@ Fechas guardadas
 
 </div>
 
-
-<div id="avisoEstadoDiaAsistencia" class="aviso-estado-dia-asistencia"></div>
 
 <div
     id="contenidoAsistencia"
@@ -3308,7 +3407,7 @@ let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
-let estadoDiaAsistencia = "normal";
+let tipoDiaAsistencia = "";
 let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
@@ -3836,55 +3935,114 @@ function mostrarOcultarAsistencia() {
 
 
 /* =====================================================
-   ESTADO DEL DÍA DE ASISTENCIA
-   Se guarda automáticamente en el navegador, sin modificar
-   la estructura actual de Supabase.
+   TIPO ESPECIAL DE CLASE / DÍA
 ===================================================== */
-function claveEstadoDiaAsistencia() {
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!cursoSeleccionado || !fecha) return "";
-    return `estadoDiaAsistencia_${cursoSeleccionado}_${fecha}`;
-}
-function cargarEstadoDiaAsistenciaLocal() {
-    const select = document.getElementById("estadoDiaAsistencia");
-    if (!select) return;
-    const clave = claveEstadoDiaAsistencia();
-    const guardado = clave ? localStorage.getItem(clave) : null;
-    estadoDiaAsistencia = ["normal","no_clases","informal"].includes(guardado) ? guardado : "normal";
-    select.value = estadoDiaAsistencia;
-    actualizarAvisoEstadoDiaAsistencia();
-}
-function actualizarAvisoEstadoDiaAsistencia() {
-    const aviso = document.getElementById("avisoEstadoDiaAsistencia");
-    const contenido = document.getElementById("contenidoAsistencia");
-    if (!aviso) return;
-    aviso.className = "aviso-estado-dia-asistencia";
-    if (contenido) contenido.classList.remove("dia-sin-clases");
-    if (estadoDiaAsistencia === "no_clases") {
-        aviso.textContent = "🚫 Este día no se pasó clases. No se registrará asistencia.";
-        aviso.classList.add("no-clases");
-        if (contenido) contenido.classList.add("dia-sin-clases");
-    } else if (estadoDiaAsistencia === "informal") {
-        aviso.textContent = "ℹ️ Este día fue registrado como clase informal.";
-        aviso.classList.add("informal");
+
+function mostrarOpcionesTipoDiaAsistencia() {
+    const opciones = document.getElementById("opcionesTipoDiaAsistencia");
+    const botonGuardar = document.getElementById("botonGuardarTipoDiaAsistencia");
+
+    if (!opciones) return;
+
+    opciones.classList.toggle("oculto");
+
+    if (opciones.classList.contains("oculto") && botonGuardar) {
+        botonGuardar.classList.add("oculto");
     }
 }
-function cambiarEstadoDiaAsistencia() {
-    if (!cursoSeleccionado) return;
+
+function seleccionarTipoDiaAsistencia(tipo) {
+    const opciones = document.getElementById("opcionesTipoDiaAsistencia");
+    const botonGuardar = document.getElementById("botonGuardarTipoDiaAsistencia");
+
+    if (!opciones || !botonGuardar) return;
+
+    tipoDiaAsistencia = tipo;
+    opciones.dataset.tipoSeleccionado = tipo;
+    botonGuardar.classList.remove("oculto");
+}
+
+async function guardarTipoDiaAsistencia() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return false;
+    }
+
     const fecha = document.getElementById("fechaAsistencia")?.value;
-    const select = document.getElementById("estadoDiaAsistencia");
-    if (!fecha || !select) return;
-    estadoDiaAsistencia = select.value;
-    const clave = claveEstadoDiaAsistencia();
-    if (clave) {
-        if (estadoDiaAsistencia === "normal") localStorage.removeItem(clave);
-        else localStorage.setItem(clave, estadoDiaAsistencia);
+    if (!fecha) {
+        alert("Selecciona una fecha.");
+        return false;
     }
-    actualizarAvisoEstadoDiaAsistencia();
-    actualizarResumenAsistencia();
-    mostrarTablaAsistencia();
-    mostrarMensaje(estadoDiaAsistencia === "no_clases" ? "✓ Día guardado: no se pasó clases." : estadoDiaAsistencia === "informal" ? "✓ Día guardado: clase informal." : "✓ Día guardado como día normal.");
+
+    const opciones = document.getElementById("opcionesTipoDiaAsistencia");
+    const tipo = opciones?.dataset.tipoSeleccionado || tipoDiaAsistencia;
+
+    if (!["no_clases", "clase_informal"].includes(tipo)) {
+        return false;
+    }
+
+    const estudiantesCurso = estudiantes.filter(
+        estudiante => estudiante.curso === cursoSeleccionado
+    );
+
+    if (estudiantesCurso.length === 0) {
+        alert("No existen estudiantes en este curso.");
+        return false;
+    }
+
+    const registrosEspeciales = estudiantesCurso.map(estudiante => ({
+        estudiante_id: estudiante.id,
+        fecha: fecha,
+        estado: tipo,
+        observacion: null
+    }));
+
+    try {
+        mostrarMensaje("Guardando tipo de clase...");
+
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert(registrosEspeciales, {
+                onConflict: "estudiante_id,fecha"
+            });
+
+        if (error) throw error;
+
+        tipoDiaAsistencia = tipo;
+
+        await cargarFechasAsistencia();
+
+        const listaFechas = document.getElementById("listaFechasAsistencia");
+        if (listaFechas) listaFechas.value = fecha;
+
+        await cargarAsistencia();
+
+        if (opciones) {
+            opciones.classList.add("oculto");
+            delete opciones.dataset.tipoSeleccionado;
+        }
+
+        const botonGuardar = document.getElementById("botonGuardarTipoDiaAsistencia");
+        if (botonGuardar) botonGuardar.classList.add("oculto");
+
+        mostrarMensaje(
+            tipo === "no_clases"
+                ? "✓ Fecha guardada como: No se pasó clases."
+                : "✓ Fecha guardada como: Clase informal."
+        );
+
+        return true;
+    } catch (error) {
+        console.error("Error al guardar tipo de clase:", error);
+        mostrarMensaje(
+            "✕ Error al guardar el tipo de clase: " +
+            (error.message || error),
+            true
+        );
+        return false;
+    }
 }
+
 
 /* =====================================================
    FECHAS DE ASISTENCIA
@@ -4120,8 +4278,8 @@ document.getElementById(
 async function cargarAsistencia() {
 
     registrosAsistencia = {};
+    tipoDiaAsistencia = "";
     escaneoAsistenciaQRRealizado = false;
-    cargarEstadoDiaAsistenciaLocal();
 
     if (!cursoSeleccionado) {
         return;
@@ -4208,6 +4366,28 @@ async function cargarAsistencia() {
 
     });
 
+    const estadosEspeciales = (data || [])
+        .map(registro => String(registro.estado || "").toLowerCase())
+        .filter(estado => ["no_clases", "clase_informal"].includes(estado));
+
+    if (estadosEspeciales.length > 0) {
+        tipoDiaAsistencia = estadosEspeciales.includes("no_clases")
+            ? "no_clases"
+            : "clase_informal";
+    }
+
+    const opcionesTipoDia = document.getElementById("opcionesTipoDiaAsistencia");
+    const botonGuardarTipoDia = document.getElementById("botonGuardarTipoDiaAsistencia");
+
+    if (opcionesTipoDia) {
+        opcionesTipoDia.classList.add("oculto");
+        delete opcionesTipoDia.dataset.tipoSeleccionado;
+    }
+
+    if (botonGuardarTipoDia) {
+        botonGuardarTipoDia.classList.add("oculto");
+    }
+
     mostrarTablaAsistencia();
 
 }
@@ -4273,14 +4453,12 @@ function actualizarResumenAsistencia() {
         }
     });
 
-    resumen.innerHTML = estadoDiaAsistencia === "no_clases"
-        ? `<span>🚫 No se pasó clases</span>`
-        : `
-            <span>✓ ${totales.asistio}</span>
-            <span>⏰ ${totales.atraso}</span>
-            <span>📄 ${totales.licencia}</span>
-            <span>✕ ${totales.falta}</span>
-        `;
+    resumen.innerHTML = `
+        <span>✓ ${totales.asistio}</span>
+        <span>⏰ ${totales.atraso}</span>
+        <span>📄 ${totales.licencia}</span>
+        <span>✕ ${totales.falta}</span>
+    `;
 
     /*
      * AVISO VISUAL:
@@ -4292,7 +4470,7 @@ function actualizarResumenAsistencia() {
      */
     let hayEstudiantesSinEstado = false;
 
-    if (estadoDiaAsistencia === "no_clases") {
+    if (tipoDiaAsistencia) {
         hayEstudiantesSinEstado = false;
     } else if (cursoSeleccionado) {
         const estudiantesCurso = estudiantes.filter(
@@ -4431,7 +4609,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4469,7 +4647,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4507,7 +4685,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4545,7 +4723,7 @@ function mostrarTablaAsistencia() {
                                 ? "checked"
                                 : ""
                             }
-                            ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                            disabled
                         >
 
                         <label
@@ -4577,7 +4755,7 @@ function mostrarTablaAsistencia() {
                     )}"
                     placeholder="-"
                     onchange="guardarObservacionAsistenciaIndividual(this)"
-                    ${(!asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") ? "disabled" : ""}
+                    disabled
                 >
 
             </td>
@@ -4693,7 +4871,7 @@ function actualizarProgresoGuardado(
 ===================================================== */
 
 function obtenerEstudiantesSinEstadoAsistencia() {
-    if (!cursoSeleccionado || estadoDiaAsistencia === "no_clases") return [];
+    if (!cursoSeleccionado) return [];
 
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
@@ -4847,7 +5025,11 @@ const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
 
-    if (!control || !asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") return;
+    if (!control || !asistenciaDesbloqueada) return;
+
+    if (tipoDiaAsistencia) {
+        tipoDiaAsistencia = "";
+    }
 
     const estudianteId = Number(
         control.dataset.estudiante ||
@@ -4935,7 +5117,7 @@ async function guardarAsistenciaIndividual(control) {
 
 async function guardarObservacionAsistenciaIndividual(input) {
 
-    if (!input || !asistenciaDesbloqueada || estadoDiaAsistencia === "no_clases") return;
+    if (!input || !asistenciaDesbloqueada) return;
 
     const estudianteId = Number(input.dataset.estudiante);
     const fecha = document.getElementById("fechaAsistencia")?.value;
@@ -4984,11 +5166,6 @@ async function guardarAsistencia() {
         return false;
     }
 
-    if (estadoDiaAsistencia === "no_clases") {
-        mostrarMensaje("✓ El día está marcado como no se pasó clases.");
-        return true;
-    }
-
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
     );
@@ -4996,6 +5173,15 @@ async function guardarAsistencia() {
     if (estudiantesCurso.length === 0) {
         alert("No existen estudiantes en este curso.");
         return false;
+    }
+
+    if (tipoDiaAsistencia) {
+        const tipo = tipoDiaAsistencia;
+        const opciones = document.getElementById("opcionesTipoDiaAsistencia");
+        if (opciones) opciones.dataset.tipoSeleccionado = tipo;
+
+        const guardadoEspecial = await guardarTipoDiaAsistencia();
+        return guardadoEspecial;
     }
 
     /* No se permite guardar si todavía existen estudiantes sin estado.
