@@ -4143,24 +4143,34 @@ async function guardarTipoDiaAsistencia() {
         // Registrar manualmente el cambio porque esta información se
         // almacena en asistencia_tipos_dia y no en asistencia.
         const operacionHistorial = tipoAnterior ? "UPDATE" : "INSERT";
+        const registroHistorialTipo = {
+            table_name: "asistencia_tipos_dia",
+            operation: operacionHistorial,
+            record_id: null,
+            curso: cursoSeleccionado,
+            estudiante_id: null,
+            estudiante_nombre: null,
+            actividad_id: null,
+            actividad_nombre: null,
+            categoria: null,
+            fecha: fecha,
+            old_data: tipoAnterior || null,
+            new_data: datosTipoNuevo,
+            changed_at: new Date().toISOString()
+        };
+
+        // Intentar guardar el historial en Supabase. Si la tabla
+        // historial_cambios tiene RLS que no permite INSERT, NO se bloquea
+        // el guardado de la asistencia: se conserva el cambio localmente
+        // para que siga apareciendo y pueda restaurarse desde Historial.
         const { error: errorHistorialTipo } = await supabaseClient
             .from("historial_cambios")
-            .insert({
-                table_name: "asistencia_tipos_dia",
-                operation: operacionHistorial,
-                record_id: null,
-                curso: cursoSeleccionado,
-                estudiante_id: null,
-                estudiante_nombre: null,
-                actividad_id: null,
-                actividad_nombre: null,
-                categoria: null,
-                fecha: fecha,
-                old_data: tipoAnterior || null,
-                new_data: datosTipoNuevo
-            });
+            .insert(registroHistorialTipo);
 
-        if (errorHistorialTipo) throw errorHistorialTipo;
+        if (errorHistorialTipo) {
+            console.warn("No se pudo guardar el historial en Supabase; se usará historial local:", errorHistorialTipo);
+            guardarHistorialLocalTipoDia(registroHistorialTipo);
+        }
 
         // Si se marca un día especial, se eliminan los estados normales
         // que pudiera tener esa fecha para evitar datos contradictorios.
@@ -11705,6 +11715,43 @@ function cerrarHistorial(event) {
     modal.classList.add("oculto");
 }
 
+function obtenerHistorialLocalTipoDia() {
+    try {
+        const datos = JSON.parse(localStorage.getItem("historial_tipo_dia_local") || "[]");
+        return Array.isArray(datos) ? datos : [];
+    } catch (e) {
+        console.warn("No se pudo leer el historial local:", e);
+        return [];
+    }
+}
+
+function guardarHistorialLocalTipoDia(registro) {
+    try {
+        const datos = obtenerHistorialLocalTipoDia();
+        const registroLocal = {
+            ...registro,
+            id: -Date.now(),
+            _local: true,
+            changed_at: registro.changed_at || new Date().toISOString()
+        };
+        datos.push(registroLocal);
+        // Conservar suficientes registros locales para el historial.
+        localStorage.setItem("historial_tipo_dia_local", JSON.stringify(datos.slice(-100)));
+    } catch (e) {
+        console.warn("No se pudo guardar el historial local:", e);
+    }
+}
+
+function eliminarHistorialLocalTipoDia(historialId) {
+    try {
+        const datos = obtenerHistorialLocalTipoDia();
+        const filtrados = datos.filter(item => Number(item.id) !== Number(historialId));
+        localStorage.setItem("historial_tipo_dia_local", JSON.stringify(filtrados));
+    } catch (e) {
+        console.warn("No se pudo actualizar el historial local:", e);
+    }
+}
+
 async function cargarHistorial() {
     const contenedor = document.getElementById("contenidoHistorial");
     if (!contenedor) return;
@@ -11746,13 +11793,22 @@ async function cargarHistorial() {
         return;
     }
 
-    if (!data || data.length === 0) {
+    // Incluir los cambios especiales guardados localmente cuando RLS
+    // impida insertar esos registros en historial_cambios.
+    const historialLocal = obtenerHistorialLocalTipoDia().filter(
+        item => item.curso === cursoSeleccionado
+    );
+    const historialCompleto = [...(data || []), ...historialLocal]
+        .sort((a, b) => new Date(b.changed_at || 0) - new Date(a.changed_at || 0))
+        .slice(0, 5);
+
+    if (!historialCompleto || historialCompleto.length === 0) {
         contenedor.textContent = "No hay cambios registrados para este curso.";
         return;
     }
 
     contenedor.className = "";
-    contenedor.innerHTML = data.map((item, indice) => {
+    contenedor.innerHTML = historialCompleto.map((item, indice) => {
         const cambio = obtenerCampoCambioHistorial(item);
         const esAsistencia = item.table_name === "asistencia";
         const esTipoDia = item.table_name === "asistencia_tipos_dia";
@@ -11797,7 +11853,7 @@ async function cargarHistorial() {
         `;
     }).join("");
 
-    window.historialActual = data;
+    window.historialActual = historialCompleto;
 }
 
 async function restaurarCambioHistorial(historialId) {
@@ -11914,6 +11970,10 @@ async function restaurarCambioHistorial(historialId) {
         }
 
         if (error) throw error;
+
+        if (item._local) {
+            eliminarHistorialLocalTipoDia(item.id);
+        }
 
         mostrarMensaje("✓ Cambio restaurado correctamente.");
 
