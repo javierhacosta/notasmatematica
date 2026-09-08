@@ -1239,6 +1239,48 @@ td:first-child {
     background: #11652f !important;
 }
 
+.motivo-no-clases-contenedor {
+    display: none;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.motivo-no-clases-contenedor.visible {
+    display: block;
+}
+
+.motivo-no-clases {
+    width: 100%;
+    min-width: 220px;
+    min-height: 70px;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    resize: vertical;
+}
+
+.aviso-dia-especial {
+    display: none;
+    margin: 10px 0 12px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    border: 1px solid #ffe082;
+    background: #fff8e1;
+    color: #6d5200;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.aviso-dia-especial.visible {
+    display: block;
+}
+
+.aviso-dia-especial strong {
+    color: #5a4300;
+}
+
 @media (max-width: 600px) {
     .opciones-tipo-dia-asistencia {
         flex-wrap: wrap;
@@ -2540,6 +2582,14 @@ Fechas guardadas
         💾
     </button>
 
+    <div id="motivoNoClasesContenedor" class="motivo-no-clases-contenedor">
+        <textarea
+            id="motivoNoClases"
+            class="motivo-no-clases"
+            placeholder="Escribe por qué no hubo clases (opcional)..."
+            maxlength="500"></textarea>
+    </div>
+
 </div>
 
 
@@ -2611,6 +2661,11 @@ Fechas guardadas
 <div
     id="contenidoAsistencia"
     class="contenido-asistencia oculto">
+
+<div
+    id="avisoDiaEspecialAsistencia"
+    class="aviso-dia-especial">
+</div>
 
 <div class="tabla-contenedor">
 
@@ -3408,6 +3463,7 @@ let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
 let registrosAsistencia = {};
 let tipoDiaAsistencia = "";
+let motivoNoClases = "";
 let registrosAsistenciaActividades = {};
 let registrosVisitasInformeGlobal = [];
 
@@ -3960,6 +4016,18 @@ function seleccionarTipoDiaAsistencia(tipo) {
     tipoDiaAsistencia = tipo;
     opciones.dataset.tipoSeleccionado = tipo;
     botonGuardar.classList.remove("oculto");
+
+    const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
+    const campoMotivo = document.getElementById("motivoNoClases");
+
+    if (contenedorMotivo) {
+        contenedorMotivo.classList.toggle("visible", tipo === "no_clases");
+    }
+
+    if (campoMotivo && tipo === "no_clases") {
+        campoMotivo.value = motivoNoClases || "";
+        setTimeout(() => campoMotivo.focus(), 50);
+    }
 }
 
 async function guardarTipoDiaAsistencia() {
@@ -3993,6 +4061,11 @@ async function guardarTipoDiaAsistencia() {
     try {
         mostrarMensaje("Guardando tipo de clase...");
 
+        const campoMotivo = document.getElementById("motivoNoClases");
+        const motivo = tipo === "no_clases"
+            ? String(campoMotivo?.value || "").trim()
+            : null;
+
         // Los tipos especiales NO deben guardarse en asistencia.estado,
         // porque esa columna solo acepta los estados normales.
         // Se guardan en la tabla asistencia_tipos_dia.
@@ -4001,7 +4074,8 @@ async function guardarTipoDiaAsistencia() {
             .upsert({
                 curso: cursoSeleccionado,
                 fecha: fecha,
-                tipo: tipo
+                tipo: tipo,
+                motivo: motivo
             }, {
                 onConflict: "curso,fecha"
             });
@@ -4021,6 +4095,7 @@ async function guardarTipoDiaAsistencia() {
         if (errorAsistencia) throw errorAsistencia;
 
         tipoDiaAsistencia = tipo;
+        motivoNoClases = motivo || "";
 
         await cargarFechasAsistencia();
 
@@ -4036,6 +4111,9 @@ async function guardarTipoDiaAsistencia() {
 
         const botonGuardar = document.getElementById("botonGuardarTipoDiaAsistencia");
         if (botonGuardar) botonGuardar.classList.add("oculto");
+
+        const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
+        if (contenedorMotivo) contenedorMotivo.classList.remove("visible");
 
         mostrarMensaje(
             tipo === "no_clases"
@@ -4195,6 +4273,7 @@ async function eliminarFechaAsistencia() {
     }
 
     establecerFechaActual();
+    motivoNoClases = "";
     await cargarFechasAsistencia();
     await cargarAsistencia();
 
@@ -4230,6 +4309,7 @@ async function cargarAsistencia() {
 
     registrosAsistencia = {};
     tipoDiaAsistencia = "";
+    motivoNoClases = "";
     escaneoAsistenciaQRRealizado = false;
 
     if (!cursoSeleccionado) return;
@@ -4271,7 +4351,7 @@ async function cargarAsistencia() {
     // El tipo especial se consulta en su propia tabla.
     const { data: tipoData, error: tipoError } = await supabaseClient
         .from("asistencia_tipos_dia")
-        .select("tipo")
+        .select("tipo,motivo")
         .eq("curso", cursoSeleccionado)
         .eq("fecha", fecha)
         .maybeSingle();
@@ -4280,6 +4360,7 @@ async function cargarAsistencia() {
         console.error("Error al cargar el tipo de día:", tipoError);
     } else if (tipoData?.tipo) {
         tipoDiaAsistencia = tipoData.tipo;
+        motivoNoClases = tipoData.motivo || "";
     }
 
     const opcionesTipoDia = document.getElementById("opcionesTipoDiaAsistencia");
@@ -4294,6 +4375,16 @@ async function cargarAsistencia() {
         botonGuardarTipoDia.classList.add("oculto");
     }
 
+    const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
+    const campoMotivo = document.getElementById("motivoNoClases");
+    if (contenedorMotivo) {
+        contenedorMotivo.classList.remove("visible");
+    }
+    if (campoMotivo) {
+        campoMotivo.value = motivoNoClases || "";
+    }
+
+    actualizarAvisoDiaEspecialAsistencia();
     mostrarTablaAsistencia();
 }
 
@@ -4331,6 +4422,30 @@ function formatearFechaGuardadaAsistencia(fecha) {
 
     return `${diaCapitalizado} ${partes[2]}/${partes[1]}/${partes[0]}`;
 
+}
+
+
+/* =====================================================
+   AVISO DE DÍA ESPECIAL
+===================================================== */
+
+function actualizarAvisoDiaEspecialAsistencia() {
+    const aviso = document.getElementById("avisoDiaEspecialAsistencia");
+    if (!aviso) return;
+
+    if (tipoDiaAsistencia === "no_clases") {
+        const motivo = String(motivoNoClases || "").trim();
+        aviso.innerHTML = motivo
+            ? `<strong>🚫 Este día no se pasó clases por:</strong> ${escapeHTML(motivo)}`
+            : `<strong>🚫 Este día no se pasó clases.</strong> No se registró el motivo.`;
+        aviso.classList.add("visible");
+    } else if (tipoDiaAsistencia === "clase_informal") {
+        aviso.innerHTML = `<strong>ℹ️ Este día se realizó una clase informal.</strong>`;
+        aviso.classList.add("visible");
+    } else {
+        aviso.innerHTML = "";
+        aviso.classList.remove("visible");
+    }
 }
 
 
