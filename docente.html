@@ -1174,6 +1174,14 @@ td:first-child {
     background: #a91f1f;
 }
 
+/* BOTÓN: DÍA SIN CLASES */
+.boton-dia-sin-clases {
+    width: 34px; height: 34px; border: none; border-radius: 7px;
+    background: #616161; color: white; font-size: 17px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.boton-dia-sin-clases:hover { background: #424242; }
+
 
 /* =====================================================
    NUEVO BOTÓN BLOQUEAR ASISTENCIA
@@ -2423,6 +2431,17 @@ Fechas guardadas
     title="Eliminar la asistencia de esta fecha del curso">
 
 🗑️
+
+</button>
+
+<button
+    type="button"
+    id="botonDiaSinClases"
+    class="boton-dia-sin-clases"
+    onclick="anotarDiaSinClases()"
+    title="Anotar que este día no hubo clases">
+
+🚫
 
 </button>
 
@@ -3931,9 +3950,54 @@ function seleccionarFechaAsistencia() {
     select.value;
 
     cargarAsistencia();
+    actualizarBotonDiaSinClases();
 
 }
 
+
+function claveDiaSinClases() {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    const curso = cursoSeleccionado || "";
+    return `diaSinClases_${curso}_${fecha}`;
+}
+
+function actualizarBotonDiaSinClases() {
+    const boton = document.getElementById("botonDiaSinClases");
+    if (!boton) return;
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha || !cursoSeleccionado) {
+        boton.textContent = "🚫";
+        boton.title = "Anotar que este día no hubo clases";
+        return;
+    }
+    const motivo = localStorage.getItem(claveDiaSinClases());
+    if (motivo) {
+        boton.textContent = "📌";
+        boton.title = `Día sin clases: ${motivo}`;
+    } else {
+        boton.textContent = "🚫";
+        boton.title = "Anotar que este día no hubo clases";
+    }
+}
+
+function anotarDiaSinClases() {
+    if (!cursoSeleccionado) { alert("Primero selecciona un curso."); return; }
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+    if (!fecha) { alert("Selecciona una fecha."); return; }
+    const clave = claveDiaSinClases();
+    const motivoActual = localStorage.getItem(clave) || "";
+    const motivo = prompt(`Anota el motivo por el que no se pasó clases el ${fecha}:`, motivoActual);
+    if (motivo === null) return;
+    const texto = motivo.trim();
+    if (texto) {
+        localStorage.setItem(clave, texto);
+        mostrarMensaje("✓ Día marcado como sin clases.");
+    } else {
+        localStorage.removeItem(clave);
+        mostrarMensaje("✓ Anotación del día eliminada.");
+    }
+    actualizarBotonDiaSinClases();
+}
 
 async function eliminarFechaAsistencia() {
 
@@ -4028,6 +4092,11 @@ async function eliminarFechaAsistencia() {
    CAMBIO DE FECHA
 ===================================================== */
 
+document.getElementById("buscarCurso")?.addEventListener("change", function() {
+    setTimeout(actualizarBotonDiaSinClases, 0);
+});
+
+
 document.getElementById(
     "fechaAsistencia"
 ).addEventListener(
@@ -4039,6 +4108,7 @@ document.getElementById(
         }
 
         await cargarAsistencia();
+        actualizarBotonDiaSinClases();
 
     }
 );
