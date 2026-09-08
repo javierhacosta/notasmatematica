@@ -4114,18 +4114,53 @@ async function guardarTipoDiaAsistencia() {
         // Los tipos especiales NO deben guardarse en asistencia.estado,
         // porque esa columna solo acepta los estados normales.
         // Se guardan en la tabla asistencia_tipos_dia.
+        // Guardar el estado anterior para que el cambio de
+        // "No se pasó clases / Clase informal" también quede en el historial.
+        const { data: tipoAnterior, error: errorTipoAnterior } = await supabaseClient
+            .from("asistencia_tipos_dia")
+            .select("curso,fecha,tipo,motivo")
+            .eq("curso", cursoSeleccionado)
+            .eq("fecha", fecha)
+            .maybeSingle();
+
+        if (errorTipoAnterior) throw errorTipoAnterior;
+
+        const datosTipoNuevo = {
+            curso: cursoSeleccionado,
+            fecha: fecha,
+            tipo: tipo,
+            motivo: motivo
+        };
+
         const { error: errorTipo } = await supabaseClient
             .from("asistencia_tipos_dia")
-            .upsert({
-                curso: cursoSeleccionado,
-                fecha: fecha,
-                tipo: tipo,
-                motivo: motivo
-            }, {
+            .upsert(datosTipoNuevo, {
                 onConflict: "curso,fecha"
             });
 
         if (errorTipo) throw errorTipo;
+
+        // Registrar manualmente el cambio porque esta información se
+        // almacena en asistencia_tipos_dia y no en asistencia.
+        const operacionHistorial = tipoAnterior ? "UPDATE" : "INSERT";
+        const { error: errorHistorialTipo } = await supabaseClient
+            .from("historial_cambios")
+            .insert({
+                table_name: "asistencia_tipos_dia",
+                operation: operacionHistorial,
+                record_id: null,
+                curso: cursoSeleccionado,
+                estudiante_id: null,
+                estudiante_nombre: null,
+                actividad_id: null,
+                actividad_nombre: null,
+                categoria: null,
+                fecha: fecha,
+                old_data: tipoAnterior || null,
+                new_data: datosTipoNuevo
+            });
+
+        if (errorHistorialTipo) throw errorHistorialTipo;
 
         // Si se marca un día especial, se eliminan los estados normales
         // que pudiera tener esa fecha para evitar datos contradictorios.
@@ -11565,6 +11600,37 @@ function obtenerCampoCambioHistorial(item) {
     const antes = item.old_data || {};
     const despues = item.new_data || {};
 
+    if (item.table_name === "asistencia_tipos_dia") {
+        const tipoAntes = antes.tipo;
+        const tipoDespues = despues.tipo;
+        const motivoAntes = antes.motivo;
+        const motivoDespues = despues.motivo;
+
+        if (String(tipoAntes ?? "") !== String(tipoDespues ?? "")) {
+            return {
+                campo: "Tipo de día",
+                antes: tipoAntes === "no_clases"
+                    ? "No se pasó clases"
+                    : tipoAntes === "clase_informal"
+                        ? "Clase informal"
+                        : valorHistorial(tipoAntes),
+                despues: tipoDespues === "no_clases"
+                    ? "No se pasó clases"
+                    : tipoDespues === "clase_informal"
+                        ? "Clase informal"
+                        : valorHistorial(tipoDespues),
+                esNota: false
+            };
+        }
+
+        return {
+            campo: "Motivo",
+            antes: valorHistorial(motivoAntes),
+            despues: valorHistorial(motivoDespues),
+            esNota: false
+        };
+    }
+
     if (item.table_name === "calificaciones") {
         const notaAntes = antes.nota;
         const notaDespues = despues.nota;
@@ -11689,7 +11755,12 @@ async function cargarHistorial() {
     contenedor.innerHTML = data.map((item, indice) => {
         const cambio = obtenerCampoCambioHistorial(item);
         const esAsistencia = item.table_name === "asistencia";
-        const tipo = esAsistencia ? "🗓️ Asistencia" : "📝 Actividad";
+        const esTipoDia = item.table_name === "asistencia_tipos_dia";
+        const tipo = esTipoDia
+            ? "📅 Tipo de día"
+            : esAsistencia
+                ? "🗓️ Asistencia"
+                : "📝 Actividad";
         const actividad = item.actividad_nombre || "—";
         const categoria = item.categoria || "—";
         const estudiante = item.estudiante_nombre || "—";
@@ -11710,6 +11781,7 @@ async function cargarHistorial() {
                     <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(estudiante))}</div>
                     <div><strong>Actividad:</strong> ${escapeHTML(valorHistorial(actividad))}</div>
                     <div><strong>Categoría:</strong> ${escapeHTML(valorHistorial(categoria))}</div>
+                    ${esTipoDia ? `<div><strong>Fecha del día:</strong> ${escapeHTML(formatearFechaGuardadaAsistencia(item.fecha))}</div>` : ""}
                 </div>
                 <div class="historial-cambio">
                     <strong>${escapeHTML(cambio.campo)}:</strong>
@@ -11800,6 +11872,41 @@ async function restaurarCambioHistorial(historialId) {
                         observacion: antes.observacion ?? null
                     })
                     .eq("id", item.record_id);
+                error = resultado.error;
+            }
+        } else if (item.table_name === "asistencia_tipos_dia") {
+            // Restaurar también los cambios de "No se pasó clases",
+            // "Clase informal" y su motivo.
+            if (item.operation === "INSERT" && !item.old_data) {
+                const resultado = await supabaseClient
+                    .from("asistencia_tipos_dia")
+                    .delete()
+                    .eq("curso", item.curso)
+                    .eq("fecha", item.fecha);
+                error = resultado.error;
+            } else if (item.operation === "DELETE") {
+                const resultado = await supabaseClient
+                    .from("asistencia_tipos_dia")
+                    .upsert({
+                        curso: antes.curso ?? item.curso,
+                        fecha: antes.fecha ?? item.fecha,
+                        tipo: antes.tipo ?? null,
+                        motivo: antes.motivo ?? null
+                    }, {
+                        onConflict: "curso,fecha"
+                    });
+                error = resultado.error;
+            } else {
+                const resultado = await supabaseClient
+                    .from("asistencia_tipos_dia")
+                    .upsert({
+                        curso: antes.curso ?? item.curso,
+                        fecha: antes.fecha ?? item.fecha,
+                        tipo: antes.tipo ?? null,
+                        motivo: antes.motivo ?? null
+                    }, {
+                        onConflict: "curso,fecha"
+                    });
                 error = resultado.error;
             }
         } else {
