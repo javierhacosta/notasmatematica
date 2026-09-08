@@ -3861,7 +3861,48 @@ function mostrarPanelAsistencia() {
    BLOQUEAR / DESBLOQUEAR TABLA DE ASISTENCIA
 ===================================================== */
 
+function esDiaSinClasesAsistencia() {
+    return tipoDiaAsistencia === "no_clases";
+}
+
+function aplicarRestriccionTipoDiaAsistencia() {
+    const sinClases = esDiaSinClasesAsistencia();
+
+    document.querySelectorAll(
+        '#tablaAsistencia input[type="radio"], #tablaAsistencia .observacion-asistencia'
+    ).forEach(control => {
+        control.disabled = sinClases || !asistenciaDesbloqueada;
+    });
+
+    const botonQR = document.querySelector(
+        'button[onclick="abrirEscanerAsistenciaQR()"]'
+    );
+    if (botonQR) {
+        botonQR.disabled = sinClases;
+        botonQR.title = sinClases
+            ? "No se puede tomar asistencia: este día no se pasó clases"
+            : "Tomar asistencia mediante QR";
+    }
+
+    [
+        document.getElementById("botonGuardarAsistencia"),
+        document.getElementById("botonGuardarAsistenciaTabla")
+    ].forEach(boton => {
+        if (!boton) return;
+        boton.disabled = sinClases;
+        boton.title = sinClases
+            ? "No se puede registrar asistencia: este día no se pasó clases"
+            : "Guardar asistencia";
+    });
+}
+
 function bloquearDesbloquearAsistencia() {
+    if (esDiaSinClasesAsistencia()) {
+        mostrarMensaje("ℹ️ No se puede registrar asistencia porque este día no se pasó clases.");
+        aplicarRestriccionTipoDiaAsistencia();
+        return;
+    }
+
 
     const boton =
     document.getElementById(
@@ -4792,6 +4833,7 @@ function mostrarTablaAsistencia() {
 
     });
 
+    aplicarRestriccionTipoDiaAsistencia();
 }
 
 
@@ -5051,8 +5093,11 @@ async function guardarAsistenciaIndividual(control) {
 
     if (!control || !asistenciaDesbloqueada) return;
 
-    if (tipoDiaAsistencia) {
-        tipoDiaAsistencia = "";
+    if (esDiaSinClasesAsistencia()) {
+        control.checked = false;
+        mostrarMensaje("ℹ️ No se puede registrar asistencia porque este día no se pasó clases.");
+        aplicarRestriccionTipoDiaAsistencia();
+        return;
     }
 
     const estudianteId = Number(
@@ -5196,6 +5241,12 @@ async function guardarAsistencia() {
 
     if (estudiantesCurso.length === 0) {
         alert("No existen estudiantes en este curso.");
+        return false;
+    }
+
+    if (esDiaSinClasesAsistencia()) {
+        mostrarMensaje("ℹ️ No se puede guardar asistencia porque este día no se pasó clases.");
+        aplicarRestriccionTipoDiaAsistencia();
         return false;
     }
 
@@ -10603,6 +10654,12 @@ function detenerCamaraQR() {
 
 async function abrirEscanerAsistenciaQR() {
 
+    if (esDiaSinClasesAsistencia()) {
+        mostrarMensaje("ℹ️ No se puede tomar asistencia por QR porque este día no se pasó clases.");
+        aplicarRestriccionTipoDiaAsistencia();
+        return;
+    }
+
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -10778,6 +10835,12 @@ function seleccionarEstadoAsistenciaQR(estado) {
 
 
 async function continuarEscaneoAsistenciaQR() {
+
+    if (esDiaSinClasesAsistencia()) {
+        estudianteQRAsistencia = null;
+        mostrarMensaje("ℹ️ No se puede registrar asistencia por QR porque este día no se pasó clases.");
+        return;
+    }
 
     if (!estudianteQRAsistencia) return;
 
