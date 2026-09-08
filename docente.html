@@ -993,6 +993,104 @@ td:first-child {
     cursor: pointer;
 }
 
+/* =====================================================
+   HISTORIAL DE CAMBIOS
+===================================================== */
+.boton-historial {
+    background: rgba(255,255,255,.20);
+    color: white;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    font-size: 21px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.boton-historial:hover {
+    background: rgba(255,255,255,.30);
+}
+.modal-historial {
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.historial-cuerpo {
+    padding: 15px;
+    overflow: auto;
+}
+.historial-vacio {
+    padding: 18px;
+    text-align: center;
+    color: #666;
+    background: #f8f9fa;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+}
+.historial-item {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fafafa;
+}
+.historial-item:last-child { margin-bottom: 0; }
+.historial-item-cabecera {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.historial-tipo {
+    font-weight: bold;
+    color: #1557a6;
+}
+.historial-fecha {
+    color: #666;
+    font-size: 12px;
+}
+.historial-detalles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 5px 14px;
+    font-size: 13px;
+}
+.historial-detalles strong { color: #444; }
+.historial-cambio {
+    margin-top: 9px;
+    padding: 9px;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #ddd;
+}
+.historial-restaurar {
+    margin-top: 9px;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 12px;
+    background: #ef6c00;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+.historial-restaurar:hover { background: #d95f00; }
+@media (max-width: 600px) {
+    .modal-historial { max-width: 100%; max-height: 94vh; }
+    .historial-detalles { grid-template-columns: 1fr; }
+    .historial-item-cabecera { align-items: flex-start; flex-direction: column; }
+}
+
 .boton-general {
     background: rgba(255,255,255,.20);
     color: white;
@@ -2277,6 +2375,16 @@ Selecciona un curso
 
 <button
     type="button"
+    class="boton-historial"
+    onclick="abrirHistorial()"
+    title="Historial de cambios">
+
+🕘
+
+</button>
+
+<button
+    type="button"
     class="boton-bloquear boton-escanear-qr"
     onclick="abrirEscanerAsistenciaQR()"
     title="Tomar asistencia mediante QR">
@@ -3116,6 +3224,36 @@ Cancelar
 
     </div>
 
+</div>
+
+<!-- =====================================================
+     MODAL HISTORIAL DE CAMBIOS
+===================================================== -->
+<div
+    id="modalHistorial"
+    class="modal-fondo oculto"
+    onclick="cerrarHistorial(event)">
+
+    <div
+        class="modal-historial"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+            <h3>🕘 Historial de cambios</h3>
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarHistorial()">
+                ×
+            </button>
+        </div>
+
+        <div class="historial-cuerpo">
+            <div id="contenidoHistorial" class="historial-vacio">
+                Cargando historial...
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11046,6 +11184,294 @@ function cerrarModalCalificacionQR(
 }
 
 
+
+/* =====================================================
+   HISTORIAL DE CAMBIOS
+   La tabla historial_cambios recibe automáticamente los cambios
+   mediante triggers de Supabase. Aquí solo se consulta y restaura.
+===================================================== */
+
+function formatearFechaHistorial(fecha) {
+    if (!fecha) return "";
+    const d = new Date(fecha);
+    if (isNaN(d.getTime())) return String(fecha);
+    return d.toLocaleString("es-BO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function valorHistorial(valor) {
+    if (valor === null || valor === undefined || valor === "") return "—";
+    return String(valor);
+}
+
+function obtenerCampoCambioHistorial(item) {
+    const antes = item.old_data || {};
+    const despues = item.new_data || {};
+
+    if (item.table_name === "calificaciones") {
+        const notaAntes = antes.nota;
+        const notaDespues = despues.nota;
+        const obsAntes = antes.observacion;
+        const obsDespues = despues.observacion;
+
+        if (String(notaAntes ?? "") !== String(notaDespues ?? "")) {
+            return {
+                campo: "Nota",
+                antes: valorHistorial(notaAntes),
+                despues: valorHistorial(notaDespues),
+                esNota: true
+            };
+        }
+
+        return {
+            campo: "Observación",
+            antes: valorHistorial(obsAntes),
+            despues: valorHistorial(obsDespues),
+            esNota: false
+        };
+    }
+
+    const estadoAntes = antes.estado;
+    const estadoDespues = despues.estado;
+    const obsAntes = antes.observacion;
+    const obsDespues = despues.observacion;
+
+    if (String(estadoAntes ?? "") !== String(estadoDespues ?? "")) {
+        return {
+            campo: "Asistencia",
+            antes: valorHistorial(estadoAntes),
+            despues: valorHistorial(estadoDespues),
+            esNota: false
+        };
+    }
+
+    return {
+        campo: "Observación de asistencia",
+        antes: valorHistorial(obsAntes),
+        despues: valorHistorial(obsDespues),
+        esNota: false
+    };
+}
+
+function textoConfirmacionHistorial(item) {
+    const cambio = obtenerCampoCambioHistorial(item);
+    const fecha = item.fecha || item.changed_at;
+
+    if (cambio.esNota) {
+        return `¿Está seguro de restaurar la nota de ${cambio.despues} por ${cambio.antes} en fecha ${formatearFechaHistorial(fecha)}?`;
+    }
+
+    if (cambio.campo === "Asistencia") {
+        return `¿Está seguro de restaurar la asistencia de ${cambio.despues} por ${cambio.antes} en fecha ${formatearFechaHistorial(fecha)}?`;
+    }
+
+    return `¿Está seguro de restaurar la ${cambio.campo.toLowerCase()} de "${cambio.despues}" por "${cambio.antes}" en fecha ${formatearFechaHistorial(fecha)}?`;
+}
+
+function abrirHistorial() {
+    const modal = document.getElementById("modalHistorial");
+    if (!modal) return;
+    modal.classList.remove("oculto");
+    cargarHistorial();
+}
+
+function cerrarHistorial(event) {
+    const modal = document.getElementById("modalHistorial");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+async function cargarHistorial() {
+    const contenedor = document.getElementById("contenidoHistorial");
+    if (!contenedor) return;
+
+    contenedor.className = "historial-vacio";
+    contenedor.textContent = "Cargando historial...";
+
+    if (!cursoSeleccionado) {
+        contenedor.textContent = "Primero selecciona un curso.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("historial_cambios")
+        .select(`
+            id,
+            changed_at,
+            table_name,
+            operation,
+            record_id,
+            curso,
+            estudiante_id,
+            estudiante_nombre,
+            actividad_id,
+            actividad_nombre,
+            categoria,
+            fecha,
+            old_data,
+            new_data
+        `)
+        .eq("curso", cursoSeleccionado)
+        .order("changed_at", { ascending: false })
+        .limit(5);
+
+    if (error) {
+        console.error("Error al cargar historial:", error);
+        contenedor.textContent =
+            "No se pudo cargar el historial. Verifica que exista la tabla historial_cambios y sus políticas en Supabase.";
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        contenedor.textContent = "No hay cambios registrados para este curso.";
+        return;
+    }
+
+    contenedor.className = "";
+    contenedor.innerHTML = data.map((item, indice) => {
+        const cambio = obtenerCampoCambioHistorial(item);
+        const esAsistencia = item.table_name === "asistencia";
+        const tipo = esAsistencia ? "🗓️ Asistencia" : "📝 Actividad";
+        const actividad = item.actividad_nombre || "—";
+        const categoria = item.categoria || "—";
+        const estudiante = item.estudiante_nombre || "—";
+        const operacion = item.operation === "INSERT"
+            ? "Nuevo registro"
+            : item.operation === "DELETE"
+                ? "Registro eliminado"
+                : "Modificación";
+
+        return `
+            <div class="historial-item">
+                <div class="historial-item-cabecera">
+                    <span class="historial-tipo">${tipo} — ${operacion}</span>
+                    <span class="historial-fecha">${escapeHTML(formatearFechaHistorial(item.changed_at))}</span>
+                </div>
+                <div class="historial-detalles">
+                    <div><strong>Curso:</strong> ${escapeHTML(valorHistorial(item.curso))}</div>
+                    <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(estudiante))}</div>
+                    <div><strong>Actividad:</strong> ${escapeHTML(valorHistorial(actividad))}</div>
+                    <div><strong>Categoría:</strong> ${escapeHTML(valorHistorial(categoria))}</div>
+                </div>
+                <div class="historial-cambio">
+                    <strong>${escapeHTML(cambio.campo)}:</strong>
+                    ${escapeHTML(cambio.antes)} → ${escapeHTML(cambio.despues)}
+                </div>
+                <button
+                    type="button"
+                    class="historial-restaurar"
+                    onclick="restaurarCambioHistorial(${Number(item.id)})">
+                    ↩️ Volver / Restaurar
+                </button>
+            </div>
+        `;
+    }).join("");
+
+    window.historialActual = data;
+}
+
+async function restaurarCambioHistorial(historialId) {
+    const item = (window.historialActual || []).find(
+        h => Number(h.id) === Number(historialId)
+    );
+
+    if (!item) {
+        alert("No se encontró el cambio seleccionado.");
+        return;
+    }
+
+    if (!confirm(textoConfirmacionHistorial(item))) {
+        return;
+    }
+
+    const antes = item.old_data || {};
+    let error = null;
+
+    try {
+        if (item.table_name === "calificaciones") {
+            if (item.operation === "INSERT" && !item.old_data) {
+                const resultado = await supabaseClient
+                    .from("calificaciones")
+                    .delete()
+                    .eq("id", item.record_id);
+                error = resultado.error;
+            } else if (item.operation === "DELETE") {
+                const resultado = await supabaseClient
+                    .from("calificaciones")
+                    .upsert({
+                        id: item.record_id,
+                        actividad_id: item.actividad_id,
+                        estudiante_id: item.estudiante_id,
+                        nota: antes.nota ?? null,
+                        observacion: antes.observacion ?? null
+                    });
+                error = resultado.error;
+            } else {
+                const resultado = await supabaseClient
+                    .from("calificaciones")
+                    .update({
+                        nota: antes.nota ?? null,
+                        observacion: antes.observacion ?? null
+                    })
+                    .eq("id", item.record_id);
+                error = resultado.error;
+            }
+        } else if (item.table_name === "asistencia") {
+            if (item.operation === "INSERT" && !item.old_data) {
+                const resultado = await supabaseClient
+                    .from("asistencia")
+                    .delete()
+                    .eq("id", item.record_id);
+                error = resultado.error;
+            } else if (item.operation === "DELETE") {
+                const resultado = await supabaseClient
+                    .from("asistencia")
+                    .upsert({
+                        id: item.record_id,
+                        estudiante_id: item.estudiante_id,
+                        fecha: item.fecha,
+                        estado: antes.estado ?? null,
+                        observacion: antes.observacion ?? null
+                    });
+                error = resultado.error;
+            } else {
+                const resultado = await supabaseClient
+                    .from("asistencia")
+                    .update({
+                        estado: antes.estado ?? null,
+                        observacion: antes.observacion ?? null
+                    })
+                    .eq("id", item.record_id);
+                error = resultado.error;
+            }
+        } else {
+            throw new Error("Tipo de historial no compatible.");
+        }
+
+        if (error) throw error;
+
+        mostrarMensaje("✓ Cambio restaurado correctamente.");
+
+        await cargarCalificaciones();
+        await cargarAsistencia();
+        mostrarActividades();
+        mostrarTablaAsistencia();
+        await cargarHistorial();
+
+    } catch (errorRestaurar) {
+        console.error("Error al restaurar historial:", errorRestaurar);
+        alert(
+            "No se pudo restaurar el cambio: " +
+            (errorRestaurar.message || errorRestaurar)
+        );
+    }
+}
 
 /* =====================================================
    INICIAR
