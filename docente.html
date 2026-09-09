@@ -3672,15 +3672,21 @@ function marcarActividadesPendientes(input = null) {
             `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
         );
 
-        const notaActual = notaInput ? notaInput.value.trim() : "";
-        const notaInicial = notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
-        const observacionActual = observacionInput ? observacionInput.value.trim() : "";
-        const observacionInicial = observacionInput ? (observacionInput.dataset.valorInicial || "").trim() : "";
-
-        if (notaActual !== notaInicial || observacionActual !== observacionInicial) {
+        // En el formulario QR no existen estos inputs de la tabla.
+        // Si no se encuentran, la actividad igualmente debe quedar pendiente.
+        if (!notaInput && !observacionInput) {
             actividadesPendientes.add(actividadId);
         } else {
-            actividadesPendientes.delete(actividadId);
+            const notaActual = notaInput ? notaInput.value.trim() : "";
+            const notaInicial = notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
+            const observacionActual = observacionInput ? observacionInput.value.trim() : "";
+            const observacionInicial = observacionInput ? (observacionInput.dataset.valorInicial || "").trim() : "";
+
+            if (notaActual !== notaInicial || observacionActual !== observacionInicial) {
+                actividadesPendientes.add(actividadId);
+            } else {
+                actividadesPendientes.delete(actividadId);
+            }
         }
     }
 
