@@ -3716,7 +3716,53 @@ if(u.pathname.includes("/auth/v1/user")){let user=await getMeta("usuario");retur
 let m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);if(!m)return originalFetch(input,init);let tabla=decodeURIComponent(m[1]);if(!TABLES.includes(tabla))return resp({message:"Tabla no disponible offline: "+tabla},503);
 if(method==="GET"||method==="HEAD"){let r=filter(await getTable(tabla),u.searchParams);return resp(method==="HEAD"?null:r)}
 let text=init.body!=null?init.body:(req?await req.clone().text():"");let body=null;try{body=text?JSON.parse(text):null}catch(e){}let data=await mutate(tabla,method,body,u,h);await addQ({created_at:new Date().toISOString(),method,url:urlS,body,headers:Object.fromEntries(h.entries())});updateStatus();return resp(data)}
-window.fetch=async function(input,init){if(!window.__panelOffline.activo||syncing)return originalFetch(input,init);try{return await offlineFetch(input,init||{})}catch(e){console.error(e);return resp({message:e.message||"Error local"},500)}};
+async function actualizarCopiaLocalOnline(tabla, input, init, esMutacion=false){
+  try{
+    const req=input instanceof Request?input:null;
+    const baseHeaders=new Headers(init?.headers||(req&&req.headers)||{});
+    if(!baseHeaders.has("apikey"))baseHeaders.set("apikey",SUPABASE_KEY);
+    const ses=await supabaseClient.auth.getSession();
+    const token=ses?.data?.session?.access_token;
+    if(token)baseHeaders.set("Authorization","Bearer "+token);
+    if(esMutacion){
+      const u=new URL(req?req.url:input,location.href);
+      const full=new URL(u.origin+u.pathname);
+      full.searchParams.set("select","*");
+      const r=await originalFetch(full.toString(),{method:"GET",headers:baseHeaders});
+      if(r.ok){const data=await r.clone().json();if(Array.isArray(data))await putTable(tabla,data);}
+      return;
+    }
+    const r=await originalFetch(input,init||{});
+    if(!r.ok)return;
+    const data=await r.clone().json().catch(()=>null);
+    if(!Array.isArray(data))return;
+    const u=new URL(req?req.url:input,location.href);
+    const q=u.searchParams;
+    const esTablaCompleta=q.get("select")==="*" && ![...q.keys()].some(k=>!['select','order','limit','offset'].includes(k));
+    if(esTablaCompleta){await putTable(tabla,data);return;}
+    const actuales=await getTable(tabla);
+    const porId=new Map(actuales.filter(x=>x?.id!=null).map(x=>[String(x.id),x]));
+    const sinId=actuales.filter(x=>x?.id==null);
+    for(const fila of data){if(fila?.id!=null)porId.set(String(fila.id),{...(porId.get(String(fila.id))||{}),...fila});else sinId.push(fila);}
+    await putTable(tabla,[...porId.values(),...sinId]);
+  }catch(e){console.warn("No se pudo actualizar la copia local:",e)}
+}
+window.fetch=async function(input,init){
+  if(syncing)return originalFetch(input,init);
+  if(window.__panelOffline.activo){try{return await offlineFetch(input,init||{})}catch(e){console.error(e);return resp({message:e.message||"Error local"},500)}}
+  const req=input instanceof Request?input:null;
+  const urlS=typeof input==="string"?input:(req&&req.url)||"";
+  try{
+    const u=new URL(urlS,location.href),m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);
+    const tabla=m?decodeURIComponent(m[1]):null;
+    const method=(init?.method||(req&&req.method)||"GET").toUpperCase();
+    const r=await originalFetch(input,init);
+    if(tabla&&TABLES.includes(tabla)&&r.ok){
+      await actualizarCopiaLocalOnline(tabla,input,init||{},method!=="GET"&&method!=="HEAD");
+    }
+    return r;
+  }catch(e){throw e}
+};
 async function pending(){return(await allQ()).length}
 window.updateStatus=async function(){let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");if(!e)return;let n=await pending(),a=window.__panelOffline.activo;let botonDescarga=document.getElementById("botonDescargarDatosOffline");let hayDatos=await hasLocal();if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";e.className="estado-offline "+(syncing?"sync":a?"offline":"online");e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — ${n} cambios pendientes`:"🟢 ONLINE";d.textContent=a?(n?"Los cambios están guardados en este dispositivo y pendientes de sincronización.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase."};
 async function hasLocal(){return(await getTable("matematica")).length>0}
