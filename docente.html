@@ -2480,8 +2480,12 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 
-/* Guardado automático: ocultar botones manuales de guardado */
-button[onclick*="guardarNotas"], button[onclick*="guardarCalificaciones"], button[onclick*="guardarAsistencia"], #btnGuardarNotas, #guardarNotas, #btnGuardarCalificaciones, #guardarCalificaciones { display:none !important; }
+/* Solo ocultar los botones secundarios dentro de las tablas.
+   Los dos botones principales permanecen visibles cuando el guardado automático está desactivado. */
+#botonGuardarAsistenciaTabla,
+.fila-guardar-tabla .boton-guardar-notas {
+    display: none !important;
+}
 </style>
 
 </head>
@@ -3636,7 +3640,7 @@ function actualizarInterfazGuardado() {
     if (checkbox) checkbox.checked = guardadoAutomatico;
 
     document.querySelectorAll(
-        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, #botonGuardadoManualGeneral, #botonGuardarNotas"
+        "#botonGuardarAsistencia, #botonGuardarNotas, #botonGuardadoManualGeneral"
     ).forEach(boton => {
         boton.classList.toggle("oculto", guardadoAutomatico);
     });
