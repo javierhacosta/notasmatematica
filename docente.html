@@ -3811,8 +3811,12 @@ function actualizarInterfazGuardado() {
     guardadoAutomatico = true;
     localStorage.setItem("panel_guardado_automatico", "true");
 
+    // El guardado manual normal permanece oculto.
+    // La única excepción es el guardado del tipo especial de día:
+    // aparece únicamente después de elegir "No se pasó clases" o
+    // "Clase informal", para poder guardar también su motivo.
     document.querySelectorAll(
-        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral, #botonGuardarTipoDiaAsistencia"
+        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral"
     ).forEach(boton => {
         boton.classList.add("oculto");
         boton.style.display = "none";
@@ -4509,6 +4513,7 @@ function mostrarOpcionesTipoDiaAsistencia() {
 
     if (opciones.classList.contains("oculto") && botonGuardar) {
         botonGuardar.classList.add("oculto");
+        botonGuardar.style.display = "none";
     }
 }
 
@@ -4521,6 +4526,7 @@ function seleccionarTipoDiaAsistencia(tipo) {
     tipoDiaAsistencia = tipo;
     opciones.dataset.tipoSeleccionado = tipo;
     botonGuardar.classList.remove("oculto");
+    botonGuardar.style.display = "flex";
 
     const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
     const campoMotivo = document.getElementById("motivoNoClases");
@@ -4655,7 +4661,10 @@ async function guardarTipoDiaAsistencia() {
         }
 
         const botonGuardar = document.getElementById("botonGuardarTipoDiaAsistencia");
-        if (botonGuardar) botonGuardar.classList.add("oculto");
+        if (botonGuardar) {
+            botonGuardar.classList.add("oculto");
+            botonGuardar.style.display = "none";
+        }
 
         const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
         if (contenedorMotivo) contenedorMotivo.classList.remove("visible");
