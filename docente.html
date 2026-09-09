@@ -3620,6 +3620,7 @@ let guardadoManualEnCurso = false;
 
 let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
+let actividadesPendientes = new Set();
 
 function actualizarEstadosGuardado() {
     const asistencia = document.getElementById("estadoGuardadoAsistencia");
@@ -3641,9 +3642,10 @@ function actualizarEstadosGuardado() {
         actividades.classList.add("visible");
     }
 
-    /* Mostrar también el aviso junto al nombre de cada actividad. */
+    /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
     document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
-        if (!guardadoAutomatico && cambiosPendientesActividades) {
+        const actividadId = String(el.dataset.actividadId || "");
+        if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
             el.textContent = "⚠️ GUARDADO PENDIENTE";
             el.classList.add("visible");
         } else {
@@ -3658,9 +3660,31 @@ function marcarAsistenciaPendiente() {
     actualizarEstadosGuardado();
 }
 
-function marcarActividadesPendientes() {
+function marcarActividadesPendientes(input = null) {
     if (guardadoAutomatico) return;
-    cambiosPendientesActividades = true;
+
+    if (input && input.dataset && input.dataset.actividad) {
+        const actividadId = String(input.dataset.actividad);
+        const notaInput = document.querySelector(
+            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
+        );
+        const observacionInput = document.querySelector(
+            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
+        );
+
+        const notaActual = notaInput ? notaInput.value.trim() : "";
+        const notaInicial = notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
+        const observacionActual = observacionInput ? observacionInput.value.trim() : "";
+        const observacionInicial = observacionInput ? (observacionInput.dataset.valorInicial || "").trim() : "";
+
+        if (notaActual !== notaInicial || observacionActual !== observacionInicial) {
+            actividadesPendientes.add(actividadId);
+        } else {
+            actividadesPendientes.delete(actividadId);
+        }
+    }
+
+    cambiosPendientesActividades = actividadesPendientes.size > 0;
     actualizarEstadosGuardado();
 }
 
@@ -3732,6 +3756,7 @@ function cambiarGuardadoAutomatico(activado) {
     if (guardadoAutomatico) {
         cambiosPendientesAsistencia = false;
         cambiosPendientesActividades = false;
+        actividadesPendientes.clear();
     }
 
     actualizarInterfazGuardado();
@@ -8492,7 +8517,7 @@ function obtenerFirmaActividad(input) {
 
 function programarGuardadoCambioActividad(input) {
     if (!guardadoAutomatico) {
-        marcarActividadesPendientes();
+        marcarActividadesPendientes(input);
         return;
     }
     if (!input) return;
@@ -9354,6 +9379,9 @@ async function guardarNotas() {
 
         aplicarBusqueda();
 
+        cambiosPendientesActividades = false;
+        actividadesPendientes.clear();
+        actualizarEstadosGuardado();
 
         return true;
 
