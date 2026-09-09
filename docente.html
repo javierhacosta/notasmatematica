@@ -5705,18 +5705,18 @@ async function guardarAsistenciaIndividual(control) {
 
             
 
-            const { error } = await supabaseClient
+            const { data: asistenciaAnterior, error: errorAnterior } = await supabaseClient
                 .from("asistencia")
-                .upsert({
-                    estudiante_id: estudianteId,
-                    fecha: fecha,
-                    estado: seleccionado.value,
-                    observacion: observacion || null
-                }, {
-                    onConflict: "estudiante_id,fecha"
-                });
-
+                .select("estudiante_id,fecha,estado,observacion")
+                .eq("estudiante_id", estudianteId).eq("fecha", fecha).maybeSingle();
+            if (errorAnterior) throw errorAnterior;
+            const datosNuevosAsistencia = { estudiante_id: estudianteId, fecha, estado: seleccionado.value, observacion: observacion || null };
+            const { error } = await supabaseClient.from("asistencia").upsert(datosNuevosAsistencia, { onConflict: "estudiante_id,fecha" });
             if (error) throw error;
+            if (!asistenciaAnterior || String(asistenciaAnterior.estado ?? "") !== String(datosNuevosAsistencia.estado ?? "") || String(asistenciaAnterior.observacion ?? "") !== String(datosNuevosAsistencia.observacion ?? "")) {
+                const estudianteHist = estudiantes.find(e => Number(e.id) === estudianteId);
+                guardarHistorialInterno({ table_name:"asistencia", operation:asistenciaAnterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:estudianteId, estudiante_nombre:estudianteHist?.nombre || estudianteHist?.nombre_completo || null, actividad_id:null, actividad_nombre:null, categoria:null, fecha, old_data:asistenciaAnterior || null, new_data:datosNuevosAsistencia, changed_at:new Date().toISOString() });
+            }
 
             registrosAsistencia[estudianteId] = {
                 estado: seleccionado.value,
@@ -5911,35 +5911,21 @@ async function guardarAsistencia() {
         actualizarProgresoGuardado("asistencia", 20, true);
         mostrarMensaje("Guardando asistencia... 20%");
 
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(registros, {
-                onConflict: "estudiante_id,fecha"
-            });
+        const { data: asistenciaAnterior, error: errorAsistenciaAnterior } = await supabaseClient
+            .from("asistencia").select("estudiante_id,fecha,estado,observacion")
+            .eq("fecha", fecha).in("estudiante_id", registros.map(r => r.estudiante_id));
+        if (errorAsistenciaAnterior) throw errorAsistenciaAnterior;
+        const mapaAsistenciaAnterior = new Map((asistenciaAnterior || []).map(r => [Number(r.estudiante_id), r]));
 
-        if (error) {
-            throw error;
-        }
+        const { error } = await supabaseClient.from("asistencia").upsert(registros, { onConflict: "estudiante_id,fecha" });
+        if (error) throw error;
 
-        // Historial interno: registrar los cambios sin usar Supabase.
-        const ahoraHistorial = new Date().toISOString();
         registros.forEach(registro => {
             const estudiante = estudiantesCurso.find(e => Number(e.id) === Number(registro.estudiante_id));
-            guardarHistorialInterno({
-                table_name: "asistencia",
-                operation: "UPDATE",
-                record_id: null,
-                curso: cursoSeleccionado,
-                estudiante_id: registro.estudiante_id,
-                estudiante_nombre: estudiante?.nombre || estudiante?.nombre_completo || null,
-                actividad_id: null,
-                actividad_nombre: null,
-                categoria: null,
-                fecha: fecha,
-                old_data: null,
-                new_data: { estado: registro.estado, observacion: registro.observacion },
-                changed_at: ahoraHistorial
-            });
+            const anterior = mapaAsistenciaAnterior.get(Number(registro.estudiante_id)) || null;
+            const nuevo = { estudiante_id:registro.estudiante_id, fecha, estado:registro.estado, observacion:registro.observacion };
+            if (anterior && String(anterior.estado ?? "") === String(nuevo.estado ?? "") && String(anterior.observacion ?? "") === String(nuevo.observacion ?? "")) return;
+            guardarHistorialInterno({ table_name:"asistencia", operation:anterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:registro.estudiante_id, estudiante_nombre:estudiante?.nombre || estudiante?.nombre_completo || null, actividad_id:null, actividad_nombre:null, categoria:null, fecha, old_data:anterior, new_data:nuevo, changed_at:new Date().toISOString() });
         });
 
         actualizarProgresoGuardado("asistencia", 90, true);
@@ -9295,6 +9281,13 @@ async function guardarNotas() {
             registros.length > 0
         ) {
 
+            const { data: calificacionesAnteriores, error: errorCalificacionesAnteriores } = await supabaseClient
+                .from("calificaciones").select("actividad_id,estudiante_id,nota,observacion")
+                .in("actividad_id", [...new Set(registros.map(r => r.actividad_id))])
+                .in("estudiante_id", [...new Set(registros.map(r => r.estudiante_id))]);
+            if (errorCalificacionesAnteriores) throw errorCalificacionesAnteriores;
+            const mapaCalificacionesAnteriores = new Map((calificacionesAnteriores || []).map(r => [`${Number(r.actividad_id)}|${Number(r.estudiante_id)}`, r]));
+
             const {
                 error:
                 errorCalificaciones
@@ -9325,26 +9318,13 @@ async function guardarNotas() {
 
             }
 
-            // Historial interno: registrar las notas/observaciones localmente.
-            const ahoraHistorialNotas = new Date().toISOString();
             registros.forEach(registro => {
                 const actividad = actividades.find(a => Number(a.id) === Number(registro.actividad_id));
                 const estudiante = estudiantes.find(e => Number(e.id) === Number(registro.estudiante_id));
-                guardarHistorialInterno({
-                    table_name: "calificaciones",
-                    operation: "UPDATE",
-                    record_id: null,
-                    curso: cursoSeleccionado,
-                    estudiante_id: registro.estudiante_id,
-                    estudiante_nombre: estudiante?.nombre || estudiante?.nombre_completo || null,
-                    actividad_id: registro.actividad_id,
-                    actividad_nombre: actividad?.nombre || actividad?.titulo || null,
-                    categoria: actividad?.categoria || null,
-                    fecha: null,
-                    old_data: null,
-                    new_data: { nota: registro.nota, observacion: registro.observacion },
-                    changed_at: ahoraHistorialNotas
-                });
+                const anterior = mapaCalificacionesAnteriores.get(`${Number(registro.actividad_id)}|${Number(registro.estudiante_id)}`) || null;
+                const nuevo = { actividad_id:registro.actividad_id, estudiante_id:registro.estudiante_id, nota:registro.nota, observacion:registro.observacion };
+                if (anterior && String(anterior.nota ?? "") === String(nuevo.nota ?? "") && String(anterior.observacion ?? "") === String(nuevo.observacion ?? "")) return;
+                guardarHistorialInterno({ table_name:"calificaciones", operation:anterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:registro.estudiante_id, estudiante_nombre:estudiante?.nombre || estudiante?.nombre_completo || null, actividad_id:registro.actividad_id, actividad_nombre:actividad?.nombre || actividad?.titulo || null, categoria:actividad?.categoria || null, fecha:null, old_data:anterior, new_data:nuevo, changed_at:new Date().toISOString() });
             });
 
         }
@@ -12372,7 +12352,7 @@ function guardarHistorialLocalTipoDia(registro) {
         const datos = obtenerHistorialLocalTipoDia();
         const registroLocal = {
             ...registro,
-            id: -Date.now(),
+            id: -(Date.now() * 1000 + Math.floor(Math.random() * 1000)),
             _local: true,
             changed_at: registro.changed_at || new Date().toISOString()
         };
