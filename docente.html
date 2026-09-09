@@ -1009,6 +1009,21 @@ td:first-child {
     height: 20px;
     cursor: pointer;
 }
+/* HISTORIAL ONLINE */
+.configuracion-opcion-guardado input:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+.configuracion-opcion-guardado.desactivada {
+    opacity: .6;
+}
+.configuracion-ayuda-historial {
+    margin: -2px 0 8px 36px;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.4;
+}
+
 .configuracion-ayuda-guardado {
     margin: 4px 0 0 36px;
     font-size: 13px;
@@ -3570,7 +3585,7 @@ Cancelar
         </div>
 
         <div class="modal-cuerpo">
-            <label class="configuracion-opcion-guardado">
+            <label class="configuracion-opcion-guardado" id="opcionGuardadoAutomatico">
                 <input
                     type="checkbox"
                     id="checkboxGuardadoAutomatico"
@@ -3580,6 +3595,19 @@ Cancelar
             </label>
             <div class="configuracion-ayuda-guardado">
                 Activado: funciona como actualmente. Desactivado: los cambios se mantienen temporalmente en el panel y se guardan únicamente al pulsar los botones de guardado.
+            </div>
+
+            <label class="configuracion-opcion-guardado" id="opcionHistorialOnline">
+                <input
+                    type="checkbox"
+                    id="checkboxHistorialOnline"
+                    checked
+                    onchange="cambiarHistorialOnline(this.checked)">
+                <span>Historial online</span>
+            </label>
+            <div class="configuracion-ayuda-historial">
+                Activado: el historial se consulta y se registra en la base de datos. Desactivado: el historial se conserva internamente en este dispositivo.
+                Si se desactiva el guardado automático, esta opción queda desactivada y bloqueada.
             </div>
         </div>
     </div>
@@ -3639,14 +3667,371 @@ window.supabase.createClient(
 );
 
 /* =====================================================
-   CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
+   OPCIÓN B: SIN ESCRITURAS ONLINE CUANDO EL HISTORIAL ESTÁ OFF
+
+   Cuando Historial online está desactivado, las operaciones de
+   asistencia, calificaciones y tipos de día NO se envían a Supabase.
+   Se guardan como cambios pendientes en este dispositivo.
+   Al volver a activar Historial online, se sincronizan en orden.
+===================================================== */
+const CLAVE_MUTACIONES_PENDIENTES = "panel_mutaciones_pendientes";
+const TABLAS_MODO_LOCAL = new Set([
+    "asistencia",
+    "calificaciones",
+    "asistencia_tipos_dia"
+]);
+
+function obtenerMutacionesPendientes() {
+    try {
+        const datos = JSON.parse(
+            localStorage.getItem(CLAVE_MUTACIONES_PENDIENTES) || "[]"
+        );
+        return Array.isArray(datos) ? datos : [];
+    } catch (e) {
+        console.warn("No se pudieron leer los cambios pendientes:", e);
+        return [];
+    }
+}
+
+function guardarMutacionesPendientes(datos) {
+    try {
+        localStorage.setItem(
+            CLAVE_MUTACIONES_PENDIENTES,
+            JSON.stringify(datos.slice(-1000))
+        );
+    } catch (e) {
+        console.warn("No se pudieron guardar los cambios pendientes:", e);
+    }
+}
+
+function encolarMutacionLocal(tabla, operacion, payload, opciones, filtros) {
+    const datos = obtenerMutacionesPendientes();
+    datos.push({
+        id: Date.now() + Math.floor(Math.random() * 100000),
+        tabla,
+        operacion,
+        payload: payload ?? null,
+        opciones: opciones ?? null,
+        filtros: filtros || [],
+        creada_en: new Date().toISOString()
+    });
+    guardarMutacionesPendientes(datos);
+}
+
+function crearBuilderMutacionLocal(tabla, operacion, argumentos) {
+    const payload = argumentos[0] ?? null;
+    const opciones = argumentos[1] ?? null;
+    const filtros = [];
+    let resuelto = false;
+
+    const builder = {
+        eq(columna, valor) {
+            filtros.push({ tipo: "eq", columna, valor });
+            return builder;
+        },
+        in(columna, valores) {
+            filtros.push({ tipo: "in", columna, valores: Array.isArray(valores) ? valores : [] });
+            return builder;
+        },
+        then(resolve, reject) {
+            if (!resuelto) {
+                resuelto = true;
+                try {
+                    encolarMutacionLocal(
+                        tabla,
+                        operacion,
+                        payload,
+                        opciones,
+                        filtros
+                    );
+                    return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+                } catch (error) {
+                    return Promise.reject(error).then(resolve, reject);
+                }
+            }
+            return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+        },
+        catch(reject) {
+            return builder.then(undefined, reject);
+        },
+        finally(callback) {
+            return builder.then(
+                value => Promise.resolve(callback && callback()).then(() => value),
+                error => Promise.resolve(callback && callback()).then(() => Promise.reject(error))
+            );
+        }
+    };
+
+    return builder;
+}
+
+const _fromSupabaseOriginal = supabaseClient.from.bind(supabaseClient);
+supabaseClient.from = function(tabla) {
+    const builderReal = _fromSupabaseOriginal(tabla);
+
+    if (!TABLAS_MODO_LOCAL.has(tabla)) {
+        return builderReal;
+    }
+
+    return new Proxy(builderReal, {
+        get(target, propiedad, receptor) {
+            if (
+                !historialOnline &&
+                ["insert", "update", "upsert", "delete"].includes(propiedad)
+            ) {
+                return (...argumentos) =>
+                    crearBuilderMutacionLocal(tabla, propiedad, argumentos);
+            }
+
+            const valor = Reflect.get(target, propiedad, receptor);
+            return typeof valor === "function"
+                ? valor.bind(target)
+                : valor;
+        }
+    });
+};
+
+/* =====================================================
+   CONFIGURACIÓN DE GUARDADO AUTOMÁTICO E HISTORIAL
 ===================================================== */
 let guardadoAutomatico = localStorage.getItem("panel_guardado_automatico") !== "false";
+
+/*
+   El historial online viene activado por defecto, pero solo puede
+   elegirse cuando el guardado automático está activo.
+*/
+let historialOnline = localStorage.getItem("panel_historial_online") !== "false";
+
+if (!guardadoAutomatico) {
+    historialOnline = false;
+    localStorage.setItem("panel_historial_online", "false");
+}
+
 let guardadoManualEnCurso = false;
 
 let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
 let actividadesPendientes = new Set();
+
+const CLAVE_HISTORIAL_LOCAL = "historial_cambios_local";
+
+function obtenerHistorialLocal() {
+    try {
+        const datos = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL_LOCAL) || "[]");
+        return Array.isArray(datos) ? datos : [];
+    } catch (e) {
+        console.warn("No se pudo leer el historial local:", e);
+        return [];
+    }
+}
+
+function guardarHistorialLocal(registro) {
+    try {
+        const datos = obtenerHistorialLocal();
+        const registroLocal = {
+            ...registro,
+            id: -(Date.now() + Math.floor(Math.random() * 1000)),
+            _local: true,
+            changed_at: registro.changed_at || new Date().toISOString()
+        };
+        datos.push(registroLocal);
+        localStorage.setItem(CLAVE_HISTORIAL_LOCAL, JSON.stringify(datos.slice(-200)));
+    } catch (e) {
+        console.warn("No se pudo guardar el historial local:", e);
+    }
+}
+
+function eliminarHistorialLocal(historialId) {
+    try {
+        const datos = obtenerHistorialLocal();
+        const filtrados = datos.filter(
+            item => Number(item.id) !== Number(historialId)
+        );
+        localStorage.setItem(
+            CLAVE_HISTORIAL_LOCAL,
+            JSON.stringify(filtrados)
+        );
+    } catch (e) {
+        console.warn("No se pudo actualizar el historial local:", e);
+    }
+}
+
+function aplicarFiltrosMutacion(registro, filtros) {
+    return (filtros || []).every(filtro => {
+        if (filtro.tipo === "eq") {
+            return String(registro?.[filtro.columna]) === String(filtro.valor);
+        }
+        if (filtro.tipo === "in") {
+            return (filtro.valores || []).some(
+                valor => String(registro?.[filtro.columna]) === String(valor)
+            );
+        }
+        return true;
+    });
+}
+
+function obtenerClaveMutacion(tabla, registro) {
+    if (!registro) return null;
+    if (tabla === "asistencia") {
+        return `${registro.estudiante_id}|${registro.fecha}`;
+    }
+    if (tabla === "calificaciones") {
+        return `${registro.actividad_id}|${registro.estudiante_id}`;
+    }
+    if (tabla === "asistencia_tipos_dia") {
+        return `${registro.curso}|${registro.fecha}`;
+    }
+    return registro.id != null ? String(registro.id) : null;
+}
+
+function aplicarMutacionesPendientes(tabla, registros) {
+    let resultado = Array.isArray(registros)
+        ? registros.map(registro => ({ ...registro }))
+        : [];
+
+    const pendientes = obtenerMutacionesPendientes().filter(
+        item => item.tabla === tabla
+    );
+
+    pendientes.forEach(item => {
+        if (item.operacion === "delete") {
+            resultado = resultado.filter(
+                registro => !aplicarFiltrosMutacion(registro, item.filtros)
+            );
+            return;
+        }
+
+        if (!["insert", "upsert", "update"].includes(item.operacion)) {
+            return;
+        }
+
+        const filas = Array.isArray(item.payload)
+            ? item.payload
+            : item.payload
+                ? [item.payload]
+                : [];
+
+        if (item.operacion === "update") {
+            resultado = resultado.map(registro =>
+                aplicarFiltrosMutacion(registro, item.filtros)
+                    ? { ...registro, ...(item.payload || {}) }
+                    : registro
+            );
+            return;
+        }
+
+        filas.forEach(fila => {
+            const clave = obtenerClaveMutacion(tabla, fila);
+            const indice = clave == null
+                ? -1
+                : resultado.findIndex(
+                    registro => obtenerClaveMutacion(tabla, registro) === clave
+                );
+
+            if (indice >= 0) {
+                resultado[indice] = { ...resultado[indice], ...fila };
+            } else {
+                resultado.push({ ...fila });
+            }
+        });
+    });
+
+    return resultado;
+}
+
+async function sincronizarMutacionesPendientes() {
+    if (!historialOnline) return { ok: true, cantidad: 0 };
+
+    const pendientes = obtenerMutacionesPendientes();
+    if (pendientes.length === 0) return { ok: true, cantidad: 0 };
+
+    mostrarMensaje("☁️ Sincronizando cambios locales...");
+
+    const restantes = [...pendientes];
+    let sincronizadas = 0;
+
+    while (restantes.length > 0) {
+        const item = restantes[0];
+        let consulta = supabaseClient.from(item.tabla);
+
+        if (item.operacion === "insert") {
+            consulta = consulta.insert(item.payload);
+        } else if (item.operacion === "upsert") {
+            consulta = consulta.upsert(item.payload, item.opciones || undefined);
+        } else if (item.operacion === "update") {
+            consulta = consulta.update(item.payload);
+        } else if (item.operacion === "delete") {
+            consulta = consulta.delete();
+        } else {
+            restantes.shift();
+            continue;
+        }
+
+        (item.filtros || []).forEach(filtro => {
+            if (filtro.tipo === "eq") {
+                consulta = consulta.eq(filtro.columna, filtro.valor);
+            } else if (filtro.tipo === "in") {
+                consulta = consulta.in(filtro.columna, filtro.valores || []);
+            }
+        });
+
+        const { error } = await consulta;
+
+        if (error) {
+            console.error("No se pudo sincronizar un cambio local:", error);
+            guardarMutacionesPendientes(restantes);
+            mostrarMensaje(
+                "⚠️ No se pudieron sincronizar todos los cambios locales. Se conservarán en este dispositivo.",
+                true
+            );
+            return { ok: false, cantidad: sincronizadas, error };
+        }
+
+        restantes.shift();
+        sincronizadas++;
+    }
+
+    guardarMutacionesPendientes([]);
+
+    /* Ya están registrados en Supabase; no duplicarlos visualmente como locales. */
+    try {
+        localStorage.removeItem(CLAVE_HISTORIAL_LOCAL);
+        localStorage.removeItem("historial_tipo_dia_local");
+    } catch (e) {
+        console.warn("No se pudo limpiar el historial local sincronizado:", e);
+    }
+
+    mostrarMensaje(`✓ ${sincronizadas} cambios locales sincronizados correctamente.`);
+    return { ok: true, cantidad: sincronizadas };
+}
+
+async function cambiarHistorialOnline(activado) {
+    if (!guardadoAutomatico) {
+        historialOnline = false;
+        localStorage.setItem("panel_historial_online", "false");
+        actualizarInterfazGuardado();
+        return;
+    }
+
+    historialOnline = !!activado;
+    localStorage.setItem("panel_historial_online", String(historialOnline));
+    actualizarInterfazGuardado();
+
+    if (historialOnline) {
+        await sincronizarMutacionesPendientes();
+        await cargarEstudiantes();
+        if (cursoSeleccionado) {
+            await cargarActividades();
+            await cargarCalificaciones();
+            await cargarFechasAsistencia();
+            await cargarAsistencia();
+        }
+    } else {
+        mostrarMensaje(
+            "ℹ️ Historial online desactivado. No se enviarán cambios de asistencia ni calificaciones a Supabase; quedarán guardados internamente hasta volver a activar esta opción."
+        );
+    }
+}
 
 function actualizarEstadosGuardado() {
     const asistencia = document.getElementById("estadoGuardadoAsistencia");
@@ -3668,7 +4053,6 @@ function actualizarEstadosGuardado() {
         actividades.classList.add("visible");
     }
 
-    /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
     document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
         const actividadId = String(el.dataset.actividadId || "");
         if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
@@ -3698,8 +4082,6 @@ function marcarActividadesPendientes(input = null) {
             `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
         );
 
-        // En el formulario QR no existen estos inputs de la tabla.
-        // Si no se encuentran, la actividad igualmente debe quedar pendiente.
         if (!notaInput && !observacionInput) {
             actividadesPendientes.add(actividadId);
         } else {
@@ -3724,6 +4106,17 @@ function actualizarInterfazGuardado() {
     const checkbox = document.getElementById("checkboxGuardadoAutomatico");
     if (checkbox) checkbox.checked = guardadoAutomatico;
 
+    const checkboxHistorial = document.getElementById("checkboxHistorialOnline");
+    const opcionHistorial = document.getElementById("opcionHistorialOnline");
+
+    if (checkboxHistorial) {
+        checkboxHistorial.checked = historialOnline;
+        checkboxHistorial.disabled = !guardadoAutomatico;
+    }
+    if (opcionHistorial) {
+        opcionHistorial.classList.toggle("desactivada", !guardadoAutomatico);
+    }
+
     document.querySelectorAll(
         "#botonGuardarAsistencia, #botonGuardarNotas, #botonGuardadoManualGeneral"
     ).forEach(boton => {
@@ -3747,7 +4140,6 @@ async function guardarTodoManual() {
     try {
         let guardadoAlgo = false;
 
-        // Guarda la asistencia pendiente, si existe.
         const resultadoAsistencia = guardarAsistencia();
         if (resultadoAsistencia && typeof resultadoAsistencia.then === "function") {
             const okAsistencia = await resultadoAsistencia;
@@ -3756,7 +4148,6 @@ async function guardarTodoManual() {
             guardadoAlgo = guardadoAlgo || resultadoAsistencia === true;
         }
 
-        // Guarda las actividades/notas pendientes, si existen.
         const resultadoNotas = guardarNotas();
         if (resultadoNotas && typeof resultadoNotas.then === "function") {
             const okNotas = await resultadoNotas;
@@ -3780,10 +4171,21 @@ async function guardarTodoManual() {
     }
 }
 
-
 function cambiarGuardadoAutomatico(activado) {
     guardadoAutomatico = !!activado;
     localStorage.setItem("panel_guardado_automatico", String(guardadoAutomatico));
+
+    /*
+       Regla solicitada: al desactivar el guardado automático,
+       Historial online queda automáticamente desactivado y bloqueado.
+    */
+    if (!guardadoAutomatico) {
+        historialOnline = false;
+        localStorage.setItem("panel_historial_online", "false");
+    } else if (localStorage.getItem("panel_historial_online") === null) {
+        historialOnline = true;
+        localStorage.setItem("panel_historial_online", "true");
+    }
 
     if (guardadoAutomatico) {
         cambiosPendientesAsistencia = false;
@@ -3794,15 +4196,23 @@ function cambiarGuardadoAutomatico(activado) {
     actualizarInterfazGuardado();
     mostrarMensaje(
         guardadoAutomatico
-            ? "✓ Guardado automático activado."
-            : "ℹ️ Guardado automático desactivado. Usa los botones 💾 Guardar para enviar los cambios."
+            ? "✓ Guardado automático activado. Puedes activar o desactivar Historial online."
+            : "ℹ️ Guardado automático desactivado. Historial online desactivado y bloqueado; el historial se conservará internamente."
     );
 }
 
 function abrirConfiguracionGuardado() {
     const modal = document.getElementById("modalConfiguracionGuardado");
     const checkbox = document.getElementById("checkboxGuardadoAutomatico");
+    const checkboxHistorial = document.getElementById("checkboxHistorialOnline");
+
     if (checkbox) checkbox.checked = guardadoAutomatico;
+    if (checkboxHistorial) {
+        checkboxHistorial.checked = historialOnline;
+        checkboxHistorial.disabled = !guardadoAutomatico;
+    }
+
+    actualizarInterfazGuardado();
     if (modal) modal.classList.remove("oculto");
 }
 
@@ -3813,6 +4223,9 @@ function cerrarConfiguracionGuardado(event) {
 }
 
 
+document.addEventListener("DOMContentLoaded", () => {
+    actualizarInterfazGuardado();
+});
 
 /* =====================================================
    VARIABLES
@@ -4488,6 +4901,12 @@ async function guardarTipoDiaAsistencia() {
 
         if (errorTipoAnterior) throw errorTipoAnterior;
 
+        const tiposPendientesVisibles = aplicarMutacionesPendientes(
+            "asistencia_tipos_dia",
+            tipoAnterior ? [tipoAnterior] : []
+        );
+        const tipoAnteriorEfectivo = tiposPendientesVisibles[0] || null;
+
         const datosTipoNuevo = {
             curso: cursoSeleccionado,
             fecha: fecha,
@@ -4505,7 +4924,7 @@ async function guardarTipoDiaAsistencia() {
 
         // Registrar manualmente el cambio porque esta información se
         // almacena en asistencia_tipos_dia y no en asistencia.
-        const operacionHistorial = tipoAnterior ? "UPDATE" : "INSERT";
+        const operacionHistorial = tipoAnteriorEfectivo ? "UPDATE" : "INSERT";
         const registroHistorialTipo = {
             table_name: "asistencia_tipos_dia",
             operation: operacionHistorial,
@@ -4517,22 +4936,22 @@ async function guardarTipoDiaAsistencia() {
             actividad_nombre: null,
             categoria: null,
             fecha: fecha,
-            old_data: tipoAnterior || null,
+            old_data: tipoAnteriorEfectivo || null,
             new_data: datosTipoNuevo,
             changed_at: new Date().toISOString()
         };
 
-        // Intentar guardar el historial en Supabase. Si la tabla
-        // historial_cambios tiene RLS que no permite INSERT, NO se bloquea
-        // el guardado de la asistencia: se conserva el cambio localmente
-        // para que siga apareciendo y pueda restaurarse desde Historial.
-        const { error: errorHistorialTipo } = await supabaseClient
-            .from("historial_cambios")
-            .insert(registroHistorialTipo);
+        if (historialOnline && guardadoAutomatico) {
+            const { error: errorHistorialTipo } = await supabaseClient
+                .from("historial_cambios")
+                .insert(registroHistorialTipo);
 
-        if (errorHistorialTipo) {
-            console.warn("No se pudo guardar el historial en Supabase; se usará historial local:", errorHistorialTipo);
-            guardarHistorialLocalTipoDia(registroHistorialTipo);
+            if (errorHistorialTipo) {
+                console.warn("No se pudo guardar el historial en Supabase; se usará historial local:", errorHistorialTipo);
+                guardarHistorialLocal(registroHistorialTipo);
+            }
+        } else {
+            guardarHistorialLocal(registroHistorialTipo);
         }
 
         // Si se marca un día especial, se eliminan los estados normales
@@ -4633,9 +5052,29 @@ async function cargarFechasAsistencia() {
         return;
     }
 
+    const fechasDesdePendientesAsistencia = obtenerMutacionesPendientes()
+        .filter(item => item.tabla === "asistencia")
+        .flatMap(item => {
+            const filas = Array.isArray(item.payload) ? item.payload : [item.payload];
+            return item.operacion === "delete"
+                ? []
+                : filas.map(fila => fila?.fecha);
+        });
+
+    const fechasDesdePendientesTipos = obtenerMutacionesPendientes()
+        .filter(item => item.tabla === "asistencia_tipos_dia")
+        .flatMap(item => {
+            const filas = Array.isArray(item.payload) ? item.payload : [item.payload];
+            return item.operacion === "delete"
+                ? []
+                : filas.map(fila => fila?.fecha);
+        });
+
     const fechas = [...new Set([
         ...(dataAsistencia || []).map(r => r.fecha),
-        ...(dataTipos || []).map(r => r.fecha)
+        ...(dataTipos || []).map(r => r.fecha),
+        ...fechasDesdePendientesAsistencia,
+        ...fechasDesdePendientesTipos
     ].filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a)));
 
     fechas.forEach(fecha => {
@@ -4794,7 +5233,12 @@ async function cargarAsistencia() {
         return;
     }
 
-    (data || []).forEach(registro => {
+    const datosAsistenciaVisibles = aplicarMutacionesPendientes(
+        "asistencia",
+        data || []
+    );
+
+    datosAsistenciaVisibles.forEach(registro => {
         registrosAsistencia[registro.estudiante_id] = {
             estado: registro.estado,
             observacion: registro.observacion || ""
@@ -4811,9 +5255,16 @@ async function cargarAsistencia() {
 
     if (tipoError) {
         console.error("Error al cargar el tipo de día:", tipoError);
-    } else if (tipoData?.tipo) {
-        tipoDiaAsistencia = tipoData.tipo;
-        motivoNoClases = tipoData.motivo || "";
+    } else {
+        const tiposVisibles = aplicarMutacionesPendientes(
+            "asistencia_tipos_dia",
+            tipoData ? [{ curso: cursoSeleccionado, fecha, ...tipoData }] : []
+        );
+        const tipoVisible = tiposVisibles[0];
+        if (tipoVisible?.tipo) {
+            tipoDiaAsistencia = tipoVisible.tipo;
+            motivoNoClases = tipoVisible.motivo || "";
+        }
     }
 
     const opcionesTipoDia = document.getElementById("opcionesTipoDiaAsistencia");
@@ -5546,6 +5997,10 @@ async function guardarAsistenciaIndividual(control) {
 
             
 
+            const registroAnterior = registrosAsistencia[estudianteId]
+                ? { ...registrosAsistencia[estudianteId] }
+                : null;
+
             const { error } = await supabaseClient
                 .from("asistencia")
                 .upsert({
@@ -5558,6 +6013,28 @@ async function guardarAsistenciaIndividual(control) {
                 });
 
             if (error) throw error;
+
+            if (!historialOnline) {
+                const estudianteHistorial = estudiantes.find(e => Number(e.id) === estudianteId);
+                guardarHistorialLocal({
+                    table_name: "asistencia",
+                    operation: registroAnterior ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: estudianteId,
+                    estudiante_nombre: estudianteHistorial?.nombre || null,
+                    actividad_id: null,
+                    actividad_nombre: null,
+                    categoria: null,
+                    fecha: fecha,
+                    old_data: registroAnterior,
+                    new_data: {
+                        estado: seleccionado.value,
+                        observacion: observacion || null
+                    },
+                    changed_at: new Date().toISOString()
+                });
+            }
 
             registrosAsistencia[estudianteId] = {
                 estado: seleccionado.value,
@@ -5752,6 +6229,16 @@ async function guardarAsistencia() {
         actualizarProgresoGuardado("asistencia", 20, true);
         mostrarMensaje("Guardando asistencia... 20%");
 
+        const historialAnterioresAsistencia = {};
+        if (!historialOnline) {
+            registros.forEach(registro => {
+                const anterior = registrosAsistencia[registro.estudiante_id];
+                historialAnterioresAsistencia[registro.estudiante_id] = anterior
+                    ? { ...anterior }
+                    : null;
+            });
+        }
+
         const { error } = await supabaseClient
             .from("asistencia")
             .upsert(registros, {
@@ -5760,6 +6247,32 @@ async function guardarAsistencia() {
 
         if (error) {
             throw error;
+        }
+
+        if (!historialOnline) {
+            registros.forEach(registro => {
+                const estudianteHistorial = estudiantes.find(
+                    e => Number(e.id) === Number(registro.estudiante_id)
+                );
+                guardarHistorialLocal({
+                    table_name: "asistencia",
+                    operation: historialAnterioresAsistencia[registro.estudiante_id] ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: registro.estudiante_id,
+                    estudiante_nombre: estudianteHistorial?.nombre || null,
+                    actividad_id: null,
+                    actividad_nombre: null,
+                    categoria: null,
+                    fecha: fecha,
+                    old_data: historialAnterioresAsistencia[registro.estudiante_id],
+                    new_data: {
+                        estado: registro.estado,
+                        observacion: registro.observacion || null
+                    },
+                    changed_at: new Date().toISOString()
+                });
+            });
         }
 
         actualizarProgresoGuardado("asistencia", 90, true);
@@ -6002,7 +6515,7 @@ async function cargarAsistenciaActividades() {
         return;
     }
 
-    (data || []).forEach(
+    aplicarMutacionesPendientes("asistencia", data || []).forEach(
     registro => {
 
         const clave =
@@ -6147,7 +6660,7 @@ async function cargarCalificaciones() {
     }
 
 
-    (data || []).forEach(
+    aplicarMutacionesPendientes("calificaciones", data || []).forEach(
     cal => {
 
         if (
@@ -8738,6 +9251,10 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 
             
 
+            const registroAnterior = calificaciones[estudianteId]?.[actividadId]
+                ? { ...calificaciones[estudianteId][actividadId] }
+                : null;
+
             const { error } = await supabaseClient
                 .from("calificaciones")
                 .upsert({
@@ -8750,6 +9267,28 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
                 });
 
             if (error) throw error;
+
+            if (!historialOnline) {
+                const estudianteHistorial = estudiantes.find(e => Number(e.id) === estudianteId);
+                guardarHistorialLocal({
+                    table_name: "calificaciones",
+                    operation: registroAnterior ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: estudianteId,
+                    estudiante_nombre: estudianteHistorial?.nombre || null,
+                    actividad_id: actividadId,
+                    actividad_nombre: actividad?.nombre || null,
+                    categoria: actividad?.categoria || null,
+                    fecha: actividad?.fecha || null,
+                    old_data: registroAnterior,
+                    new_data: {
+                        nota: nota,
+                        observacion: observacion || null
+                    },
+                    changed_at: new Date().toISOString()
+                });
+            }
 
             /* Mantener la memoria local sincronizada */
             if (!calificaciones[estudianteId]) {
@@ -9111,6 +9650,18 @@ async function guardarNotas() {
         /* =====================================================
            GUARDAR CALIFICACIONES EN UN SOLO UPSERT
         ===================================================== */
+        const historialAnterioresCalificaciones = {};
+        if (!historialOnline) {
+            registros.forEach(registro => {
+                const anterior = calificaciones[registro.estudiante_id]?.[registro.actividad_id];
+                historialAnterioresCalificaciones[
+                    `${registro.estudiante_id}|${registro.actividad_id}`
+                ] = anterior && typeof anterior === "object"
+                    ? { ...anterior }
+                    : null;
+            });
+        }
+
         if (
             registros.length > 0
         ) {
@@ -9145,6 +9696,38 @@ async function guardarNotas() {
 
             }
 
+        }
+
+        if (!historialOnline) {
+            registros.forEach(registro => {
+                const claveHistorial =
+                    `${registro.estudiante_id}|${registro.actividad_id}`;
+                const anterior = historialAnterioresCalificaciones[claveHistorial];
+                const estudianteHistorial = estudiantes.find(
+                    e => Number(e.id) === Number(registro.estudiante_id)
+                );
+                const actividadHistorial = actividades.find(
+                    a => Number(a.id) === Number(registro.actividad_id)
+                );
+                guardarHistorialLocal({
+                    table_name: "calificaciones",
+                    operation: anterior ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: registro.estudiante_id,
+                    estudiante_nombre: estudianteHistorial?.nombre || null,
+                    actividad_id: registro.actividad_id,
+                    actividad_nombre: actividadHistorial?.nombre || null,
+                    categoria: actividadHistorial?.categoria || null,
+                    fecha: actividadHistorial?.fecha || null,
+                    old_data: anterior,
+                    new_data: {
+                        nota: registro.nota,
+                        observacion: registro.observacion || null
+                    },
+                    changed_at: new Date().toISOString()
+                });
+            });
         }
 
 
@@ -11318,6 +11901,10 @@ async function continuarEscaneoAsistenciaQR() {
         };
 
         if (guardadoAutomatico || guardadoManualEnCurso) {
+            const registroAnterior = registrosAsistencia[estudiante.id]
+                ? { ...registrosAsistencia[estudiante.id] }
+                : null;
+
             const { error } = await supabaseClient
                 .from("asistencia")
                 .upsert(registro, {
@@ -11326,6 +11913,27 @@ async function continuarEscaneoAsistenciaQR() {
 
             if (error) {
                 throw error;
+            }
+
+            if (!historialOnline) {
+                guardarHistorialLocal({
+                    table_name: "asistencia",
+                    operation: registroAnterior ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: estudiante.id,
+                    estudiante_nombre: estudiante.nombre || null,
+                    actividad_id: null,
+                    actividad_nombre: null,
+                    categoria: null,
+                    fecha: fecha,
+                    old_data: registroAnterior,
+                    new_data: {
+                        estado: registro.estado,
+                        observacion: registro.observacion
+                    },
+                    changed_at: new Date().toISOString()
+                });
             }
         }
 
@@ -11781,6 +12389,10 @@ async function guardarCalificacionQR() {
     try {
 
         if (guardadoAutomatico || guardadoManualEnCurso) {
+            const registroAnteriorQR = calificaciones[estudianteQRSeleccionado.id]?.[actividadQRSeleccionada.id]
+                ? { ...calificaciones[estudianteQRSeleccionado.id][actividadQRSeleccionada.id] }
+                : null;
+
             const {
                 error
             } =
@@ -11800,6 +12412,27 @@ async function guardarCalificacionQR() {
 
             if (error) {
                 throw error;
+            }
+
+            if (!historialOnline) {
+                guardarHistorialLocal({
+                    table_name: "calificaciones",
+                    operation: registroAnteriorQR ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: estudianteQRSeleccionado.id,
+                    estudiante_nombre: estudianteQRSeleccionado.nombre || null,
+                    actividad_id: actividadQRSeleccionada.id,
+                    actividad_nombre: actividadQRSeleccionada.nombre || null,
+                    categoria: actividadQRSeleccionada.categoria || null,
+                    fecha: actividadQRSeleccionada.fecha || null,
+                    old_data: registroAnteriorQR,
+                    new_data: {
+                        nota: nota,
+                        observacion: observacion || null
+                    },
+                    changed_at: new Date().toISOString()
+                });
             }
         }
 
@@ -12183,41 +12816,48 @@ async function cargarHistorial() {
         return;
     }
 
-    const { data, error } = await supabaseClient
-        .from("historial_cambios")
-        .select(`
-            id,
-            changed_at,
-            table_name,
-            operation,
-            record_id,
-            curso,
-            estudiante_id,
-            estudiante_nombre,
-            actividad_id,
-            actividad_nombre,
-            categoria,
-            fecha,
-            old_data,
-            new_data
-        `)
-        .eq("curso", cursoSeleccionado)
-        .order("changed_at", { ascending: false })
-        .limit(5);
+    let data = [];
+    let error = null;
+
+    if (historialOnline) {
+        const resultado = await supabaseClient
+            .from("historial_cambios")
+            .select(`
+                id,
+                changed_at,
+                table_name,
+                operation,
+                record_id,
+                curso,
+                estudiante_id,
+                estudiante_nombre,
+                actividad_id,
+                actividad_nombre,
+                categoria,
+                fecha,
+                old_data,
+                new_data
+            `)
+            .eq("curso", cursoSeleccionado)
+            .order("changed_at", { ascending: false })
+            .limit(5);
+
+        data = resultado.data || [];
+        error = resultado.error;
+    }
 
     if (error) {
         console.error("Error al cargar historial:", error);
         contenedor.textContent =
-            "No se pudo cargar el historial. Verifica que exista la tabla historial_cambios y sus políticas en Supabase.";
-        return;
+            "No se pudo cargar el historial online. El historial interno seguirá disponible.";
+        data = [];
     }
 
-    // Incluir los cambios especiales guardados localmente cuando RLS
-    // impida insertar esos registros en historial_cambios.
-    const historialLocal = obtenerHistorialLocalTipoDia().filter(
+    const historialLocal = obtenerHistorialLocal().filter(
         item => item.curso === cursoSeleccionado
     );
-    const historialCompleto = [...(data || []), ...historialLocal]
+
+    const historialCompleto = [...data, ...historialLocal]
         .sort((a, b) => new Date(b.changed_at || 0) - new Date(a.changed_at || 0))
         .slice(0, 5);
 
@@ -12391,6 +13031,7 @@ async function restaurarCambioHistorial(historialId) {
         if (error) throw error;
 
         if (item._local) {
+            eliminarHistorialLocal(item.id);
             eliminarHistorialLocalTipoDia(item.id);
         }
 
