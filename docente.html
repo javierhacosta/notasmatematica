@@ -2151,6 +2151,21 @@ td,
 .estado-guardado-pendiente.visible {
     display: inline-block;
 }
+
+/* Estado pendiente junto al nombre de cada actividad. */
+.estado-guardado-actividad-nombre {
+    display: none;
+    margin-left: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #c62828;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.estado-guardado-actividad-nombre.visible {
+    display: inline-block;
+}
+
 @media (max-width: 600px) {
     .estado-guardado-pendiente {
         display: none;
@@ -3625,6 +3640,16 @@ function actualizarEstadosGuardado() {
         actividades.textContent = "⚠️ GUARDADO PENDIENTE";
         actividades.classList.add("visible");
     }
+
+    /* Mostrar también el aviso junto al nombre de cada actividad. */
+    document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
+        if (!guardadoAutomatico && cambiosPendientesActividades) {
+            el.textContent = "⚠️ GUARDADO PENDIENTE";
+            el.classList.add("visible");
+        } else {
+            el.classList.remove("visible");
+        }
+    });
 }
 
 function marcarAsistenciaPendiente() {
@@ -6464,6 +6489,12 @@ function crearActividadHTML(
                 actividad.nombre
             )}
 
+        </span>
+
+        <span
+            class="estado-guardado-actividad-nombre"
+            data-actividad-id="${actividad.id}">
+            ⚠️ GUARDADO PENDIENTE
         </span>
 
 
