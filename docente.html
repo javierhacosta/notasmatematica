@@ -3765,6 +3765,7 @@ window.fetch=async function(input,init){
 };
 async function pending(){return(await allQ()).length}
 window.__panelOffline.getPendingCount=pending;
+window.__panelOffline.fetchLocal=offlineFetch;
 window.updateStatus=async function(){let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");if(!e)return;let n=await pending(),a=window.__panelOffline.activo;let botonDescarga=document.getElementById("botonDescargarDatosOffline");let hayDatos=await hasLocal();if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";e.className="estado-offline "+(syncing?"sync":a?"offline":"online");e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — ${n} cambios pendientes`:"🟢 ONLINE";d.textContent=a?(n?"Los cambios están guardados en este dispositivo y pendientes de sincronización.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase."};
 async function hasLocal(){return(await getTable("matematica")).length>0}
 window.activarModoOffline=async function(){if(!await hasLocal()){alert("Primero pulsa «Descargar / actualizar datos» mientras tengas Internet.");return}window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Modo offline activado.");try{await cargarEstudiantes()}catch(e){}};
@@ -12480,127 +12481,139 @@ async function restaurarCambioHistorial(historialId) {
         return;
     }
 
-    if (!confirm(textoConfirmacionHistorial(item))) {
+    if (!confirm(textoConfirmacionHistorial(item))) return;
+
+    /*
+       IMPORTANTE:
+       El historial NO utiliza la tabla historial_cambios de Supabase.
+       La restauración también se ejecuta contra la copia local mediante
+       el motor offline. Si hay Internet, el cambio queda en la cola para
+       sincronizarse posteriormente; si no hay Internet, permanece local.
+    */
+    if (!window.__panelOffline || typeof window.__panelOffline.fetchLocal !== "function") {
+        alert("El almacenamiento local del historial todavía no está disponible. Recarga el panel e inténtalo nuevamente.");
         return;
     }
 
     const antes = item.old_data || {};
-    let error = null;
+    const base = SUPABASE_URL + "/rest/v1/";
+    const headers = {
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    };
+
+    const enviarLocal = async (tabla, metodo, parametros, cuerpo, prefer = null) => {
+        const h = { ...headers };
+        if (prefer) h.Prefer = prefer;
+        const url = base + tabla + (parametros ? "?" + parametros : "");
+        const respuesta = await window.__panelOffline.fetchLocal(url, {
+            method: metodo,
+            headers: h,
+            body: cuerpo == null ? undefined : JSON.stringify(cuerpo)
+        });
+        if (!respuesta.ok) {
+            let detalle = "";
+            try { detalle = (await respuesta.json())?.message || ""; } catch (_) {}
+            throw new Error(detalle || `Error local ${respuesta.status} al restaurar.`);
+        }
+        return respuesta;
+    };
 
     try {
         if (item.table_name === "calificaciones") {
+            const filtro = `actividad_id=eq.${encodeURIComponent(item.actividad_id)}&estudiante_id=eq.${encodeURIComponent(item.estudiante_id)}`;
+
             if (item.operation === "INSERT" && !item.old_data) {
-                const resultado = await supabaseClient
-                    .from("calificaciones")
-                    .delete()
-                    .eq("id", item.record_id);
-                error = resultado.error;
+                await enviarLocal("calificaciones", "DELETE", filtro, null);
             } else if (item.operation === "DELETE") {
-                const resultado = await supabaseClient
-                    .from("calificaciones")
-                    .upsert({
-                        id: item.record_id,
+                await enviarLocal(
+                    "calificaciones",
+                    "POST",
+                    "on_conflict=actividad_id,estudiante_id",
+                    {
                         actividad_id: item.actividad_id,
                         estudiante_id: item.estudiante_id,
                         nota: antes.nota ?? null,
                         observacion: antes.observacion ?? null
-                    });
-                error = resultado.error;
+                    },
+                    "resolution=merge-duplicates,return=minimal"
+                );
             } else {
-                const resultado = await supabaseClient
-                    .from("calificaciones")
-                    .update({
+                await enviarLocal(
+                    "calificaciones",
+                    "PATCH",
+                    filtro,
+                    {
                         nota: antes.nota ?? null,
                         observacion: antes.observacion ?? null
-                    })
-                    .eq("id", item.record_id);
-                error = resultado.error;
+                    }
+                );
             }
         } else if (item.table_name === "asistencia") {
+            const filtro = `estudiante_id=eq.${encodeURIComponent(item.estudiante_id)}&fecha=eq.${encodeURIComponent(item.fecha)}`;
+
             if (item.operation === "INSERT" && !item.old_data) {
-                const resultado = await supabaseClient
-                    .from("asistencia")
-                    .delete()
-                    .eq("id", item.record_id);
-                error = resultado.error;
+                await enviarLocal("asistencia", "DELETE", filtro, null);
             } else if (item.operation === "DELETE") {
-                const resultado = await supabaseClient
-                    .from("asistencia")
-                    .upsert({
-                        id: item.record_id,
+                await enviarLocal(
+                    "asistencia",
+                    "POST",
+                    "on_conflict=estudiante_id,fecha",
+                    {
                         estudiante_id: item.estudiante_id,
                         fecha: item.fecha,
                         estado: antes.estado ?? null,
                         observacion: antes.observacion ?? null
-                    });
-                error = resultado.error;
+                    },
+                    "resolution=merge-duplicates,return=minimal"
+                );
             } else {
-                const resultado = await supabaseClient
-                    .from("asistencia")
-                    .update({
+                await enviarLocal(
+                    "asistencia",
+                    "PATCH",
+                    filtro,
+                    {
                         estado: antes.estado ?? null,
                         observacion: antes.observacion ?? null
-                    })
-                    .eq("id", item.record_id);
-                error = resultado.error;
+                    }
+                );
             }
         } else if (item.table_name === "asistencia_tipos_dia") {
-            // Restaurar también los cambios de "No se pasó clases",
-            // "Clase informal" y su motivo.
+            const filtro = `curso=eq.${encodeURIComponent(item.curso)}&fecha=eq.${encodeURIComponent(item.fecha)}`;
+
             if (item.operation === "INSERT" && !item.old_data) {
-                const resultado = await supabaseClient
-                    .from("asistencia_tipos_dia")
-                    .delete()
-                    .eq("curso", item.curso)
-                    .eq("fecha", item.fecha);
-                error = resultado.error;
-            } else if (item.operation === "DELETE") {
-                const resultado = await supabaseClient
-                    .from("asistencia_tipos_dia")
-                    .upsert({
-                        curso: antes.curso ?? item.curso,
-                        fecha: antes.fecha ?? item.fecha,
-                        tipo: antes.tipo ?? null,
-                        motivo: antes.motivo ?? null
-                    }, {
-                        onConflict: "curso,fecha"
-                    });
-                error = resultado.error;
+                await enviarLocal("asistencia_tipos_dia", "DELETE", filtro, null);
             } else {
-                const resultado = await supabaseClient
-                    .from("asistencia_tipos_dia")
-                    .upsert({
+                await enviarLocal(
+                    "asistencia_tipos_dia",
+                    "POST",
+                    "on_conflict=curso,fecha",
+                    {
                         curso: antes.curso ?? item.curso,
                         fecha: antes.fecha ?? item.fecha,
                         tipo: antes.tipo ?? null,
                         motivo: antes.motivo ?? null
-                    }, {
-                        onConflict: "curso,fecha"
-                    });
-                error = resultado.error;
+                    },
+                    "resolution=merge-duplicates,return=minimal"
+                );
             }
         } else {
             throw new Error("Tipo de historial no compatible.");
         }
 
-        if (error) throw error;
+        eliminarHistorialLocalTipoDia(item.id);
+        mostrarMensaje("✓ Cambio restaurado localmente. Quedó guardado en este dispositivo.");
 
-        if (item._local) {
-            eliminarHistorialLocalTipoDia(item.id);
-        }
-
-        mostrarMensaje("✓ Cambio restaurado correctamente.");
-
-        await cargarCalificaciones();
-        await cargarAsistencia();
-        mostrarActividades();
-        mostrarTablaAsistencia();
+        try { await cargarCalificaciones(); } catch (_) {}
+        try { await cargarAsistencia(); } catch (_) {}
+        try { mostrarActividades(); } catch (_) {}
+        try { mostrarTablaAsistencia(); } catch (_) {}
         await cargarHistorial();
 
     } catch (errorRestaurar) {
-        console.error("Error al restaurar historial:", errorRestaurar);
+        console.error("Error al restaurar historial local:", errorRestaurar);
         alert(
-            "No se pudo restaurar el cambio: " +
+            "No se pudo restaurar el cambio localmente: " +
             (errorRestaurar.message || errorRestaurar)
         );
     }
@@ -12650,74 +12663,6 @@ comprobarSesion();
 })();
 </script>
 
-
-
-<script>
-(function(){
-  const KEY = 'historial_cambios_local';
-
-  function leerHistorialInterno(){
-    try {
-      const raw = localStorage.getItem(KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch(e) { return []; }
-  }
-
-  function escribirHistorialInterno(arr){
-    try {
-      localStorage.setItem(KEY, JSON.stringify(arr.slice(0, 1000)));
-    } catch(e) {}
-  }
-
-  window.guardarHistorialInterno = function(registro){
-    const arr = leerHistorialInterno();
-    arr.unshift(Object.assign({
-      id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-      created_at: new Date().toISOString()
-    }, registro));
-    escribirHistorialInterno(arr);
-  };
-
-  window.obtenerHistorialInterno = function(){
-    return leerHistorialInterno();
-  };
-
-  // Compatibility with the existing functions.
-  window.guardarHistorialLocalTipoDia = function(registro){
-    window.guardarHistorialInterno(registro);
-  };
-  window.obtenerHistorialLocalTipoDia = function(){
-    return window.obtenerHistorialInterno();
-  };
-
-  // Make history loading purely local.
-  window.cargarHistorial = async function(){
-    try {
-      const datos = window.obtenerHistorialInterno();
-      if (typeof window.mostrarHistorial === 'function') {
-        window.mostrarHistorial(datos);
-      } else if (typeof window.renderizarHistorial === 'function') {
-        window.renderizarHistorial(datos);
-      } else {
-        // Fall back to the existing history container if its renderer has another name.
-        const cont = document.querySelector('#listaHistorial, #contenidoHistorial, .lista-historial');
-        if (cont) {
-          cont.innerHTML = datos.length
-            ? datos.map((r,i) => '<div class="historial-item"><b>' +
-                (r.operation || 'CAMBIO') + '</b> — ' +
-                (r.table_name || r.tabla || '') + '<br><small>' +
-                (r.created_at ? new Date(r.created_at).toLocaleString() : '') +
-                '</small></div>').join('')
-            : '<p>No hay cambios registrados.</p>';
-        }
-      }
-    } catch(e) {
-      console.error('Error cargando historial interno:', e);
-    }
-  };
-})();
-</script>
 
 </body>
 
