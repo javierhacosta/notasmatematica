@@ -2569,7 +2569,7 @@ Usuario:
 <div class="botones-offline">
 <button type="button" id="botonDescargarDatosOffline" class="boton-offline-principal" onclick="descargarDatosOffline()" style="display:none">📥 Descargar / actualizar datos</button>
 <button type="button" class="boton-offline-secundario" onclick="activarModoOffline()">📴 Trabajar offline</button>
-<button type="button" class="boton-offline-secundario" onclick="sincronizarDatosOffline()">☁️ Sincronizar ahora</button>
+<button type="button" class="boton-offline-secundario" onclick="sincronizarDatosOffline()" style="display:none;">☁️ Sincronizar ahora</button>
 <span id="grupoBotonesRespaldo" class="grupo-botones-respaldo">
 <button type="button" class="boton-offline-secundario" onclick="exportarRespaldoOffline()">💾 Respaldo</button>
 <button type="button" class="boton-offline-secundario" onclick="document.getElementById('archivoRespaldoOffline').click()">📤 Importar respaldo</button>
@@ -12614,6 +12614,49 @@ if("serviceWorker" in navigator && location.protocol!=="file:"){addEventListener
 
 comprobarSesion();
 
+</script>
+
+
+<script>
+(function(){
+  function actualizarVisibilidadBotonSincronizar(){
+    const btn = document.getElementById('botonSincronizarAhora');
+    if(!btn) return;
+    let pendientes = 0;
+    try {
+      if (window.__panelOffline && typeof window.__panelOffline.pendientes === 'number') {
+        pendientes = window.__panelOffline.pendientes;
+      } else {
+        const el = document.getElementById('contadorPendientes');
+        if (el) pendientes = parseInt(el.textContent || '0', 10) || 0;
+      }
+    } catch(e){}
+    btn.style.display = pendientes > 0 ? '' : 'none';
+  }
+  window.actualizarVisibilidadBotonSincronizar = actualizarVisibilidadBotonSincronizar;
+  document.addEventListener('DOMContentLoaded', actualizarVisibilidadBotonSincronizar);
+})();
+</script>
+
+
+<script>
+(function(){
+  function envolver(nombre){
+    const original = window[nombre];
+    if(typeof original !== 'function' || original.__syncWrapped) return;
+    function wrapped(){
+      const r = original.apply(this, arguments);
+      try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){}
+      return r;
+    }
+    wrapped.__syncWrapped = true;
+    window[nombre] = wrapped;
+  }
+  ['actualizarEstadoOffline','actualizarContadorPendientes','actualizarInterfazOffline','actualizarBarraOffline'].forEach(envolver);
+  setInterval(function(){
+    try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){}
+  }, 800);
+})();
 </script>
 
 </body>
