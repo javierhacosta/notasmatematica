@@ -3764,6 +3764,7 @@ window.fetch=async function(input,init){
   }catch(e){throw e}
 };
 async function pending(){return(await allQ()).length}
+window.__panelOffline.getPendingCount=pending;
 window.updateStatus=async function(){let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");if(!e)return;let n=await pending(),a=window.__panelOffline.activo;let botonDescarga=document.getElementById("botonDescargarDatosOffline");let hayDatos=await hasLocal();if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";e.className="estado-offline "+(syncing?"sync":a?"offline":"online");e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — ${n} cambios pendientes`:"🟢 ONLINE";d.textContent=a?(n?"Los cambios están guardados en este dispositivo y pendientes de sincronización.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase."};
 async function hasLocal(){return(await getTable("matematica")).length>0}
 window.activarModoOffline=async function(){if(!await hasLocal()){alert("Primero pulsa «Descargar / actualizar datos» mientras tengas Internet.");return}window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Modo offline activado.");try{await cargarEstudiantes()}catch(e){}};
@@ -12622,16 +12623,17 @@ comprobarSesion();
   function actualizarVisibilidadBotonSincronizar(){
     const btn = document.getElementById('botonSincronizarAhora');
     if(!btn) return;
-    let pendientes = 0;
+    const mostrar = n => { btn.style.display = Number(n) > 0 ? 'inline-flex' : 'none'; };
     try {
-      if (window.__panelOffline && typeof window.__panelOffline.pendientes === 'number') {
-        pendientes = window.__panelOffline.pendientes;
-      } else {
-        const el = document.getElementById('contadorPendientes');
-        if (el) pendientes = parseInt(el.textContent || '0', 10) || 0;
+      if (window.__panelOffline && typeof window.__panelOffline.getPendingCount === 'function') {
+        window.__panelOffline.getPendingCount().then(mostrar).catch(()=>mostrar(0));
+        return;
       }
-    } catch(e){}
-    btn.style.display = pendientes > 0 ? '' : 'none';
+    } catch(e) {}
+    try {
+      const el = document.getElementById('contadorPendientes');
+      mostrar(el ? parseInt(el.textContent || '0',10) || 0 : 0);
+    } catch(e) { mostrar(0); }
   }
   window.actualizarVisibilidadBotonSincronizar = actualizarVisibilidadBotonSincronizar;
   document.addEventListener('DOMContentLoaded', actualizarVisibilidadBotonSincronizar);
@@ -12653,9 +12655,7 @@ comprobarSesion();
     window[nombre] = wrapped;
   }
   ['actualizarEstadoOffline','actualizarContadorPendientes','actualizarInterfazOffline','actualizarBarraOffline'].forEach(envolver);
-  setInterval(function(){
-    try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){}
-  }, 800);
+  setInterval(function(){ try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){} }, 300);
 })();
 </script>
 
