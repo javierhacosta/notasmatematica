@@ -3607,18 +3607,6 @@ Cancelar
             <label class="configuracion-opcion-guardado">
                 <input
                     type="checkbox"
-                    id="checkboxGuardadoAutomatico"
-                    checked
-                    onchange="cambiarGuardadoAutomatico(this.checked)">
-                <span>Guardado automático</span>
-            </label>
-            <div class="configuracion-ayuda-guardado">
-                Activado: funciona como actualmente. Desactivado: los cambios se mantienen temporalmente en el panel y se guardan únicamente al pulsar los botones de guardado.
-            </div>
-
-            <label class="configuracion-opcion-guardado">
-                <input
-                    type="checkbox"
                     id="checkboxBotonesRespaldoOcultos"
                     checked
                     onchange="cambiarVisibilidadBotonesRespaldo(this.checked)">
@@ -3690,7 +3678,7 @@ window.supabase.createClient(
 ===================================================== */
 (function(){
 const DB="panel_docente_offline_v1", VER=1, T="tablas", Q="cola", M="meta";
-const TABLES=["matematica","actividades","calificaciones","asistencia","asistencia_tipos_dia","historial_cambios","visitas_estudiantes"];
+const TABLES=["matematica","actividades","calificaciones","asistencia","asistencia_tipos_dia","visitas_estudiantes"];
 let dbp=null, syncing=false, originalFetch=window.fetch.bind(window);
 window.__panelOffline={activo:localStorage.getItem("panel_docente_modo_offline")==="1",tablas:TABLES};
 function db(){if(dbp)return dbp;dbp=new Promise((res,rej)=>{let r=indexedDB.open(DB,VER);r.onupgradeneeded=()=>{let d=r.result;if(!d.objectStoreNames.contains(T))d.createObjectStore(T,{keyPath:"tabla"});if(!d.objectStoreNames.contains(Q))d.createObjectStore(Q,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(M))d.createObjectStore(M,{keyPath:"clave"})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return dbp}
@@ -3734,7 +3722,8 @@ addEventListener("offline",async()=>{if(await hasLocal()){window.__panelOffline.
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
 ===================================================== */
-let guardadoAutomatico = localStorage.getItem("panel_guardado_automatico") !== "false";
+let guardadoAutomatico = true;
+localStorage.setItem("panel_guardado_automatico", "true");
 let guardadoManualEnCurso = false;
 
 // Por defecto, los botones de respaldo permanecen ocultos.
@@ -3817,14 +3806,20 @@ function marcarActividadesPendientes(input = null) {
 }
 
 function actualizarInterfazGuardado() {
-    const checkbox = document.getElementById("checkboxGuardadoAutomatico");
-    if (checkbox) checkbox.checked = guardadoAutomatico;
+    // El guardado automático es permanente. Los botones de guardado manual
+    // ya no se muestran en la interfaz.
+    guardadoAutomatico = true;
+    localStorage.setItem("panel_guardado_automatico", "true");
 
     document.querySelectorAll(
-        "#botonGuardarAsistencia, #botonGuardarNotas, #botonGuardadoManualGeneral"
+        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral, #botonGuardarTipoDiaAsistencia"
     ).forEach(boton => {
-        boton.classList.toggle("oculto", guardadoAutomatico);
+        boton.classList.add("oculto");
+        boton.style.display = "none";
     });
+
+    document.querySelectorAll(".estado-guardado-pendiente, .estado-guardado-actividad-nombre")
+        .forEach(el => { el.classList.remove("visible"); el.style.display = "none"; });
 
     actualizarEstadosGuardado();
 }
@@ -3877,22 +3872,11 @@ async function guardarTodoManual() {
 }
 
 
-function cambiarGuardadoAutomatico(activado) {
-    guardadoAutomatico = !!activado;
-    localStorage.setItem("panel_guardado_automatico", String(guardadoAutomatico));
-
-    if (guardadoAutomatico) {
-        cambiosPendientesAsistencia = false;
-        cambiosPendientesActividades = false;
-        actividadesPendientes.clear();
-    }
-
+function cambiarGuardadoAutomatico() {
+    // Se mantiene siempre activo y ya no existe un interruptor visible.
+    guardadoAutomatico = true;
+    localStorage.setItem("panel_guardado_automatico", "true");
     actualizarInterfazGuardado();
-    mostrarMensaje(
-        guardadoAutomatico
-            ? "✓ Guardado automático activado."
-            : "ℹ️ Guardado automático desactivado. Usa los botones 💾 Guardar para enviar los cambios."
-    );
 }
 
 function cambiarVisibilidadBotonesRespaldo(ocultos) {
@@ -4639,18 +4623,9 @@ async function guardarTipoDiaAsistencia() {
             changed_at: new Date().toISOString()
         };
 
-        // Intentar guardar el historial en Supabase. Si la tabla
-        // historial_cambios tiene RLS que no permite INSERT, NO se bloquea
-        // el guardado de la asistencia: se conserva el cambio localmente
-        // para que siga apareciendo y pueda restaurarse desde Historial.
-        const { error: errorHistorialTipo } = await supabaseClient
-            .from("historial_cambios")
-            .insert(registroHistorialTipo);
-
-        if (errorHistorialTipo) {
-            console.warn("No se pudo guardar el historial en Supabase; se usará historial local:", errorHistorialTipo);
-            guardarHistorialLocalTipoDia(registroHistorialTipo);
-        }
+        // El historial es exclusivamente interno al dispositivo.
+        // Nunca se guarda en la tabla historial_cambios de Supabase.
+        guardarHistorialLocalTipoDia(registroHistorialTipo);
 
         // Si se marca un día especial, se eliminan los estados normales
         // que pudiera tener esa fecha para evitar datos contradictorios.
@@ -5878,6 +5853,27 @@ async function guardarAsistencia() {
         if (error) {
             throw error;
         }
+
+        // Historial interno: registrar los cambios sin usar Supabase.
+        const ahoraHistorial = new Date().toISOString();
+        registros.forEach(registro => {
+            const estudiante = estudiantesCurso.find(e => Number(e.id) === Number(registro.estudiante_id));
+            guardarHistorialInterno({
+                table_name: "asistencia",
+                operation: "UPDATE",
+                record_id: null,
+                curso: cursoSeleccionado,
+                estudiante_id: registro.estudiante_id,
+                estudiante_nombre: estudiante?.nombre || estudiante?.nombre_completo || null,
+                actividad_id: null,
+                actividad_nombre: null,
+                categoria: null,
+                fecha: fecha,
+                old_data: null,
+                new_data: { estado: registro.estado, observacion: registro.observacion },
+                changed_at: ahoraHistorial
+            });
+        });
 
         actualizarProgresoGuardado("asistencia", 90, true);
         mostrarMensaje("Actualizando asistencia... 90%");
@@ -9262,6 +9258,28 @@ async function guardarNotas() {
 
             }
 
+            // Historial interno: registrar las notas/observaciones localmente.
+            const ahoraHistorialNotas = new Date().toISOString();
+            registros.forEach(registro => {
+                const actividad = actividades.find(a => Number(a.id) === Number(registro.actividad_id));
+                const estudiante = estudiantes.find(e => Number(e.id) === Number(registro.estudiante_id));
+                guardarHistorialInterno({
+                    table_name: "calificaciones",
+                    operation: "UPDATE",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: registro.estudiante_id,
+                    estudiante_nombre: estudiante?.nombre || estudiante?.nombre_completo || null,
+                    actividad_id: registro.actividad_id,
+                    actividad_nombre: actividad?.nombre || actividad?.titulo || null,
+                    categoria: actividad?.categoria || null,
+                    fecha: null,
+                    old_data: null,
+                    new_data: { nota: registro.nota, observacion: registro.observacion },
+                    changed_at: ahoraHistorialNotas
+                });
+            });
+
         }
 
 
@@ -12120,8 +12138,8 @@ function cerrarModalCalificacionQR(
 
 /* =====================================================
    HISTORIAL DE CAMBIOS
-   La tabla historial_cambios recibe automáticamente los cambios
-   mediante triggers de Supabase. Aquí solo se consulta y restaura.
+   El historial se guarda exclusivamente de forma interna en el dispositivo.
+   No depende de la tabla historial_cambios de Supabase.
 ===================================================== */
 
 function formatearFechaHistorial(fecha) {
@@ -12278,6 +12296,10 @@ function guardarHistorialLocalTipoDia(registro) {
     }
 }
 
+function guardarHistorialInterno(registro) {
+    guardarHistorialLocalTipoDia(registro);
+}
+
 function eliminarHistorialLocalTipoDia(historialId) {
     try {
         const datos = obtenerHistorialLocalTipoDia();
@@ -12300,41 +12322,10 @@ async function cargarHistorial() {
         return;
     }
 
-    const { data, error } = await supabaseClient
-        .from("historial_cambios")
-        .select(`
-            id,
-            changed_at,
-            table_name,
-            operation,
-            record_id,
-            curso,
-            estudiante_id,
-            estudiante_nombre,
-            actividad_id,
-            actividad_nombre,
-            categoria,
-            fecha,
-            old_data,
-            new_data
-        `)
-        .eq("curso", cursoSeleccionado)
-        .order("changed_at", { ascending: false })
-        .limit(5);
-
-    if (error) {
-        console.error("Error al cargar historial:", error);
-        contenedor.textContent =
-            "No se pudo cargar el historial. Verifica que exista la tabla historial_cambios y sus políticas en Supabase.";
-        return;
-    }
-
-    // Incluir los cambios especiales guardados localmente cuando RLS
-    // impida insertar esos registros en historial_cambios.
-    const historialLocal = obtenerHistorialLocalTipoDia().filter(
-        item => item.curso === cursoSeleccionado
-    );
-    const historialCompleto = [...(data || []), ...historialLocal]
+    // El historial se conserva exclusivamente en el dispositivo.
+    // No se consulta ni se escribe la tabla historial_cambios de Supabase.
+    const historialCompleto = obtenerHistorialLocalTipoDia()
+        .filter(item => item.curso === cursoSeleccionado)
         .sort((a, b) => new Date(b.changed_at || 0) - new Date(a.changed_at || 0))
         .slice(0, 5);
 
