@@ -11749,7 +11749,13 @@ async function guardarCalificacionQR() {
     try {
 
         if (!guardadoAutomatico && !guardadoManualEnCurso) {
-            marcarActividadesPendientes();
+            // Marcar específicamente la actividad que se modificó mediante QR.
+            marcarActividadesPendientes({
+                dataset: {
+                    actividad: String(actividadQRSeleccionada.id),
+                    estudiante: String(estudianteQRSeleccionado.id)
+                }
+            });
         }
 
         if (guardadoAutomatico || guardadoManualEnCurso) {
