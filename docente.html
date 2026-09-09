@@ -12651,6 +12651,74 @@ comprobarSesion();
 </script>
 
 
+
+<script>
+(function(){
+  const KEY = 'historial_cambios_local';
+
+  function leerHistorialInterno(){
+    try {
+      const raw = localStorage.getItem(KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch(e) { return []; }
+  }
+
+  function escribirHistorialInterno(arr){
+    try {
+      localStorage.setItem(KEY, JSON.stringify(arr.slice(0, 1000)));
+    } catch(e) {}
+  }
+
+  window.guardarHistorialInterno = function(registro){
+    const arr = leerHistorialInterno();
+    arr.unshift(Object.assign({
+      id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+      created_at: new Date().toISOString()
+    }, registro));
+    escribirHistorialInterno(arr);
+  };
+
+  window.obtenerHistorialInterno = function(){
+    return leerHistorialInterno();
+  };
+
+  // Compatibility with the existing functions.
+  window.guardarHistorialLocalTipoDia = function(registro){
+    window.guardarHistorialInterno(registro);
+  };
+  window.obtenerHistorialLocalTipoDia = function(){
+    return window.obtenerHistorialInterno();
+  };
+
+  // Make history loading purely local.
+  window.cargarHistorial = async function(){
+    try {
+      const datos = window.obtenerHistorialInterno();
+      if (typeof window.mostrarHistorial === 'function') {
+        window.mostrarHistorial(datos);
+      } else if (typeof window.renderizarHistorial === 'function') {
+        window.renderizarHistorial(datos);
+      } else {
+        // Fall back to the existing history container if its renderer has another name.
+        const cont = document.querySelector('#listaHistorial, #contenidoHistorial, .lista-historial');
+        if (cont) {
+          cont.innerHTML = datos.length
+            ? datos.map((r,i) => '<div class="historial-item"><b>' +
+                (r.operation || 'CAMBIO') + '</b> — ' +
+                (r.table_name || r.tabla || '') + '<br><small>' +
+                (r.created_at ? new Date(r.created_at).toLocaleString() : '') +
+                '</small></div>').join('')
+            : '<p>No hay cambios registrados.</p>';
+        }
+      }
+    } catch(e) {
+      console.error('Error cargando historial interno:', e);
+    }
+  };
+})();
+</script>
+
 </body>
 
 </html>
