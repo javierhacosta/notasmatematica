@@ -11754,16 +11754,6 @@ async function guardarCalificacionQR() {
 
     try {
 
-        if (!guardadoAutomatico && !guardadoManualEnCurso) {
-            // Marcar específicamente la actividad que se modificó mediante QR.
-            marcarActividadesPendientes({
-                dataset: {
-                    actividad: String(actividadQRSeleccionada.id),
-                    estudiante: String(estudianteQRSeleccionado.id)
-                }
-            });
-        }
-
         if (guardadoAutomatico || guardadoManualEnCurso) {
             const {
                 error
@@ -11824,7 +11814,17 @@ async function guardarCalificacionQR() {
             observacion
         };
 
-        const nombreEstudianteQR =
+        /*
+           QR + guardado manual: marcar la actividad DESPUÉS de registrar
+           el cambio local. Así el aviso se conserva aunque luego se
+           reconstruya la lista de actividades.
+        */
+        if (!guardadoAutomatico) {
+            actividadesPendientes.add(String(actividadQRSeleccionada.id));
+            cambiosPendientesActividades = true;
+        }
+
+                const nombreEstudianteQR =
         estudianteQRSeleccionado.nombre;
 
         if (mantenerCamaraQR && streamQR) {
