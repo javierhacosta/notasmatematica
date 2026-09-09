@@ -3451,6 +3451,16 @@ Cancelar
 
             </div>
 
+            <div class="campo-formulario" style="margin-top: 14px;">
+                <label for="observacionAsistenciaQR">📝 Observación</label>
+                <textarea
+                    id="observacionAsistenciaQR"
+                    rows="3"
+                    maxlength="500"
+                    placeholder="Escribe una observación sobre la asistencia (opcional)..."
+                    style="width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+
             <button
                 type="button"
                 id="botonContinuarAsistenciaQR"
@@ -11286,7 +11296,7 @@ async function abrirEscanerAsistenciaQR() {
     if (modal) modal.classList.remove("oculto");
     if (mensaje) {
         mensaje.textContent =
-        "Apunta la cámara al código QR del estudiante para registrar su asistencia.";
+        "📷 Coloca el QR dentro del marco. Mantén el teléfono estable para registrar la asistencia.";
     }
 
     if (streamQR) {
@@ -11323,7 +11333,12 @@ async function iniciarCamaraQR() {
         detectorQR = new BarcodeDetector({ formats: ["qr_code"] });
 
         streamQR = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" } },
+            video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                focusMode: { ideal: "continuous" }
+            },
             audio: false
         });
 
@@ -11397,6 +11412,12 @@ async function prepararAsistenciaQR(ci) {
     if (checkAsistencia) checkAsistencia.checked = true;
     if (checkAtraso) checkAtraso.checked = false;
 
+    const observacionQR = document.getElementById("observacionAsistenciaQR");
+    if (observacionQR) {
+        observacionQR.value = (registrosAsistencia[data.id] || {}).observacion || "";
+        setTimeout(() => observacionQR.focus(), 80);
+    }
+
     const modal = document.getElementById("modalAsistenciaQR");
     if (modal) modal.classList.remove("oculto");
     procesandoQR = false;
@@ -11453,12 +11474,16 @@ async function continuarEscaneoAsistenciaQR() {
             throw new Error("Selecciona una fecha de asistencia.");
         }
 
+        const observacionQR = document.getElementById("observacionAsistenciaQR");
+        const observacion = observacionQR
+            ? observacionQR.value.trim()
+            : ((registrosAsistencia[estudiante.id] || {}).observacion || "");
+
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
             estado: estadoQRAsistencia,
-            observacion:
-                (registrosAsistencia[estudiante.id] || {}).observacion || null
+            observacion: observacion || null
         };
 
         if (guardadoAutomatico || guardadoManualEnCurso) {
@@ -11500,6 +11525,8 @@ async function continuarEscaneoAsistenciaQR() {
         );
 
         document.getElementById("modalAsistenciaQR").classList.add("oculto");
+        const observacionQRGuardar = document.getElementById("observacionAsistenciaQR");
+        if (observacionQRGuardar) observacionQRGuardar.value = "";
         estudianteQRAsistencia = null;
 
         /* La cámara continúa sin volver a cargar estudiantes/asistencia. */
@@ -11543,6 +11570,8 @@ function cerrarModalAsistenciaQR(event) {
     }
 
     document.getElementById("modalAsistenciaQR").classList.add("oculto");
+    const observacionQR = document.getElementById("observacionAsistenciaQR");
+    if (observacionQR) observacionQR.value = "";
     estudianteQRAsistencia = null;
 
     if (modoQRAsistencia && streamQR) {
