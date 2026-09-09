@@ -8904,6 +8904,28 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 
             
 
+            /* Capturar el valor anterior ANTES de actualizarlo.
+               Esto permite que el historial de actividades también pueda
+               mostrar y restaurar correctamente el cambio. */
+            const registroAnteriorHistorial =
+                calificaciones?.[estudianteId]?.[actividadId];
+            const anteriorHistorial =
+                registroAnteriorHistorial && typeof registroAnteriorHistorial === "object"
+                ? {
+                    actividad_id: actividadId,
+                    estudiante_id: estudianteId,
+                    nota: registroAnteriorHistorial.nota ?? null,
+                    observacion: registroAnteriorHistorial.observacion ?? null
+                }
+                : null;
+
+            const nuevoHistorial = {
+                actividad_id: actividadId,
+                estudiante_id: estudianteId,
+                nota: nota,
+                observacion: observacion || null
+            };
+
             const { error } = await supabaseClient
                 .from("calificaciones")
                 .upsert({
@@ -8916,6 +8938,30 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
                 });
 
             if (error) throw error;
+
+            const estudianteHistorial = estudiantes.find(
+                e => Number(e.id) === Number(estudianteId)
+            );
+
+            if (!anteriorHistorial ||
+                String(anteriorHistorial.nota ?? "") !== String(nuevoHistorial.nota ?? "") ||
+                String(anteriorHistorial.observacion ?? "") !== String(nuevoHistorial.observacion ?? "")) {
+                guardarHistorialInterno({
+                    table_name: "calificaciones",
+                    operation: anteriorHistorial ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: estudianteId,
+                    estudiante_nombre: estudianteHistorial?.nombre || estudianteHistorial?.nombre_completo || null,
+                    actividad_id: actividadId,
+                    actividad_nombre: actividad?.nombre || actividad?.titulo || null,
+                    categoria: actividad?.categoria || null,
+                    fecha: null,
+                    old_data: anteriorHistorial,
+                    new_data: nuevoHistorial,
+                    changed_at: new Date().toISOString()
+                });
+            }
 
             /* Mantener la memoria local sincronizada */
             if (!calificaciones[estudianteId]) {
@@ -12030,6 +12076,42 @@ async function guardarCalificacionQR() {
         typeof registroAnterior === "object"
         ? registroAnterior.observacion || ""
         : "";
+
+        const anteriorHistorialQR = registroAnterior && typeof registroAnterior === "object"
+        ? {
+            actividad_id: actividadQRSeleccionada.id,
+            estudiante_id: estudianteQRSeleccionado.id,
+            nota: registroAnterior.nota ?? null,
+            observacion: registroAnterior.observacion ?? null
+        }
+        : null;
+
+        const nuevoHistorialQR = {
+            actividad_id: actividadQRSeleccionada.id,
+            estudiante_id: estudianteQRSeleccionado.id,
+            nota: nota,
+            observacion: observacion || null
+        };
+
+        if (!anteriorHistorialQR ||
+            String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
+            String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
+            guardarHistorialInterno({
+                table_name: "calificaciones",
+                operation: anteriorHistorialQR ? "UPDATE" : "INSERT",
+                record_id: null,
+                curso: cursoSeleccionado,
+                estudiante_id: estudianteQRSeleccionado.id,
+                estudiante_nombre: estudianteQRSeleccionado.nombre || estudianteQRSeleccionado.nombre_completo || null,
+                actividad_id: actividadQRSeleccionada.id,
+                actividad_nombre: actividadQRSeleccionada.nombre || actividadQRSeleccionada.titulo || null,
+                categoria: actividadQRSeleccionada.categoria || null,
+                fecha: null,
+                old_data: anteriorHistorialQR,
+                new_data: nuevoHistorialQR,
+                changed_at: new Date().toISOString()
+            });
+        }
 
         calificaciones[
             estudianteQRSeleccionado.id
