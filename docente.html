@@ -2920,6 +2920,21 @@ Fechas guardadas
 
 
 <button
+    id="botonGuardadoManualGeneral"
+    class="guardar boton-guardado-manual-general oculto"
+    onclick="guardarTodoManual()">
+
+💾 Guardar cambios
+
+<span
+    id="progresoGuardadoManualGeneral"
+    class="progreso-guardar">
+</span>
+
+</button>
+
+
+<button
     class="exportar"
     onclick="exportarExcel()">
 
@@ -3546,11 +3561,59 @@ function actualizarInterfazGuardado() {
     if (checkbox) checkbox.checked = guardadoAutomatico;
 
     document.querySelectorAll(
-        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, .boton-guardar-notas"
+        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, .boton-guardar-notas, #botonGuardadoManualGeneral"
     ).forEach(boton => {
         boton.classList.toggle("oculto", guardadoAutomatico);
     });
 }
+
+async function guardarTodoManual() {
+    if (guardadoAutomatico) return;
+
+    const boton = document.getElementById("botonGuardadoManualGeneral");
+    if (boton) {
+        boton.disabled = true;
+        boton.classList.add("guardando");
+    }
+
+    guardadoManualEnCurso = true;
+
+    try {
+        let guardadoAlgo = false;
+
+        // Guarda la asistencia pendiente, si existe.
+        const resultadoAsistencia = guardarAsistencia();
+        if (resultadoAsistencia && typeof resultadoAsistencia.then === "function") {
+            const okAsistencia = await resultadoAsistencia;
+            guardadoAlgo = guardadoAlgo || okAsistencia === true;
+        } else {
+            guardadoAlgo = guardadoAlgo || resultadoAsistencia === true;
+        }
+
+        // Guarda las actividades/notas pendientes, si existen.
+        const resultadoNotas = guardarNotas();
+        if (resultadoNotas && typeof resultadoNotas.then === "function") {
+            const okNotas = await resultadoNotas;
+            guardadoAlgo = guardadoAlgo || okNotas === true;
+        } else {
+            guardadoAlgo = guardadoAlgo || resultadoNotas === true;
+        }
+
+        if (guardadoAlgo) {
+            mostrarMensaje("✓ Cambios guardados correctamente.");
+        }
+    } catch (error) {
+        console.error("Error en el guardado manual general:", error);
+        mostrarMensaje("✕ Error al guardar los cambios: " + (error.message || error), true);
+    } finally {
+        guardadoManualEnCurso = false;
+        if (boton) {
+            boton.disabled = false;
+            boton.classList.remove("guardando");
+        }
+    }
+}
+
 
 function cambiarGuardadoAutomatico(activado) {
     guardadoAutomatico = !!activado;
