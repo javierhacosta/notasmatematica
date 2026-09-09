@@ -2137,6 +2137,41 @@ td,
 
 
 /* =====================================================
+   ESTADO DE GUARDADO PENDIENTE
+   Solo se muestra cuando el guardado automático está desactivado.
+===================================================== */
+.estado-guardado-pendiente {
+    display: none;
+    margin-left: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #c62828;
+    white-space: nowrap;
+}
+.estado-guardado-pendiente.visible {
+    display: inline-block;
+}
+@media (max-width: 600px) {
+    .estado-guardado-pendiente {
+        display: none;
+        width: 100%;
+        margin: 3px 0 0;
+        text-align: center;
+        font-size: 12px;
+    }
+    .estado-guardado-pendiente.visible {
+        display: block;
+    }
+}
+
+/* Solo dos botones principales de guardado manual:
+   Asistencia y Actividades. */
+#botonGuardarAsistenciaTabla,
+#contenedorActividades .boton-guardar-tabla {
+    display: none !important;
+}
+
+/* =====================================================
    PROGRESO DE GUARDADO
 ===================================================== */
 
@@ -2671,6 +2706,10 @@ Fechas guardadas
 </span>
 
 </button>
+
+<span id="estadoGuardadoAsistencia" class="estado-guardado-pendiente">
+    ⚠️ GUARDADO PENDIENTE
+</span>
 
 </div>
 
@@ -3556,6 +3595,42 @@ window.supabase.createClient(
 let guardadoAutomatico = localStorage.getItem("panel_guardado_automatico") !== "false";
 let guardadoManualEnCurso = false;
 
+let cambiosPendientesAsistencia = false;
+let cambiosPendientesActividades = false;
+
+function actualizarEstadosGuardado() {
+    const asistencia = document.getElementById("estadoGuardadoAsistencia");
+    const actividades = document.getElementById("estadoGuardadoActividades");
+
+    [asistencia, actividades].forEach(el => {
+        if (el) el.classList.remove("visible");
+    });
+
+    if (guardadoAutomatico) return;
+
+    if (asistencia && cambiosPendientesAsistencia) {
+        asistencia.textContent = "⚠️ GUARDADO PENDIENTE";
+        asistencia.classList.add("visible");
+    }
+
+    if (actividades && cambiosPendientesActividades) {
+        actividades.textContent = "⚠️ GUARDADO PENDIENTE";
+        actividades.classList.add("visible");
+    }
+}
+
+function marcarAsistenciaPendiente() {
+    if (guardadoAutomatico) return;
+    cambiosPendientesAsistencia = true;
+    actualizarEstadosGuardado();
+}
+
+function marcarActividadesPendientes() {
+    if (guardadoAutomatico) return;
+    cambiosPendientesActividades = true;
+    actualizarEstadosGuardado();
+}
+
 function actualizarInterfazGuardado() {
     const checkbox = document.getElementById("checkboxGuardadoAutomatico");
     if (checkbox) checkbox.checked = guardadoAutomatico;
@@ -3565,6 +3640,8 @@ function actualizarInterfazGuardado() {
     ).forEach(boton => {
         boton.classList.toggle("oculto", guardadoAutomatico);
     });
+
+    actualizarEstadosGuardado();
 }
 
 async function guardarTodoManual() {
@@ -3618,6 +3695,12 @@ async function guardarTodoManual() {
 function cambiarGuardadoAutomatico(activado) {
     guardadoAutomatico = !!activado;
     localStorage.setItem("panel_guardado_automatico", String(guardadoAutomatico));
+
+    if (guardadoAutomatico) {
+        cambiosPendientesAsistencia = false;
+        cambiosPendientesActividades = false;
+    }
+
     actualizarInterfazGuardado();
     mostrarMensaje(
         guardadoAutomatico
@@ -5326,7 +5409,10 @@ const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
 
-    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
+    if (!guardadoAutomatico && !guardadoManualEnCurso) {
+        marcarAsistenciaPendiente();
+        return;
+    }
     if (!control || !asistenciaDesbloqueada) return;
 
     if (esDiaSinClasesAsistencia()) {
@@ -5422,7 +5508,10 @@ async function guardarAsistenciaIndividual(control) {
 
 async function guardarObservacionAsistenciaIndividual(input) {
 
-    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
+    if (!guardadoAutomatico && !guardadoManualEnCurso) {
+        marcarAsistenciaPendiente();
+        return;
+    }
     if (!input || !asistenciaDesbloqueada) return;
 
     const estudianteId = Number(input.dataset.estudiante);
@@ -5597,6 +5686,9 @@ async function guardarAsistencia() {
 
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
+
+        cambiosPendientesAsistencia = false;
+        actualizarEstadosGuardado();
 
         return true;
 
@@ -8360,7 +8452,10 @@ function obtenerFirmaActividad(input) {
 }
 
 function programarGuardadoCambioActividad(input) {
-    if (!guardadoAutomatico) return;
+    if (!guardadoAutomatico) {
+        marcarActividadesPendientes();
+        return;
+    }
     if (!input) return;
 
     const clave = obtenerClaveActividadInput(input);
@@ -11151,6 +11246,10 @@ async function continuarEscaneoAsistenciaQR() {
 
         escaneoAsistenciaQRRealizado = true;
 
+        if (!guardadoAutomatico && !guardadoManualEnCurso) {
+            marcarAsistenciaPendiente();
+        }
+
         mostrarMensaje(
             guardadoAutomatico || guardadoManualEnCurso
                 ? "✓ Asistencia guardada: " + estudiante.nombre
@@ -11581,6 +11680,10 @@ async function guardarCalificacionQR() {
     "💾 Guardando...";
 
     try {
+
+        if (!guardadoAutomatico && !guardadoManualEnCurso) {
+            marcarActividadesPendientes();
+        }
 
         if (guardadoAutomatico || guardadoManualEnCurso) {
             const {
