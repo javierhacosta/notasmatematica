@@ -12620,44 +12620,36 @@ comprobarSesion();
 
 <script>
 (function(){
-  function actualizarVisibilidadBotonSincronizar(){
-    const btn = document.getElementById('botonSincronizarAhora');
+  function obtenerBoton(){
+    return document.querySelector('button.boton-offline-secundario') &&
+      Array.from(document.querySelectorAll('button.boton-offline-secundario')).find(b =>
+        (b.textContent||'').toLowerCase().includes('sincronizar ahora'));
+  }
+  async function actualizar(){
+    const btn=obtenerBoton();
     if(!btn) return;
-    const mostrar = n => { btn.style.display = Number(n) > 0 ? 'inline-flex' : 'none'; };
-    try {
-      if (window.__panelOffline && typeof window.__panelOffline.getPendingCount === 'function') {
-        window.__panelOffline.getPendingCount().then(mostrar).catch(()=>mostrar(0));
-        return;
+    let n=0;
+    try{
+      if(window.__panelOffline && typeof window.__panelOffline.getPendingCount==='function'){
+        n=Number(await window.__panelOffline.getPendingCount())||0;
       }
-    } catch(e) {}
-    try {
-      const el = document.getElementById('contadorPendientes');
-      mostrar(el ? parseInt(el.textContent || '0',10) || 0 : 0);
-    } catch(e) { mostrar(0); }
+    }catch(e){n=0;}
+    btn.style.display=n>0?'inline-flex':'none';
   }
-  window.actualizarVisibilidadBotonSincronizar = actualizarVisibilidadBotonSincronizar;
-  document.addEventListener('DOMContentLoaded', actualizarVisibilidadBotonSincronizar);
-})();
-</script>
-
-
-<script>
-(function(){
-  function envolver(nombre){
-    const original = window[nombre];
-    if(typeof original !== 'function' || original.__syncWrapped) return;
-    function wrapped(){
-      const r = original.apply(this, arguments);
-      try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){}
-      return r;
+  window.actualizarVisibilidadBotonSincronizar=actualizar;
+  function iniciar(){
+    actualizar();
+    if(window.MutationObserver){
+      new MutationObserver(actualizar).observe(document.body,{childList:true,subtree:true,characterData:true});
     }
-    wrapped.__syncWrapped = true;
-    window[nombre] = wrapped;
+    setInterval(actualizar,500);
   }
-  ['actualizarEstadoOffline','actualizarContadorPendientes','actualizarInterfazOffline','actualizarBarraOffline'].forEach(envolver);
-  setInterval(function(){ try { window.actualizarVisibilidadBotonSincronizar(); } catch(e){} }, 300);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar); else iniciar();
+  window.addEventListener('online',actualizar);
+  window.addEventListener('offline',actualizar);
 })();
 </script>
+
 
 </body>
 
