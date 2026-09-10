@@ -8097,6 +8097,21 @@ function mostrarVisitasInforme(estudianteId) {
     );
 }
 
+function actualizarPromediosInformeRapido(ids) {
+    if (!informeGeneralVisible) return;
+    const listaIds = ids && ids.size ? [...ids].map(Number) : estudiantes.filter(e => e.curso === cursoSeleccionado).map(e => Number(e.id));
+    listaIds.forEach(id => {
+        const estudiante = estudiantes.find(e => Number(e.id) === id);
+        if (!estudiante) return;
+        const nota3 = estudiante.nota_3t;
+        const notaFinal = estudiante.final;
+        const celda3 = document.querySelector(`.informe-nota3t[data-estudiante-id="${id}"]`);
+        const celdaFinal = document.querySelector(`.informe-nota-final[data-estudiante-id="${id}"]`);
+        if (celda3) celda3.textContent = mostrarNota(nota3);
+        if (celdaFinal) celdaFinal.textContent = mostrarNota(notaFinal);
+    });
+}
+
 async function cargarInformeGeneral() {
 
     const contenedor = document.getElementById("contenidoInformeGeneral");
@@ -8216,7 +8231,7 @@ async function cargarInformeGeneral() {
         const notaFinal = (nota1Informe !== null && nota2Informe !== null && nota3 !== "")
             ? Math.round((nota1Informe + nota2Informe + Number(nota3)) / 3)
             : "";
-        cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td>`;
+        cuerpo += `<tr data-estudiante-id="${estudiante.id}"><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td>`;
         fechasAsistencia.forEach(f => {
             const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
             let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="licencia"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
@@ -8230,7 +8245,7 @@ async function cargarInformeGeneral() {
         agregarNotas(saber); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSABER))}</td>`;
         agregarNotas(hacer); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioHACER))}</td>`;
         agregarNotas(auto);
-        cuerpo += `<td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_1t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_2t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(nota3))}</td><td class="nota-final-general">${escapeHTML(String(notaFinal))}</td><td class="visitas-general" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" onclick="mostrarVisitasInforme(${estudiante.id})" title="Ver días y horas de visita">${totalVisitasPorEstudiante[estudiante.id]||0}</td></tr>`;
+        cuerpo += `<td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_1t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_2t ?? ""))}</td><td class="nota-trimestre-general informe-nota3t" data-estudiante-id="${estudiante.id}">${escapeHTML(String(nota3))}</td><td class="nota-final-general informe-nota-final" data-estudiante-id="${estudiante.id}">${escapeHTML(String(notaFinal))}</td><td class="visitas-general" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" onclick="mostrarVisitasInforme(${estudiante.id})" title="Ver días y horas de visita">${totalVisitasPorEstudiante[estudiante.id]||0}</td></tr>`;
     });
 
     contenedor.innerHTML = `<div class="tabla-informe-general-contenedor"><table class="tabla-informe-general"><thead>${encabezado1}</thead><tbody>${cuerpo}</tbody></table></div>`;
@@ -9193,6 +9208,8 @@ async function guardarNotas() {
          */
         if (estudiantesAfectados.size > 0) {
             recalcularNotasLocalesEstudiantes(estudiantesAfectados);
+            // Actualizar el Informe General inmediatamente, sin esperar otra consulta a Supabase.
+            actualizarPromediosInformeRapido(estudiantesAfectados);
         }
 
         actualizarProgresoGuardado("notas", 90, true);
