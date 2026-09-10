@@ -1145,6 +1145,166 @@ td:first-child {
     cursor: pointer;
 }
 
+/* =====================================================
+   CALENDARIO DE FECHAS GUARDADAS DE ASISTENCIA
+   Sustituye visualmente el listado sin modificar su lógica.
+===================================================== */
+
+.lista-fechas-asistencia {
+    display: none !important;
+}
+
+.calendario-fechas-asistencia {
+    width: 250px;
+    background: white;
+    border-radius: 9px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+
+.calendario-cabecera-asistencia {
+    display: grid;
+    grid-template-columns: 32px 1fr 32px;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 7px;
+    text-align: center;
+}
+
+.calendario-cabecera-asistencia strong {
+    font-size: 14px;
+    color: #37474f;
+    text-transform: capitalize;
+}
+
+.calendario-nav-asistencia {
+    width: 32px;
+    height: 30px;
+    border: none;
+    border-radius: 6px;
+    background: #eef2f5;
+    color: #37474f;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.calendario-nav-asistencia:hover {
+    background: #dce4e9;
+}
+
+.calendario-semana-asistencia,
+.calendario-dias-asistencia {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.calendario-semana-asistencia {
+    margin-bottom: 3px;
+}
+
+.calendario-semana-asistencia span {
+    text-align: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: #777;
+    padding: 2px 0;
+}
+
+.calendario-dia-asistencia {
+    position: relative;
+    min-height: 29px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: #f7f8f9;
+    color: #333;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.calendario-dia-asistencia:hover {
+    background: #e8eef3;
+}
+
+.calendario-dia-asistencia.vacio {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.calendario-dia-asistencia.hoy {
+    border-color: #1565c0;
+    font-weight: bold;
+}
+
+.calendario-dia-asistencia.guardado {
+    background: #16803c;
+    color: white;
+    font-weight: bold;
+}
+
+.calendario-dia-asistencia.guardado:hover {
+    background: #11652f;
+}
+
+.calendario-dia-asistencia.seleccionado {
+    box-shadow: inset 0 0 0 2px #ef6c00;
+}
+
+.calendario-dia-asistencia .marca-guardado {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    transform: translateX(-50%);
+}
+
+.calendario-dia-asistencia.guardado .marca-guardado {
+    background: white;
+}
+
+.leyenda-calendario-asistencia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 7px;
+    color: #666;
+    font-size: 10px;
+}
+
+.punto-calendario-asistencia {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #16803c;
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    .calendario-fechas-asistencia {
+        width: 100%;
+        max-width: none;
+    }
+
+    .calendario-dia-asistencia {
+        min-height: 34px;
+        font-size: 13px;
+    }
+
+    .calendario-semana-asistencia span {
+        font-size: 11px;
+    }
+
+    .leyenda-calendario-asistencia {
+        font-size: 11px;
+    }
+}
+
 .fecha-asistencia {
     width: 145px;
     padding: 7px 8px;
@@ -2601,12 +2761,27 @@ Selecciona un curso
     class="lista-fechas-asistencia"
     onchange="seleccionarFechaAsistencia()"
     title="Fechas con asistencia del curso">
-
-<option value="">
-Fechas guardadas
-</option>
-
+    <option value="">Fechas guardadas</option>
 </select>
+
+<div id="calendarioFechasAsistencia" class="calendario-fechas-asistencia"
+     aria-label="Calendario de fechas de asistencia">
+    <div class="calendario-cabecera-asistencia">
+        <button type="button" class="calendario-nav-asistencia"
+                onclick="cambiarMesCalendarioAsistencia(-1)" title="Mes anterior">‹</button>
+        <strong id="mesCalendarioAsistencia">Calendario</strong>
+        <button type="button" class="calendario-nav-asistencia"
+                onclick="cambiarMesCalendarioAsistencia(1)" title="Mes siguiente">›</button>
+    </div>
+    <div class="calendario-semana-asistencia">
+        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+    </div>
+    <div id="diasCalendarioAsistencia" class="calendario-dias-asistencia"></div>
+    <div class="leyenda-calendario-asistencia">
+        <span class="punto-calendario-asistencia"></span>
+        <span>Día con asistencia guardada</span>
+    </div>
+</div>
 
 
 <input
@@ -4554,6 +4729,7 @@ async function guardarTipoDiaAsistencia() {
         const listaFechas = document.getElementById("listaFechasAsistencia");
         if (listaFechas) listaFechas.value = fecha;
 
+        renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
         if (opciones) {
@@ -4593,15 +4769,117 @@ async function guardarTipoDiaAsistencia() {
    FECHAS DE ASISTENCIA
 ===================================================== */
 
+let fechasAsistenciaGuardadas = [];
+let mesCalendarioAsistencia = new Date();
+mesCalendarioAsistencia.setDate(1);
+
+function fechaClaveCalendarioAsistencia(ano, mes, dia) {
+    return String(ano) + "-" +
+           String(mes + 1).padStart(2, "0") + "-" +
+           String(dia).padStart(2, "0");
+}
+
+function fechaLocalDesdeClaveAsistencia(fecha) {
+    const partes = String(fecha).split("-");
+    if (partes.length !== 3) return null;
+    const d = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function renderizarCalendarioFechasAsistencia() {
+    const contenedor = document.getElementById("diasCalendarioAsistencia");
+    const titulo = document.getElementById("mesCalendarioAsistencia");
+    if (!contenedor || !titulo) return;
+
+    const ano = mesCalendarioAsistencia.getFullYear();
+    const mes = mesCalendarioAsistencia.getMonth();
+
+    const nombresMeses = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ];
+
+    titulo.textContent = nombresMeses[mes] + " " + ano;
+    contenedor.innerHTML = "";
+
+    // JavaScript: domingo=0. Convertimos para que lunes sea la primera columna.
+    const primerDia = new Date(ano, mes, 1).getDay();
+    const desplazamiento = (primerDia + 6) % 7;
+    const diasMes = new Date(ano, mes + 1, 0).getDate();
+
+    const hoy = new Date();
+    const hoyClave = fechaClaveCalendarioAsistencia(
+        hoy.getFullYear(), hoy.getMonth(), hoy.getDate()
+    );
+
+    const fechasGuardadas = new Set(
+        fechasAsistenciaGuardadas.map(f => String(f))
+    );
+
+    for (let i = 0; i < desplazamiento; i++) {
+        const vacio = document.createElement("span");
+        vacio.className = "calendario-dia-asistencia vacio";
+        contenedor.appendChild(vacio);
+    }
+
+    for (let dia = 1; dia <= diasMes; dia++) {
+        const clave = fechaClaveCalendarioAsistencia(ano, mes, dia);
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "calendario-dia-asistencia";
+        boton.textContent = dia;
+        boton.title = fechasGuardadas.has(clave)
+            ? "Asistencia guardada: " + formatearFechaGuardadaAsistencia(clave)
+            : "Seleccionar " + clave;
+
+        if (fechasGuardadas.has(clave)) {
+            boton.classList.add("guardado");
+            const marca = document.createElement("span");
+            marca.className = "marca-guardado";
+            boton.appendChild(marca);
+        }
+
+        if (clave === hoyClave) {
+            boton.classList.add("hoy");
+        }
+
+        const fechaSeleccionada =
+            document.getElementById("fechaAsistencia")?.value || "";
+        if (clave === fechaSeleccionada) {
+            boton.classList.add("seleccionado");
+        }
+
+        boton.onclick = function() {
+            seleccionarFechaAsistencia(clave);
+        };
+
+        contenedor.appendChild(boton);
+    }
+}
+
+function cambiarMesCalendarioAsistencia(direccion) {
+    mesCalendarioAsistencia.setMonth(
+        mesCalendarioAsistencia.getMonth() + Number(direccion)
+    );
+    renderizarCalendarioFechasAsistencia();
+}
+
 async function cargarFechasAsistencia() {
 
     const select = document.getElementById("listaFechasAsistencia");
-
     if (!select) return;
 
     select.innerHTML = `<option value="">Fechas guardadas</option>`;
+    fechasAsistenciaGuardadas = [];
 
-    if (!cursoSeleccionado) return;
+    if (!cursoSeleccionado) {
+        renderizarCalendarioFechasAsistencia();
+        return;
+    }
 
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
@@ -4609,7 +4887,10 @@ async function cargarFechasAsistencia() {
 
     const ids = estudiantesCurso.map(e => e.id);
 
-    if (ids.length === 0) return;
+    if (ids.length === 0) {
+        renderizarCalendarioFechasAsistencia();
+        return;
+    }
 
     const { data: dataAsistencia, error: errorAsistencia } = await supabaseClient
         .from("asistencia")
@@ -4620,6 +4901,7 @@ async function cargarFechasAsistencia() {
     if (errorAsistencia) {
         console.error(errorAsistencia);
         alert("Error al cargar las fechas de asistencia: " + errorAsistencia.message);
+        renderizarCalendarioFechasAsistencia();
         return;
     }
 
@@ -4632,6 +4914,7 @@ async function cargarFechasAsistencia() {
     if (errorTipos) {
         console.error(errorTipos);
         alert("Error al cargar los tipos de día: " + errorTipos.message);
+        renderizarCalendarioFechasAsistencia();
         return;
     }
 
@@ -4640,16 +4923,34 @@ async function cargarFechasAsistencia() {
         ...(dataTipos || []).map(r => r.fecha)
     ].filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a)));
 
+    fechasAsistenciaGuardadas = fechas;
+
     fechas.forEach(fecha => {
         const opcion = document.createElement("option");
         opcion.value = fecha;
         opcion.textContent = formatearFechaGuardadaAsistencia(fecha);
         select.appendChild(opcion);
     });
+
+    // Mostrar automáticamente el mes de la fecha actualmente seleccionada,
+    // si existe; de lo contrario, mantener el mes actual.
+    const fechaActual = document.getElementById("fechaAsistencia")?.value || "";
+    const fechaParaCalendario = fechaActual && fechas.includes(fechaActual)
+        ? fechaActual
+        : fechas[0];
+
+    if (fechaParaCalendario) {
+        const d = fechaLocalDesdeClaveAsistencia(fechaParaCalendario);
+        if (d) {
+            mesCalendarioAsistencia = new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+    }
+
+    renderizarCalendarioFechasAsistencia();
 }
 
 
-function seleccionarFechaAsistencia() {
+function seleccionarFechaAsistencia(fechaSeleccionada = "") {
 
     const select =
     document.getElementById(
@@ -4661,13 +4962,28 @@ function seleccionarFechaAsistencia() {
         "fechaAsistencia"
     );
 
+    if (!select || !fecha) return;
+
+    if (fechaSeleccionada) {
+        select.value = fechaSeleccionada;
+    }
+
     if (!select.value) {
         return;
     }
 
-    fecha.value =
-    select.value;
+    fecha.value = select.value;
 
+    const fechaCalendario = fechaLocalDesdeClaveAsistencia(select.value);
+    if (fechaCalendario) {
+        mesCalendarioAsistencia = new Date(
+            fechaCalendario.getFullYear(),
+            fechaCalendario.getMonth(),
+            1
+        );
+    }
+
+    renderizarCalendarioFechasAsistencia();
     cargarAsistencia();
 
 }
@@ -4745,6 +5061,12 @@ document.getElementById(
 ).addEventListener(
     "change",
     async function() {
+        const valorFecha = this.value || "";
+        const d = fechaLocalDesdeClaveAsistencia(valorFecha);
+        if (d) {
+            mesCalendarioAsistencia = new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+        renderizarCalendarioFechasAsistencia();
 
         if (!cursoSeleccionado) {
             return;
@@ -5777,6 +6099,7 @@ async function guardarAsistencia() {
             listaFechas.value = fecha;
         }
 
+        renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
         actualizarProgresoGuardado("asistencia", 100, false);
