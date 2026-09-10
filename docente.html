@@ -9222,6 +9222,15 @@ async function guardarNotas() {
          * Todo sigue disponible en memoria.
          */
         aplicarBusqueda();
+
+        // El Informe General se actualiza nuevamente después de aplicar la búsqueda,
+        // para que el cambio de notas se refleje de inmediato también allí.
+        if (estudiantesAfectados.size > 0) {
+            requestAnimationFrame(() => {
+                actualizarPromediosInformeRapido(estudiantesAfectados);
+            });
+        }
+
         actualizarProgresoGuardado("notas", 100, false);
 
         mostrarMensaje(
