@@ -1562,15 +1562,6 @@ td:first-child {
     background: rgba(255,255,255,.30);
 }
 
-.titulo-asistencia .boton-asistencia {
-    margin-left: auto;
-    flex-shrink: 0;
-}
-
-.contenido-controles-asistencia.oculto {
-    display: none;
-}
-
 
 /* CONTENIDO */
 
@@ -1861,8 +1852,8 @@ td:first-child {
 @media (max-width: 600px) {
 
     .titulo-asistencia {
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         gap: 10px;
         padding: 10px;
     }
@@ -1870,12 +1861,8 @@ td:first-child {
     .titulo-asistencia > span {
         display: flex;
         align-items: center;
-        width: auto;
-        flex: 1;
-    }
-
-    .titulo-asistencia .boton-asistencia {
-        margin-left: auto;
+        justify-content: space-between;
+        width: 100%;
     }
 
     .acciones-asistencia {
@@ -2732,18 +2719,6 @@ Selecciona un curso
 🗓️ Asistencia
 </span>
 
-<button
-    type="button"
-    id="botonAsistencia"
-    class="boton-asistencia"
-    onclick="mostrarOcultarAsistencia()"
-    title="Mostrar asistencia">
-
-+
-
-</button>
-
-<div class="contenido-controles-asistencia oculto">
 
 <div class="acciones-asistencia">
 
@@ -2926,6 +2901,17 @@ Selecciona un curso
     <span>📄 0</span>
     <span>✕ 0</span>
 </div>
+
+<button
+    type="button"
+    id="botonAsistencia"
+    class="boton-asistencia"
+    onclick="mostrarOcultarAsistencia()"
+    title="Mostrar asistencia">
+
++
+
+</button>
 
 </div>
 
@@ -4548,19 +4534,11 @@ function mostrarOcultarAsistencia() {
         "contenidoAsistencia"
     );
 
-    const controles =
-    document.querySelector(
-        "#panelAsistencia .contenido-controles-asistencia"
-    );
-
     const boton =
     document.getElementById(
         "botonAsistencia"
     );
 
-    if (!contenido || !controles || !boton) {
-        return;
-    }
 
     if (
         contenido.classList.contains(
@@ -4572,25 +4550,17 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
-        controles.classList.remove(
-            "oculto"
-        );
-
         boton.textContent =
         "−";
 
         boton.title =
-        "Minimizar asistencia";
+        "Ocultar asistencia";
 
     }
 
     else {
 
         contenido.classList.add(
-            "oculto"
-        );
-
-        controles.classList.add(
             "oculto"
         );
 
@@ -5137,7 +5107,7 @@ async function cargarAsistencia() {
 
     const { data, error } = await supabaseClient
         .from("asistencia")
-        .select("id,estudiante_id,fecha,estado,observacion")
+        .select("id,estudiante_id,fecha,estado,hora,observacion")
         .eq("fecha", fecha)
         .in("estudiante_id", ids);
 
@@ -5151,6 +5121,7 @@ async function cargarAsistencia() {
     (data || []).forEach(registro => {
         registrosAsistencia[registro.estudiante_id] = {
             estado: registro.estado,
+            hora: registro.hora || "",
             observacion: registro.observacion || ""
         };
     });
@@ -6085,10 +6056,15 @@ async function guardarAsistencia() {
                 return;
             }
 
+            const registroLocal = registrosAsistencia[estudiante.id] || {};
+
             registros.push({
                 estudiante_id: estudiante.id,
                 fecha: fecha,
                 estado: seleccionado ? seleccionado.value : null,
+                hora: escaneoAsistenciaQRRealizado
+                    ? (registroLocal.hora || null)
+                    : null,
                 observacion: observacion ? observacion.value.trim() : null
             });
         });
@@ -6103,7 +6079,7 @@ async function guardarAsistencia() {
         mostrarMensaje("Guardando asistencia... 20%");
 
         const { data: asistenciaAnterior, error: errorAsistenciaAnterior } = await supabaseClient
-            .from("asistencia").select("estudiante_id,fecha,estado,observacion")
+            .from("asistencia").select("estudiante_id,fecha,estado,hora,observacion")
             .eq("fecha", fecha).in("estudiante_id", registros.map(r => r.estudiante_id));
         if (errorAsistenciaAnterior) throw errorAsistenciaAnterior;
         const mapaAsistenciaAnterior = new Map((asistenciaAnterior || []).map(r => [Number(r.estudiante_id), r]));
@@ -6114,7 +6090,7 @@ async function guardarAsistencia() {
         registros.forEach(registro => {
             const estudiante = estudiantesCurso.find(e => Number(e.id) === Number(registro.estudiante_id));
             const anterior = mapaAsistenciaAnterior.get(Number(registro.estudiante_id)) || null;
-            const nuevo = { estudiante_id:registro.estudiante_id, fecha, estado:registro.estado, observacion:registro.observacion };
+            const nuevo = { estudiante_id:registro.estudiante_id, fecha, estado:registro.estado, hora:registro.hora || null, observacion:registro.observacion };
             if (anterior && String(anterior.estado ?? "") === String(nuevo.estado ?? "") && String(anterior.observacion ?? "") === String(nuevo.observacion ?? "")) return;
             guardarHistorialInterno({ table_name:"asistencia", operation:anterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:registro.estudiante_id, estudiante_nombre:estudiante?.nombre || estudiante?.nombre_completo || null, actividad_id:null, actividad_nombre:null, categoria:null, fecha, old_data:anterior, new_data:nuevo, changed_at:new Date().toISOString() });
         });
@@ -11523,10 +11499,18 @@ async function continuarEscaneoAsistenciaQR() {
             ? observacionQR.value.trim()
             : ((registrosAsistencia[estudiante.id] || {}).observacion || "");
 
+        const horaQR = new Date().toLocaleTimeString("es-BO", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+        });
+
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
             estado: estadoQRAsistencia,
+            hora: horaQR,
             observacion: observacion || null
         };
 
@@ -11545,6 +11529,7 @@ async function continuarEscaneoAsistenciaQR() {
         /* Mantener la información local sincronizada */
         registrosAsistencia[estudiante.id] = {
             estado: estadoQRAsistencia,
+            hora: registro.hora || "",
             observacion: registro.observacion || ""
         };
 
