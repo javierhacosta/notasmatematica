@@ -3578,6 +3578,102 @@ let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
 let actividadesPendientes = new Set();
 
+//
+// Índices de rendimiento.
+// Se reconstruyen únicamente cuando cambian estudiantes/actividades o se vuelve
+// a dibujar la tabla de actividades. Evitan cientos de filter/querySelector()
+// repetidos durante los cálculos locales.
+//
+let actividadesPorCategoriaCache = {
+    SER: [],
+    SABER: [],
+    HACER: [],
+    AUTOEVALUACION: []
+};
+let estudiantesPorCursoCache = new Map();
+let inputsNotasPorEstudianteCache = new Map();
+let inputsNotasPorEstudianteCategoriaCache = new Map();
+let categoriaPorActividadCache = new Map();
+
+function reconstruirIndiceEstudiantes() {
+    estudiantesPorCursoCache = new Map();
+
+    for (const estudiante of estudiantes) {
+        if (!estudiante || !estudiante.curso) continue;
+
+        const curso = String(estudiante.curso);
+        if (!estudiantesPorCursoCache.has(curso)) {
+            estudiantesPorCursoCache.set(curso, []);
+        }
+        estudiantesPorCursoCache.get(curso).push(estudiante);
+    }
+}
+
+function reconstruirIndiceActividades() {
+    actividadesPorCategoriaCache = {
+        SER: [],
+        SABER: [],
+        HACER: [],
+        AUTOEVALUACION: []
+    };
+    categoriaPorActividadCache = new Map();
+
+    for (const actividad of actividades) {
+        if (!actividad) continue;
+
+        const categoria = actividad.categoria;
+        if (actividadesPorCategoriaCache[categoria]) {
+            actividadesPorCategoriaCache[categoria].push(actividad);
+        }
+        categoriaPorActividadCache.set(
+            String(actividad.id),
+            categoria
+        );
+    }
+}
+
+function reconstruirIndiceInputsNotas() {
+    inputsNotasPorEstudianteCache = new Map();
+    inputsNotasPorEstudianteCategoriaCache = new Map();
+
+    document.querySelectorAll(".nota-input").forEach(input => {
+        const estudianteId = String(input.dataset.estudiante || "");
+        const actividadId = String(input.dataset.actividad || "");
+        if (!estudianteId || !actividadId) return;
+
+        if (!inputsNotasPorEstudianteCache.has(estudianteId)) {
+            inputsNotasPorEstudianteCache.set(estudianteId, []);
+        }
+        inputsNotasPorEstudianteCache.get(estudianteId).push(input);
+
+        const categoria = categoriaPorActividadCache.get(actividadId);
+        if (!categoria) return;
+
+        if (!inputsNotasPorEstudianteCategoriaCache.has(estudianteId)) {
+            inputsNotasPorEstudianteCategoriaCache.set(estudianteId, {
+                SER: [],
+                SABER: [],
+                HACER: [],
+                AUTOEVALUACION: []
+            });
+        }
+
+        const porCategoria =
+            inputsNotasPorEstudianteCategoriaCache.get(estudianteId);
+
+        if (porCategoria[categoria]) {
+            porCategoria[categoria].push(input);
+        }
+    });
+}
+
+function obtenerEstudiantesCursoActual() {
+    if (!cursoSeleccionado) return [];
+
+    return estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [];
+}
+
+
 function actualizarEstadosGuardado() {
     const asistencia = document.getElementById("estadoGuardadoAsistencia");
     const actividades = document.getElementById("estadoGuardadoActividades");
@@ -3721,12 +3817,6 @@ async function guardarTodoManual() {
 }
 
 
-function cambiarGuardadoAutomatico() {
-    // Se mantiene siempre activo y ya no existe un interruptor visible.
-    guardadoAutomatico = true;
-    localStorage.setItem("panel_guardado_automatico", "true");
-    actualizarInterfazGuardado();
-}
 
 /* =====================================================
    VARIABLES
@@ -3931,6 +4021,8 @@ async function cargarEstudiantes() {
 
     estudiantes =
     data || [];
+
+    reconstruirIndiceEstudiantes();
 
     cargarCursos();
 
@@ -4931,11 +5023,7 @@ function mostrarTablaAsistencia() {
     }
 
     const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
+    obtenerEstudiantesCursoActual();
 
 
     estudiantesCurso.forEach(
@@ -5866,11 +5954,7 @@ async function cargarAsistenciaActividades() {
     }
 
     const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
+    obtenerEstudiantesCursoActual();
 
     const idsEstudiantes =
     estudiantesCurso.map(
@@ -5976,6 +6060,8 @@ async function cargarActividades() {
 
     actividades =
     data || [];
+
+    reconstruirIndiceActividades();
 
 
     await cargarCalificaciones();
@@ -6104,11 +6190,11 @@ async function cargarCalificaciones() {
 async function recalcularNotasLocalesCurso() {
     if (!cursoSeleccionado || !actividades.length) return;
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const estudiantesCurso = obtenerEstudiantesCursoActual();
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
     for (const estudiante of estudiantesCurso) {
         actualizarMatematicaEstudianteIndividualConActividades(
@@ -6128,12 +6214,12 @@ async function recalcularNotasLocalesCurso() {
 function recalcularNotasLocalesEstudiantes(ids) {
     if (!cursoSeleccionado || !actividades.length || !ids || !ids.size) return;
 
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
-    for (const estudiante of estudiantes) {
+    for (const estudiante of obtenerEstudiantesCursoActual()) {
         if (ids.has(Number(estudiante.id))) {
             actualizarMatematicaEstudianteIndividualConActividades(
                 estudiante,
@@ -6169,11 +6255,10 @@ function actualizarMatematicaEstudianteIndividualConActividades(
        no mostrar 0. La nota 3T se calcula en el HTML al abrir el curso
        y sólo se muestra cuando hay al menos una nota ingresada.
     */
-    const hayNotas3T = Array.from(
-        document.querySelectorAll(
-            `.nota-input[data-estudiante="${estudianteId}"]`
-        )
-    ).some(input => input.value !== "");
+    const hayNotas3T =
+        (
+            inputsNotasPorEstudianteCache.get(String(estudianteId)) || []
+        ).some(input => input.value !== "");
 
     const nota3T = hayNotas3T
         ? redondear(puntosSER + puntosSABER + puntosHACER + puntosAUTO)
@@ -6245,11 +6330,7 @@ function mostrarActividades() {
     categoria => {
 
         const lista =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            categoria.codigo
-        );
+        actividadesPorCategoriaCache[categoria.codigo] || [];
 
 
         if (
@@ -6350,6 +6431,9 @@ function mostrarActividades() {
         `;
 
     }
+
+    // Una sola pasada por el DOM para acelerar los cálculos de 3T.
+    reconstruirIndiceInputsNotas();
 
 }
 
@@ -7684,17 +7768,19 @@ async function eliminarActividad(
 function recalcularNotasLocalesCursoSinRender() {
     if (!cursoSeleccionado || !actividades.length) return;
 
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
-    for (const estudiante of estudiantes) {
-        if (estudiante.curso === cursoSeleccionado) {
-            actualizarMatematicaEstudianteIndividualConActividades(
-                estudiante, actividadesSER, actividadesSABER, actividadesHACER, actividadesAUTO
-            );
-        }
+    for (const estudiante of obtenerEstudiantesCursoActual()) {
+        actualizarMatematicaEstudianteIndividualConActividades(
+            estudiante,
+            actividadesSER,
+            actividadesSABER,
+            actividadesHACER,
+            actividadesAUTO
+        );
     }
 }
 
@@ -9268,82 +9354,68 @@ function calcularPuntosCategoria(
 
     }
 
+    /*
+       Los inputs ya están indexados por estudiante y categoría.
+       Esto evita ejecutar querySelector() una vez por cada actividad
+       en cada recálculo de notas.
+    */
+    const categoria =
+        actividadesLista === actividadesPorCategoriaCache.SER
+            ? "SER"
+            : actividadesLista === actividadesPorCategoriaCache.SABER
+                ? "SABER"
+                : actividadesLista === actividadesPorCategoriaCache.HACER
+                    ? "HACER"
+                    : "AUTOEVALUACION";
 
-    let sumaNotas = 0;
-
-    let sumaMaximos = 0;
-
-
-    actividadesLista.forEach(
-    actividad => {
-
-        const input =
-        document.querySelector(
-
-            `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividad.id}"]`
-
+    const porCategoria =
+        inputsNotasPorEstudianteCategoriaCache.get(
+            String(estudianteId)
         );
 
+    const inputs =
+        porCategoria?.[categoria] || [];
+
+    if (inputs.length === 0) {
+        return 0;
+    }
+
+    let sumaNotas = 0;
+    let sumaMaximos = 0;
+
+    inputs.forEach(input => {
 
         if (
             !input ||
             input.value === ""
         ) {
-
             return;
-
         }
 
-
-        const nota =
-        Number(
-            input.value
-        );
-
-
-        const maximo =
-        Number(
-            input.dataset.maximo
-        );
-
+        const nota = Number(input.value);
+        const maximo = Number(input.dataset.maximo);
 
         if (
             isNaN(nota) ||
             isNaN(maximo) ||
             maximo <= 0
         ) {
-
             return;
-
         }
 
-
-        sumaNotas +=
-        nota;
-
-
-        sumaMaximos +=
-        maximo;
+        sumaNotas += nota;
+        sumaMaximos += maximo;
 
     });
 
-
-    if (
-        sumaMaximos === 0
-    ) {
-
+    if (sumaMaximos === 0) {
         return 0;
-
     }
 
-
     return (
-
         sumaNotas /
         sumaMaximos
-
-    ) *
-    limiteCategoria;
+    ) * limiteCategoria;
 
 }
 
