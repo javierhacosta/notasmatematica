@@ -780,8 +780,6 @@ const SUPABASE_KEY =
 
 
 let alumnoActual = null;
-let nota3Calculada = null;
-let finalCalculado = null;
 
 
 /* =================================================
@@ -956,10 +954,119 @@ async function consultarNota() {
 
 
 /* =================================================
+   CALCULAR NOTA DEL 3ER TRIMESTRE Y ANUAL EN HTML
+================================================= */
+
+/*
+ * La BD solamente identifica al estudiante y entrega 1T y 2T.
+ * El 3T se obtiene de las actividades del 3er trimestre y sus
+ * calificaciones. Se conserva la lógica que ya usa el detalle:
+ * promedio de las notas registradas de cada categoría y suma de
+ * las cuatro categorías (SER + SABER + HACER + AUTOEVALUACIÓN).
+ */
+async function calcularNota3T(alumno) {
+
+    if (!alumno || !alumno.id || !alumno.curso) {
+        return null;
+    }
+
+    try {
+        const respuestaActividades = await fetch(
+            `${SUPABASE_URL}/rest/v1/actividades?` +
+            `curso=eq.${encodeURIComponent(alumno.curso)}` +
+            `&trimestre=eq.3` +
+            `&select=id,categoria,puntaje_maximo` +
+            `&order=orden`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuestaActividades.ok) {
+            throw new Error("No se pudieron cargar las actividades del 3er trimestre");
+        }
+
+        const actividades = await respuestaActividades.json();
+        if (!actividades.length) return null;
+
+        const ids = actividades.map(a => a.id);
+
+        const respuestaNotas = await fetch(
+            `${SUPABASE_URL}/rest/v1/calificaciones?` +
+            `estudiante_id=eq.${alumno.id}` +
+            `&actividad_id=in.(${ids.join(",")})` +
+            `&select=actividad_id,nota`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuestaNotas.ok) {
+            throw new Error("No se pudieron cargar las calificaciones del 3er trimestre");
+        }
+
+        const calificaciones = await respuestaNotas.json();
+        const mapa = {};
+        calificaciones.forEach(c => { mapa[c.actividad_id] = c.nota; });
+
+        const categorias = ["SER", "SABER", "HACER", "AUTOEVALUACION"];
+        let nota3 = 0;
+        let hayNotas = false;
+
+        categorias.forEach(codigo => {
+            const lista = actividades.filter(a => a.categoria === codigo);
+            let suma = 0;
+            let cantidad = 0;
+
+            lista.forEach(actividad => {
+                const nota = mapa[actividad.id];
+                if (nota !== null && nota !== undefined && nota !== "") {
+                    const numero = Number(nota);
+                    if (!isNaN(numero)) {
+                        suma += numero;
+                        cantidad++;
+                    }
+                }
+            });
+
+            if (cantidad > 0) {
+                nota3 += suma / cantidad;
+                hayNotas = true;
+            }
+        });
+
+        return hayNotas ? Math.round(nota3) : null;
+
+    } catch (error) {
+        console.error("No se pudo calcular la nota del 3er trimestre en HTML:", error);
+        return null;
+    }
+}
+
+function calcularNotaAnual(nota1, nota2, nota3) {
+    const notas = [nota1, nota2, nota3]
+        .filter(n => n !== null && n !== undefined && !isNaN(Number(n)))
+        .map(Number);
+
+    if (!notas.length) return null;
+
+    return Math.round(
+        notas.reduce((suma, nota) => suma + nota, 0) / notas.length
+    );
+}
+
+
+/* =================================================
    MOSTRAR RESULTADO
 ================================================= */
 
-function mostrarResultado(alumno) {
+async function mostrarResultado(alumno) {
 
     const nota1 =
         redondearNota(alumno.nota_1t);
@@ -967,9 +1074,12 @@ function mostrarResultado(alumno) {
     const nota2 =
         redondearNota(alumno.nota_2t);
 
-    const nota3 = nota3Calculada;
+    // El 3er trimestre y la nota anual se calculan directamente
+    // en este HTML a partir de las actividades y calificaciones.
+    const nota3 = await calcularNota3T(alumno);
 
-    const final = finalCalculado;
+    const final =
+        calcularNotaAnual(nota1, nota2, nota3);
 
     let claseFinal = "";
 
@@ -1191,8 +1301,6 @@ function mostrarResultado(alumno) {
     `;
 
 
-    nota3Calculada = null;
-    finalCalculado = null;
     mostrarDetalles();
 
 }
@@ -1602,8 +1710,6 @@ async function mostrarDetalles() {
         ];
 
 
-        window._calculo3T = [];
-
         let html = `
 
             <div class="detalle">
@@ -1668,44 +1774,73 @@ async function mostrarDetalles() {
                     : 5;
 
 
-                let sumaPorcentaje = 0;
+                let suma = 0;
+
                 let cantidad = 0;
+
 
                 lista.forEach(
                     actividad => {
-                        const registro = mapa[actividad.id];
-                        const nota = registro ? registro.nota : null;
-                        const maximo = Number(actividad.puntaje_maximo);
-                        const numero = Number(nota);
+
+                        const registro =
+                            mapa[
+                                actividad.id
+                            ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
 
                         if (
                             nota !== null &&
                             nota !== undefined &&
-                            nota !== "" &&
-                            !isNaN(numero) &&
-                            !isNaN(maximo) &&
-                            maximo > 0
+                            nota !== ""
                         ) {
-                            sumaPorcentaje += (numero / maximo) * 100;
-                            cantidad++;
+
+                            const numero =
+                                Number(nota);
+
+
+                            if (
+                                !isNaN(numero)
+                            ) {
+
+                                suma +=
+                                    numero;
+
+                                cantidad++;
+
+                            }
+
                         }
+
                     }
                 );
 
+
                 let promedio = 0;
 
-                if (cantidad > 0) {
-                    promedio = (sumaPorcentaje / cantidad) * (limite / 100);
+
+                if (
+                    cantidad > 0
+                ) {
+
+                    promedio =
+                        suma / cantidad;
+
                 }
+
 
                 const promedioMostrado =
-                    cantidad > 0
-                    ? Math.round(promedio)
-                    : null;
 
-                if (cantidad > 0) {
-                    window._calculo3T.push(promedio);
-                }
+                    cantidad > 0
+
+                    ? Math.round(promedio)
+
+                    : null;
 
 
                 html += `
@@ -1863,7 +1998,8 @@ async function mostrarDetalles() {
         );
 
 
-        const nota3 = nota3Calculada;
+        const nota3 =
+            await calcularNota3T(alumnoActual);
 
 
         html += `
