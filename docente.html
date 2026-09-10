@@ -6303,7 +6303,20 @@ function actualizarMatematicaEstudianteIndividualConActividades(
     const puntosHACER = calcularPuntosCategoria(estudianteId, actividadesHACER, LIMITES.HACER);
     const puntosAUTO = calcularPuntosCategoria(estudianteId, actividadesAUTO, LIMITES.AUTOEVALUACION);
 
-    const nota3T = redondear(puntosSER + puntosSABER + puntosHACER + puntosAUTO);
+    /*
+       Si todavía no existe ninguna calificación del 3er trimestre,
+       no mostrar 0. La nota 3T se calcula en el HTML al abrir el curso
+       y sólo se muestra cuando hay al menos una nota ingresada.
+    */
+    const hayNotas3T = Array.from(
+        document.querySelectorAll(
+            `.nota-input[data-estudiante="${estudianteId}"]`
+        )
+    ).some(input => input.value !== "");
+
+    const nota3T = hayNotas3T
+        ? redondear(puntosSER + puntosSABER + puntosHACER + puntosAUTO)
+        : null;
 
     const nota1T = convertirNumero(estudiante.nota_1t);
     const nota2T = convertirNumero(estudiante.nota_2t);
