@@ -7820,7 +7820,27 @@ async function eliminarActividad(
    TABLA GENERAL
 ===================================================== */
 
+function recalcularNotasLocalesCursoSinRender() {
+    if (!cursoSeleccionado || !actividades.length) return;
+
+    const actividadesSER = actividades.filter(a => a.categoria === "SER");
+    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
+    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
+    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+
+    for (const estudiante of estudiantes) {
+        if (estudiante.curso === cursoSeleccionado) {
+            actualizarMatematicaEstudianteIndividualConActividades(
+                estudiante, actividadesSER, actividadesSABER, actividadesHACER, actividadesAUTO
+            );
+        }
+    }
+}
+
 function mostrarTablaGeneral() {
+
+    // Antes de mostrar/maximizar, calcular 3T y Final directamente en HTML.
+    recalcularNotasLocalesCursoSinRender();
 
     const tabla =
     document.getElementById(
@@ -8321,8 +8341,16 @@ async function cargarInformeGeneral() {
         const totales = {asistio:0, atraso:0, licencia:0, falta:0};
         fechasAsistencia.forEach(f => { const r=mapaAsistenciaInforme[estudiante.id+"_"+f]; if(r){const e=String(r.estado||"").toLowerCase(); if(totales[e]!==undefined) totales[e]++;} });
         const promedioSER=construirDimension(estudiante,ser), promedioSABER=construirDimension(estudiante,saber), promedioHACER=construirDimension(estudiante,hacer), promedioAUTO=construirDimension(estudiante,auto);
-        const nota3 = estudiante.nota_3t !== null && estudiante.nota_3t !== undefined ? Math.round(Number(estudiante.nota_3t)) : ((promedioSER!==""||promedioSABER!==""||promedioHACER!==""||promedioAUTO!=="") ? Math.round(Number(promedioSER||0)+Number(promedioSABER||0)+Number(promedioHACER||0)+Number(promedioAUTO||0)) : "");
-        const notaFinal = estudiante.final !== null && estudiante.final !== undefined ? Math.round(Number(estudiante.final)) : "";
+        // 3T y Final se calculan aquí mismo al abrir/maximizar el informe.
+        const hayNotas3TInforme = (promedioSER!=="" || promedioSABER!=="" || promedioHACER!=="" || promedioAUTO!=="");
+        const nota3 = hayNotas3TInforme
+            ? Math.round(Number(promedioSER||0) + Number(promedioSABER||0) + Number(promedioHACER||0) + Number(promedioAUTO||0))
+            : "";
+        const nota1Informe = convertirNumero(estudiante.nota_1t);
+        const nota2Informe = convertirNumero(estudiante.nota_2t);
+        const notaFinal = (nota1Informe !== null && nota2Informe !== null && nota3 !== "")
+            ? Math.round((nota1Informe + nota2Informe + Number(nota3)) / 3)
+            : "";
         cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td>`;
         fechasAsistencia.forEach(f => {
             const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
