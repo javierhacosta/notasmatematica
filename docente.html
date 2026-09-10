@@ -1562,6 +1562,15 @@ td:first-child {
     background: rgba(255,255,255,.30);
 }
 
+.titulo-asistencia .boton-asistencia {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.contenido-controles-asistencia.oculto {
+    display: none;
+}
+
 
 /* CONTENIDO */
 
@@ -1852,8 +1861,8 @@ td:first-child {
 @media (max-width: 600px) {
 
     .titulo-asistencia {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
         gap: 10px;
         padding: 10px;
     }
@@ -1861,8 +1870,12 @@ td:first-child {
     .titulo-asistencia > span {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        width: 100%;
+        width: auto;
+        flex: 1;
+    }
+
+    .titulo-asistencia .boton-asistencia {
+        margin-left: auto;
     }
 
     .acciones-asistencia {
@@ -2719,6 +2732,18 @@ Selecciona un curso
 🗓️ Asistencia
 </span>
 
+<button
+    type="button"
+    id="botonAsistencia"
+    class="boton-asistencia"
+    onclick="mostrarOcultarAsistencia()"
+    title="Mostrar asistencia">
+
++
+
+</button>
+
+<div class="contenido-controles-asistencia oculto">
 
 <div class="acciones-asistencia">
 
@@ -2901,17 +2926,6 @@ Selecciona un curso
     <span>📄 0</span>
     <span>✕ 0</span>
 </div>
-
-<button
-    type="button"
-    id="botonAsistencia"
-    class="boton-asistencia"
-    onclick="mostrarOcultarAsistencia()"
-    title="Mostrar asistencia">
-
-+
-
-</button>
 
 </div>
 
@@ -4534,11 +4548,19 @@ function mostrarOcultarAsistencia() {
         "contenidoAsistencia"
     );
 
+    const controles =
+    document.querySelector(
+        "#panelAsistencia .contenido-controles-asistencia"
+    );
+
     const boton =
     document.getElementById(
         "botonAsistencia"
     );
 
+    if (!contenido || !controles || !boton) {
+        return;
+    }
 
     if (
         contenido.classList.contains(
@@ -4550,17 +4572,25 @@ function mostrarOcultarAsistencia() {
             "oculto"
         );
 
+        controles.classList.remove(
+            "oculto"
+        );
+
         boton.textContent =
         "−";
 
         boton.title =
-        "Ocultar asistencia";
+        "Minimizar asistencia";
 
     }
 
     else {
 
         contenido.classList.add(
+            "oculto"
+        );
+
+        controles.classList.add(
             "oculto"
         );
 
