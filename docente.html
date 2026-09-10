@@ -2543,24 +2543,6 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 
-/* MODO OFFLINE */
-.barra-offline{margin:0 0 22px;padding:14px;border:1px solid #d8e2ef;border-radius:12px;background:#f8fbff}.barra-offline-cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.estado-offline{font-weight:700}.estado-offline.online{color:#16803c}.estado-offline.offline{color:#b45309}.estado-offline.sync{color:#1557a6}.botones-offline{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.botones-offline button{border:0;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:700}.boton-offline-principal{background:#1557a6;color:#fff}.boton-offline-secundario{background:#e8eef6;color:#17324d}.barra-offline small{display:block;margin-top:8px;color:#64748b}
-#estadoOffline.estado-offline.clickable-pendientes{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-#estadoOffline.estado-offline.clickable-pendientes:hover{opacity:.82}
-.modal-pendientes-offline{width:100%;max-width:900px;max-height:90vh;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.30);overflow:hidden;display:flex;flex-direction:column}
-.pendientes-offline-cuerpo{padding:15px;overflow:auto}
-.pendiente-offline-item{border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;background:#fafafa}
-.pendiente-offline-item:last-child{margin-bottom:0}
-.pendiente-offline-cabecera{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-.pendiente-offline-tipo{font-weight:bold;color:#1557a6}
-.pendiente-offline-fecha{font-size:12px;color:#666}
-.pendiente-offline-detalles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;font-size:13px}
-.pendiente-offline-detalles strong{color:#444}
-.pendiente-offline-cambio{margin-top:9px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white}
-.pendiente-offline-cambio .antes{color:#c62828}
-.pendiente-offline-cambio .despues{color:#16803c;font-weight:bold}
-.pendiente-offline-json{margin-top:8px;padding:8px;border-radius:7px;background:#f5f7fa;font-size:12px;white-space:pre-wrap;overflow:auto}
-@media(max-width:600px){.botones-offline button{width:100%}.pendiente-offline-detalles{grid-template-columns:1fr}.pendiente-offline-cabecera{align-items:flex-start;flex-direction:column}}
 </style>
 
 </head>
@@ -2580,38 +2562,6 @@ table tbody tr:nth-child(10n+10) td {
 Usuario:
 <span id="usuario"></span>
 </div>
-<div id="barraOffline" class="barra-offline">
-<div class="barra-offline-cabecera"><div><div id="estadoOffline" class="estado-offline online">🟢 ONLINE</div><small id="detalleOffline">Los datos se trabajan normalmente con Supabase.</small></div></div>
-<div class="botones-offline">
-<button type="button" id="botonDescargarDatosOffline" class="boton-offline-principal" onclick="descargarDatosOffline()" style="display:none">📥 Descargar / actualizar datos</button>
-<button type="button" class="boton-offline-secundario" onclick="activarModoOffline()">📴 Trabajar offline</button>
-<button type="button" class="boton-offline-secundario" onclick="sincronizarDatosOffline()" style="display:none;">☁️ Sincronizar ahora</button>
-<span id="grupoBotonesRespaldo" class="grupo-botones-respaldo">
-<button type="button" class="boton-offline-secundario" onclick="exportarRespaldoOffline()">💾 Respaldo</button>
-<button type="button" class="boton-offline-secundario" onclick="document.getElementById('archivoRespaldoOffline').click()">📤 Importar respaldo</button>
-</span>
-<button type="button" class="boton-offline-secundario" onclick="activarModoOnline()">🌐 Trabajar online</button>
-</div><input id="archivoRespaldoOffline" type="file" accept="application/json,.json" style="display:none" onchange="importarRespaldoOffline(event)"></div>
-
-<!-- =====================================================
-     MODAL CAMBIOS PENDIENTES OFFLINE
-===================================================== -->
-<div id="modalCambiosPendientesOffline" class="modal-fondo oculto" onclick="cerrarCambiosPendientesOffline(event)">
-    <div class="modal-pendientes-offline" onclick="event.stopPropagation()">
-        <div class="modal-cabecera">
-            <h3>📴 Cambios pendientes de sincronización</h3>
-            <button type="button" class="boton-cerrar-modal" onclick="cerrarCambiosPendientesOffline()">×</button>
-        </div>
-        <div class="pendientes-offline-cuerpo">
-            <div id="contenidoCambiosPendientesOffline" class="historial-vacio">
-                Cargando cambios...
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
 <!-- =====================================================
      FILTROS
 ===================================================== -->
@@ -3715,234 +3665,6 @@ window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
-
-/* =====================================================
-   OFFLINE-FIRST: IndexedDB + cola de sincronización
-===================================================== */
-(function(){
-const DB="panel_docente_offline_v1", VER=1, T="tablas", Q="cola", M="meta";
-const TABLES=["matematica","actividades","calificaciones","asistencia","asistencia_tipos_dia","visitas_estudiantes"];
-let dbp=null, syncing=false, originalFetch=window.fetch.bind(window);
-window.__panelOffline={activo:localStorage.getItem("panel_docente_modo_offline")==="1",tablas:TABLES};
-function db(){if(dbp)return dbp;dbp=new Promise((res,rej)=>{let r=indexedDB.open(DB,VER);r.onupgradeneeded=()=>{let d=r.result;if(!d.objectStoreNames.contains(T))d.createObjectStore(T,{keyPath:"tabla"});if(!d.objectStoreNames.contains(Q))d.createObjectStore(Q,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(M))d.createObjectStore(M,{keyPath:"clave"})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});return dbp}
-function run(store,mode,fn){return db().then(d=>new Promise((res,rej)=>{let tr=d.transaction(store,mode),st=tr.objectStore(store),v;try{v=fn(st)}catch(e){rej(e);return}tr.oncomplete=()=>res(v);tr.onerror=()=>rej(tr.error)}))}
-async function getTable(tabla){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(T,"readonly").objectStore(T).get(tabla);r.onsuccess=()=>res(r.result?.filas||[]);r.onerror=()=>rej(r.error)})}
-const putTable=(tabla,filas)=>run(T,"readwrite",s=>s.put({tabla,filas:Array.isArray(filas)?filas:[]}));
-async function getMeta(k){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(M,"readonly").objectStore(M).get(k);r.onsuccess=()=>res(r.result?.valor??null);r.onerror=()=>rej(r.error)})}
-const putMeta=(k,v)=>run(M,"readwrite",s=>s.put({clave:k,valor:v}));
-const addQ=x=>run(Q,"readwrite",s=>s.add(x));
-async function allQ(){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(Q,"readonly").objectStore(Q).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
-const delQ=id=>run(Q,"readwrite",s=>s.delete(id));
-function uuid(){return crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{let r=Math.random()*16|0,v=c==="x"?r:(r&3|8);return v.toString(16)})}
-function tempId(rows){let nums=rows.map(x=>x?.id).filter(x=>typeof x==="number"&&Number.isFinite(x));return (nums.length?Math.min(...nums):0)-1}
-function vals(v){v=decodeURIComponent(v||"");if(v.startsWith("(")&&v.endsWith(")"))v=v.slice(1,-1);return v.split(",").map(x=>x.replace(/^['"]|['"]$/g,""))}
-function cmp(a,b,o){b=String(b);if(o==="eq")return String(a??"")===b;if(o==="neq")return String(a??"")!==b;if(o==="gt")return a>b;if(o==="gte")return a>=b;if(o==="lt")return a<b;if(o==="lte")return a<=b;return true}
-function filter(rows,p){let out=rows.slice();for(let [k,raw] of p){if(["select","order","limit","offset","on_conflict"].includes(k))continue;let v=decodeURIComponent(raw),m=v.match(/^(eq|neq|gt|gte|lt|lte)\.(.*)$/);if(m)out=out.filter(r=>cmp(r[k],m[2],m[1]));else if(v.startsWith("in.((")&&v.endsWith(")"))out=out.filter(r=>vals(v.slice(3)).includes(String(r[k])));else if(v.startsWith("in.(")&&v.endsWith(")"))out=out.filter(r=>vals(v.slice(3)).includes(String(r[k])));else if(v==="is.null")out=out.filter(r=>r[k]==null);else if(v==="not.is.null")out=out.filter(r=>r[k]!=null)}let ord=p.get("order");if(ord)ord.split(",").reverse().forEach(x=>{let z=x.split("."),k=z[0],desc=z[1]==="desc";out.sort((a,b)=>a[k]==b[k]?0:(a[k]>b[k]?1:-1)*(desc?-1:1))});let off=+(p.get("offset")||0),lim=p.get("limit");if(off)out=out.slice(off);if(lim!=null)out=out.slice(0,+lim);return out}
-function resp(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json"}})}
-async function mutate(tabla,method,body,url,headers){let rows=await getTable(tabla),p=url.searchParams,list=Array.isArray(body)?body:(body?[body]:[]);
-if(method==="POST"){let up=(headers.get("prefer")||"").toLowerCase().includes("resolution=merge-duplicates"),conf=(p.get("on_conflict")||"").split(",").filter(Boolean),out=[];for(let x of list){let r={...x};if(r.id==null&&tabla==="actividades")r.id=tempId(rows);if(r.id==null&&tabla==="historial_cambios")r.id=uuid();let i=-1;if(up){if(conf.length)i=rows.findIndex(a=>conf.every(k=>String(a[k])===String(r[k])));if(i<0&&r.id!=null)i=rows.findIndex(a=>String(a.id)===String(r.id))}if(i>=0)rows[i]={...rows[i],...r};else{rows.push(r);out.push(r)}}await putTable(tabla,rows);return out.length?out:list}
-const match=r=>{for(let [k,raw] of p){if(["select","order","limit","offset","on_conflict"].includes(k))continue;let v=decodeURIComponent(raw),m=v.match(/^(eq|neq|gt|gte|lt|lte)\.(.*)$/);if(m&&!cmp(r[k],m[2],m[1]))return false;if(v.startsWith("in.(")&&v.endsWith(")")&&!vals(v.slice(3)).includes(String(r[k])))return false}return true};
-if(method==="PATCH")rows=rows.map(r=>match(r)?{...r,...(body||{})}:r);else if(method==="DELETE")rows=rows.filter(r=>!match(r));else return [];
-await putTable(tabla,rows);return []}
-async function offlineFetch(input,init={}){let req=input instanceof Request?input:null,urlS=typeof input==="string"?input:input.url,u=new URL(urlS,location.href),method=(init.method||(req&&req.method)||"GET").toUpperCase(),h=new Headers(init.headers||(req&&req.headers)||{});
-if(u.pathname.includes("/auth/v1/user")){let user=await getMeta("usuario");return user?resp(user):resp({message:"Usuario offline no disponible"},401)}
-let m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);if(!m)return originalFetch(input,init);let tabla=decodeURIComponent(m[1]);if(!TABLES.includes(tabla))return resp({message:"Tabla no disponible offline: "+tabla},503);
-if(method==="GET"||method==="HEAD"){let r=filter(await getTable(tabla),u.searchParams);return resp(method==="HEAD"?null:r)}
-let text=init.body!=null?init.body:(req?await req.clone().text():"");let body=null;try{body=text?JSON.parse(text):null}catch(e){}
-let filasAntes=[];
-try{
-  const filas=await getTable(tabla);
-  if(method==="PATCH"||method==="DELETE"){
-    filasAntes=filter(filas,u.searchParams);
-  }else if(method==="POST"){
-    const lista=Array.isArray(body)?body:(body?[body]:[]);
-    const conflictos=(u.searchParams.get("on_conflict")||"").split(",").filter(Boolean);
-    const preferMerge=(h.get("prefer")||"").toLowerCase().includes("resolution=merge-duplicates");
-    if(preferMerge&&conflictos.length){
-      filasAntes=filas.filter(f=>lista.some(x=>conflictos.every(k=>String(f[k])===String(x[k]))));
-    }else{
-      filasAntes=lista.map(x=>x?.id!=null?filas.find(f=>String(f.id)===String(x.id)):null).filter(Boolean);
-    }
-  }
-}catch(e){console.warn("No se pudo preparar el detalle del cambio offline:",e)}
-let data=await mutate(tabla,method,body,u,h);
-await addQ({
-  created_at:new Date().toISOString(),
-  method,url:urlS,body,
-  headers:Object.fromEntries(h.entries()),
-  filasAntes,
-  tabla
-});
-updateStatus();return resp(data)}
-async function actualizarCopiaLocalOnline(tabla, input, init, esMutacion=false){
-  try{
-    const req=input instanceof Request?input:null;
-    const baseHeaders=new Headers(init?.headers||(req&&req.headers)||{});
-    if(!baseHeaders.has("apikey"))baseHeaders.set("apikey",SUPABASE_KEY);
-    const ses=await supabaseClient.auth.getSession();
-    const token=ses?.data?.session?.access_token;
-    if(token)baseHeaders.set("Authorization","Bearer "+token);
-    if(esMutacion){
-      const u=new URL(req?req.url:input,location.href);
-      const full=new URL(u.origin+u.pathname);
-      full.searchParams.set("select","*");
-      const r=await originalFetch(full.toString(),{method:"GET",headers:baseHeaders});
-      if(r.ok){const data=await r.clone().json();if(Array.isArray(data))await putTable(tabla,data);}
-      return;
-    }
-    const r=await originalFetch(input,init||{});
-    if(!r.ok)return;
-    const data=await r.clone().json().catch(()=>null);
-    if(!Array.isArray(data))return;
-    const u=new URL(req?req.url:input,location.href);
-    const q=u.searchParams;
-    const esTablaCompleta=q.get("select")==="*" && ![...q.keys()].some(k=>!['select','order','limit','offset'].includes(k));
-    if(esTablaCompleta){await putTable(tabla,data);return;}
-    const actuales=await getTable(tabla);
-    const porId=new Map(actuales.filter(x=>x?.id!=null).map(x=>[String(x.id),x]));
-    const sinId=actuales.filter(x=>x?.id==null);
-    for(const fila of data){if(fila?.id!=null)porId.set(String(fila.id),{...(porId.get(String(fila.id))||{}),...fila});else sinId.push(fila);}
-    await putTable(tabla,[...porId.values(),...sinId]);
-  }catch(e){console.warn("No se pudo actualizar la copia local:",e)}
-}
-window.fetch=async function(input,init){
-  if(syncing)return originalFetch(input,init);
-  if(window.__panelOffline.activo){try{return await offlineFetch(input,init||{})}catch(e){console.error(e);return resp({message:e.message||"Error local"},500)}}
-  const req=input instanceof Request?input:null;
-  const urlS=typeof input==="string"?input:(req&&req.url)||"";
-  try{
-    const u=new URL(urlS,location.href),m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);
-    const tabla=m?decodeURIComponent(m[1]):null;
-    const method=(init?.method||(req&&req.method)||"GET").toUpperCase();
-    const r=await originalFetch(input,init);
-    if(tabla&&TABLES.includes(tabla)&&r.ok){
-      await actualizarCopiaLocalOnline(tabla,input,init||{},method!=="GET"&&method!=="HEAD");
-    }
-    return r;
-  }catch(e){throw e}
-};
-async function pending(){return(await allQ()).length}
-window.__panelOffline.getPendingCount=pending;
-window.__panelOffline.fetchLocal=offlineFetch;
-window.updateStatus=async function(){
-  let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");
-  if(!e)return;
-  let n=await pending(),a=window.__panelOffline.activo;
-  let botonDescarga=document.getElementById("botonDescargarDatosOffline");
-  let hayDatos=await hasLocal();
-  if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";
-  e.className="estado-offline "+(syncing?"sync":a?"offline":"online");
-  e.classList.toggle("clickable-pendientes",!!(a&&!syncing&&n));
-  e.title=(a&&!syncing&&n)?"Haz clic para ver los cambios pendientes":"";
-  e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — ${n} cambios pendientes`:"🟢 ONLINE";
-  d.textContent=a?(n?"Haz clic en «"+n+" cambios pendientes» para ver el detalle.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase.";
-};
-window.abrirCambiosPendientesOffline=async function(){
-  const modal=document.getElementById("modalCambiosPendientesOffline");
-  const cont=document.getElementById("contenidoCambiosPendientesOffline");
-  if(!modal||!cont)return;
-  modal.classList.remove("oculto");
-  cont.className="historial-vacio";
-  cont.textContent="Cargando cambios pendientes...";
-  const q=await allQ();
-  if(!q.length){cont.textContent="No hay cambios pendientes.";return;}
-  const [estudiantesLocal,actividadesLocal,calificacionesLocal,asistenciaLocal]=await Promise.all([
-    getTable("matematica"),getTable("actividades"),getTable("calificaciones"),getTable("asistencia")
-  ]);
-  const estudiantePorId=new Map(estudiantesLocal.map(x=>[String(x.id),x]));
-  const actividadPorId=new Map(actividadesLocal.map(x=>[String(x.id),x]));
-  const estadoTexto=v=>({asistio:"✓ Asistió",atraso:"⏰ Atraso",licencia:"📄 Licencia",falta:"✕ Falta"}[String(v)]||((v==null||v==="")?"—":String(v)));
-  const campoLabel=(tabla,campo)=>({
-    nota:"Nota",observacion:"Observación",estado:"Asistencia",fecha:"Fecha",tipo:"Tipo de día",motivo:"Motivo"
-  }[campo]||campo);
-  const valorMostrar=(campo,v)=>{
-    if(v==null||v==="")return "—";
-    if(campo==="estado")return estadoTexto(v);
-    if(campo==="tipo")return v==="no_clases"?"No se pasó clases":v==="clase_informal"?"Clase informal":String(v);
-    return String(v);
-  };
-  const detalleRegistro=(item)=>{
-    const tabla=item.tabla||((()=>{try{return new URL(item.url).pathname.match(/\/rest\/v1\/([^/]+)$/)?.[1]||""}catch(e){return ""}})());
-    const bodyLista=Array.isArray(item.body)?item.body:(item.body?[item.body]:[]);
-    const antes=item.filasAntes||[];
-    const despuesLocal=tabla==="calificaciones"?calificacionesLocal:tabla==="asistencia"?asistenciaLocal:tabla==="actividades"?actividadesLocal:[];
-    let cambios=[];
-    if(item.method==="PATCH"){
-      const b=antes[0]||{};
-      const after=despuesLocal.find(r=>b.id!=null&&String(r.id)===String(b.id))||{};
-      for(const k of Object.keys(item.body||{})){
-        if(String(b[k]??"")!==String(item.body[k]??""))cambios.push([k,b[k],item.body[k]]);
-      }
-    }else if(item.method==="DELETE"){
-      for(const b of antes){
-        const keys=["nota","observacion","estado","nombre","fecha","tipo","motivo"].filter(k=>k in b);
-        cambios.push([keys[0]||"registro",keys.length?b[keys[0]]:"Registro", "Eliminado"]);
-      }
-    }else if(item.method==="POST"){
-      bodyLista.forEach(x=>{
-        const b=antes.find(r=>{
-          if(x.id!=null&&r.id!=null)return String(x.id)===String(r.id);
-          return ["actividad_id","estudiante_id","fecha","curso"].filter(k=>x[k]!=null).every(k=>String(r[k])===String(x[k]));
-        });
-        if(b){
-          for(const k of Object.keys(x)){
-            if(String(b[k]??"")!==String(x[k]??""))cambios.push([k,b[k],x[k]]);
-          }
-        }else{
-          for(const k of Object.keys(x)){
-            if(["id"].includes(k))continue;
-            cambios.push([k,"—",x[k]]);
-          }
-        }
-      });
-    }
-    if(!cambios.length)cambios.push(["cambio","—","Se realizó una modificación"]);
-    return {tabla,cambios,bodyLista,antes,despuesLocal,estudiantePorId,actividadPorId};
-  };
-  const nombreTabla=t=>({calificaciones:"📝 Nota / actividad",asistencia:"🗓️ Asistencia",actividades:"📚 Actividad",asistencia_tipos_dia:"📅 Tipo de día",visitas_estudiantes:"👁️ Visita",matematica:"👨‍🎓 Estudiante"}[t]||t);
-  const esc=v=>typeof escapeHTML==="function"?escapeHTML(String(v??"")):String(v??"");
-  cont.className="";
-  cont.innerHTML=q.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map((item,idx)=>{
-    const d=detalleRegistro(item), primera=d.bodyLista[0]||d.antes[0]||{};
-    const estId=primera.estudiante_id??primera.id;
-    const actId=primera.actividad_id??(item.tabla==="actividades"?primera.id:null);
-    const est=estudiantePorId.get(String(estId));
-    const act=actividadPorId.get(String(actId));
-    const curso=primera.curso||act?.curso||est?.curso||"—";
-    const estudiante=est?.nombre||primera.estudiante_nombre||"—";
-    const actividad=act?.nombre||primera.actividad_nombre||(item.tabla==="actividades"?primera.nombre:"—");
-    const categoria=act?.categoria||primera.categoria||"—";
-    const fecha=primera.fecha||act?.fecha||"";
-    const oper=item.method==="POST"?"➕ Guardado / agregado":item.method==="PATCH"?"✏️ Cambio":item.method==="DELETE"?"🗑️ Eliminación":"Cambio";
-    const cambiosHtml=d.cambios.map(c=>`<div><strong>${esc(campoLabel(d.tabla,c[0]))}:</strong> <span class="antes">${esc(valorMostrar(c[0],c[1]))}</span> → <span class="despues">${esc(valorMostrar(c[0],c[2]))}</span></div>`).join("");
-    return `<div class="pendiente-offline-item">
-      <div class="pendiente-offline-cabecera"><span class="pendiente-offline-tipo">${esc(nombreTabla(d.tabla))} — ${oper}</span><span class="pendiente-offline-fecha">${esc(formatearFechaHistorial(item.created_at))}</span></div>
-      <div class="pendiente-offline-detalles">
-        <div><strong>Curso:</strong> ${esc(curso)}</div>
-        <div><strong>Estudiante:</strong> ${esc(estudiante)}</div>
-        <div><strong>Actividad:</strong> ${esc(actividad)}</div>
-        <div><strong>Categoría:</strong> ${esc(categoria)}</div>
-        ${fecha?`<div><strong>Fecha:</strong> ${esc(fecha)}</div>`:""}
-      </div>
-      <div class="pendiente-offline-cambio">${cambiosHtml}</div>
-    </div>`;
-  }).join("");
-};
-window.cerrarCambiosPendientesOffline=function(event){
-  const modal=document.getElementById("modalCambiosPendientesOffline");
-  if(!modal)return;
-  if(event&&event.target!==modal)return;
-  modal.classList.add("oculto");
-};
-async function hasLocal(){return(await getTable("matematica")).length>0}
-window.activarModoOffline=async function(){if(!await hasLocal()){alert("Primero pulsa «Descargar / actualizar datos» mientras tengas Internet.");return}window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Modo offline activado.");try{await cargarEstudiantes()}catch(e){}};
-window.activarModoOnline=async function(){window.__panelOffline.activo=false;localStorage.setItem("panel_docente_modo_offline","0");await updateStatus();mostrarMensaje("🌐 Modo online activado.");try{await cargarEstudiantes()}catch(e){}};
-window.descargarDatosOffline=async function(){if(!navigator.onLine){alert("Necesitas Internet para descargar o actualizar los datos.");return}try{mostrarMensaje("📥 Descargando datos...");let u=await supabaseClient.auth.getUser();if(u?.data?.user)await putMeta("usuario",u.data.user);let total=0;for(let tabla of TABLES){let r=await supabaseClient.from(tabla).select("*");if(r.error){console.warn(tabla,r.error);continue}await putTable(tabla,r.data||[]);total+=(r.data||[]).length}await putMeta("ultima_descarga",new Date().toISOString());window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje(`✓ ${total} registros descargados. Ya puedes trabajar sin Internet.`);try{await cargarEstudiantes()}catch(e){}}catch(e){console.error(e);alert("No se pudieron descargar los datos: "+(e.message||e))}};
-window.sincronizarDatosOffline=async function(){if(syncing)return;if(!navigator.onLine){alert("No hay Internet. Los cambios siguen seguros localmente.");return}let q=await allQ();if(!q.length){mostrarMensaje("✓ No hay cambios pendientes.");return}syncing=true;await updateStatus();try{let ses=await supabaseClient.auth.getSession(),token=ses?.data?.session?.access_token;for(let item of q){let h=new Headers(item.headers||{});h.set("apikey",SUPABASE_KEY);if(token)h.set("Authorization","Bearer "+token);let r=await originalFetch(item.url,{method:item.method,headers:h,body:item.body==null?undefined:JSON.stringify(item.body)});if(!r.ok)throw new Error(`Error ${r.status} al sincronizar ${item.method} ${item.url}`);await delQ(item.id)}/* Primero confirmamos los cambios en Supabase y recién después reconstruimos la copia local. */window.__panelOffline.activo=false;localStorage.setItem("panel_docente_modo_offline","0");for(let tabla of TABLES){let r=await supabaseClient.from(tabla).select("*");if(!r.error)await putTable(tabla,r.data||[])}await putMeta("ultima_descarga",new Date().toISOString());syncing=false;await updateStatus();try{await cargarEstudiantes()}catch(e){}try{if(typeof cargarActividades==="function")await cargarActividades()}catch(e){}try{if(typeof cargarAsistencia==="function")await cargarAsistencia()}catch(e){}mostrarMensaje("✓ Sincronización completada. Los datos ya están disponibles online.")}catch(e){syncing=false;await updateStatus();alert("La sincronización se detuvo. Los cambios restantes siguen guardados localmente.\n\n"+(e.message||e))}};
-window.exportarRespaldoOffline=async function(){let tablas={};for(let t of TABLES)tablas[t]=await getTable(t);let b={version:1,creado_en:new Date().toISOString(),usuario:await getMeta("usuario"),tablas};let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(b,null,2)],{type:"application/json"}));a.download="respaldo_panel_docente_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);mostrarMensaje("✓ Respaldo creado.")};
-window.importarRespaldoOffline=async function(ev){let f=ev.target.files?.[0];ev.target.value="";if(!f)return;try{let b=JSON.parse(await f.text());if(!b?.tablas)throw Error("Respaldo inválido");for(let t of TABLES)if(Array.isArray(b.tablas[t]))await putTable(t,b.tablas[t]);if(b.usuario)await putMeta("usuario",b.usuario);window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();try{await cargarEstudiantes()}catch(e){}mostrarMensaje("✓ Respaldo importado.")}catch(e){alert("No se pudo importar: "+e.message)}};
-addEventListener("offline",async()=>{if(await hasLocal()){window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Sin Internet: el panel seguirá trabajando localmente.")}});addEventListener("online",updateStatus);document.addEventListener("click",e=>{const estado=document.getElementById("estadoOffline");if(estado&&e.target===estado&&estado.classList.contains("clickable-pendientes"))abrirCambiosPendientesOffline()});updateStatus();
-})();
 
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
@@ -9281,7 +9003,7 @@ async function actualizarMatematicaEstudianteIndividual(estudianteId) {
 
     /*
        NOTA 3T Y NOTA FINAL: SOLO EN EL HTML.
-       No se envían a Supabase ni se agregan a la cola offline.
+       No se envían a Supabase ni se guardan en una tabla de historial externa.
     */
     estudiante.nota_3t = nota3T;
     estudiante.final = notaFinal;
@@ -12716,28 +12438,26 @@ async function restaurarCambioHistorial(historialId) {
 
     /*
        IMPORTANTE:
-       El historial NO utiliza la tabla historial_cambios de Supabase.
-       La restauración también se ejecuta contra la copia local mediante
-       el motor offline. Si hay Internet, el cambio queda en la cola para
-       sincronizarse posteriormente; si no hay Internet, permanece local.
+       El historial se mantiene interno (localStorage), pero la restauración
+       se aplica directamente en Supabase porque este panel funciona online.
     */
-    if (!window.__panelOffline || typeof window.__panelOffline.fetchLocal !== "function") {
-        alert("El almacenamiento local del historial todavía no está disponible. Recarga el panel e inténtalo nuevamente.");
-        return;
-    }
-
     const antes = item.old_data || {};
     const base = SUPABASE_URL + "/rest/v1/";
     const headers = {
         "Content-Type": "application/json",
-        "Prefer": "return=minimal"
+        "Prefer": "return=minimal",
+        "apikey": SUPABASE_KEY
     };
 
-    const enviarLocal = async (tabla, metodo, parametros, cuerpo, prefer = null) => {
+    const sesion = await supabaseClient.auth.getSession();
+    const token = sesion?.data?.session?.access_token;
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const enviarOnline = async (tabla, metodo, parametros, cuerpo, prefer = null) => {
         const h = { ...headers };
         if (prefer) h.Prefer = prefer;
         const url = base + tabla + (parametros ? "?" + parametros : "");
-        const respuesta = await window.__panelOffline.fetchLocal(url, {
+        const respuesta = await fetch(url, {
             method: metodo,
             headers: h,
             body: cuerpo == null ? undefined : JSON.stringify(cuerpo)
@@ -12745,7 +12465,7 @@ async function restaurarCambioHistorial(historialId) {
         if (!respuesta.ok) {
             let detalle = "";
             try { detalle = (await respuesta.json())?.message || ""; } catch (_) {}
-            throw new Error(detalle || `Error local ${respuesta.status} al restaurar.`);
+            throw new Error(detalle || `Error ${respuesta.status} al restaurar en Supabase.`);
         }
         return respuesta;
     };
@@ -12755,9 +12475,9 @@ async function restaurarCambioHistorial(historialId) {
             const filtro = `actividad_id=eq.${encodeURIComponent(item.actividad_id)}&estudiante_id=eq.${encodeURIComponent(item.estudiante_id)}`;
 
             if (item.operation === "INSERT" && !item.old_data) {
-                await enviarLocal("calificaciones", "DELETE", filtro, null);
+                await enviarOnline("calificaciones", "DELETE", filtro, null);
             } else if (item.operation === "DELETE") {
-                await enviarLocal(
+                await enviarOnline(
                     "calificaciones",
                     "POST",
                     "on_conflict=actividad_id,estudiante_id",
@@ -12770,7 +12490,7 @@ async function restaurarCambioHistorial(historialId) {
                     "resolution=merge-duplicates,return=minimal"
                 );
             } else {
-                await enviarLocal(
+                await enviarOnline(
                     "calificaciones",
                     "PATCH",
                     filtro,
@@ -12784,9 +12504,9 @@ async function restaurarCambioHistorial(historialId) {
             const filtro = `estudiante_id=eq.${encodeURIComponent(item.estudiante_id)}&fecha=eq.${encodeURIComponent(item.fecha)}`;
 
             if (item.operation === "INSERT" && !item.old_data) {
-                await enviarLocal("asistencia", "DELETE", filtro, null);
+                await enviarOnline("asistencia", "DELETE", filtro, null);
             } else if (item.operation === "DELETE") {
-                await enviarLocal(
+                await enviarOnline(
                     "asistencia",
                     "POST",
                     "on_conflict=estudiante_id,fecha",
@@ -12799,7 +12519,7 @@ async function restaurarCambioHistorial(historialId) {
                     "resolution=merge-duplicates,return=minimal"
                 );
             } else {
-                await enviarLocal(
+                await enviarOnline(
                     "asistencia",
                     "PATCH",
                     filtro,
@@ -12813,9 +12533,9 @@ async function restaurarCambioHistorial(historialId) {
             const filtro = `curso=eq.${encodeURIComponent(item.curso)}&fecha=eq.${encodeURIComponent(item.fecha)}`;
 
             if (item.operation === "INSERT" && !item.old_data) {
-                await enviarLocal("asistencia_tipos_dia", "DELETE", filtro, null);
+                await enviarOnline("asistencia_tipos_dia", "DELETE", filtro, null);
             } else {
-                await enviarLocal(
+                await enviarOnline(
                     "asistencia_tipos_dia",
                     "POST",
                     "on_conflict=curso,fecha",
@@ -12833,7 +12553,7 @@ async function restaurarCambioHistorial(historialId) {
         }
 
         eliminarHistorialLocalTipoDia(item.id);
-        mostrarMensaje("✓ Cambio restaurado localmente. Quedó guardado en este dispositivo.");
+        mostrarMensaje("✓ Cambio restaurado correctamente en Supabase.");
 
         try { await cargarCalificaciones(); } catch (_) {}
         try { await cargarAsistencia(); } catch (_) {}
@@ -12842,7 +12562,7 @@ async function restaurarCambioHistorial(historialId) {
         await cargarHistorial();
 
     } catch (errorRestaurar) {
-        console.error("Error al restaurar historial local:", errorRestaurar);
+        console.error("Error al restaurar historial:", errorRestaurar);
         alert(
             "No se pudo restaurar el cambio localmente: " +
             (errorRestaurar.message || errorRestaurar)
@@ -12850,48 +12570,12 @@ async function restaurarCambioHistorial(historialId) {
     }
 }
 
-/* SERVICE WORKER */
-if("serviceWorker" in navigator && location.protocol!=="file:"){addEventListener("load",()=>navigator.serviceWorker.register("sw-docente.js").catch(e=>console.warn("Service Worker:",e)))}
-
 /* =====================================================
    INICIAR
 ===================================================== */
 
 comprobarSesion();
 
-</script>
-
-
-<script>
-(function(){
-  function obtenerBoton(){
-    return document.querySelector('button.boton-offline-secundario') &&
-      Array.from(document.querySelectorAll('button.boton-offline-secundario')).find(b =>
-        (b.textContent||'').toLowerCase().includes('sincronizar ahora'));
-  }
-  async function actualizar(){
-    const btn=obtenerBoton();
-    if(!btn) return;
-    let n=0;
-    try{
-      if(window.__panelOffline && typeof window.__panelOffline.getPendingCount==='function'){
-        n=Number(await window.__panelOffline.getPendingCount())||0;
-      }
-    }catch(e){n=0;}
-    btn.style.display=n>0?'inline-flex':'none';
-  }
-  window.actualizarVisibilidadBotonSincronizar=actualizar;
-  function iniciar(){
-    actualizar();
-    if(window.MutationObserver){
-      new MutationObserver(actualizar).observe(document.body,{childList:true,subtree:true,characterData:true});
-    }
-    setInterval(actualizar,500);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar); else iniciar();
-  window.addEventListener('online',actualizar);
-  window.addEventListener('offline',actualizar);
-})();
 </script>
 
 
