@@ -2544,7 +2544,23 @@ table tbody tr:nth-child(10n+10) td {
 
 
 /* MODO OFFLINE */
-.barra-offline{margin:0 0 22px;padding:14px;border:1px solid #d8e2ef;border-radius:12px;background:#f8fbff}.barra-offline-cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.estado-offline{font-weight:700}.estado-offline.online{color:#16803c}.estado-offline.offline{color:#b45309}.estado-offline.sync{color:#1557a6}.botones-offline{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.botones-offline button{border:0;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:700}.boton-offline-principal{background:#1557a6;color:#fff}.boton-offline-secundario{background:#e8eef6;color:#17324d}.barra-offline small{display:block;margin-top:8px;color:#64748b}.enlace-cambios-pendientes{border:0;background:transparent;padding:0;color:inherit;text-decoration:underline;font-weight:700;cursor:pointer;font-size:inherit}.modal-cambios-pendientes{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:15px}.modal-cambios-pendientes-contenido{background:#fff;border-radius:14px;width:min(720px,100%);max-height:85vh;overflow:auto;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.25)}.modal-cambios-pendientes-cabecera{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}.modal-cambios-pendientes-cabecera h3{margin:0}.cerrar-cambios-pendientes{border:0;background:#eef2f7;border-radius:8px;padding:7px 11px;cursor:pointer;font-size:18px}.item-cambio-pendiente{border:1px solid #dbe3ec;border-radius:11px;padding:12px;margin-bottom:10px;background:#f8fafc}.detalle-cambio-pendiente{margin-top:6px;font-size:14px;line-height:1.5}.valor-cambio-pendiente{font-weight:700}.sin-cambios-pendientes{text-align:center;color:#64748b;padding:20px}@media(max-width:600px){.botones-offline button{width:100%}}
+.barra-offline{margin:0 0 22px;padding:14px;border:1px solid #d8e2ef;border-radius:12px;background:#f8fbff}.barra-offline-cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.estado-offline{font-weight:700}.estado-offline.online{color:#16803c}.estado-offline.offline{color:#b45309}.estado-offline.sync{color:#1557a6}.botones-offline{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.botones-offline button{border:0;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:700}.boton-offline-principal{background:#1557a6;color:#fff}.boton-offline-secundario{background:#e8eef6;color:#17324d}.barra-offline small{display:block;margin-top:8px;color:#64748b}
+#estadoOffline.estado-offline.clickable-pendientes{cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+#estadoOffline.estado-offline.clickable-pendientes:hover{opacity:.82}
+.modal-pendientes-offline{width:100%;max-width:900px;max-height:90vh;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.30);overflow:hidden;display:flex;flex-direction:column}
+.pendientes-offline-cuerpo{padding:15px;overflow:auto}
+.pendiente-offline-item{border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:10px;background:#fafafa}
+.pendiente-offline-item:last-child{margin-bottom:0}
+.pendiente-offline-cabecera{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.pendiente-offline-tipo{font-weight:bold;color:#1557a6}
+.pendiente-offline-fecha{font-size:12px;color:#666}
+.pendiente-offline-detalles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;font-size:13px}
+.pendiente-offline-detalles strong{color:#444}
+.pendiente-offline-cambio{margin-top:9px;padding:10px;border:1px solid #ddd;border-radius:8px;background:white}
+.pendiente-offline-cambio .antes{color:#c62828}
+.pendiente-offline-cambio .despues{color:#16803c;font-weight:bold}
+.pendiente-offline-json{margin-top:8px;padding:8px;border-radius:7px;background:#f5f7fa;font-size:12px;white-space:pre-wrap;overflow:auto}
+@media(max-width:600px){.botones-offline button{width:100%}.pendiente-offline-detalles{grid-template-columns:1fr}.pendiente-offline-cabecera{align-items:flex-start;flex-direction:column}}
 </style>
 
 </head>
@@ -2576,6 +2592,23 @@ Usuario:
 </span>
 <button type="button" class="boton-offline-secundario" onclick="activarModoOnline()">🌐 Trabajar online</button>
 </div><input id="archivoRespaldoOffline" type="file" accept="application/json,.json" style="display:none" onchange="importarRespaldoOffline(event)"></div>
+
+<!-- =====================================================
+     MODAL CAMBIOS PENDIENTES OFFLINE
+===================================================== -->
+<div id="modalCambiosPendientesOffline" class="modal-fondo oculto" onclick="cerrarCambiosPendientesOffline(event)">
+    <div class="modal-pendientes-offline" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>📴 Cambios pendientes de sincronización</h3>
+            <button type="button" class="boton-cerrar-modal" onclick="cerrarCambiosPendientesOffline()">×</button>
+        </div>
+        <div class="pendientes-offline-cuerpo">
+            <div id="contenidoCambiosPendientesOffline" class="historial-vacio">
+                Cargando cambios...
+            </div>
+        </div>
+    </div>
+</div>
 
 
 
@@ -3684,31 +3717,6 @@ window.supabase.createClient(
 );
 
 /* =====================================================
-   DETALLE DE CAMBIOS PENDIENTES OFFLINE
-===================================================== */
-window.verCambiosPendientes=async function(){
- const modal=document.getElementById("modalCambiosPendientes"),cont=document.getElementById("contenidoCambiosPendientes"); if(!modal||!cont)return;
- cont.innerHTML='<div class="sin-cambios-pendientes">Cargando cambios...</div>'; modal.style.display="flex";
- try{
-  const q=await window.__panelOffline._allQ();
-  if(!q.length){cont.innerHTML='<div class="sin-cambios-pendientes">No hay cambios pendientes.</div>';return;}
-  const estudiantes=await window.__panelOffline._getTable("matematica"), actividades=await window.__panelOffline._getTable("actividades");
-  const nombres=new Map(estudiantes.map(x=>[String(x.id),x.nombre||"Estudiante"])), acts=new Map(actividades.map(x=>[String(x.id),x.nombre||"Actividad"]));
-  const fmt=v=>v===null||v===undefined||v===""?"—":String(v);
-  const lista=[...q].sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||"")));
-  cont.innerHTML=lista.map((item,i)=>{
-   let tabla="desconocida",params=""; try{const u=new URL(item.url,location.href),m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);if(m)tabla=decodeURIComponent(m[1]);params=u.searchParams.toString()}catch(e){}
-   const body=item.body||{}, estudianteId=body.estudiante_id||((params.match(/estudiante_id=eq\.([^&]+)/)||[])[1]), actividadId=body.actividad_id||((params.match(/actividad_id=eq\.([^&]+)/)||[])[1]), fecha=body.fecha||((params.match(/fecha=eq\.([^&]+)/)||[])[1]);
-   const detalle=[]; if(estudianteId)detalle.push(`<strong>Estudiante:</strong> ${fmt(nombres.get(String(estudianteId)))}`); if(actividadId)detalle.push(`<strong>Actividad:</strong> ${fmt(acts.get(String(actividadId)))}`); if(fecha)detalle.push(`<strong>Fecha:</strong> ${fmt(fecha)}`); if(body.nota!==undefined)detalle.push(`<strong>Nota:</strong> <span class="valor-cambio-pendiente">${fmt(body.nota)}</span>`); if(body.estado!==undefined)detalle.push(`<strong>Estado:</strong> <span class="valor-cambio-pendiente">${fmt(body.estado)}</span>`); if(body.observacion!==undefined)detalle.push(`<strong>Observación:</strong> ${fmt(body.observacion)}`);
-   if(!detalle.length)Object.entries(body).forEach(([k,v])=>detalle.push(`<strong>${fmt(k)}:</strong> ${fmt(v)}`));
-   const titulo=tabla==="calificaciones"?"📝 Actividad":tabla==="asistencia"?"🗓️ Asistencia":tabla==="asistencia_tipos_dia"?"📅 Tipo de día":"📌 "+tabla; const hora=item.created_at?new Date(item.created_at).toLocaleString("es-BO"):"";
-   return `<div class="item-cambio-pendiente"><strong>${i+1}. ${titulo}</strong><div class="detalle-cambio-pendiente">${detalle.join("<br>")}<br><small>${item.method||""}${hora?" · "+hora:""}</small></div></div>`;
-  }).join("");
- }catch(e){cont.innerHTML=`<div class="sin-cambios-pendientes">No se pudieron cargar los cambios: ${String(e.message||e)}</div>`;}
-};
-window.cerrarCambiosPendientes=function(){const m=document.getElementById("modalCambiosPendientes");if(m)m.style.display="none";};
-
-/* =====================================================
    OFFLINE-FIRST: IndexedDB + cola de sincronización
 ===================================================== */
 (function(){
@@ -3724,7 +3732,6 @@ async function getMeta(k){let d=await db();return new Promise((res,rej)=>{let r=
 const putMeta=(k,v)=>run(M,"readwrite",s=>s.put({clave:k,valor:v}));
 const addQ=x=>run(Q,"readwrite",s=>s.add(x));
 async function allQ(){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(Q,"readonly").objectStore(Q).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
-window.__panelOffline._allQ=allQ;window.__panelOffline._getTable=getTable;
 const delQ=id=>run(Q,"readwrite",s=>s.delete(id));
 function uuid(){return crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{let r=Math.random()*16|0,v=c==="x"?r:(r&3|8);return v.toString(16)})}
 function tempId(rows){let nums=rows.map(x=>x?.id).filter(x=>typeof x==="number"&&Number.isFinite(x));return (nums.length?Math.min(...nums):0)-1}
@@ -3741,7 +3748,32 @@ async function offlineFetch(input,init={}){let req=input instanceof Request?inpu
 if(u.pathname.includes("/auth/v1/user")){let user=await getMeta("usuario");return user?resp(user):resp({message:"Usuario offline no disponible"},401)}
 let m=u.pathname.match(/\/rest\/v1\/([^/]+)$/);if(!m)return originalFetch(input,init);let tabla=decodeURIComponent(m[1]);if(!TABLES.includes(tabla))return resp({message:"Tabla no disponible offline: "+tabla},503);
 if(method==="GET"||method==="HEAD"){let r=filter(await getTable(tabla),u.searchParams);return resp(method==="HEAD"?null:r)}
-let text=init.body!=null?init.body:(req?await req.clone().text():"");let body=null;try{body=text?JSON.parse(text):null}catch(e){}let data=await mutate(tabla,method,body,u,h);await addQ({created_at:new Date().toISOString(),method,url:urlS,body,headers:Object.fromEntries(h.entries())});updateStatus();return resp(data)}
+let text=init.body!=null?init.body:(req?await req.clone().text():"");let body=null;try{body=text?JSON.parse(text):null}catch(e){}
+let filasAntes=[];
+try{
+  const filas=await getTable(tabla);
+  if(method==="PATCH"||method==="DELETE"){
+    filasAntes=filter(filas,u.searchParams);
+  }else if(method==="POST"){
+    const lista=Array.isArray(body)?body:(body?[body]:[]);
+    const conflictos=(u.searchParams.get("on_conflict")||"").split(",").filter(Boolean);
+    const preferMerge=(h.get("prefer")||"").toLowerCase().includes("resolution=merge-duplicates");
+    if(preferMerge&&conflictos.length){
+      filasAntes=filas.filter(f=>lista.some(x=>conflictos.every(k=>String(f[k])===String(x[k]))));
+    }else{
+      filasAntes=lista.map(x=>x?.id!=null?filas.find(f=>String(f.id)===String(x.id)):null).filter(Boolean);
+    }
+  }
+}catch(e){console.warn("No se pudo preparar el detalle del cambio offline:",e)}
+let data=await mutate(tabla,method,body,u,h);
+await addQ({
+  created_at:new Date().toISOString(),
+  method,url:urlS,body,
+  headers:Object.fromEntries(h.entries()),
+  filasAntes,
+  tabla
+});
+updateStatus();return resp(data)}
 async function actualizarCopiaLocalOnline(tabla, input, init, esMutacion=false){
   try{
     const req=input instanceof Request?input:null;
@@ -3792,7 +3824,116 @@ window.fetch=async function(input,init){
 async function pending(){return(await allQ()).length}
 window.__panelOffline.getPendingCount=pending;
 window.__panelOffline.fetchLocal=offlineFetch;
-window.updateStatus=async function(){let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");if(!e)return;let n=await pending(),a=window.__panelOffline.activo;let botonDescarga=document.getElementById("botonDescargarDatosOffline");let hayDatos=await hasLocal();if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";e.className="estado-offline "+(syncing?"sync":a?"offline":"online");e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — <button type="button" class="enlace-cambios-pendientes" onclick="verCambiosPendientes()">${n} cambios pendientes</button>`:"🟢 ONLINE";d.textContent=a?(n?"Los cambios están guardados en este dispositivo y pendientes de sincronización.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase."};
+window.updateStatus=async function(){
+  let e=document.getElementById("estadoOffline"),d=document.getElementById("detalleOffline");
+  if(!e)return;
+  let n=await pending(),a=window.__panelOffline.activo;
+  let botonDescarga=document.getElementById("botonDescargarDatosOffline");
+  let hayDatos=await hasLocal();
+  if(botonDescarga)botonDescarga.style.display=hayDatos?"none":"inline-flex";
+  e.className="estado-offline "+(syncing?"sync":a?"offline":"online");
+  e.classList.toggle("clickable-pendientes",!!(a&&!syncing&&n));
+  e.title=(a&&!syncing&&n)?"Haz clic para ver los cambios pendientes":"";
+  e.textContent=syncing?"🔵 SINCRONIZANDO...":a?`🟠 OFFLINE — ${n} cambios pendientes`:"🟢 ONLINE";
+  d.textContent=a?(n?"Haz clic en «"+n+" cambios pendientes» para ver el detalle.":"Trabajando con la copia local. No se necesita Internet."):"Los datos se trabajan normalmente con Supabase.";
+};
+window.abrirCambiosPendientesOffline=async function(){
+  const modal=document.getElementById("modalCambiosPendientesOffline");
+  const cont=document.getElementById("contenidoCambiosPendientesOffline");
+  if(!modal||!cont)return;
+  modal.classList.remove("oculto");
+  cont.className="historial-vacio";
+  cont.textContent="Cargando cambios pendientes...";
+  const q=await allQ();
+  if(!q.length){cont.textContent="No hay cambios pendientes.";return;}
+  const [estudiantesLocal,actividadesLocal,calificacionesLocal,asistenciaLocal]=await Promise.all([
+    getTable("matematica"),getTable("actividades"),getTable("calificaciones"),getTable("asistencia")
+  ]);
+  const estudiantePorId=new Map(estudiantesLocal.map(x=>[String(x.id),x]));
+  const actividadPorId=new Map(actividadesLocal.map(x=>[String(x.id),x]));
+  const estadoTexto=v=>({asistio:"✓ Asistió",atraso:"⏰ Atraso",licencia:"📄 Licencia",falta:"✕ Falta"}[String(v)]||((v==null||v==="")?"—":String(v)));
+  const campoLabel=(tabla,campo)=>({
+    nota:"Nota",observacion:"Observación",estado:"Asistencia",fecha:"Fecha",tipo:"Tipo de día",motivo:"Motivo"
+  }[campo]||campo);
+  const valorMostrar=(campo,v)=>{
+    if(v==null||v==="")return "—";
+    if(campo==="estado")return estadoTexto(v);
+    if(campo==="tipo")return v==="no_clases"?"No se pasó clases":v==="clase_informal"?"Clase informal":String(v);
+    return String(v);
+  };
+  const detalleRegistro=(item)=>{
+    const tabla=item.tabla||((()=>{try{return new URL(item.url).pathname.match(/\/rest\/v1\/([^/]+)$/)?.[1]||""}catch(e){return ""}})());
+    const bodyLista=Array.isArray(item.body)?item.body:(item.body?[item.body]:[]);
+    const antes=item.filasAntes||[];
+    const despuesLocal=tabla==="calificaciones"?calificacionesLocal:tabla==="asistencia"?asistenciaLocal:tabla==="actividades"?actividadesLocal:[];
+    let cambios=[];
+    if(item.method==="PATCH"){
+      const b=antes[0]||{};
+      const after=despuesLocal.find(r=>b.id!=null&&String(r.id)===String(b.id))||{};
+      for(const k of Object.keys(item.body||{})){
+        if(String(b[k]??"")!==String(item.body[k]??""))cambios.push([k,b[k],item.body[k]]);
+      }
+    }else if(item.method==="DELETE"){
+      for(const b of antes){
+        const keys=["nota","observacion","estado","nombre","fecha","tipo","motivo"].filter(k=>k in b);
+        cambios.push([keys[0]||"registro",keys.length?b[keys[0]]:"Registro", "Eliminado"]);
+      }
+    }else if(item.method==="POST"){
+      bodyLista.forEach(x=>{
+        const b=antes.find(r=>{
+          if(x.id!=null&&r.id!=null)return String(x.id)===String(r.id);
+          return ["actividad_id","estudiante_id","fecha","curso"].filter(k=>x[k]!=null).every(k=>String(r[k])===String(x[k]));
+        });
+        if(b){
+          for(const k of Object.keys(x)){
+            if(String(b[k]??"")!==String(x[k]??""))cambios.push([k,b[k],x[k]]);
+          }
+        }else{
+          for(const k of Object.keys(x)){
+            if(["id"].includes(k))continue;
+            cambios.push([k,"—",x[k]]);
+          }
+        }
+      });
+    }
+    if(!cambios.length)cambios.push(["cambio","—","Se realizó una modificación"]);
+    return {tabla,cambios,bodyLista,antes,despuesLocal,estudiantePorId,actividadPorId};
+  };
+  const nombreTabla=t=>({calificaciones:"📝 Nota / actividad",asistencia:"🗓️ Asistencia",actividades:"📚 Actividad",asistencia_tipos_dia:"📅 Tipo de día",visitas_estudiantes:"👁️ Visita",matematica:"👨‍🎓 Estudiante"}[t]||t);
+  const esc=v=>typeof escapeHTML==="function"?escapeHTML(String(v??"")):String(v??"");
+  cont.className="";
+  cont.innerHTML=q.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map((item,idx)=>{
+    const d=detalleRegistro(item), primera=d.bodyLista[0]||d.antes[0]||{};
+    const estId=primera.estudiante_id??primera.id;
+    const actId=primera.actividad_id??(item.tabla==="actividades"?primera.id:null);
+    const est=estudiantePorId.get(String(estId));
+    const act=actividadPorId.get(String(actId));
+    const curso=primera.curso||act?.curso||est?.curso||"—";
+    const estudiante=est?.nombre||primera.estudiante_nombre||"—";
+    const actividad=act?.nombre||primera.actividad_nombre||(item.tabla==="actividades"?primera.nombre:"—");
+    const categoria=act?.categoria||primera.categoria||"—";
+    const fecha=primera.fecha||act?.fecha||"";
+    const oper=item.method==="POST"?"➕ Guardado / agregado":item.method==="PATCH"?"✏️ Cambio":item.method==="DELETE"?"🗑️ Eliminación":"Cambio";
+    const cambiosHtml=d.cambios.map(c=>`<div><strong>${esc(campoLabel(d.tabla,c[0]))}:</strong> <span class="antes">${esc(valorMostrar(c[0],c[1]))}</span> → <span class="despues">${esc(valorMostrar(c[0],c[2]))}</span></div>`).join("");
+    return `<div class="pendiente-offline-item">
+      <div class="pendiente-offline-cabecera"><span class="pendiente-offline-tipo">${esc(nombreTabla(d.tabla))} — ${oper}</span><span class="pendiente-offline-fecha">${esc(formatearFechaHistorial(item.created_at))}</span></div>
+      <div class="pendiente-offline-detalles">
+        <div><strong>Curso:</strong> ${esc(curso)}</div>
+        <div><strong>Estudiante:</strong> ${esc(estudiante)}</div>
+        <div><strong>Actividad:</strong> ${esc(actividad)}</div>
+        <div><strong>Categoría:</strong> ${esc(categoria)}</div>
+        ${fecha?`<div><strong>Fecha:</strong> ${esc(fecha)}</div>`:""}
+      </div>
+      <div class="pendiente-offline-cambio">${cambiosHtml}</div>
+    </div>`;
+  }).join("");
+};
+window.cerrarCambiosPendientesOffline=function(event){
+  const modal=document.getElementById("modalCambiosPendientesOffline");
+  if(!modal)return;
+  if(event&&event.target!==modal)return;
+  modal.classList.add("oculto");
+};
 async function hasLocal(){return(await getTable("matematica")).length>0}
 window.activarModoOffline=async function(){if(!await hasLocal()){alert("Primero pulsa «Descargar / actualizar datos» mientras tengas Internet.");return}window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Modo offline activado.");try{await cargarEstudiantes()}catch(e){}};
 window.activarModoOnline=async function(){window.__panelOffline.activo=false;localStorage.setItem("panel_docente_modo_offline","0");await updateStatus();mostrarMensaje("🌐 Modo online activado.");try{await cargarEstudiantes()}catch(e){}};
@@ -3800,7 +3941,7 @@ window.descargarDatosOffline=async function(){if(!navigator.onLine){alert("Neces
 window.sincronizarDatosOffline=async function(){if(syncing)return;if(!navigator.onLine){alert("No hay Internet. Los cambios siguen seguros localmente.");return}let q=await allQ();if(!q.length){mostrarMensaje("✓ No hay cambios pendientes.");return}syncing=true;await updateStatus();try{let ses=await supabaseClient.auth.getSession(),token=ses?.data?.session?.access_token;for(let item of q){let h=new Headers(item.headers||{});h.set("apikey",SUPABASE_KEY);if(token)h.set("Authorization","Bearer "+token);let r=await originalFetch(item.url,{method:item.method,headers:h,body:item.body==null?undefined:JSON.stringify(item.body)});if(!r.ok)throw new Error(`Error ${r.status} al sincronizar ${item.method} ${item.url}`);await delQ(item.id)}/* Primero confirmamos los cambios en Supabase y recién después reconstruimos la copia local. */window.__panelOffline.activo=false;localStorage.setItem("panel_docente_modo_offline","0");for(let tabla of TABLES){let r=await supabaseClient.from(tabla).select("*");if(!r.error)await putTable(tabla,r.data||[])}await putMeta("ultima_descarga",new Date().toISOString());syncing=false;await updateStatus();try{await cargarEstudiantes()}catch(e){}try{if(typeof cargarActividades==="function")await cargarActividades()}catch(e){}try{if(typeof cargarAsistencia==="function")await cargarAsistencia()}catch(e){}mostrarMensaje("✓ Sincronización completada. Los datos ya están disponibles online.")}catch(e){syncing=false;await updateStatus();alert("La sincronización se detuvo. Los cambios restantes siguen guardados localmente.\n\n"+(e.message||e))}};
 window.exportarRespaldoOffline=async function(){let tablas={};for(let t of TABLES)tablas[t]=await getTable(t);let b={version:1,creado_en:new Date().toISOString(),usuario:await getMeta("usuario"),tablas};let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(b,null,2)],{type:"application/json"}));a.download="respaldo_panel_docente_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);mostrarMensaje("✓ Respaldo creado.")};
 window.importarRespaldoOffline=async function(ev){let f=ev.target.files?.[0];ev.target.value="";if(!f)return;try{let b=JSON.parse(await f.text());if(!b?.tablas)throw Error("Respaldo inválido");for(let t of TABLES)if(Array.isArray(b.tablas[t]))await putTable(t,b.tablas[t]);if(b.usuario)await putMeta("usuario",b.usuario);window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();try{await cargarEstudiantes()}catch(e){}mostrarMensaje("✓ Respaldo importado.")}catch(e){alert("No se pudo importar: "+e.message)}};
-addEventListener("offline",async()=>{if(await hasLocal()){window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Sin Internet: el panel seguirá trabajando localmente.")}});addEventListener("online",updateStatus);updateStatus();
+addEventListener("offline",async()=>{if(await hasLocal()){window.__panelOffline.activo=true;localStorage.setItem("panel_docente_modo_offline","1");await updateStatus();mostrarMensaje("📴 Sin Internet: el panel seguirá trabajando localmente.")}});addEventListener("online",updateStatus);document.addEventListener("click",e=>{const estado=document.getElementById("estadoOffline");if(estado&&e.target===estado&&estado.classList.contains("clickable-pendientes"))abrirCambiosPendientesOffline()});updateStatus();
 })();
 
 /* =====================================================
@@ -12752,7 +12893,6 @@ comprobarSesion();
 </script>
 
 
-<div id="modalCambiosPendientes" class="modal-cambios-pendientes" style="display:none" onclick="if(event.target===this)cerrarCambiosPendientes()"><div class="modal-cambios-pendientes-contenido"><div class="modal-cambios-pendientes-cabecera"><h3>📋 Cambios pendientes</h3><button type="button" class="cerrar-cambios-pendientes" onclick="cerrarCambiosPendientes()">✕</button></div><div id="contenidoCambiosPendientes"></div></div></div>
 </body>
 
 </html>
