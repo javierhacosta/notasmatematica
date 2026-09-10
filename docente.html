@@ -4165,6 +4165,42 @@ function establecerFechaActividadActual() {
    CARGAR ESTUDIANTES
 ===================================================== */
 
+const CLAVE_CACHE_ESTUDIANTES_QR = "estudiantes_qr_cache_v1";
+let indiceEstudiantesQR = new Map();
+
+function reconstruirIndiceEstudiantesQR() {
+    indiceEstudiantesQR = new Map();
+    (estudiantes || []).forEach(e => {
+        if (e && e.ci != null) indiceEstudiantesQR.set(String(e.ci).trim(), e);
+    });
+}
+
+function guardarCacheEstudiantesQR() {
+    try {
+        localStorage.setItem(CLAVE_CACHE_ESTUDIANTES_QR, JSON.stringify({fecha:Date.now(), estudiantes:estudiantes || []}));
+    } catch (e) { console.warn("No se pudo guardar la lista local QR:", e); }
+}
+
+function cargarCacheEstudiantesQR() {
+    try {
+        const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_ESTUDIANTES_QR) || "null");
+        if (!cache || !Array.isArray(cache.estudiantes) || !cache.estudiantes.length) return false;
+        estudiantes = cache.estudiantes;
+        reconstruirIndiceEstudiantes();
+        reconstruirIndiceEstudiantesQR();
+        cargarCursos();
+        cargarCursosInforme();
+        return true;
+    } catch (e) { console.warn("No se pudo cargar la lista local QR:", e); return false; }
+}
+
+function buscarEstudianteQRLocal(ci) {
+    const clave = String(ci || "").trim();
+    if (!clave) return null;
+    if (!indiceEstudiantesQR.size) reconstruirIndiceEstudiantesQR();
+    return indiceEstudiantesQR.get(clave) || null;
+}
+
 async function cargarEstudiantes() {
 
     const {
@@ -4184,6 +4220,11 @@ async function cargarEstudiantes() {
 
         console.error(error);
 
+        if (cargarCacheEstudiantesQR()) {
+            mostrarMensaje("📶 Sin conexión: usando la lista de estudiantes guardada en este dispositivo.");
+            return;
+        }
+
         alert(
             "Error al cargar estudiantes: " +
             error.message
@@ -4198,6 +4239,8 @@ async function cargarEstudiantes() {
     data || [];
 
     reconstruirIndiceEstudiantes();
+    reconstruirIndiceEstudiantesQR();
+    guardarCacheEstudiantesQR();
 
     cargarCursos();
 
@@ -5796,8 +5839,8 @@ async function confirmarPendientesAsistencia() {
         return false;
     }
 
-    // Después de confirmar y guardar correctamente, cerrar esta ventana.
-    cerrarModalPendientesAsistencia();
+    const modal = document.getElementById("modalPendientesAsistencia");
+    if (modal) modal.classList.add("oculto");
 
     return true;
 }
@@ -11376,43 +11419,37 @@ async function iniciarCamaraQR() {
 
 async function prepararAsistenciaQR(ci) {
 
-    const { data, error } = await supabaseClient
-        .from("matematica")
-        .select("id,ci,nombre,num_lista,curso")
-        .eq("ci", ci)
-        .maybeSingle();
+    // Búsqueda local primero: el QR no espera a Internet.
+    let data = buscarEstudianteQRLocal(ci);
 
-    if (error) {
-        console.error(error);
-        alert("Error al buscar al estudiante: " + error.message);
-        procesandoQR = false;
-        if (streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
+    // Solo consulta online como respaldo si el CI no está en la lista local.
+    if (!data) {
+        try {
+            const respuesta = await supabaseClient.from("matematica")
+                .select("id,ci,nombre,num_lista,curso")
+                .eq("ci", ci).maybeSingle();
+            if (respuesta.error) throw respuesta.error;
+            data = respuesta.data;
+        } catch (error) {
+            console.error(error);
+            alert("No se pudo localizar al estudiante. Verifica la conexión o actualiza la lista de estudiantes.");
+            procesandoQR = false;
+            if (streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
+            return;
         }
-        return;
     }
 
     if (!data) {
         alert("No se encontró ningún estudiante con el CI " + ci + ".");
         procesandoQR = false;
-        if (streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        }
+        if (streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
         return;
     }
 
     if (data.curso !== cursoSeleccionado) {
-        alert(
-            "El estudiante pertenece al curso " + data.curso +
-            " y no al curso seleccionado " + cursoSeleccionado + "."
-        );
+        alert("El estudiante pertenece al curso " + data.curso + " y no al curso seleccionado " + cursoSeleccionado + ".");
         procesandoQR = false;
-        if (streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        }
+        if (streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
         return;
     }
 
@@ -11614,97 +11651,43 @@ async function prepararCalificacionQR(
     ci
 ) {
 
-    if (
-        !actividadQRSeleccionada
-    ) {
-        return;
-    }
+    if (!actividadQRSeleccionada) return;
 
-    const {
-        data,
-        error
-    } =
-    await supabaseClient
-    .from("matematica")
-    .select(
-        "id,ci,nombre,num_lista,curso"
-    )
-    .eq(
-        "ci",
-        ci
-    )
-    .maybeSingle();
+    // Búsqueda local primero: el QR no espera a Internet.
+    let data = buscarEstudianteQRLocal(ci);
 
-    if (error) {
-
-        console.error(error);
-
-        alert(
-            "Error al buscar al estudiante: " +
-            error.message
-        );
-
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
+    // Solo consulta online como respaldo si el CI no está en la lista local.
+    if (!data) {
+        try {
+            const respuesta = await supabaseClient.from("matematica")
+                .select("id,ci,nombre,num_lista,curso")
+                .eq("ci", ci).maybeSingle();
+            if (respuesta.error) throw respuesta.error;
+            data = respuesta.data;
+        } catch (error) {
+            console.error(error);
+            alert("No se pudo localizar al estudiante. Verifica la conexión o actualiza la lista de estudiantes.");
+            if (mantenerCamaraQR && streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
+            else { abrirEscanerQR(actividadQRSeleccionada); }
+            procesandoQR = false;
+            return;
         }
-
-        procesandoQR = false;
-        return;
-
     }
 
     if (!data) {
-
-        alert(
-            "No se encontró ningún estudiante con el CI " +
-            ci +
-            "."
-        );
-
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
-        }
-
+        alert("No se encontró ningún estudiante con el CI " + ci + ".");
+        if (mantenerCamaraQR && streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
+        else { abrirEscanerQR(actividadQRSeleccionada); }
         procesandoQR = false;
         return;
-
     }
 
-    if (
-        data.curso !==
-        cursoSeleccionado
-    ) {
-
-        alert(
-            "El estudiante pertenece al curso " +
-            data.curso +
-            " y no al curso seleccionado " +
-            cursoSeleccionado +
-            "."
-        );
-
-        if (mantenerCamaraQR && streamQR) {
-            escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
-        } else {
-            abrirEscanerQR(
-                actividadQRSeleccionada
-            );
-        }
-
+    if (data.curso !== cursoSeleccionado) {
+        alert("El estudiante pertenece al curso " + data.curso + " y no al curso seleccionado " + cursoSeleccionado + ".");
+        if (mantenerCamaraQR && streamQR) { escaneandoQR = true; requestAnimationFrame(solicitarLecturaQR); }
+        else { abrirEscanerQR(actividadQRSeleccionada); }
         procesandoQR = false;
         return;
-
     }
 
     estudianteQRSeleccionado =
