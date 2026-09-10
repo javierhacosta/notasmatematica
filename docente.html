@@ -977,44 +977,6 @@ td:first-child {
     margin-left: auto;
 }
 
-/* =====================================================
-   CONFIGURACIÓN DE GUARDADO
-===================================================== */
-.boton-configuracion-guardado {
-    border: none;
-    background: transparent;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 6px 8px;
-}
-.boton-configuracion-guardado:hover {
-    transform: scale(1.08);
-}
-.modal-configuracion-guardado {
-    width: min(420px, 92vw);
-    background: #fff;
-    border-radius: 14px;
-    padding: 20px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.25);
-}
-.configuracion-opcion-guardado {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 4px;
-    font-size: 16px;
-}
-.configuracion-opcion-guardado input {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-.configuracion-ayuda-guardado {
-    margin: 4px 0 0 36px;
-    font-size: 13px;
-    color: #666;
-    line-height: 1.4;
-}
 .boton-nueva-actividad {
     background: rgba(255,255,255,.20);
     color: white;
@@ -2519,27 +2481,12 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 /* =====================================================
-   NUEVA ACTIVIDAD + CONFIGURACIÓN JUNTOS
+   ACCIONES DE ACTIVIDAD
 ===================================================== */
 .acciones-asistencia {
     display: flex;
     align-items: center;
     gap: 7px;
-}
-
-.boton-nueva-actividad,
-.boton-configuracion-guardado {
-    flex: 0 0 auto;
-    margin: 0;
-    vertical-align: middle;
-}
-
-/* Evita que la tuerca quede centrada o separada */
-#botonConfiguracionGuardado {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
 }
 
 
@@ -2625,15 +2572,6 @@ Selecciona un curso
 
 📝
 
-</button>
-
-<button
-    type="button"
-    id="botonConfiguracionGuardado"
-    class="boton-configuracion-guardado"
-    onclick="abrirConfiguracionGuardado()"
-    title="Configuración de guardado">
-    ⚙️
 </button>
 
 <button
@@ -3575,45 +3513,6 @@ Cancelar
 </div>
 
 <!-- =====================================================
-     MODAL CONFIGURACIÓN DE GUARDADO
-===================================================== -->
-<div
-    id="modalConfiguracionGuardado"
-    class="modal-fondo oculto"
-    onclick="cerrarConfiguracionGuardado(event)">
-
-    <div
-        class="modal-configuracion-guardado"
-        onclick="event.stopPropagation()">
-
-        <div class="modal-cabecera">
-            <h3>⚙️ Configuración de guardado</h3>
-            <button
-                type="button"
-                class="boton-cerrar-modal"
-                onclick="cerrarConfiguracionGuardado()">
-                ×
-            </button>
-        </div>
-
-        <div class="modal-cuerpo">
-            <label class="configuracion-opcion-guardado">
-                <input
-                    type="checkbox"
-                    id="checkboxBotonesRespaldoOcultos"
-                    checked
-                    onchange="cambiarVisibilidadBotonesRespaldo(this.checked)">
-                <span>Botones de respaldo ocultos</span>
-            </label>
-            <div class="configuracion-ayuda-guardado">
-                Activado: oculta los botones <b>💾 Respaldo</b> y <b>📤 Importar respaldo</b>.
-                Desactivado: muestra nuevamente los botones de respaldo.
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- =====================================================
      MODAL HISTORIAL DE CAMBIOS
 ===================================================== -->
 <div
@@ -3674,7 +3573,6 @@ localStorage.setItem("panel_guardado_automatico", "true");
 let guardadoManualEnCurso = false;
 
 // Por defecto, los botones de respaldo permanecen ocultos.
-document.addEventListener("DOMContentLoaded", inicializarVisibilidadBotonesRespaldo);
 
 let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
@@ -3829,42 +3727,6 @@ function cambiarGuardadoAutomatico() {
     localStorage.setItem("panel_guardado_automatico", "true");
     actualizarInterfazGuardado();
 }
-
-function cambiarVisibilidadBotonesRespaldo(ocultos) {
-    const grupo = document.getElementById("grupoBotonesRespaldo");
-    if (!grupo) return;
-
-    grupo.style.display = ocultos ? "none" : "inline-flex";
-    localStorage.setItem("panel_botones_respaldo_ocultos", String(ocultos));
-}
-
-function inicializarVisibilidadBotonesRespaldo() {
-    const checkbox = document.getElementById("checkboxBotonesRespaldoOcultos");
-    const guardado = localStorage.getItem("panel_botones_respaldo_ocultos");
-    const ocultos = guardado === null ? true : guardado === "true";
-
-    if (checkbox) checkbox.checked = ocultos;
-    cambiarVisibilidadBotonesRespaldo(ocultos);
-}
-
-function abrirConfiguracionGuardado() {
-    const modal = document.getElementById("modalConfiguracionGuardado");
-    const checkbox = document.getElementById("checkboxGuardadoAutomatico");
-    const checkboxRespaldo = document.getElementById("checkboxBotonesRespaldoOcultos");
-    if (checkbox) checkbox.checked = guardadoAutomatico;
-    if (checkboxRespaldo) {
-        checkboxRespaldo.checked = localStorage.getItem("panel_botones_respaldo_ocultos") !== "false";
-    }
-    if (modal) modal.classList.remove("oculto");
-}
-
-function cerrarConfiguracionGuardado(event) {
-    if (event && event.target !== document.getElementById("modalConfiguracionGuardado")) return;
-    const modal = document.getElementById("modalConfiguracionGuardado");
-    if (modal) modal.classList.add("oculto");
-}
-
-
 
 /* =====================================================
    VARIABLES
@@ -5984,7 +5846,6 @@ document.addEventListener(
         ) {
 
             cerrarModalActividad();
-            cerrarConfiguracionGuardado();
 
         }
 
