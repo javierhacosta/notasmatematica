@@ -4047,7 +4047,7 @@ async function cargarEstudiantes() {
     await supabaseClient
     .from("matematica")
     .select(
-        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t,nota_3t,final"
+        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t"
     )
     .order("curso")
     .order("num_lista");
@@ -6244,14 +6244,82 @@ async function recalcularNotasLocalesCurso() {
     if (!cursoSeleccionado || !actividades.length) return;
 
     const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
+    const actividadesSER = actividades.filter(a => a.categoria === "SER");
+    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
+    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
+    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+
     for (const estudiante of estudiantesCurso) {
-        await actualizarMatematicaEstudianteIndividual(estudiante.id);
+        actualizarMatematicaEstudianteIndividualConActividades(
+            estudiante,
+            actividadesSER,
+            actividadesSABER,
+            actividadesHACER,
+            actividadesAUTO
+        );
     }
 
-    /* Si el Informe General está visible, refrescarlo con los cálculos locales. */
     try {
         if (typeof mostrarTablaGeneral === "function") mostrarTablaGeneral();
     } catch (_) {}
+}
+
+function recalcularNotasLocalesEstudiantes(ids) {
+    if (!cursoSeleccionado || !actividades.length || !ids || !ids.size) return;
+
+    const actividadesSER = actividades.filter(a => a.categoria === "SER");
+    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
+    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
+    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+
+    for (const estudiante of estudiantes) {
+        if (ids.has(Number(estudiante.id))) {
+            actualizarMatematicaEstudianteIndividualConActividades(
+                estudiante,
+                actividadesSER,
+                actividadesSABER,
+                actividadesHACER,
+                actividadesAUTO
+            );
+        }
+    }
+
+    try {
+        if (typeof mostrarTablaGeneral === "function") mostrarTablaGeneral();
+    } catch (_) {}
+}
+
+function actualizarMatematicaEstudianteIndividualConActividades(
+    estudiante,
+    actividadesSER,
+    actividadesSABER,
+    actividadesHACER,
+    actividadesAUTO
+) {
+    const estudianteId = estudiante.id;
+
+    const puntosSER = calcularPuntosCategoria(estudianteId, actividadesSER, LIMITES.SER);
+    const puntosSABER = calcularPuntosCategoria(estudianteId, actividadesSABER, LIMITES.SABER);
+    const puntosHACER = calcularPuntosCategoria(estudianteId, actividadesHACER, LIMITES.HACER);
+    const puntosAUTO = calcularPuntosCategoria(estudianteId, actividadesAUTO, LIMITES.AUTOEVALUACION);
+
+    const nota3T = redondear(puntosSER + puntosSABER + puntosHACER + puntosAUTO);
+
+    const nota1T = convertirNumero(estudiante.nota_1t);
+    const nota2T = convertirNumero(estudiante.nota_2t);
+
+    let notaFinal = null;
+    if (nota1T !== null && nota2T !== null && nota3T !== null) {
+        notaFinal = redondear((nota1T + nota2T + nota3T) / 3);
+    }
+
+    estudiante.nota_3t = nota3T;
+    estudiante.final = notaFinal;
+
+    const celdaNota3T = document.getElementById(`nota3t-${estudiante.id}`);
+    const celdaFinal = document.getElementById(`final-${estudiante.id}`);
+    if (celdaNota3T) celdaNota3T.textContent = mostrarNota(nota3T);
+    if (celdaFinal) celdaFinal.textContent = mostrarNota(notaFinal);
 }
 
 
@@ -8931,7 +8999,7 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 }
 
 
-async function actualizarMatematicaEstudianteIndividual(estudianteId) {
+function actualizarMatematicaEstudianteIndividual(estudianteId) {
 
     const estudiante = estudiantes.find(
         e => Number(e.id) === Number(estudianteId)
@@ -9021,514 +9089,223 @@ async function actualizarMatematicaEstudianteIndividual(estudianteId) {
 
 async function guardarNotas() {
 
-    /* =====================================================
-       PROTECCIÓN CONTRA DOBLE GUARDADO
-    ===================================================== */
     if (guardandoNotasEnProceso) {
-
-        mostrarMensaje(
-            "⏳ Las calificaciones ya se están guardando. Espera a que termine."
-        );
-
+        mostrarMensaje("⏳ Las calificaciones ya se están guardando. Espera a que termine.");
         return false;
-
     }
-
 
     if (!cursoSeleccionado) {
-
-        alert(
-            "Primero selecciona un curso."
-        );
-
+        alert("Primero selecciona un curso.");
         return false;
-
     }
-
 
     if (actividades.length === 0) {
-
-        alert(
-            "Este curso no tiene actividades."
-        );
-
+        alert("Este curso no tiene actividades.");
         return false;
-
     }
 
-
-    const botonesGuardar =
-    Array.from(
-        document.querySelectorAll(
-            ".boton-guardar-notas"
-        )
+    const botonesGuardar = Array.from(
+        document.querySelectorAll(".boton-guardar-notas")
     );
 
-
     guardadoManualEnCurso = true;
-
-    /*
-       El bloqueo se hace en JavaScript y no solamente con CSS.
-       Así, aunque se pulse dos veces rápidamente, la segunda
-       ejecución no puede comenzar.
-    */
     guardandoNotasEnProceso = true;
 
-
-    botonesGuardar.forEach(
-    boton => {
-
+    botonesGuardar.forEach(boton => {
         boton.disabled = true;
-        boton.dataset.textoOriginal =
-            boton.innerHTML;
-
-        boton.classList.add(
-            "guardando"
-        );
-
+        boton.dataset.textoOriginal = boton.innerHTML;
+        boton.classList.add("guardando");
     });
 
-
     try {
+        const inputs = Array.from(document.querySelectorAll(".nota-input"));
 
-        const inputs =
-        document.querySelectorAll(
-            ".nota-input"
-        );
+        /* VALIDACIÓN LOCAL: no hacemos ninguna consulta hasta que todo sea válido. */
+        for (const input of inputs) {
+            if (input.value === "") continue;
 
+            const valor = Number(input.value);
+            const maximo = Number(input.dataset.maximo);
 
-        /* =====================================================
-           VALIDAR TODAS LAS NOTAS ANTES DE ENVIAR NADA
-        ===================================================== */
-        for (
-            const input of inputs
-        ) {
-
-            if (
-                input.value === ""
-            ) {
-                continue;
-            }
-
-
-            const valor =
-            Number(
-                input.value
-            );
-
-
-            const maximo =
-            Number(
-                input.dataset.maximo
-            );
-
-
-            if (
-                isNaN(valor) ||
-                valor < 0 ||
-                valor > maximo
-            ) {
-
+            if (isNaN(valor) || valor < 0 || valor > maximo) {
                 alert(
                     "⚠️ Hay una nota inválida.\n\n" +
-                    "Actividad: " +
-                    obtenerNombreActividad(
-                        input.dataset.actividad
-                    ) +
-                    "\nMáximo permitido: " +
-                    maximo
+                    "Actividad: " + obtenerNombreActividad(input.dataset.actividad) +
+                    "\nMáximo permitido: " + maximo
                 );
-
                 return false;
-
             }
-
         }
 
+        actualizarProgresoGuardado("notas", 10, true);
+        mostrarMensaje("Preparando cambios...");
 
-        actualizarProgresoGuardado(
-            "notas",
-            0,
-            true
-        );
-
-
-        mostrarMensaje(
-            "Guardando calificaciones... 0%"
-        );
-
-
-        /* =====================================================
-           PREPARAR CALIFICACIONES Y OBSERVACIONES
-        ===================================================== */
+        /*
+         * Construimos los registros una sola vez.
+         * También actualizamos la estructura local "calificaciones" inmediatamente,
+         * para que el cálculo de 3T no necesite volver a consultar Supabase.
+         */
         const registros = [];
+        const estudiantesAfectados = new Set();
 
+        /* Mapa de observaciones: evita hacer querySelector() por cada nota. */
+        const observaciones = new Map();
+        document.querySelectorAll(".observacion-actividad").forEach(input => {
+            const clave = `${Number(input.dataset.actividad)}|${Number(input.dataset.estudiante)}`;
+            observaciones.set(clave, input.value.trim() || null);
+        });
 
-        inputs.forEach(
-        input => {
-
-            const estudianteId =
-            Number(
-                input.dataset.estudiante
-            );
-
-
-            const actividadId =
-            Number(
-                input.dataset.actividad
-            );
-
-
-            let nota = null;
-
-
-            if (
-                input.value !== ""
-            ) {
-
-                nota =
-                Number(
-                    input.value
-                );
-
-            }
-
-
-            const observacionInput =
-            document.querySelector(
-                `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-            );
-
-
-            const observacion =
-            observacionInput
-            ? observacionInput.value.trim()
-            : null;
-
+        for (const input of inputs) {
+            const estudianteId = Number(input.dataset.estudiante);
+            const actividadId = Number(input.dataset.actividad);
+            const nota = input.value === "" ? null : Number(input.value);
+            const clave = `${actividadId}|${estudianteId}`;
+            const observacion = observaciones.get(clave) ?? null;
 
             registros.push({
-
-                actividad_id:
-                actividadId,
-
-                estudiante_id:
-                estudianteId,
-
-                nota:
+                actividad_id: actividadId,
+                estudiante_id: estudianteId,
                 nota,
-
-                observacion:
-                observacion || null
-
+                observacion
             });
-
-        });
-
-
-        /* =====================================================
-           GUARDAR CALIFICACIONES EN UN SOLO UPSERT
-        ===================================================== */
-        if (
-            registros.length > 0
-        ) {
-
-            const { data: calificacionesAnteriores, error: errorCalificacionesAnteriores } = await supabaseClient
-                .from("calificaciones").select("actividad_id,estudiante_id,nota,observacion")
-                .in("actividad_id", [...new Set(registros.map(r => r.actividad_id))])
-                .in("estudiante_id", [...new Set(registros.map(r => r.estudiante_id))]);
-            if (errorCalificacionesAnteriores) throw errorCalificacionesAnteriores;
-            const mapaCalificacionesAnteriores = new Map((calificacionesAnteriores || []).map(r => [`${Number(r.actividad_id)}|${Number(r.estudiante_id)}`, r]));
-
-            const {
-                error:
-                errorCalificaciones
-            } =
-            await supabaseClient
-            .from("calificaciones")
-            .upsert(
-                registros,
-                {
-                    onConflict:
-                    "actividad_id,estudiante_id"
-                }
-            );
-
-
-            if (
-                errorCalificaciones
-            ) {
-
-                console.error(
-                    errorCalificaciones
-                );
-
-                throw new Error(
-                    "Error al guardar calificaciones: " +
-                    errorCalificaciones.message
-                );
-
-            }
-
-            registros.forEach(registro => {
-                const actividad = actividades.find(a => Number(a.id) === Number(registro.actividad_id));
-                const estudiante = estudiantes.find(e => Number(e.id) === Number(registro.estudiante_id));
-                const anterior = mapaCalificacionesAnteriores.get(`${Number(registro.actividad_id)}|${Number(registro.estudiante_id)}`) || null;
-                const nuevo = { actividad_id:registro.actividad_id, estudiante_id:registro.estudiante_id, nota:registro.nota, observacion:registro.observacion };
-                if (anterior && String(anterior.nota ?? "") === String(nuevo.nota ?? "") && String(anterior.observacion ?? "") === String(nuevo.observacion ?? "")) return;
-                guardarHistorialInterno({ table_name:"calificaciones", operation:anterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:registro.estudiante_id, estudiante_nombre:estudiante?.nombre || estudiante?.nombre_completo || null, actividad_id:registro.actividad_id, actividad_nombre:actividad?.nombre || actividad?.titulo || null, categoria:actividad?.categoria || null, fecha:null, old_data:anterior, new_data:nuevo, changed_at:new Date().toISOString() });
-            });
-
         }
 
+        /*
+         * Una sola consulta para saber qué cambió.
+         * Después enviamos SOLO los registros nuevos/modificados.
+         */
+        let registrosCambios = registros;
 
-        /* =====================================================
-           CALCULAR NOTAS DEL TERCER TRIMESTRE
-        ===================================================== */
-        const estudiantesCurso =
-        estudiantes.filter(
-            e =>
-            e.curso ===
-            cursoSeleccionado
-        );
+        if (registros.length > 0) {
+            const idsActividades = [...new Set(registros.map(r => r.actividad_id))];
+            const idsEstudiantes = [...new Set(registros.map(r => r.estudiante_id))];
 
+            const { data: anteriores, error: errorAnteriores } =
+                await supabaseClient
+                    .from("calificaciones")
+                    .select("actividad_id,estudiante_id,nota,observacion")
+                    .in("actividad_id", idsActividades)
+                    .in("estudiante_id", idsEstudiantes);
 
-        const actividadesSER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "SER"
-        );
+            if (errorAnteriores) throw errorAnteriores;
 
-
-        const actividadesSABER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "SABER"
-        );
-
-
-        const actividadesHACER =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "HACER"
-        );
-
-
-        const actividadesAUTO =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            "AUTOEVALUACION"
-        );
-
-
-        const actualizaciones =
-        estudiantesCurso.map(
-        estudiante => {
-
-            const puntosSER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesSER,
-                LIMITES.SER
+            const mapaAnteriores = new Map(
+                (anteriores || []).map(r => [
+                    `${Number(r.actividad_id)}|${Number(r.estudiante_id)}`,
+                    r
+                ])
             );
 
-
-            const puntosSABER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesSABER,
-                LIMITES.SABER
-            );
-
-
-            const puntosHACER =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesHACER,
-                LIMITES.HACER
-            );
-
-
-            const puntosAUTO =
-            calcularPuntosCategoria(
-                estudiante.id,
-                actividadesAUTO,
-                LIMITES.AUTOEVALUACION
-            );
-
-
-            const nota3T =
-            redondear(
-                puntosSER +
-                puntosSABER +
-                puntosHACER +
-                puntosAUTO
-            );
-
-
-            const nota1T =
-            convertirNumero(
-                estudiante.nota_1t
-            );
-
-
-            const nota2T =
-            convertirNumero(
-                estudiante.nota_2t
-            );
-
-
-            let notaFinal = null;
-
-
-            if (
-                nota1T !== null &&
-                nota2T !== null &&
-                nota3T !== null
-            ) {
-
-                notaFinal =
-                redondear(
-                    (
-                        nota1T +
-                        nota2T +
-                        nota3T
-                    ) / 3
+            registrosCambios = registros.filter(registro => {
+                const anterior = mapaAnteriores.get(
+                    `${Number(registro.actividad_id)}|${Number(registro.estudiante_id)}`
                 );
 
-            }
+                const igual =
+                    anterior &&
+                    String(anterior.nota ?? "") === String(registro.nota ?? "") &&
+                    String(anterior.observacion ?? "") === String(registro.observacion ?? "");
 
+                if (!igual) estudiantesAfectados.add(Number(registro.estudiante_id));
+                return !igual;
+            });
 
-            return {
-                estudiante,
-                nota3T,
-                notaFinal
-            };
+            /* Historial interno: únicamente para cambios reales. */
+            registrosCambios.forEach(registro => {
+                const clave = `${Number(registro.actividad_id)}|${Number(registro.estudiante_id)}`;
+                const anterior = mapaAnteriores.get(clave) || null;
+                const actividad = actividades.find(
+                    a => Number(a.id) === Number(registro.actividad_id)
+                );
+                const estudiante = estudiantes.find(
+                    e => Number(e.id) === Number(registro.estudiante_id)
+                );
 
-        });
+                guardarHistorialInterno({
+                    table_name: "calificaciones",
+                    operation: anterior ? "UPDATE" : "INSERT",
+                    record_id: null,
+                    curso: cursoSeleccionado,
+                    estudiante_id: registro.estudiante_id,
+                    estudiante_nombre: estudiante?.nombre || estudiante?.nombre_completo || null,
+                    actividad_id: registro.actividad_id,
+                    actividad_nombre: actividad?.nombre || actividad?.titulo || null,
+                    categoria: actividad?.categoria || null,
+                    fecha: null,
+                    old_data: anterior,
+                    new_data: registro,
+                    changed_at: new Date().toISOString()
+                });
+            });
 
+            actualizarProgresoGuardado("notas", 30, true);
 
-        /* =====================================================
-           ACTUALIZAR MATEMATICA EN LOTES PEQUEÑOS
+            if (registrosCambios.length > 0) {
+                mostrarMensaje(
+                    `Guardando ${registrosCambios.length} cambio(s)...`
+                );
 
-           Se procesan varios estudiantes a la vez para que el
-           guardado sea más rápido sin lanzar cientos de peticiones
-           simultáneas contra Supabase.
-        ===================================================== */
-        const TAMANO_LOTE = 5;
-        let estudiantesProcesados = 0;
+                const { error: errorCalificaciones } =
+                    await supabaseClient
+                        .from("calificaciones")
+                        .upsert(registrosCambios, {
+                            onConflict: "actividad_id,estudiante_id"
+                        });
 
-
-        for (
-            let inicio = 0;
-            inicio < actualizaciones.length;
-            inicio += TAMANO_LOTE
-        ) {
-
-            const lote =
-            actualizaciones.slice(
-                inicio,
-                inicio + TAMANO_LOTE
-            );
-
-
-            const resultados =
-            await Promise.all(
-                lote.map(
-                async item => {
-                    /* 3T y Final son cálculos locales; nunca se guardan en Supabase. */
-                    item.estudiante.nota_3t = item.nota3T;
-                    item.estudiante.final = item.notaFinal;
-
-                    const celdaNota3T = document.getElementById(`nota3t-${item.estudiante.id}`);
-                    const celdaFinal = document.getElementById(`final-${item.estudiante.id}`);
-                    if (celdaNota3T) celdaNota3T.textContent = mostrarNota(item.nota3T);
-                    if (celdaFinal) celdaFinal.textContent = mostrarNota(item.notaFinal);
-
-                    return {
-                        item,
-                        error: null
-                    };
-
-                })
-            );
-
-
-            for (
-                const resultado of resultados
-            ) {
-
-                if (
-                    resultado.error
-                ) {
-
+                if (errorCalificaciones) {
+                    console.error(errorCalificaciones);
                     throw new Error(
-                        "Error al actualizar notas de " +
-                        resultado.item.estudiante.nombre +
-                        ": " +
-                        resultado.error.message
+                        "Error al guardar calificaciones: " +
+                        errorCalificaciones.message
                     );
-
                 }
-
             }
 
+            /*
+             * Actualizar memoria local. Esto evita volver a consultar calificaciones.
+             */
+            registros.forEach(registro => {
+                const estudianteId = Number(registro.estudiante_id);
+                const actividadId = Number(registro.actividad_id);
 
-            estudiantesProcesados +=
-            lote.length;
+                if (!calificaciones[estudianteId]) {
+                    calificaciones[estudianteId] = {};
+                }
 
-
-            const totalEstudiantes =
-            actualizaciones.length || 1;
-
-
-            const porcentaje =
-            50 +
-            Math.round(
-                (
-                    estudiantesProcesados /
-                    totalEstudiantes
-                ) * 50
-            );
-
-
-            actualizarProgresoGuardado(
-                "notas",
-                porcentaje,
-                true
-            );
-
-
-            mostrarMensaje(
-                "Guardando calificaciones... " +
-                porcentaje +
-                "%"
-            );
-
+                calificaciones[estudianteId][actividadId] = {
+                    nota: registro.nota,
+                    observacion: registro.observacion || ""
+                };
+            });
         }
 
+        actualizarProgresoGuardado("notas", 60, true);
 
-        actualizarProgresoGuardado(
-            "notas",
-            100,
-            false
-        );
+        /*
+         * Solo recalculamos estudiantes afectados.
+         * Si no hubo cambios, no hacemos ningún cálculo ni petición adicional.
+         */
+        if (estudiantesAfectados.size > 0) {
+            recalcularNotasLocalesEstudiantes(estudiantesAfectados);
+        }
 
+        actualizarProgresoGuardado("notas", 90, true);
+
+        /*
+         * NO volver a cargar:
+         * - actividades
+         * - asistencia
+         * - estudiantes
+         * Todo sigue disponible en memoria.
+         */
+        aplicarBusqueda();
+        actualizarProgresoGuardado("notas", 100, false);
 
         mostrarMensaje(
-            "✓ Calificaciones guardadas correctamente."
+            registrosCambios.length > 0
+                ? `✓ ${registrosCambios.length} cambio(s) guardado(s) correctamente.`
+                : "✓ No había cambios nuevos que guardar."
         );
-        /* No recargar estudiantes: 3T y Final son locales al HTML. */
-        await cargarActividades();
-
-        mostrarTablaGeneral();
-
-        await cargarAsistencia();
-
-        aplicarBusqueda();
 
         cambiosPendientesActividades = false;
         actividadesPendientes.clear();
@@ -9536,63 +9313,32 @@ async function guardarNotas() {
 
         return true;
 
-    }
-    catch(error) {
+    } catch (error) {
+        console.error("Error en guardarNotas():", error);
 
-        console.error(
-            "Error en guardarNotas():",
-            error
-        );
-
-
-        actualizarProgresoGuardado(
-            "notas",
-            0,
-            false
-        );
-
+        actualizarProgresoGuardado("notas", 0, false);
 
         alert(
             error && error.message
-            ? error.message
-            : "No se pudieron guardar las calificaciones."
+                ? error.message
+                : "No se pudieron guardar las calificaciones."
         );
-
 
         return false;
 
-    }
-    finally {
-
-        /* =====================================================
-           LIBERAR EL BLOQUEO SIEMPRE
-        ===================================================== */
+    } finally {
         guardandoNotasEnProceso = false;
 
-
-        botonesGuardar.forEach(
-        boton => {
-
+        botonesGuardar.forEach(boton => {
             boton.disabled = false;
-            boton.classList.remove(
-                "guardando"
-            );
+            boton.classList.remove("guardando");
 
-            if (
-                boton.dataset.textoOriginal
-            ) {
-
-                boton.innerHTML =
-                    boton.dataset.textoOriginal;
-
+            if (boton.dataset.textoOriginal) {
+                boton.innerHTML = boton.dataset.textoOriginal;
                 delete boton.dataset.textoOriginal;
-
             }
-
         });
-
     }
-
 }
 
 /* =====================================================
