@@ -3559,69 +3559,11 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-/*
- * RED DE BAJA CALIDAD
- * - Las lecturas se sirven primero desde la memoria/caché local.
- * - Las peticiones de Supabase tienen un límite para no congelar la interfaz
- *   cuando Internet está muy lento.
- */
-const fetchOriginal = window.fetch.bind(window);
-
-async function fetchConTiempoLimite(input, init = {}) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-
-    if (init.signal) {
-        if (init.signal.aborted) controller.abort();
-        else init.signal.addEventListener("abort", () => controller.abort(), { once: true });
-    }
-
-    try {
-        return await fetchOriginal(input, { ...init, signal: controller.signal });
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
 const supabaseClient =
 window.supabase.createClient(
     SUPABASE_URL,
-    SUPABASE_KEY,
-    {
-        global: {
-            fetch: fetchConTiempoLimite
-        }
-    }
+    SUPABASE_KEY
 );
-
-const CACHE_VERSION = "v2";
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
-
-function leerCacheLocal(clave) {
-    try {
-        const item = JSON.parse(localStorage.getItem(`panel_cache_${CACHE_VERSION}_${clave}`) || "null");
-        if (!item || !Array.isArray(item.data) && typeof item.data !== "object") return null;
-        if (Date.now() - Number(item.time || 0) > CACHE_MAX_AGE) return null;
-        return item.data;
-    } catch (_) {
-        return null;
-    }
-}
-
-function guardarCacheLocal(clave, data) {
-    try {
-        localStorage.setItem(
-            `panel_cache_${CACHE_VERSION}_${clave}`,
-            JSON.stringify({ time: Date.now(), data })
-        );
-    } catch (_) {
-        // Si el almacenamiento está lleno, la aplicación sigue funcionando en memoria.
-    }
-}
-
-function puedeConsultarRed() {
-    return navigator.onLine !== false;
-}
 
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
@@ -3635,6 +3577,102 @@ let guardadoManualEnCurso = false;
 let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
 let actividadesPendientes = new Set();
+
+//
+// Índices de rendimiento.
+// Se reconstruyen únicamente cuando cambian estudiantes/actividades o se vuelve
+// a dibujar la tabla de actividades. Evitan cientos de filter/querySelector()
+// repetidos durante los cálculos locales.
+//
+let actividadesPorCategoriaCache = {
+    SER: [],
+    SABER: [],
+    HACER: [],
+    AUTOEVALUACION: []
+};
+let estudiantesPorCursoCache = new Map();
+let inputsNotasPorEstudianteCache = new Map();
+let inputsNotasPorEstudianteCategoriaCache = new Map();
+let categoriaPorActividadCache = new Map();
+
+function reconstruirIndiceEstudiantes() {
+    estudiantesPorCursoCache = new Map();
+
+    for (const estudiante of estudiantes) {
+        if (!estudiante || !estudiante.curso) continue;
+
+        const curso = String(estudiante.curso);
+        if (!estudiantesPorCursoCache.has(curso)) {
+            estudiantesPorCursoCache.set(curso, []);
+        }
+        estudiantesPorCursoCache.get(curso).push(estudiante);
+    }
+}
+
+function reconstruirIndiceActividades() {
+    actividadesPorCategoriaCache = {
+        SER: [],
+        SABER: [],
+        HACER: [],
+        AUTOEVALUACION: []
+    };
+    categoriaPorActividadCache = new Map();
+
+    for (const actividad of actividades) {
+        if (!actividad) continue;
+
+        const categoria = actividad.categoria;
+        if (actividadesPorCategoriaCache[categoria]) {
+            actividadesPorCategoriaCache[categoria].push(actividad);
+        }
+        categoriaPorActividadCache.set(
+            String(actividad.id),
+            categoria
+        );
+    }
+}
+
+function reconstruirIndiceInputsNotas() {
+    inputsNotasPorEstudianteCache = new Map();
+    inputsNotasPorEstudianteCategoriaCache = new Map();
+
+    document.querySelectorAll(".nota-input").forEach(input => {
+        const estudianteId = String(input.dataset.estudiante || "");
+        const actividadId = String(input.dataset.actividad || "");
+        if (!estudianteId || !actividadId) return;
+
+        if (!inputsNotasPorEstudianteCache.has(estudianteId)) {
+            inputsNotasPorEstudianteCache.set(estudianteId, []);
+        }
+        inputsNotasPorEstudianteCache.get(estudianteId).push(input);
+
+        const categoria = categoriaPorActividadCache.get(actividadId);
+        if (!categoria) return;
+
+        if (!inputsNotasPorEstudianteCategoriaCache.has(estudianteId)) {
+            inputsNotasPorEstudianteCategoriaCache.set(estudianteId, {
+                SER: [],
+                SABER: [],
+                HACER: [],
+                AUTOEVALUACION: []
+            });
+        }
+
+        const porCategoria =
+            inputsNotasPorEstudianteCategoriaCache.get(estudianteId);
+
+        if (porCategoria[categoria]) {
+            porCategoria[categoria].push(input);
+        }
+    });
+}
+
+function obtenerEstudiantesCursoActual() {
+    if (!cursoSeleccionado) return [];
+
+    return estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [];
+}
+
 
 function actualizarEstadosGuardado() {
     const asistencia = document.getElementById("estadoGuardadoAsistencia");
@@ -3779,6 +3817,7 @@ async function guardarTodoManual() {
 }
 
 
+
 /* =====================================================
    VARIABLES
 ===================================================== */
@@ -3833,59 +3872,35 @@ new Set();
 ===================================================== */
 
 async function comprobarSesion() {
-    try {
-        /*
-         * getSession() usa la sesión local cuando está disponible y evita una
-         * consulta de red innecesaria al iniciar.
-         */
-        let user = null;
-        try {
-            const sesion = await supabaseClient.auth.getSession();
-            user = sesion?.data?.session?.user || null;
-        } catch (_) {}
 
-        if (!user && puedeConsultarRed()) {
-            const resultado = await supabaseClient.auth.getUser();
-            user = resultado?.data?.user || null;
+    const {
+        data: {
+            user
         }
+    } =
+    await supabaseClient.auth.getUser();
 
-        if (!user) {
-            window.location.href = "login-docente.html";
-            return;
-        }
 
-        const usuario = document.getElementById("usuario");
-        if (usuario) usuario.textContent = user.email || "";
+    if (!user) {
 
-        establecerFechaActual();
+        window.location.href =
+        "login-docente.html";
 
-        /*
-         * La caché aparece inmediatamente. Si hay conexión, se actualiza en
-         * segundo plano sin obligar al docente a esperar.
-         */
-        const cache = leerCacheLocal("estudiantes");
-        if (cache) {
-            estudiantes = cache;
-            cargarCursos();
-            cargarCursosInforme();
-        }
+        return;
 
-        if (puedeConsultarRed()) {
-            void cargarEstudiantes({ segundoPlano: !!cache });
-        }
-    } catch (error) {
-        console.error("Error al iniciar el panel:", error);
-
-        const cache = leerCacheLocal("estudiantes");
-        if (cache) {
-            estudiantes = cache;
-            cargarCursos();
-            cargarCursosInforme();
-            establecerFechaActual();
-        } else {
-            alert("No se pudieron cargar los datos. Revisa la conexión a Internet.");
-        }
     }
+
+
+    document.getElementById(
+        "usuario"
+    ).textContent =
+    user.email;
+
+
+    establecerFechaActual();
+
+    await cargarEstudiantes();
+
 }
 
 
@@ -3975,45 +3990,44 @@ function establecerFechaActividadActual() {
    CARGAR ESTUDIANTES
 ===================================================== */
 
-async function cargarEstudiantes(opciones = {}) {
-    const cache = leerCacheLocal("estudiantes");
-
-    if (cache && !opciones.segundoPlano) {
-        estudiantes = cache;
-        cargarCursos();
-        cargarCursosInforme();
-    }
-
-    if (!puedeConsultarRed()) {
-        if (!cache) {
-            alert("Sin conexión: no hay datos de estudiantes guardados en este dispositivo.");
-        }
-        return !!cache;
-    }
+async function cargarEstudiantes() {
 
     const {
         data,
         error
     } =
     await supabaseClient
-        .from("matematica")
-        .select("id,num_lista,ci,nombre,curso,nota_1t,nota_2t")
-        .order("curso")
-        .order("num_lista");
+    .from("matematica")
+    .select(
+        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t"
+    )
+    .order("curso")
+    .order("num_lista");
+
 
     if (error) {
+
         console.error(error);
-        if (!cache) {
-            alert("No se pudieron actualizar los estudiantes. Se necesita conexión a Internet.");
-        }
-        return !!cache;
+
+        alert(
+            "Error al cargar estudiantes: " +
+            error.message
+        );
+
+        return;
+
     }
 
-    estudiantes = data || [];
-    guardarCacheLocal("estudiantes", estudiantes);
+
+    estudiantes =
+    data || [];
+
+    reconstruirIndiceEstudiantes();
+
     cargarCursos();
+
     cargarCursosInforme();
-    return true;
+
 }
 
 
@@ -4579,73 +4593,59 @@ async function guardarTipoDiaAsistencia() {
    FECHAS DE ASISTENCIA
 ===================================================== */
 
-async function cargarFechasAsistencia(opciones = {}) {
+async function cargarFechasAsistencia() {
+
     const select = document.getElementById("listaFechasAsistencia");
+
     if (!select) return;
 
     select.innerHTML = `<option value="">Fechas guardadas</option>`;
+
     if (!cursoSeleccionado) return;
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
     const ids = estudiantesCurso.map(e => e.id);
+
     if (ids.length === 0) return;
 
-    const clave = `fechas_asistencia_${cursoSeleccionado}`;
-    const cache = leerCacheLocal(clave);
+    const { data: dataAsistencia, error: errorAsistencia } = await supabaseClient
+        .from("asistencia")
+        .select("fecha")
+        .in("estudiante_id", ids)
+        .order("fecha", { ascending: false });
 
-    const pintar = fechas => {
-        select.innerHTML = `<option value="">Fechas guardadas</option>`;
-        [...new Set((fechas || []).filter(Boolean).map(String))]
-            .sort((a, b) => b.localeCompare(a))
-            .forEach(fecha => {
-                const opcion = document.createElement("option");
-                opcion.value = fecha;
-                opcion.textContent = formatearFechaGuardadaAsistencia(fecha);
-                select.appendChild(opcion);
-            });
-    };
-
-    if (cache) {
-        pintar(cache);
-
-        if (!puedeConsultarRed()) return;
-
-        /*
-         * Mostrar las fechas inmediatamente y actualizar la lista detrás.
-         */
-        if (!opciones.segundoPlano) {
-            void cargarFechasAsistencia({ segundoPlano: true });
-            return;
-        }
-    } else if (!puedeConsultarRed()) {
+    if (errorAsistencia) {
+        console.error(errorAsistencia);
+        alert("Error al cargar las fechas de asistencia: " + errorAsistencia.message);
         return;
     }
 
-    const [resultadoAsistencia, resultadoTipos] = await Promise.all([
-        supabaseClient
-            .from("asistencia")
-            .select("fecha")
-            .in("estudiante_id", ids)
-            .order("fecha", { ascending: false }),
-        supabaseClient
-            .from("asistencia_tipos_dia")
-            .select("fecha")
-            .eq("curso", cursoSeleccionado)
-            .order("fecha", { ascending: false })
-    ]);
+    const { data: dataTipos, error: errorTipos } = await supabaseClient
+        .from("asistencia_tipos_dia")
+        .select("fecha")
+        .eq("curso", cursoSeleccionado)
+        .order("fecha", { ascending: false });
 
-    if (resultadoAsistencia.error || resultadoTipos.error) {
-        console.error(resultadoAsistencia.error || resultadoTipos.error);
+    if (errorTipos) {
+        console.error(errorTipos);
+        alert("Error al cargar los tipos de día: " + errorTipos.message);
         return;
     }
 
-    const fechas = [
-        ...(resultadoAsistencia.data || []).map(r => r.fecha),
-        ...(resultadoTipos.data || []).map(r => r.fecha)
-    ];
+    const fechas = [...new Set([
+        ...(dataAsistencia || []).map(r => r.fecha),
+        ...(dataTipos || []).map(r => r.fecha)
+    ].filter(Boolean))].sort((a, b) => String(b).localeCompare(String(a)));
 
-    guardarCacheLocal(clave, fechas);
-    pintar(fechas);
+    fechas.forEach(fecha => {
+        const opcion = document.createElement("option");
+        opcion.value = fecha;
+        opcion.textContent = formatearFechaGuardadaAsistencia(fecha);
+        select.appendChild(opcion);
+    });
 }
 
 
@@ -4760,7 +4760,8 @@ document.getElementById(
    CARGAR ASISTENCIA
 ===================================================== */
 
-async function cargarAsistencia(opciones = {}) {
+async function cargarAsistencia() {
+
     registrosAsistencia = {};
     tipoDiaAsistencia = "";
     motivoNoClases = "";
@@ -4768,10 +4769,13 @@ async function cargarAsistencia(opciones = {}) {
 
     if (!cursoSeleccionado) return;
 
-    const fecha = document.getElementById("fechaAsistencia")?.value;
+    const fecha = document.getElementById("fechaAsistencia").value;
     if (!fecha) return;
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
+    const estudiantesCurso = estudiantes.filter(
+        e => e.curso === cursoSeleccionado
+    );
+
     const ids = estudiantesCurso.map(e => e.id);
 
     if (ids.length === 0) {
@@ -4779,74 +4783,40 @@ async function cargarAsistencia(opciones = {}) {
         return;
     }
 
-    const clave = `asistencia_${cursoSeleccionado}_${fecha}`;
-    const cache = leerCacheLocal(clave);
-
-    const aplicarCache = (item) => {
-        const asistencia = item?.asistencia || [];
-        const tipo = item?.tipo || null;
-
-        registrosAsistencia = {};
-        asistencia.forEach(registro => {
-            registrosAsistencia[registro.estudiante_id] = {
-                estado: registro.estado,
-                observacion: registro.observacion || ""
-            };
-        });
-
-        tipoDiaAsistencia = tipo?.tipo || "";
-        motivoNoClases = tipo?.motivo || "";
-    };
-
-    if (cache) {
-        aplicarCache(cache);
-        mostrarTablaAsistencia();
-
-        if (!puedeConsultarRed()) return;
-
-        /*
-         * No bloquear el cambio de fecha: actualizar en segundo plano.
-         */
-        if (!opciones.segundoPlano) {
-            void cargarAsistencia({ segundoPlano: true });
-            return;
-        }
-    } else if (!puedeConsultarRed()) {
-        mostrarTablaAsistencia();
-        mostrarMensaje("⚠️ Sin conexión. Selecciona otra fecha o vuelve a conectar para actualizar.", true);
-        return;
-    }
-
-    const [resultadoAsistencia, resultadoTipo] = await Promise.all([
-        supabaseClient
-            .from("asistencia")
-            .select("id,estudiante_id,fecha,estado,observacion")
-            .eq("fecha", fecha)
-            .in("estudiante_id", ids),
-        supabaseClient
-            .from("asistencia_tipos_dia")
-            .select("tipo,motivo")
-            .eq("curso", cursoSeleccionado)
-            .eq("fecha", fecha)
-            .maybeSingle()
-    ]);
-
-    const { data, error } = resultadoAsistencia;
-    const { data: tipoData, error: tipoError } = resultadoTipo;
+    const { data, error } = await supabaseClient
+        .from("asistencia")
+        .select("id,estudiante_id,fecha,estado,observacion")
+        .eq("fecha", fecha)
+        .in("estudiante_id", ids);
 
     if (error) {
         console.error(error);
+        alert("Error al cargar asistencia: " + error.message);
         mostrarTablaAsistencia();
         return;
     }
 
-    const paquete = {
-        asistencia: data || [],
-        tipo: tipoError ? null : (tipoData || null)
-    };
+    (data || []).forEach(registro => {
+        registrosAsistencia[registro.estudiante_id] = {
+            estado: registro.estado,
+            observacion: registro.observacion || ""
+        };
+    });
 
-    guardarCacheLocal(clave, paquete);
-    aplicarCache(paquete);
+    // El tipo especial se consulta en su propia tabla.
+    const { data: tipoData, error: tipoError } = await supabaseClient
+        .from("asistencia_tipos_dia")
+        .select("tipo,motivo")
+        .eq("curso", cursoSeleccionado)
+        .eq("fecha", fecha)
+        .maybeSingle();
+
+    if (tipoError) {
+        console.error("Error al cargar el tipo de día:", tipoError);
+    } else if (tipoData?.tipo) {
+        tipoDiaAsistencia = tipoData.tipo;
+        motivoNoClases = tipoData.motivo || "";
+    }
 
     const opcionesTipoDia = document.getElementById("opcionesTipoDiaAsistencia");
     const botonGuardarTipoDia = document.getElementById("botonGuardarTipoDiaAsistencia");
@@ -4861,8 +4831,15 @@ async function cargarAsistencia(opciones = {}) {
     }
 
     const contenedorMotivo = document.getElementById("motivoNoClasesContenedor");
-    if (contenedorMotivo) contenedorMotivo.classList.remove("visible");
+    const campoMotivo = document.getElementById("motivoNoClases");
+    if (contenedorMotivo) {
+        contenedorMotivo.classList.remove("visible");
+    }
+    if (campoMotivo) {
+        campoMotivo.value = motivoNoClases || "";
+    }
 
+    actualizarAvisoDiaEspecialAsistencia();
     mostrarTablaAsistencia();
 }
 
@@ -5046,11 +5023,7 @@ function mostrarTablaAsistencia() {
     }
 
     const estudiantesCurso =
-    estudiantes.filter(
-        e =>
-        e.curso ===
-        cursoSeleccionado
-    );
+    obtenerEstudiantesCursoActual();
 
 
     estudiantesCurso.forEach(
@@ -5973,83 +5946,33 @@ document.addEventListener(
 ===================================================== */
 
 async function cargarAsistenciaActividades() {
+
     registrosAsistenciaActividades = {};
 
-    if (!cursoSeleccionado || actividades.length === 0) return;
+    if (!cursoSeleccionado || actividades.length === 0) {
+        return;
+    }
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    const idsEstudiantes = estudiantesCurso.map(e => e.id);
-    const fechas = [...new Set(
-        actividades.map(a => a.fecha).filter(Boolean).map(String)
+    const estudiantesCurso =
+    obtenerEstudiantesCursoActual();
+
+    const idsEstudiantes =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+    const fechas =
+    [...new Set(
+        actividades
+        .map(a => a.fecha)
+        .filter(Boolean)
+        .map(fecha => String(fecha))
     )];
 
-    if (idsEstudiantes.length === 0 || fechas.length === 0) return;
-
-    const clave = `asistencia_actividades_${cursoSeleccionado}`;
-    const cache = leerCacheLocal(clave);
-
-    const aplicar = registros => {
-        registrosAsistenciaActividades = {};
-        (registros || []).forEach(registro => {
-            registrosAsistenciaActividades[
-                `${String(registro.estudiante_id)}_${String(registro.fecha)}`
-            ] = registro.estado || "";
-        });
-    };
-
-    if (cache) {
-        aplicar(cache);
-        if (!puedeConsultarRed()) return;
-    } else if (!puedeConsultarRed()) {
-        return;
-    }
-
-    const { data, error } =
-        await supabaseClient
-            .from("asistencia")
-            .select("estudiante_id,fecha,estado")
-            .in("estudiante_id", idsEstudiantes)
-            .in("fecha", fechas);
-
-    if (error) {
-        console.error("Error al actualizar asistencia de actividades:", error);
-        return;
-    }
-
-    guardarCacheLocal(clave, data || []);
-    aplicar(data || []);
-}
-
-
-/* =====================================================
-   CARGAR ACTIVIDADES
-===================================================== */
-
-async function cargarActividades() {
-    if (!cursoSeleccionado) return;
-
-    const clave = `actividades_${cursoSeleccionado}`;
-    const cache = leerCacheLocal(clave);
-
-    if (cache) {
-        actividades = cache;
-        mostrarActividades();
-
-        /*
-         * La pantalla queda utilizable inmediatamente. Las calificaciones
-         * y la asistencia se actualizan detrás de la interfaz.
-         */
-        void Promise.all([
-            cargarCalificaciones(),
-            cargarAsistenciaActividades()
-        ]).then(() => mostrarActividades());
-
-        if (!puedeConsultarRed()) return;
-        return;
-    } else if (!puedeConsultarRed()) {
-        actividades = [];
-        mostrarActividades();
-        mostrarMensaje("⚠️ Sin conexión. No hay actividades guardadas para este curso.", true);
+    if (
+        idsEstudiantes.length === 0 ||
+        fechas.length === 0
+    ) {
         return;
     }
 
@@ -6058,31 +5981,94 @@ async function cargarActividades() {
         error
     } =
     await supabaseClient
-        .from("actividades")
-        .select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo")
-        .eq("curso", cursoSeleccionado)
-        .eq("trimestre", 3)
-        .order("orden");
+    .from("asistencia")
+    .select(
+        "estudiante_id,fecha,estado"
+    )
+    .in(
+        "estudiante_id",
+        idsEstudiantes
+    )
+    .in(
+        "fecha",
+        fechas
+    );
 
     if (error) {
-        console.error(error);
-        if (!cache) {
-            actividades = [];
-            mostrarActividades();
-            mostrarMensaje("⚠️ No se pudieron cargar las actividades. Revisa la conexión.", true);
-        }
+        console.error(
+            "Error al cargar asistencia de actividades:",
+            error
+        );
         return;
     }
 
-    actividades = data || [];
-    guardarCacheLocal(clave, actividades);
+    (data || []).forEach(
+    registro => {
 
-    await Promise.all([
-        cargarCalificaciones(),
-        cargarAsistenciaActividades()
-    ]);
+        const clave =
+        String(registro.estudiante_id) +
+        "_" +
+        String(registro.fecha);
+
+        registrosAsistenciaActividades[clave] =
+        registro.estado || "";
+    });
+}
+
+
+/* =====================================================
+   CARGAR ACTIVIDADES
+===================================================== */
+
+async function cargarActividades() {
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("actividades")
+    .select(
+        "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
+    )
+    .eq(
+        "curso",
+        cursoSeleccionado
+    )
+    .eq(
+        "trimestre",
+        3
+    )
+    .order(
+        "orden"
+    );
+
+
+    if (error) {
+
+        console.error(error);
+
+        alert(
+            "Error al cargar actividades: " +
+            error.message
+        );
+
+        return;
+
+    }
+
+
+    actividades =
+    data || [];
+
+    reconstruirIndiceActividades();
+
+
+    await cargarCalificaciones();
+    await cargarAsistenciaActividades();
 
     mostrarActividades();
+
 }
 
 
@@ -6091,71 +6077,124 @@ async function cargarActividades() {
 ===================================================== */
 
 async function cargarCalificaciones() {
+
     calificaciones = {};
 
-    if (!cursoSeleccionado || actividades.length === 0) return;
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    const idsEstudiantes = estudiantesCurso.map(e => e.id);
-    const idsActividades = actividades.map(a => a.id);
-
-    if (idsEstudiantes.length === 0 || idsActividades.length === 0) return;
-
-    const clave = `calificaciones_${cursoSeleccionado}`;
-    const cache = leerCacheLocal(clave);
-
-    if (cache) {
-        (cache || []).forEach(cal => {
-            if (!calificaciones[cal.estudiante_id]) calificaciones[cal.estudiante_id] = {};
-            calificaciones[cal.estudiante_id][cal.actividad_id] = {
-                nota: cal.nota,
-                observacion: cal.observacion || ""
-            };
-        });
-        await recalcularNotasLocalesCurso();
-        if (!puedeConsultarRed()) return;
-    } else if (!puedeConsultarRed()) {
-        await recalcularNotasLocalesCurso();
+    if (
+        actividades.length === 0
+    ) {
         return;
     }
 
-    const { data, error } =
-        await supabaseClient
-            .from("calificaciones")
-            .select("id,actividad_id,estudiante_id,nota,observacion")
-            .in("actividad_id", idsActividades)
-            .in("estudiante_id", idsEstudiantes);
+
+    const estudiantesCurso =
+    estudiantes.filter(
+        e =>
+        e.curso ===
+        cursoSeleccionado
+    );
+
+
+    const idsEstudiantes =
+    estudiantesCurso.map(
+        e => e.id
+    );
+
+
+    const idsActividades =
+    actividades.map(
+        a => a.id
+    );
+
+
+    if (
+        idsEstudiantes.length === 0 ||
+        idsActividades.length === 0
+    ) {
+        return;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+    await supabaseClient
+    .from("calificaciones")
+    .select(
+        "id,actividad_id,estudiante_id,nota,observacion"
+    )
+    .in(
+        "actividad_id",
+        idsActividades
+    )
+    .in(
+        "estudiante_id",
+        idsEstudiantes
+    );
+
 
     if (error) {
+
         console.error(error);
-        if (!cache) await recalcularNotasLocalesCurso();
+
+        alert(
+            "Error al cargar calificaciones: " +
+            error.message
+        );
+
         return;
+
     }
 
-    const registros = data || [];
-    guardarCacheLocal(clave, registros);
 
-    calificaciones = {};
-    registros.forEach(cal => {
-        if (!calificaciones[cal.estudiante_id]) calificaciones[cal.estudiante_id] = {};
-        calificaciones[cal.estudiante_id][cal.actividad_id] = {
-            nota: cal.nota,
-            observacion: cal.observacion || ""
+    (data || []).forEach(
+    cal => {
+
+        if (
+            !calificaciones[
+                cal.estudiante_id
+            ]
+        ) {
+
+            calificaciones[
+                cal.estudiante_id
+            ] = {};
+
+        }
+
+
+        calificaciones[
+            cal.estudiante_id
+        ][
+            cal.actividad_id
+        ] = {
+
+            nota:
+            cal.nota,
+
+            observacion:
+            cal.observacion || ""
+
         };
+
     });
 
+    /* Recalcular 3T y Final únicamente en memoria/HTML. */
     await recalcularNotasLocalesCurso();
+
 }
 
 
 async function recalcularNotasLocalesCurso() {
     if (!cursoSeleccionado || !actividades.length) return;
 
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const estudiantesCurso = obtenerEstudiantesCursoActual();
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
     for (const estudiante of estudiantesCurso) {
         actualizarMatematicaEstudianteIndividualConActividades(
@@ -6175,12 +6214,12 @@ async function recalcularNotasLocalesCurso() {
 function recalcularNotasLocalesEstudiantes(ids) {
     if (!cursoSeleccionado || !actividades.length || !ids || !ids.size) return;
 
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
-    for (const estudiante of estudiantes) {
+    for (const estudiante of obtenerEstudiantesCursoActual()) {
         if (ids.has(Number(estudiante.id))) {
             actualizarMatematicaEstudianteIndividualConActividades(
                 estudiante,
@@ -6216,11 +6255,10 @@ function actualizarMatematicaEstudianteIndividualConActividades(
        no mostrar 0. La nota 3T se calcula en el HTML al abrir el curso
        y sólo se muestra cuando hay al menos una nota ingresada.
     */
-    const hayNotas3T = Array.from(
-        document.querySelectorAll(
-            `.nota-input[data-estudiante="${estudianteId}"]`
-        )
-    ).some(input => input.value !== "");
+    const hayNotas3T =
+        (
+            inputsNotasPorEstudianteCache.get(String(estudianteId)) || []
+        ).some(input => input.value !== "");
 
     const nota3T = hayNotas3T
         ? redondear(puntosSER + puntosSABER + puntosHACER + puntosAUTO)
@@ -6292,11 +6330,7 @@ function mostrarActividades() {
     categoria => {
 
         const lista =
-        actividades.filter(
-            a =>
-            a.categoria ===
-            categoria.codigo
-        );
+        actividadesPorCategoriaCache[categoria.codigo] || [];
 
 
         if (
@@ -6397,6 +6431,9 @@ function mostrarActividades() {
         `;
 
     }
+
+    // Una sola pasada por el DOM para acelerar los cálculos de 3T.
+    reconstruirIndiceInputsNotas();
 
 }
 
@@ -7731,17 +7768,19 @@ async function eliminarActividad(
 function recalcularNotasLocalesCursoSinRender() {
     if (!cursoSeleccionado || !actividades.length) return;
 
-    const actividadesSER = actividades.filter(a => a.categoria === "SER");
-    const actividadesSABER = actividades.filter(a => a.categoria === "SABER");
-    const actividadesHACER = actividades.filter(a => a.categoria === "HACER");
-    const actividadesAUTO = actividades.filter(a => a.categoria === "AUTOEVALUACION");
+    const actividadesSER = actividadesPorCategoriaCache.SER;
+    const actividadesSABER = actividadesPorCategoriaCache.SABER;
+    const actividadesHACER = actividadesPorCategoriaCache.HACER;
+    const actividadesAUTO = actividadesPorCategoriaCache.AUTOEVALUACION;
 
-    for (const estudiante of estudiantes) {
-        if (estudiante.curso === cursoSeleccionado) {
-            actualizarMatematicaEstudianteIndividualConActividades(
-                estudiante, actividadesSER, actividadesSABER, actividadesHACER, actividadesAUTO
-            );
-        }
+    for (const estudiante of obtenerEstudiantesCursoActual()) {
+        actualizarMatematicaEstudianteIndividualConActividades(
+            estudiante,
+            actividadesSER,
+            actividadesSABER,
+            actividadesHACER,
+            actividadesAUTO
+        );
     }
 }
 
@@ -8245,6 +8284,8 @@ async function cargarInformeGeneral() {
     encabezado1 += `<th class="promedio-dimension categoria-hacer">Promedio del Hacer</th>`;
     agregarEncabezadosActividades(auto, "categoria-auto");
     encabezado1 += `<th class="nota-trimestre-general">Nota 1T</th><th class="nota-trimestre-general">Nota 2T</th><th class="nota-trimestre-general">Nota 3T</th><th class="nota-final-general">Nota Final</th><th class="visitas-general">Visitas a la página</th></tr>`;
+
+    let encabezado2 = "";
 
     let cuerpo = "";
     estudiantesCurso.forEach(estudiante => {
@@ -9313,82 +9354,68 @@ function calcularPuntosCategoria(
 
     }
 
+    /*
+       Los inputs ya están indexados por estudiante y categoría.
+       Esto evita ejecutar querySelector() una vez por cada actividad
+       en cada recálculo de notas.
+    */
+    const categoria =
+        actividadesLista === actividadesPorCategoriaCache.SER
+            ? "SER"
+            : actividadesLista === actividadesPorCategoriaCache.SABER
+                ? "SABER"
+                : actividadesLista === actividadesPorCategoriaCache.HACER
+                    ? "HACER"
+                    : "AUTOEVALUACION";
 
-    let sumaNotas = 0;
-
-    let sumaMaximos = 0;
-
-
-    actividadesLista.forEach(
-    actividad => {
-
-        const input =
-        document.querySelector(
-
-            `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividad.id}"]`
-
+    const porCategoria =
+        inputsNotasPorEstudianteCategoriaCache.get(
+            String(estudianteId)
         );
 
+    const inputs =
+        porCategoria?.[categoria] || [];
+
+    if (inputs.length === 0) {
+        return 0;
+    }
+
+    let sumaNotas = 0;
+    let sumaMaximos = 0;
+
+    inputs.forEach(input => {
 
         if (
             !input ||
             input.value === ""
         ) {
-
             return;
-
         }
 
-
-        const nota =
-        Number(
-            input.value
-        );
-
-
-        const maximo =
-        Number(
-            input.dataset.maximo
-        );
-
+        const nota = Number(input.value);
+        const maximo = Number(input.dataset.maximo);
 
         if (
             isNaN(nota) ||
             isNaN(maximo) ||
             maximo <= 0
         ) {
-
             return;
-
         }
 
-
-        sumaNotas +=
-        nota;
-
-
-        sumaMaximos +=
-        maximo;
+        sumaNotas += nota;
+        sumaMaximos += maximo;
 
     });
 
-
-    if (
-        sumaMaximos === 0
-    ) {
-
+    if (sumaMaximos === 0) {
         return 0;
-
     }
 
-
     return (
-
         sumaNotas /
         sumaMaximos
-
-    ) *
-    limiteCategoria;
+    ) * limiteCategoria;
 
 }
 
@@ -11658,6 +11685,12 @@ async function guardarCalificacionQR() {
         ][
             actividadQRSeleccionada.id
         ];
+
+        const observacionAnterior =
+        registroAnterior &&
+        typeof registroAnterior === "object"
+        ? registroAnterior.observacion || ""
+        : "";
 
         const anteriorHistorialQR = registroAnterior && typeof registroAnterior === "object"
         ? {
