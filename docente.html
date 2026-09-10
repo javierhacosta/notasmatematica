@@ -6512,24 +6512,6 @@ async function cargarCalificaciones() {
 
     });
 
-    /* Recalcular 3T y Final únicamente en memoria/HTML. */
-    await recalcularNotasLocalesCurso();
-
-}
-
-
-async function recalcularNotasLocalesCurso() {
-    if (!cursoSeleccionado || !actividades.length) return;
-
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    for (const estudiante of estudiantesCurso) {
-        await actualizarMatematicaEstudianteIndividual(estudiante.id);
-    }
-
-    /* Si el Informe General está visible, refrescarlo con los cálculos locales. */
-    try {
-        if (typeof mostrarTablaGeneral === "function") mostrarTablaGeneral();
-    } catch (_) {}
 }
 
 
@@ -9279,17 +9261,19 @@ async function actualizarMatematicaEstudianteIndividual(estudianteId) {
         );
     }
 
-    /*
-       NOTA 3T Y NOTA FINAL: SOLO EN EL HTML.
-       No se envían a Supabase ni se agregan a la cola offline.
-    */
+    const { error } = await supabaseClient
+        .from("matematica")
+        .update({
+            nota_3t: nota3T,
+            final: notaFinal
+        })
+        .eq("id", estudiante.id);
+
+    if (error) throw error;
+
+    /* Actualizar también los datos locales. */
     estudiante.nota_3t = nota3T;
     estudiante.final = notaFinal;
-
-    const celdaNota3T = document.getElementById(`nota3t-${estudiante.id}`);
-    const celdaFinal = document.getElementById(`final-${estudiante.id}`);
-    if (celdaNota3T) celdaNota3T.textContent = mostrarNota(nota3T);
-    if (celdaFinal) celdaFinal.textContent = mostrarNota(notaFinal);
 }
 
 
@@ -9717,18 +9701,30 @@ async function guardarNotas() {
             await Promise.all(
                 lote.map(
                 async item => {
-                    /* 3T y Final son cálculos locales; nunca se guardan en Supabase. */
-                    item.estudiante.nota_3t = item.nota3T;
-                    item.estudiante.final = item.notaFinal;
 
-                    const celdaNota3T = document.getElementById(`nota3t-${item.estudiante.id}`);
-                    const celdaFinal = document.getElementById(`final-${item.estudiante.id}`);
-                    if (celdaNota3T) celdaNota3T.textContent = mostrarNota(item.nota3T);
-                    if (celdaFinal) celdaFinal.textContent = mostrarNota(item.notaFinal);
+                    const {
+                        error
+                    } =
+                    await supabaseClient
+                    .from("matematica")
+                    .update({
+
+                        nota_3t:
+                        item.nota3T,
+
+                        final:
+                        item.notaFinal
+
+                    })
+                    .eq(
+                        "id",
+                        item.estudiante.id
+                    );
+
 
                     return {
                         item,
-                        error: null
+                        error
                     };
 
                 })
@@ -9799,7 +9795,9 @@ async function guardarNotas() {
         mostrarMensaje(
             "✓ Calificaciones guardadas correctamente."
         );
-        /* No recargar estudiantes: 3T y Final son locales al HTML. */
+
+
+        await cargarEstudiantes();
         await cargarActividades();
 
         mostrarTablaGeneral();
