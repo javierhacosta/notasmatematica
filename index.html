@@ -811,51 +811,33 @@ const FIN_3T = "2026-12-31";
 let temporizadorVisita = null;
 
 function iniciarCuentaRegresivaVisita(segundos) {
+    const boton = document.querySelector('button[onclick="consultarNota()"]');
+    if (!boton) return;
 
-    if (temporizadorVisita) {
-        clearInterval(temporizadorVisita);
-        temporizadorVisita = null;
+    if (window.temporizadorVisita) {
+        clearInterval(window.temporizadorVisita);
     }
 
-    const boton = document.querySelector('button[onclick="consultarNota()"]');
-    if (!boton || segundos <= 0) return;
+    // Después de consultar, el botón desaparece durante una hora.
+    boton.style.display = "none";
 
-    const textoOriginal = "Consultar mi nota";
+    let restante = segundos;
 
-    const actualizar = () => {
-
-        if (segundos <= 0) {
-            clearInterval(temporizadorVisita);
-            temporizadorVisita = null;
+    const actualizarBoton = () => {
+        if (restante <= 0) {
+            clearInterval(window.temporizadorVisita);
+            window.temporizadorVisita = null;
+            boton.style.display = "";
             boton.disabled = false;
-            boton.style.opacity = "1";
-            boton.style.cursor = "pointer";
-            boton.textContent = textoOriginal;
+            boton.textContent = "Consultar mi nota";
             return;
         }
 
-        const horas = Math.floor(segundos / 3600);
-        const minutos = Math.floor((segundos % 3600) / 60);
-        const seg = segundos % 60;
-
-        let tiempo;
-
-        if (horas > 0) {
-            tiempo = `${horas} h ${minutos} min ${String(seg).padStart(2, "0")} s`;
-        } else {
-            tiempo = `${minutos} min ${String(seg).padStart(2, "0")} s`;
-        }
-
-        boton.disabled = true;
-        boton.style.opacity = "0.65";
-        boton.style.cursor = "not-allowed";
-        boton.textContent = `🔒 Nueva consulta en ${tiempo}`;
-        segundos--;
-
+        restante--;
     };
 
-    actualizar();
-    temporizadorVisita = setInterval(actualizar, 1000);
+    actualizarBoton();
+    window.temporizadorVisita = setInterval(actualizarBoton, 1000);
 }
 
 /* =================================================
