@@ -11882,10 +11882,8 @@ function extraerCIDesdeQR(
     }
 
     try {
-
         const url =
         new URL(valor);
-
         const ci =
         url.searchParams.get(
             "ci"
@@ -11893,47 +11891,32 @@ function extraerCIDesdeQR(
 
         if (
             ci &&
-            /^\d+$/.test(
-                ci.trim()
-            )
+            ci.trim()
         ) {
-
             return ci.trim();
-
         }
-
     }
-
     catch(error) {
-        /* El QR puede contener directamente el número. */
+        /* El QR puede contener directamente el CI. */
     }
 
     const coincidencia =
     valor.match(
-        /(?:[?&]ci=)(\d+)/i
+        /(?:[?&]ci=)([^&#]+)/i
     );
 
     if (
         coincidencia &&
         coincidencia[1]
     ) {
-
-        return coincidencia[1];
-
+        return decodeURIComponent(
+            coincidencia[1]
+        ).trim();
     }
 
-    if (
-        /^\d+$/.test(valor)
-    ) {
-
-        return valor;
-
-    }
-
-    return null;
-
+    /* Acepta CI numérico o alfanumérico directamente. */
+    return valor;
 }
-
 
 function detenerCamaraQR() {
 
