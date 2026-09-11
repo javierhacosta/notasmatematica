@@ -1304,9 +1304,7 @@ async function mostrarResultado(alumno) {
                 }
 
             </div>
-
-
-            <div
+<div
                 id="detalle3T"
                 style="display:block"
             ></div>
@@ -1448,6 +1446,8 @@ async function mostrarResultado(alumno) {
 
     `;
 
+
+    mostrarDetalles();
 
 }
 
@@ -1613,6 +1613,582 @@ async function mostrarCentralizador() {
         `;
     }
 }
+
+/* =================================================
+   DETALLES DEL 3ER TRIMESTRE
+================================================= */
+
+async function mostrarDetalles() {
+
+    const contenedor =
+        document.getElementById(
+            "detalle3T"
+        );
+
+
+    if (!contenedor) {
+
+        return;
+
+    }
+
+
+    contenedor.style.display =
+        "block";
+
+
+    contenedor.innerHTML =
+        '<div class="cargando">' +
+        'Cargando detalles...' +
+        '</div>';
+
+
+    try {
+
+        const respuesta =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/actividades?` +
+
+                `curso=eq.${encodeURIComponent(
+                    alumnoActual.curso
+                )}` +
+
+                `&trimestre=eq.3` +
+
+                `&select=id,categoria,nombre,orden,puntaje_maximo,fecha` +
+
+                `&order=orden`,
+
+                {
+
+                    headers: {
+
+                        "apikey":
+                            SUPABASE_KEY,
+
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+
+                    }
+
+                }
+
+            );
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "Error actividades"
+            );
+
+        }
+
+
+        const actividades =
+            await respuesta.json();
+
+
+        if (
+            actividades.length === 0
+        ) {
+
+            contenedor.innerHTML = `
+
+                <div class="detalle">
+
+                    <div class="detalle-titulo">
+
+                        📊 Detalles del 3er trimestre
+
+                    </div>
+
+                    <p style="
+                        text-align:center;
+                        color:#666;
+                        line-height:1.5;
+                    ">
+
+                        Todavía no hay actividades
+                        registradas.
+
+                    </p>
+
+                </div>
+
+            `;
+
+
+            await mostrarAsistenciaEnDetalle();
+
+            return;
+
+        }
+
+
+        const ids =
+            actividades.map(
+                a => a.id
+            );
+
+
+        const respuestaNotas =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/calificaciones?` +
+
+                `estudiante_id=eq.${alumnoActual.id}` +
+
+                `&actividad_id=in.(${ids.join(",")})` +
+
+                `&select=actividad_id,nota,observacion`,
+
+                {
+
+                    headers: {
+
+                        "apikey":
+                            SUPABASE_KEY,
+
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+
+                    }
+
+                }
+
+            );
+
+
+        const calificaciones =
+            await respuestaNotas.json();
+
+
+        const mapa = {};
+
+
+        calificaciones.forEach(
+            c => {
+
+                mapa[c.actividad_id] = {
+
+                    nota: c.nota,
+
+                    observacion:
+                        c.observacion
+
+                };
+
+            }
+        );
+
+
+        const categorias = [
+
+            {
+                codigo: "SER",
+                titulo: "🌟 Actitud y Responsabilidad",
+                clase: "ser"
+            },
+
+            {
+                codigo: "SABER",
+                titulo: "📝 Evaluaciones",
+                clase: "saber"
+            },
+
+            {
+                codigo: "HACER",
+                titulo: "📚 Tareas y Trabajos",
+                clase: "hacer"
+            },
+
+            {
+                codigo: "AUTOEVALUACION",
+                titulo: "🎯 Autoevaluación",
+                clase: "auto"
+            }
+
+        ];
+
+
+        let html = `
+
+            <div class="detalle">
+
+                <div class="detalle-titulo">
+
+                    📊 ¿Cómo se calcula tu nota
+                    del 3er trimestre?
+
+                </div>
+
+
+                <p style="
+                    text-align:center;
+                    color:#666;
+                    font-size:14px;
+                    line-height:1.5;
+                ">
+
+                    Aquí puedes revisar las
+                    calificaciones registradas.
+
+                </p>
+
+        `;
+
+
+        categorias.forEach(
+            categoria => {
+
+                const lista =
+                    actividades.filter(
+                        a =>
+                            a.categoria ===
+                            categoria.codigo
+                    );
+
+
+                if (
+                    lista.length === 0
+                ) {
+
+                    return;
+
+                }
+
+
+                const limite =
+
+                    categoria.codigo === "SER"
+
+                    ? 10
+
+                    : categoria.codigo === "SABER"
+
+                    ? 45
+
+                    : categoria.codigo === "HACER"
+
+                    ? 40
+
+                    : 5;
+
+
+                let suma = 0;
+
+                let cantidad = 0;
+
+
+                lista.forEach(
+                    actividad => {
+
+                        const registro =
+                            mapa[
+                                actividad.id
+                            ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
+
+                        if (
+                            nota !== null &&
+                            nota !== undefined &&
+                            nota !== ""
+                        ) {
+
+                            const numero =
+                                Number(nota);
+
+
+                            if (
+                                !isNaN(numero)
+                            ) {
+
+                                suma +=
+                                    numero;
+
+                                cantidad++;
+
+                            }
+
+                        }
+
+                    }
+                );
+
+
+                let promedio = 0;
+
+
+                if (
+                    cantidad > 0
+                ) {
+
+                    promedio =
+                        suma / cantidad;
+
+                }
+
+
+                const promedioMostrado =
+
+                    cantidad > 0
+
+                    ? Math.round(promedio)
+
+                    : null;
+
+
+                html += `
+
+                    <div class="categoria">
+
+                        <div class="
+                            categoria-titulo
+                            ${categoria.clase}
+                        ">
+
+                            ${categoria.titulo}
+
+                        </div>
+
+                `;
+
+
+                lista.forEach(
+                    actividad => {
+
+                        const registro =
+                            mapa[
+                                actividad.id
+                            ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
+
+                        const observacion =
+
+                            registro &&
+                            registro.observacion
+
+                            ? escapeHTML(
+                                registro.observacion
+                            )
+
+                            : "";
+
+
+                        const valor =
+
+                            nota === null ||
+                            nota === undefined ||
+                            nota === ""
+
+                            ? "—"
+
+                            : Math.round(
+                                Number(nota)
+                            );
+
+
+                        html += `
+
+                            <div class="actividad-fila">
+
+                                <div class="actividad-nombre">
+
+                                    ${escapeHTML(
+                                        actividad.nombre
+                                    )}
+
+                                    <span class="actividad-fecha">
+
+                                        📅 ${
+                                            actividad.fecha
+                                            ? formatearFecha(
+                                                actividad.fecha
+                                            )
+                                            : "Sin fecha"
+                                        }
+
+                                    </span>
+
+                                </div>
+
+
+                                <div class="actividad-nota">
+
+                                    <div>
+
+                                        ${valor}
+
+                                        / ${actividad.puntaje_maximo}
+
+                                    </div>
+
+
+                                    ${
+                                        observacion
+
+                                        ? `
+
+                                            <div class="actividad-observacion">
+
+                                                📝 ${observacion}
+
+                                            </div>
+
+                                        `
+
+                                        : ""
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        `;
+
+                    }
+                );
+
+
+                html += `
+
+                        <div class="resumen-categoria">
+
+                            <span>
+
+                                Promedio de esta sección
+
+                            </span>
+
+
+                            <span class="promedio-valor">
+
+                                ${
+                                    promedioMostrado === null
+
+                                    ? "—"
+
+                                    : promedioMostrado
+                                }
+
+                                pts
+
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+        const nota3 =
+            await calcularNota3T(alumnoActual);
+
+
+        html += `
+
+                <div class="resultado-3t">
+
+                    <div class="resultado-3t-titulo">
+
+                        ⭐ Nota del 3er trimestre
+                        provisional
+
+                    </div>
+
+
+                    <div class="resultado-3t-numero">
+
+                        ${
+                            nota3 === null
+
+                            ? "—"
+
+                            : nota3
+                        }
+
+                    </div>
+
+
+                    <div style="
+                        color:#666;
+                        font-size:13px;
+                        line-height:1.5;
+                    ">
+
+                        Resultado provisional.
+
+                        <br>
+
+                        Las calificaciones pueden modificarse
+                        con las próximas actividades y evaluaciones.
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        `;
+
+
+        contenedor.innerHTML =
+            html;
+
+
+        await mostrarAsistenciaEnDetalle();
+
+    }
+
+
+    catch(error) {
+
+        console.error(error);
+
+
+        contenedor.innerHTML = `
+
+            <div class="detalle">
+
+                <p class="error">
+
+                    No se pudo cargar el detalle
+                    del tercer trimestre.
+
+                </p>
+
+            </div>
+
+        `;
+
+
+        await mostrarAsistenciaEnDetalle();
+
+    }
+
+}
+
 
 /* =================================================
    MOSTRAR ASISTENCIA
@@ -2189,9 +2765,7 @@ async function mostrarAsistenciaEnDetalle() {
 
 
                 </div>
-
-
-                <div
+<div
                     class="detalle-asistencia"
                     id="tablaDetalleAsistencia"
                     style="display:block"
@@ -2325,319 +2899,10 @@ async function mostrarAsistenciaEnDetalle() {
 
 
 /* =================================================
-   NORMALIZAR ESTADO
+   MOSTRAR / OCULTAR TABLA ASISTENCIA
 ================================================= */
 
-function normalizarEstado(estado) {
 
-    if (
-        estado === null ||
-        estado === undefined
-    ) {
-
-        return "";
-
-    }
-
-
-    return String(estado)
-
-        .trim()
-
-        .toLowerCase()
-
-        .normalize("NFD")
-
-        .replace(
-            /[\u0300-\u036f]/g,
-            ""
-        );
-
-}
-
-
-/* =================================================
-   ESTADOS DE ASISTENCIA
-================================================= */
-
-function obtenerEstadoAsistencia(estado) {
-
-    switch (estado) {
-
-        case "asistio":
-
-            return {
-
-                nombre: "Asistencia",
-
-                icono: "🟢",
-
-                clase: "estado-presente"
-
-            };
-
-
-        case "atraso":
-
-            return {
-
-                nombre: "Atraso",
-
-                icono: "🟡",
-
-                clase: "estado-atraso"
-
-            };
-
-
-        case "licencia":
-
-            return {
-
-                nombre: "Falta con licencia",
-
-                icono: "🔵",
-
-                clase: "estado-licencia"
-
-            };
-
-
-        case "falta":
-
-            return {
-
-                nombre: "Falta sin licencia",
-
-                icono: "🔴",
-
-                clase: "estado-falta"
-
-            };
-
-
-        default:
-
-            return {
-
-                nombre:
-                    estado
-                    ? estado
-                    : "Sin registro",
-
-                icono: "⚪",
-
-                clase: ""
-
-            };
-
-    }
-
-}
-
-
-/* =================================================
-   FORMATEAR FECHA
-================================================= */
-
-function formatearFecha(fecha) {
-
-    if (!fecha) {
-
-        return "—";
-
-    }
-
-
-    const partes =
-        String(fecha)
-        .split("-");
-
-
-    if (
-        partes.length === 3
-    ) {
-
-        const anio =
-            Number(partes[0]);
-
-        const mes =
-            Number(partes[1]) - 1;
-
-        const dia =
-            Number(partes[2]);
-
-
-        /*
-         * Se crea la fecha usando los valores
-         * locales para evitar problemas de zona horaria.
-         */
-
-        const fechaLocal =
-            new Date(
-                anio,
-                mes,
-                dia
-            );
-
-
-        const diasSemana = [
-
-            "Domingo",
-            "Lunes",
-            "Martes",
-            "Miércoles",
-            "Jueves",
-            "Viernes",
-            "Sábado"
-
-        ];
-
-
-        const nombreDia =
-            diasSemana[
-                fechaLocal.getDay()
-            ];
-
-
-        return `${nombreDia}, ${String(dia).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}/${anio}`;
-
-    }
-
-
-    return fecha;
-
-}
-
-
-/* =================================================
-   CONVERTIR NOTA
-================================================= */
-
-function convertirNota(nota) {
-
-    if (
-
-        nota === null ||
-
-        nota === undefined ||
-
-        nota === ""
-
-    ) {
-
-        return null;
-
-    }
-
-
-    const numero =
-        Number(nota);
-
-
-    if (
-        isNaN(numero)
-    ) {
-
-        return null;
-
-    }
-
-
-    return numero;
-
-}
-
-
-/* =================================================
-   REDONDEAR NOTA
-================================================= */
-
-function redondearNota(nota) {
-
-    const numero =
-        convertirNota(nota);
-
-
-    if (
-        numero === null
-    ) {
-
-        return null;
-
-    }
-
-
-    return Math.round(numero);
-
-}
-
-
-/* =================================================
-   ESCAPAR HTML
-================================================= */
-
-function escapeHTML(texto) {
-
-    return String(texto)
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
-}
-
-
-/* =================================================
-   OBTENER CI DESDE LA URL
-================================================= */
-
-const parametros =
-    new URLSearchParams(
-        window.location.search
-    );
-
-
-const ci =
-    parametros.get("ci");
-
-const fechaNacimiento =
-    parametros.get("fecha_nacimiento");
-
-if (ci) {
-
-    document.getElementById("ci").value =
-        ci;
-
-}
-
-if (fechaNacimiento) {
-
-    document.getElementById("fecha_nacimiento").value =
-        fechaNacimiento;
-
-}
 </script>
 
 
