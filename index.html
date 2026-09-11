@@ -586,6 +586,30 @@ button:hover {
     color: #5d4037;
 }
 
+
+/* Reacciones del gatito al explorar la página */
+#gatoInteractivo.gracioso #gatoCuerpo { animation: gatoBroma .75s ease-in-out; }
+#gatoInteractivo.saltando #gatoCuerpo { animation: gatoSalto .65s ease-in-out; }
+#gatoInteractivo.asustado #gatoCuerpo { animation: gatoTemblor .5s ease-in-out; }
+@keyframes gatoBroma {
+    0%,100% { transform: rotate(0) scale(1); }
+    25% { transform: rotate(-15deg) scale(1.12); }
+    50% { transform: rotate(15deg) scale(1.12); }
+    75% { transform: rotate(-8deg) scale(1.06); }
+}
+@keyframes gatoSalto {
+    0%,100% { transform: translateY(0) scale(1); }
+    45% { transform: translateY(-18px) scale(1.12); }
+    70% { transform: translateY(0) scale(.96); }
+}
+@keyframes gatoTemblor {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
 @media(max-width:500px) {
 
     .contenedor {
@@ -3455,6 +3479,95 @@ if (fechaNacimiento) {
         setTimeout(() => gato.classList.remove('sorprendido'), 700);
     });
 
+    /* Detecta qué hay debajo del gatito cuando el estudiante lo coloca encima. */
+    let ultimoObjetivo = '';
+    let ultimaReaccionObjetivo = 0;
+
+    function elementoDebajoDelGato() {
+        const r = gato.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const elementos = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+        return elementos.find(el => el !== gato && !gato.contains(el) && el !== document.body && el !== document.documentElement);
+    }
+
+    function reaccionarSobre(texto) {
+        const t = (texto || '').replace(/\s+/g, ' ').trim();
+        if (!t) return;
+        const clave = t.toLowerCase().slice(0, 180);
+        const ahora = Date.now();
+        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 7000) return;
+        ultimoObjetivo = clave;
+        ultimaReaccionObjetivo = ahora;
+
+        let respuesta = '';
+        let emoji = '🐱';
+        if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
+            const opciones = [
+                '¡A cuidar la asistencia! 🐾',
+                'Cada día cuenta. ¡Tú puedes! 💪',
+                '¡Presente y con ganas de aprender! 😺',
+                'Pocas faltas, muchas oportunidades. 🌟'
+            ];
+            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
+            emoji = '👀';
+        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n/i.test(t)) {
+            const opciones = [
+                '¡Tú puedes mejorar cada nota! 🌟',
+                '¡Un pequeño esfuerzo puede hacer una gran diferencia! 💪',
+                'No mires sólo el número: ¡mira cuánto has aprendido! 🧠',
+                '¡Vamos por esa próxima nota! 🚀',
+                '¡Estoy vigilando el progreso! 👀🐾'
+            ];
+            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
+            emoji = /7[0-9]|8[0-9]|9[0-9]|100/.test(t) ? '😻' : '🤔';
+        } else if (/estudiante|nombre|curso|materia|matem[aá]tica/i.test(t)) {
+            respuesta = '¡Aquí está tu información! 😺';
+            emoji = '😺';
+        }
+
+        if (respuesta) {
+            cuerpo.textContent = emoji;
+            gato.classList.add('mirando');
+            decir(respuesta, 2600);
+            if (emoji === '😻') sonidoFeliz();
+            else if (Math.random() < .35) sonidoMiau();
+            setTimeout(() => { if (!arrastrando) cuerpo.textContent = '🐱'; }, 2600);
+        }
+    }
+
+    function revisarDebajoDelGato() {
+        if (arrastrando) return;
+        const el = elementoDebajoDelGato();
+        if (!el) return;
+        const texto = el.innerText || el.textContent || '';
+        reaccionarSobre(texto);
+    }
+
+    function hacerBroma() {
+        if (arrastrando || document.hidden) return;
+        const bromas = [
+            ['😹', '¡Ups! Creo que estaba estudiando al revés 😂'],
+            ['🙈', '¡No me mires! Yo también necesito estudiar 😅'],
+            ['😴', 'Zzz… ¡Era una mini siesta académica! 💤'],
+            ['🤓', '¡Momento de ponerse las gafas de estudiante! 🤓'],
+            ['😼', 'Estoy vigilando… pero con estilo 😎🐾'],
+            ['🙀', '¡Esa nota me hizo saltar! 😲'],
+            ['😺', '¡Sigue así! Cada esfuerzo cuenta. 🌟']
+        ];
+        const b = bromas[Math.floor(Math.random() * bromas.length)];
+        cuerpo.textContent = b[0];
+        gato.classList.add(Math.random() < .5 ? 'gracioso' : 'saltando');
+        decir(b[1], 2300);
+        if (b[0] === '🙀') sonidoSorpresa();
+        else if (b[0] === '😺') sonidoFeliz();
+        else sonidoMiau();
+        setTimeout(() => {
+            gato.classList.remove('gracioso', 'saltando', 'asustado');
+            if (!arrastrando) cuerpo.textContent = '🐱';
+        }, 900);
+    }
+
     function observarResultado() {
         const resultado = document.getElementById('resultado');
         if (!resultado) return;
@@ -3490,14 +3603,23 @@ if (fechaNacimiento) {
     if (resultado) new MutationObserver(observarResultado).observe(resultado, {childList:true, subtree:true, characterData:true});
 
     setInterval(() => {
-        if (arrastrando) return;
+        revisarDebajoDelGato();
         const r = document.getElementById('resultado');
         const t = r ? (r.innerText || '') : '';
         if (/asistencia/i.test(t)) {
             gato.classList.add('mirando');
-            if (Math.random() < .35) decir('También miro la asistencia 👀', 1800);
+            if (Math.random() < .25) decir('También miro la asistencia 👀', 1800);
         }
-    }, 5000);
+    }, 1200);
+
+    /* De vez en cuando hace alguna travesura por su cuenta. */
+    let proximaBroma = Date.now() + 12000 + Math.random() * 18000;
+    setInterval(() => {
+        if (Date.now() >= proximaBroma) {
+            hacerBroma();
+            proximaBroma = Date.now() + 18000 + Math.random() * 30000;
+        }
+    }, 2000);
 
     setTimeout(() => decir('¡Hola! 🐾', 1800), 900);
 })();
