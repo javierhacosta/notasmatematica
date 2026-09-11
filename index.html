@@ -845,6 +845,81 @@ function iniciarCuentaRegresivaVisita(segundos) {
 }
 
 /* =================================================
+   ACTUALIZACIÓN AUTOMÁTICA DE CALIFICACIONES
+================================================= */
+let temporizadorActualizacion = null;
+let actualizandoAutomaticamente = false;
+
+function iniciarActualizacionAutomatica() {
+
+    if (temporizadorActualizacion) {
+        clearInterval(temporizadorActualizacion);
+    }
+
+    // Actualiza cada 10 segundos mientras el estudiante mantiene
+    // la página abierta. Esta actualización NO registra una visita.
+    temporizadorActualizacion = setInterval(
+        actualizarCalificacionesAutomaticamente,
+        10000
+    );
+}
+
+async function actualizarCalificacionesAutomaticamente() {
+
+    if (!alumnoActual || actualizandoAutomaticamente) {
+        return;
+    }
+
+    actualizandoAutomaticamente = true;
+
+    try {
+
+        const respuesta = await fetch(
+            `${SUPABASE_URL}/rest/v1/matematica?` +
+            `ci=eq.${encodeURIComponent(alumnoActual.ci)}` +
+            `&fecha_nacimiento=eq.${encodeURIComponent(alumnoActual.fecha_nacimiento)}` +
+            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                },
+                cache: "no-store"
+            }
+        );
+
+        if (!respuesta.ok) {
+            return;
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.length) {
+            return;
+        }
+
+        // Actualiza los datos del estudiante sin registrar una nueva visita.
+        alumnoActual = datos[0];
+
+        await mostrarResultado(alumnoActual);
+
+    } catch (error) {
+
+        // Si falla una actualización automática, se conserva
+        // la información que el estudiante ya está viendo.
+        console.error(
+            "No se pudo actualizar automáticamente:",
+            error
+        );
+
+    } finally {
+
+        actualizandoAutomaticamente = false;
+
+    }
+}
+
+/* =================================================
    CONSULTAR
 ================================================= */
 
@@ -949,7 +1024,8 @@ async function consultarNota() {
             iniciarCuentaRegresivaVisita(
                 Math.ceil((DURACION_BLOQUEO_VISITA - tiempoTranscurrido) / 1000)
             );
-            mostrarResultado(alumnoActual);
+            await mostrarResultado(alumnoActual);
+            iniciarActualizacionAutomatica();
             return;
         }
 
@@ -1012,9 +1088,11 @@ async function consultarNota() {
         }
 
 
-        mostrarResultado(
+        await mostrarResultado(
             alumnoActual
         );
+
+        iniciarActualizacionAutomatica();
 
     }
 
