@@ -1347,6 +1347,38 @@ td:first-child {
     font-size: 10px;
 }
 
+/* BARRA DELGADA DE CARGA AL ELEGIR UNA FECHA */
+.barra-carga-fecha-asistencia {
+    display: none;
+    position: relative;
+    width: 100%;
+    height: 3px;
+    margin-top: 7px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #e6eaed;
+}
+
+.barra-carga-fecha-asistencia.activa {
+    display: block;
+}
+
+.barra-carga-fecha-asistencia-progreso {
+    position: absolute;
+    top: 0;
+    left: -35%;
+    width: 35%;
+    height: 100%;
+    border-radius: 3px;
+    background: #1565c0;
+    animation: moverBarraCargaFechaAsistencia 1s ease-in-out infinite;
+}
+
+@keyframes moverBarraCargaFechaAsistencia {
+    0%   { left: -35%; }
+    100% { left: 100%; }
+}
+
 .punto-calendario-asistencia {
     width: 7px;
     height: 7px;
@@ -2849,6 +2881,11 @@ Selecciona un curso
         <span>Sin clases</span>
         <span class="punto-calendario-asistencia clase-informal"></span>
         <span>Clase informal</span>
+    </div>
+    <div id="barraCargaFechaAsistencia"
+         class="barra-carga-fecha-asistencia"
+         aria-label="Cargando lista de asistencia">
+        <div class="barra-carga-fecha-asistencia-progreso"></div>
     </div>
 </div>
 
@@ -5184,17 +5221,35 @@ document.getElementById(
    CARGAR ASISTENCIA
 ===================================================== */
 
+function mostrarBarraCargaFechaAsistencia() {
+    const barra = document.getElementById("barraCargaFechaAsistencia");
+    if (barra) barra.classList.add("activa");
+}
+
+function ocultarBarraCargaFechaAsistencia() {
+    const barra = document.getElementById("barraCargaFechaAsistencia");
+    if (barra) barra.classList.remove("activa");
+}
+
+
 async function cargarAsistencia() {
+    mostrarBarraCargaFechaAsistencia();
 
     registrosAsistencia = {};
     tipoDiaAsistencia = "";
     motivoNoClases = "";
     escaneoAsistenciaQRRealizado = false;
 
-    if (!cursoSeleccionado) return;
+    if (!cursoSeleccionado) {
+        ocultarBarraCargaFechaAsistencia();
+        return;
+    }
 
     const fecha = document.getElementById("fechaAsistencia").value;
-    if (!fecha) return;
+    if (!fecha) {
+        ocultarBarraCargaFechaAsistencia();
+        return;
+    }
 
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
@@ -5204,6 +5259,7 @@ async function cargarAsistencia() {
 
     if (ids.length === 0) {
         mostrarTablaAsistencia();
+        ocultarBarraCargaFechaAsistencia();
         return;
     }
 
@@ -5217,6 +5273,7 @@ async function cargarAsistencia() {
         console.error(error);
         alert("Error al cargar asistencia: " + error.message);
         mostrarTablaAsistencia();
+        ocultarBarraCargaFechaAsistencia();
         return;
     }
 
@@ -5269,6 +5326,7 @@ async function cargarAsistencia() {
     cambiosPendientesAsistencia = false;
     actualizarBotonGuardarAsistencia();
     actualizarEstadosGuardado();
+    ocultarBarraCargaFechaAsistencia();
 }
 
 
