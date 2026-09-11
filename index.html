@@ -93,6 +93,16 @@ button:hover {
     background: #0d4282;
 }
 
+.boton-cerrar-sesion {
+    margin-top: 10px;
+    background: #c62828;
+    font-size: 15px;
+}
+
+.boton-cerrar-sesion:hover {
+    background: #8e0000;
+}
+
 #resultado {
     margin-top: 30px;
 }
@@ -847,6 +857,14 @@ button:hover {
 
     </button>
 
+    <button
+        type="button"
+        class="boton-cerrar-sesion"
+        onclick="cerrarSesion()"
+    >
+        🚪 Cerrar sesión
+    </button>
+
 
     <div id="resultado"></div>
 
@@ -934,6 +952,37 @@ function iniciarCuentaRegresivaVisita(segundos) {
 
     actualizar();
     temporizadorVisita = setInterval(actualizar, 1000);
+}
+
+/* =================================================
+   CERRAR SESIÓN
+================================================= */
+
+function cerrarSesion() {
+    alumnoActual = null;
+
+    const ci = document.getElementById("ci");
+    const fecha = document.getElementById("fecha_nacimiento");
+    const resultado = document.getElementById("resultado");
+
+    if (ci) ci.value = "";
+    if (fecha) fecha.value = "";
+    if (resultado) resultado.innerHTML = "";
+
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
+    }
+
+    const botonConsultar = document.querySelector('button[onclick="consultarNota()"]');
+    if (botonConsultar) {
+        botonConsultar.disabled = false;
+        botonConsultar.style.opacity = "1";
+        botonConsultar.style.cursor = "pointer";
+        botonConsultar.textContent = "Consultar mi nota";
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* =================================================
