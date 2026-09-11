@@ -2394,6 +2394,11 @@ td,
 .tabla-informe-general .promedio-dimension { font-weight:bold; background:#f8f9fa; min-width:65px; width:65px; }
 .tabla-informe-general .nota-trimestre-general,.tabla-informe-general .nota-final-general { font-size:18px; font-weight:bold; min-width:55px; width:55px; }
 .tabla-informe-general .visitas-general { font-weight:bold; min-width:55px; width:55px; }
+.tabla-informe-general .acceso-estudiante-general { min-width:58px; width:58px; text-align:center; }
+.tabla-informe-general .link-estudiante-general { display:inline-flex; align-items:center; justify-content:center; width:32px; height:30px; border-radius:7px; background:#1557a6; color:white; text-decoration:none; font-size:17px; font-weight:bold; line-height:1; }
+.tabla-informe-general .link-estudiante-general:hover { background:#0d4282; }
+.tabla-informe-general .link-estudiante-general:active { transform:scale(.96); }
+
 .comentario-informe-fondo {
     position: fixed;
     inset: 0;
@@ -4210,7 +4215,7 @@ async function cargarEstudiantes() {
     await supabaseClient
     .from("matematica")
     .select(
-        "id,num_lista,ci,nombre,curso,nota_1t,nota_2t"
+        "id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t"
     )
     .order("curso")
     .order("num_lista");
@@ -8633,7 +8638,7 @@ async function cargarInformeGeneral() {
        Los nombres de las actividades ocupan directamente la primera fila
        y cada categoría se identifica mediante un fondo diferente.
     */
-    let encabezado1 = `<tr><th>Nº</th><th class="nombre-col">Nombre</th>`;
+    let encabezado1 = `<tr><th>Nº</th><th class="nombre-col">Nombre</th><th class="acceso-estudiante-general">Link</th>`;
     fechasAsistencia.forEach(f => encabezado1 += `<th class="asistencia-fecha">${escapeHTML(formatearFechaActividad(f))}</th>`);
     encabezado1 += `<th>Total Asistencias</th><th>Total atrasos</th><th>Total licencias</th><th>Total faltas</th>`;
 
@@ -8674,7 +8679,15 @@ async function cargarInformeGeneral() {
         const notaFinal = (nota1Informe !== null && nota2Informe !== null && nota3 !== "")
             ? Math.round((nota1Informe + nota2Informe + Number(nota3)) / 3)
             : "";
-        cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td>`;
+        const ciEstudiante = String(estudiante.ci ?? "").trim();
+        const fechaNacimientoEstudiante = String(estudiante.fecha_nacimiento ?? "").trim();
+        const enlaceEstudiante = ciEstudiante && fechaNacimientoEstudiante
+            ? `https://javierhacosta.github.io/notasmatematica/?ci=${encodeURIComponent(ciEstudiante)}&fecha_nacimiento=${encodeURIComponent(fechaNacimientoEstudiante)}`
+            : "";
+        const linkEstudiante = enlaceEstudiante
+            ? `<a class="link-estudiante-general" href="${enlaceEstudiante}" target="_blank" rel="noopener" title="Abrir consulta del estudiante" aria-label="Abrir consulta de ${escapeHTML(estudiante.nombre || "estudiante")}">↗</a>`
+            : `<span title="Faltan datos del estudiante">—</span>`;
+        cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td><td class="acceso-estudiante-general">${linkEstudiante}</td>`;
         fechasAsistencia.forEach(f => {
             const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
             let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="licencia"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
