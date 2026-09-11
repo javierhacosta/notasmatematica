@@ -586,30 +586,6 @@ button:hover {
     color: #5d4037;
 }
 
-
-/* Reacciones del gatito al explorar la página */
-#gatoInteractivo.gracioso #gatoCuerpo { animation: gatoBroma .75s ease-in-out; }
-#gatoInteractivo.saltando #gatoCuerpo { animation: gatoSalto .65s ease-in-out; }
-#gatoInteractivo.asustado #gatoCuerpo { animation: gatoTemblor .5s ease-in-out; }
-@keyframes gatoBroma {
-    0%,100% { transform: rotate(0) scale(1); }
-    25% { transform: rotate(-15deg) scale(1.12); }
-    50% { transform: rotate(15deg) scale(1.12); }
-    75% { transform: rotate(-8deg) scale(1.06); }
-}
-@keyframes gatoSalto {
-    0%,100% { transform: translateY(0) scale(1); }
-    45% { transform: translateY(-18px) scale(1.12); }
-    70% { transform: translateY(0) scale(.96); }
-}
-@keyframes gatoTemblor {
-    0%,100% { transform: translateX(0); }
-    20% { transform: translateX(-5px); }
-    40% { transform: translateX(5px); }
-    60% { transform: translateX(-4px); }
-    80% { transform: translateX(4px); }
-}
-
 @media(max-width:500px) {
 
     .contenedor {
@@ -709,72 +685,291 @@ button:hover {
 
 
 /* =================================================
-   GATITO INTERACTIVO
+   MASCOTA ANIMAL INTERACTIVA - CAMBIA CADA DÍA
 ================================================= */
-#gatoInteractivo {
-    position: fixed;
-    left: 18px;
-    bottom: 18px;
-    width: 76px;
-    height: 76px;
-    z-index: 9999;
-    cursor: grab;
-    user-select: none;
-    touch-action: none;
-    transition: left .8s ease, top .8s ease, transform .25s ease;
-    font-family: system-ui, sans-serif;
+.mascota-zona{
+    margin: 8px auto 22px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:220px;
+    position:relative;
+    touch-action:manipulation;
+    user-select:none;
 }
-#gatoInteractivo:active { cursor: grabbing; }
-#gatoCuerpo {
-    font-size: 54px;
-    line-height: 1;
-    text-align: center;
-    filter: drop-shadow(0 3px 3px rgba(0,0,0,.18));
-    transition: transform .2s ease;
+
+.mascota{
+    width:180px;
+    height:205px;
+    position:relative;
+    cursor:pointer;
+    transform-origin:50% 85%;
+    filter:drop-shadow(0 8px 8px rgba(0,0,0,.12));
+    transition:transform .18s ease;
 }
-#gatoInteractivo.mirando #gatoCuerpo { transform: rotate(-7deg) scale(1.08); }
-#gatoInteractivo.sorprendido #gatoCuerpo { transform: scale(1.18) rotate(5deg); }
-#gatoMensaje {
-    position: absolute;
-    left: 50%;
-    bottom: 68px;
-    transform: translateX(-50%);
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    padding: 6px 9px;
-    font-size: 11px;
-    color: #444;
-    white-space: nowrap;
-    box-shadow: 0 3px 12px rgba(0,0,0,.14);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .2s ease;
+.mascota:active{transform:scale(.94)}
+
+.mascota .sombra{
+    position:absolute;
+    left:30px;
+    bottom:2px;
+    width:120px;
+    height:18px;
+    border-radius:50%;
+    background:rgba(0,0,0,.13);
+    animation:mascotaSombra 1.8s ease-in-out infinite;
 }
-#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; }
-#gatoCorazones {
-    position: absolute;
-    left: 50%;
-    top: -4px;
-    transform: translateX(-50%);
-    font-size: 20px;
-    opacity: 0;
-    pointer-events: none;
+.mascota .cuerpo{
+    position:absolute;
+    left:48px;
+    top:82px;
+    width:84px;
+    height:88px;
+    border-radius:46% 46% 40% 40%;
+    background:#f5a623;
+    border:3px solid rgba(0,0,0,.12);
+    z-index:2;
 }
-#gatoInteractivo.caricia #gatoCorazones {
-    opacity: 1;
-    animation: gatoCorazon 1s ease forwards;
+.mascota .barriga{
+    position:absolute;
+    left:66px;
+    top:103px;
+    width:48px;
+    height:53px;
+    border-radius:50%;
+    background:rgba(255,255,255,.48);
+    z-index:3;
 }
-@keyframes gatoCorazon {
-    from { transform: translate(-50%, 8px) scale(.7); opacity: 0; }
-    25% { opacity: 1; }
-    to { transform: translate(-50%, -32px) scale(1.2); opacity: 0; }
+.mascota .cabeza{
+    position:absolute;
+    left:38px;
+    top:27px;
+    width:104px;
+    height:82px;
+    border-radius:48% 48% 45% 45%;
+    background:#f5a623;
+    border:3px solid rgba(0,0,0,.12);
+    z-index:6;
 }
-@media(max-width:500px) {
-    #gatoInteractivo { left: 8px; bottom: 10px; width: 64px; height: 64px; }
-    #gatoCuerpo { font-size: 46px; }
-    #gatoMensaje { bottom: 56px; font-size: 10px; }
+.mascota .oreja{
+    position:absolute;
+    top:12px;
+    width:38px;
+    height:45px;
+    background:#f5a623;
+    border:3px solid rgba(0,0,0,.12);
+    z-index:4;
 }
+.mascota .oreja.izq{left:35px;transform:rotate(-25deg);border-radius:80% 15% 55% 20%}
+.mascota .oreja.der{right:35px;transform:rotate(25deg);border-radius:15% 80% 20% 55%}
+.mascota .ojo{
+    position:absolute;
+    top:57px;
+    width:12px;
+    height:16px;
+    border-radius:50%;
+    background:#222;
+    z-index:8;
+    animation:parpadeo 5s infinite;
+}
+.mascota .ojo.izq{left:66px}
+.mascota .ojo.der{right:66px}
+.mascota .ojo::after{
+    content:"";
+    position:absolute;
+    width:4px;height:5px;
+    border-radius:50%;
+    background:white;
+    top:2px;left:3px;
+}
+.mascota .nariz{
+    position:absolute;
+    left:83px;
+    top:72px;
+    width:15px;height:11px;
+    border-radius:50% 50% 55% 55%;
+    background:#333;
+    z-index:9;
+}
+.mascota .boca{
+    position:absolute;
+    left:78px;
+    top:82px;
+    width:25px;height:15px;
+    border-bottom:3px solid #333;
+    border-radius:0 0 50% 50%;
+    z-index:8;
+}
+.mascota .brazo{
+    position:absolute;
+    top:101px;
+    width:27px;height:58px;
+    border-radius:50px;
+    background:#f5a623;
+    border:3px solid rgba(0,0,0,.12);
+    z-index:1;
+    transform-origin:50% 12%;
+}
+.mascota .brazo.izq{left:32px;transform:rotate(18deg)}
+.mascota .brazo.der{right:32px;transform:rotate(-18deg)}
+.mascota .pie{
+    position:absolute;
+    top:157px;
+    width:38px;height:30px;
+    border-radius:50%;
+    background:#f5a623;
+    border:3px solid rgba(0,0,0,.12);
+    z-index:4;
+}
+.mascota .pie.izq{left:45px}
+.mascota .pie.der{right:45px}
+.mascota .cola{
+    position:absolute;
+    left:125px;
+    top:102px;
+    width:58px;height:75px;
+    border:12px solid #f5a623;
+    border-left:0;
+    border-bottom-color:transparent;
+    border-radius:0 70% 70% 0;
+    transform:rotate(-15deg);
+    transform-origin:left center;
+    z-index:1;
+}
+
+/* Perro */
+.mascota.perro .cuerpo,.mascota.perro .cabeza,.mascota.perro .oreja,
+.mascota.perro .brazo,.mascota.perro .pie{background:#c9894b}
+.mascota.perro .oreja{
+    width:34px;height:57px;
+    border-radius:60% 35% 55% 45%;
+}
+.mascota.perro .oreja.izq{transform:rotate(-12deg)}
+.mascota.perro .oreja.der{transform:rotate(12deg)}
+.mascota.perro .cola{border-color:#c9894b;border-left:0;border-bottom-color:transparent}
+.mascota.perro .nariz{width:20px;height:15px;left:80px;top:70px}
+
+/* Loro */
+.mascota.loro .cuerpo,.mascota.loro .brazo,.mascota.loro .pie{background:#22a447}
+.mascota.loro .cabeza{background:#28a9e0}
+.mascota.loro .oreja{display:none}
+.mascota.loro .barriga{background:#f7d447}
+.mascota.loro .nariz{
+    left:77px;top:70px;width:0;height:0;
+    border-left:15px solid transparent;
+    border-right:15px solid transparent;
+    border-top:22px solid #ef7d22;
+    background:none;border-radius:0;
+}
+.mascota.loro .boca{display:none}
+.mascota.loro .cola{
+    left:77px;top:142px;width:26px;height:65px;
+    border:0;border-radius:0;
+    background:#e33b35;
+    transform:rotate(5deg);
+    box-shadow:18px 5px 0 #f0c82e,36px 2px 0 #2389d7;
+}
+
+/* Conejo */
+.mascota.conejo .cuerpo,.mascota.conejo .cabeza,.mascota.conejo .oreja,
+.mascota.conejo .brazo,.mascota.conejo .pie{background:#f4e5ee}
+.mascota.conejo .oreja{
+    width:27px;height:68px;
+    border-radius:60% 60% 40% 40%;
+}
+.mascota.conejo .oreja::after{
+    content:"";
+    position:absolute;inset:6px;
+    border-radius:inherit;background:#f3a9c4;
+}
+.mascota.conejo .nariz{background:#ef8eae}
+.mascota.conejo .cola{
+    left:128px;top:130px;width:30px;height:30px;
+    border:0;border-radius:50%;background:#fff;
+}
+
+/* Oso */
+.mascota.oso .cuerpo,.mascota.oso .cabeza,.mascota.oso .oreja,
+.mascota.oso .brazo,.mascota.oso .pie{background:#8b5a3c}
+.mascota.oso .oreja{width:31px;height:31px;border-radius:50%}
+.mascota.oso .oreja.izq{left:39px;top:20px}
+.mascota.oso .oreja.der{right:39px;top:20px}
+.mascota.oso .nariz{background:#1f1713;width:19px;height:14px;left:81px;top:71px}
+.mascota.oso .cola{
+    left:126px;top:116px;width:27px;height:27px;
+    border:0;border-radius:50%;background:#8b5a3c;
+}
+
+/* Gestos: no hay texto; el personaje comunica con el movimiento. */
+.mascota.gesto-salto{animation:gestoSalto .7s ease}
+.mascota.gesto-baile{animation:gestoBaile 1.1s ease}
+.mascota.gesto-susto{animation:gestoSusto .65s ease}
+.mascota.gesto-risa{animation:gestoRisa .9s ease}
+.mascota.gesto-aplauso .brazo.izq{animation:aplausoIzq .55s ease 2}
+.mascota.gesto-aplauso .brazo.der{animation:aplausoDer .55s ease 2}
+.mascota.gesto-saludo .brazo.der{animation:saludo .7s ease 3}
+.mascota.gesto-no .cabeza{animation:noCabeza .55s ease 2}
+
+@keyframes gestoSalto{
+  0%,100%{transform:translateY(0) rotate(0)}
+  35%{transform:translateY(-35px) rotate(-5deg)}
+  70%{transform:translateY(-10px) rotate(5deg)}
+}
+@keyframes gestoBaile{
+  0%,100%{transform:rotate(0) translateX(0)}
+  20%{transform:rotate(-10deg) translateX(-9px)}
+  40%{transform:rotate(10deg) translateX(9px)}
+  60%{transform:rotate(-8deg) translateX(-7px)}
+  80%{transform:rotate(8deg) translateX(7px)}
+}
+@keyframes gestoSusto{
+  0%,100%{transform:scale(1)}
+  20%{transform:scale(1.16) translateY(-5px)}
+  45%{transform:scale(.9)}
+  70%{transform:scale(1.08)}
+}
+@keyframes gestoRisa{
+  0%,100%{transform:rotate(0)}
+  20%{transform:rotate(-7deg)}
+  40%{transform:rotate(7deg)}
+  60%{transform:rotate(-7deg)}
+  80%{transform:rotate(7deg)}
+}
+@keyframes saludo{
+  0%,100%{transform:rotate(-18deg)}
+  35%{transform:rotate(-65deg)}
+  65%{transform:rotate(-5deg)}
+}
+@keyframes aplausoIzq{
+  0%,100%{transform:rotate(18deg)}
+  50%{transform:rotate(72deg) translate(22px,-8px)}
+}
+@keyframes aplausoDer{
+  0%,100%{transform:rotate(-18deg)}
+  50%{transform:rotate(-72deg) translate(-22px,-8px)}
+}
+@keyframes noCabeza{
+  0%,100%{transform:rotate(0)}
+  35%{transform:rotate(-13deg)}
+  70%{transform:rotate(13deg)}
+}
+@keyframes parpadeo{
+  0%,92%,100%{transform:scaleY(1)}
+  94%{transform:scaleY(.12)}
+}
+@keyframes mascotaSombra{
+  0%,100%{transform:scaleX(1);opacity:.35}
+  50%{transform:scaleX(.72);opacity:.18}
+}
+@media(max-width:500px){
+  .mascota-zona{min-height:205px;margin-bottom:12px}
+  .mascota{transform:scale(.9);margin-bottom:-12px}
+  .mascota:active{transform:scale(.84)}
+}
+@media(prefers-reduced-motion:reduce){
+  .mascota,.mascota *{animation-duration:.001ms!important;animation-iteration-count:1!important}
+}
+
 </style>
 
 </head>
@@ -812,6 +1007,28 @@ button:hover {
         Consulta tu calificación
 
     </div>
+
+
+    <div class="mascota-zona" aria-hidden="true">
+        <div id="mascotaAnimal" class="mascota gato" title="Tócame">
+            <div class="sombra"></div>
+            <div class="cola"></div>
+            <div class="oreja izq"></div>
+            <div class="oreja der"></div>
+            <div class="cuerpo"></div>
+            <div class="barriga"></div>
+            <div class="brazo izq"></div>
+            <div class="brazo der"></div>
+            <div class="pie izq"></div>
+            <div class="pie der"></div>
+            <div class="cabeza"></div>
+            <div class="ojo izq"></div>
+            <div class="ojo der"></div>
+            <div class="nariz"></div>
+            <div class="boca"></div>
+        </div>
+    </div>
+
 
 
     <label for="ci">
@@ -3341,289 +3558,75 @@ if (fechaNacimiento) {
         fechaNacimiento;
 
 }
-</script>
 
-
-
-<!-- Gatito interactivo: elemento independiente del sistema de notas -->
-<div id="gatoInteractivo" aria-label="Gatito interactivo" title="Acaríciame 🐾">
-    <div id="gatoMensaje"></div>
-    <div id="gatoCorazones">💗</div>
-    <div id="gatoCuerpo">🐱</div>
-</div>
-
-<script>
 /* =================================================
-   GATITO INTERACTIVO - NO INTERFIERE CON LAS NOTAS
+   MASCOTA DEL DÍA - SOLO GESTOS, SIN PALABRAS
 ================================================= */
-(function () {
-    const gato = document.getElementById('gatoInteractivo');
-    const cuerpo = document.getElementById('gatoCuerpo');
-    const mensaje = document.getElementById('gatoMensaje');
-    if (!gato || !cuerpo) return;
+(function iniciarMascotaDiaria(){
 
-    let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
-    let mensajeTimer = null;
+    const mascota = document.getElementById("mascotaAnimal");
+    if (!mascota) return;
 
-    /* =================================================
-       SONIDOS DEL GATITO - SIN ARCHIVOS EXTERNOS
-       Se generan con Web Audio para que la página siga
-       funcionando sin conexión. El sonido se activa con
-       la primera interacción del estudiante.
-    ================================================= */
-    let audioCtx = null;
-    let sonidoActivado = false;
+    const animales = ["gato","perro","loro","conejo","oso"];
+    const gestos = [
+        "gesto-salto",
+        "gesto-baile",
+        "gesto-susto",
+        "gesto-risa",
+        "gesto-aplauso",
+        "gesto-saludo",
+        "gesto-no"
+    ];
 
-    function activarSonido() {
-        try {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            sonidoActivado = true;
-        } catch (e) {}
+    // El animal se mantiene igual durante todo el día y cambia automáticamente al día siguiente.
+    const hoy = new Date();
+    const inicio = new Date(hoy.getFullYear(), 0, 1);
+    const diaDelAnio = Math.floor((hoy - inicio) / 86400000);
+    const animal = animales[diaDelAnio % animales.length];
+
+    mascota.className = "mascota " + animal;
+
+    let indiceGesto = diaDelAnio % gestos.length;
+    let temporizador = null;
+
+    function quitarGestos(){
+        gestos.forEach(g => mascota.classList.remove(g));
     }
 
-    function tono(frecuencia, duracion, tipo = 'sine', volumen = 0.035, inicio = 0) {
-        if (!sonidoActivado || !audioCtx) return;
-        try {
-            const ahora = audioCtx.currentTime + inicio;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = tipo;
-            osc.frequency.setValueAtTime(frecuencia, ahora);
-            gain.gain.setValueAtTime(0.0001, ahora);
-            gain.gain.exponentialRampToValueAtTime(volumen, ahora + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + duracion);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(ahora);
-            osc.stop(ahora + duracion + 0.02);
-        } catch (e) {}
+    function hacerGesto(nombre){
+        quitarGestos();
+        // Forzar reinicio de la animación para que cada gesto sea visible.
+        void mascota.offsetWidth;
+        mascota.classList.add(nombre);
     }
 
-    function sonidoMiau() {
-        tono(620, 0.18, 'sine', 0.045);
-        tono(820, 0.22, 'sine', 0.035, 0.10);
+    function gestoAutomatico(){
+        hacerGesto(gestos[indiceGesto % gestos.length]);
+        indiceGesto++;
     }
 
-    function sonidoFeliz() {
-        tono(660, 0.12, 'sine', 0.035);
-        tono(830, 0.12, 'sine', 0.035, 0.10);
-        tono(1040, 0.20, 'sine', 0.04, 0.20);
+    function programar(){
+        clearInterval(temporizador);
+        temporizador = setInterval(gestoAutomatico, 5200);
     }
 
-    function sonidoSorpresa() {
-        tono(900, 0.10, 'triangle', 0.04);
-        tono(1250, 0.20, 'triangle', 0.045, 0.08);
-    }
+    // Primer gesto al aparecer y luego pequeños gestos periódicos.
+    setTimeout(gestoAutomatico, 900);
+    programar();
 
-    function sonidoRonroneo() {
-        if (!sonidoActivado || !audioCtx) return;
-        tono(105, 0.16, 'sine', 0.018);
-        tono(125, 0.16, 'sine', 0.014, 0.18);
-        tono(105, 0.16, 'sine', 0.018, 0.36);
-    }
-
-    function decir(texto, tiempo = 1800) {
-        mensaje.textContent = texto;
-        gato.classList.add('mensaje');
-        clearTimeout(mensajeTimer);
-        mensajeTimer = setTimeout(() => gato.classList.remove('mensaje'), tiempo);
-    }
-
-    function acariciar() {
-        activarSonido();
-        sonidoMiau();
-        sonidoRonroneo();
-        gato.classList.remove('caricia');
-        void gato.offsetWidth;
-        gato.classList.add('caricia');
-        gato.classList.add('mirando');
-        decir('¡Miau! 🐾');
-        setTimeout(() => gato.classList.remove('caricia'), 1000);
-    }
-
-    gato.addEventListener('pointerdown', e => {
-        activarSonido();
-        arrastrando = true;
-        desplazado = false;
-        inicioX = e.clientX; inicioY = e.clientY;
-        const r = gato.getBoundingClientRect();
-        baseX = r.left; baseY = r.top;
-        gato.setPointerCapture?.(e.pointerId);
+    // Al tocar/clicar: reacción inmediata y diferente.
+    mascota.addEventListener("pointerdown", function(){
+        clearInterval(temporizador);
+        const aleatorio = gestos[Math.floor(Math.random() * gestos.length)];
+        hacerGesto(aleatorio);
+        setTimeout(programar, 900);
     });
 
-    gato.addEventListener('pointermove', e => {
-        if (!arrastrando) return;
-        const dx = e.clientX - inicioX, dy = e.clientY - inicioY;
-        if (Math.abs(dx) + Math.abs(dy) > 6) desplazado = true;
-        gato.style.left = Math.max(4, Math.min(window.innerWidth - gato.offsetWidth - 4, baseX + dx)) + 'px';
-        gato.style.top = Math.max(4, Math.min(window.innerHeight - gato.offsetHeight - 4, baseY + dy)) + 'px';
-        gato.style.bottom = 'auto';
-    });
-
-    gato.addEventListener('pointerup', e => {
-        arrastrando = false;
-        if (!desplazado) acariciar();
-        gato.releasePointerCapture?.(e.pointerId);
-    });
-
-    gato.addEventListener('dblclick', () => {
-        activarSonido();
-        sonidoSorpresa();
-        decir('¡Qué lindo! 😻');
-        gato.classList.add('sorprendido');
-        setTimeout(() => gato.classList.remove('sorprendido'), 700);
-    });
-
-    /* Detecta qué hay debajo del gatito cuando el estudiante lo coloca encima. */
-    let ultimoObjetivo = '';
-    let ultimaReaccionObjetivo = 0;
-
-    function elementoDebajoDelGato() {
-        const r = gato.getBoundingClientRect();
-        const x = r.left + r.width / 2;
-        const y = r.top + r.height / 2;
-        const elementos = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
-        return elementos.find(el => el !== gato && !gato.contains(el) && el !== document.body && el !== document.documentElement);
-    }
-
-    function reaccionarSobre(texto) {
-        const t = (texto || '').replace(/\s+/g, ' ').trim();
-        if (!t) return;
-        const clave = t.toLowerCase().slice(0, 180);
-        const ahora = Date.now();
-        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 7000) return;
-        ultimoObjetivo = clave;
-        ultimaReaccionObjetivo = ahora;
-
-        let respuesta = '';
-        let emoji = '🐱';
-        if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            const opciones = [
-                '¡A cuidar la asistencia! 🐾',
-                'Cada día cuenta. ¡Tú puedes! 💪',
-                '¡Presente y con ganas de aprender! 😺',
-                'Pocas faltas, muchas oportunidades. 🌟'
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            emoji = '👀';
-        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n/i.test(t)) {
-            const opciones = [
-                '¡Tú puedes mejorar cada nota! 🌟',
-                '¡Un pequeño esfuerzo puede hacer una gran diferencia! 💪',
-                'No mires sólo el número: ¡mira cuánto has aprendido! 🧠',
-                '¡Vamos por esa próxima nota! 🚀',
-                '¡Estoy vigilando el progreso! 👀🐾'
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            emoji = /7[0-9]|8[0-9]|9[0-9]|100/.test(t) ? '😻' : '🤔';
-        } else if (/estudiante|nombre|curso|materia|matem[aá]tica/i.test(t)) {
-            respuesta = '¡Aquí está tu información! 😺';
-            emoji = '😺';
-        }
-
-        if (respuesta) {
-            cuerpo.textContent = emoji;
-            gato.classList.add('mirando');
-            decir(respuesta, 2600);
-            if (emoji === '😻') sonidoFeliz();
-            else if (Math.random() < .35) sonidoMiau();
-            setTimeout(() => { if (!arrastrando) cuerpo.textContent = '🐱'; }, 2600);
-        }
-    }
-
-    function revisarDebajoDelGato() {
-        if (arrastrando) return;
-        const el = elementoDebajoDelGato();
-        if (!el) return;
-        const texto = el.innerText || el.textContent || '';
-        reaccionarSobre(texto);
-    }
-
-    function hacerBroma() {
-        if (arrastrando || document.hidden) return;
-        const bromas = [
-            ['😹', '¡Ups! Creo que estaba estudiando al revés 😂'],
-            ['🙈', '¡No me mires! Yo también necesito estudiar 😅'],
-            ['😴', 'Zzz… ¡Era una mini siesta académica! 💤'],
-            ['🤓', '¡Momento de ponerse las gafas de estudiante! 🤓'],
-            ['😼', 'Estoy vigilando… pero con estilo 😎🐾'],
-            ['🙀', '¡Esa nota me hizo saltar! 😲'],
-            ['😺', '¡Sigue así! Cada esfuerzo cuenta. 🌟']
-        ];
-        const b = bromas[Math.floor(Math.random() * bromas.length)];
-        cuerpo.textContent = b[0];
-        gato.classList.add(Math.random() < .5 ? 'gracioso' : 'saltando');
-        decir(b[1], 2300);
-        if (b[0] === '🙀') sonidoSorpresa();
-        else if (b[0] === '😺') sonidoFeliz();
-        else sonidoMiau();
-        setTimeout(() => {
-            gato.classList.remove('gracioso', 'saltando', 'asustado');
-            if (!arrastrando) cuerpo.textContent = '🐱';
-        }, 900);
-    }
-
-    function observarResultado() {
-        const resultado = document.getElementById('resultado');
-        if (!resultado) return;
-        const texto = resultado.innerText || '';
-        if (/Buscando|Cargando/i.test(texto)) {
-            cuerpo.textContent = '🐱';
-            gato.classList.add('mirando');
-            decir('Estoy mirando las notas… 👀', 1600);
-            return;
-        }
-        if (/error|incorrectos|Error de conexión/i.test(texto)) {
-            cuerpo.textContent = '🙀';
-            sonidoSorpresa();
-            gato.classList.add('sorprendido');
-            decir('¡Ups! 😿', 1800);
-            return;
-        }
-        if (texto.trim()) {
-            gato.classList.add('mirando');
-            const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
-            if (notas.length && Math.max(...notas) >= 70) {
-                cuerpo.textContent = '😺';
-                sonidoFeliz();
-                decir('¡Muy bien! 🎉', 2200);
-            } else {
-                cuerpo.textContent = '🐱';
-                decir('Estoy mirando tus notas 👀', 2200);
-            }
-        }
-    }
-
-    const resultado = document.getElementById('resultado');
-    if (resultado) new MutationObserver(observarResultado).observe(resultado, {childList:true, subtree:true, characterData:true});
-
-    setInterval(() => {
-        revisarDebajoDelGato();
-        const r = document.getElementById('resultado');
-        const t = r ? (r.innerText || '') : '';
-        if (/asistencia/i.test(t)) {
-            gato.classList.add('mirando');
-            if (Math.random() < .25) decir('También miro la asistencia 👀', 1800);
-        }
-    }, 1200);
-
-    /* De vez en cuando hace alguna travesura por su cuenta. */
-    let proximaBroma = Date.now() + 12000 + Math.random() * 18000;
-    setInterval(() => {
-        if (Date.now() >= proximaBroma) {
-            hacerBroma();
-            proximaBroma = Date.now() + 18000 + Math.random() * 30000;
-        }
-    }, 2000);
-
-    setTimeout(() => decir('¡Hola! 🐾', 1800), 900);
 })();
+
 </script>
+
+
 </body>
 
 </html>
