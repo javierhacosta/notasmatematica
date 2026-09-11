@@ -756,6 +756,20 @@ button:hover {
     </button>
 
 
+    <div id="estadoActualizacion" style="
+        display:none;
+        margin:12px auto 4px;
+        padding:10px 14px;
+        border-radius:12px;
+        background:#eef8ff;
+        color:#1769aa;
+        font-size:13px;
+        line-height:1.4;
+        text-align:center;
+        border:1px solid #cfe9fb;
+    "></div>
+
+
     <div id="resultado"></div>
 
 
@@ -835,7 +849,7 @@ function iniciarCuentaRegresivaVisita(segundos) {
         boton.disabled = true;
         boton.style.opacity = "0.65";
         boton.style.cursor = "not-allowed";
-        boton.textContent = `Podrás consultar nuevamente en ${tiempo}`;
+        boton.textContent = `🔒 Nueva consulta en ${tiempo}`;
         segundos--;
 
     };
@@ -850,7 +864,18 @@ function iniciarCuentaRegresivaVisita(segundos) {
 let temporizadorActualizacion = null;
 let actualizandoAutomaticamente = false;
 
+function mostrarEstadoActualizacion(mensaje = "🔄 Tus calificaciones se actualizan automáticamente") {
+
+    const estado = document.getElementById("estadoActualizacion");
+    if (!estado) return;
+
+    estado.innerHTML = `${mensaje}<br><span style="font-size:12px;opacity:.8;">Los cambios del docente aparecerán automáticamente.<br>🔒 El botón de consulta queda temporalmente bloqueado para evitar consultas repetidas.</span>`;
+    estado.style.display = "block";
+}
+
 function iniciarActualizacionAutomatica() {
+
+    mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
 
     if (temporizadorActualizacion) {
         clearInterval(temporizadorActualizacion);
@@ -1026,6 +1051,7 @@ async function consultarNota() {
             );
             await mostrarResultado(alumnoActual);
             iniciarActualizacionAutomatica();
+            mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
             return;
         }
 
@@ -1035,6 +1061,7 @@ async function consultarNota() {
         );
 
         iniciarCuentaRegresivaVisita(60 * 60);
+        mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
 
 
         /* =================================================
