@@ -3491,6 +3491,16 @@ Cancelar
             </label>
         </div>
 
+        <div class="qr-camara-continua">
+            <input
+                type="checkbox"
+                id="guardarAutomaticoAsistenciaQR"
+                checked>
+            <label for="guardarAutomaticoAsistenciaQR">
+                Guardar asistencia automáticamente en la BD
+            </label>
+        </div>
+
     </div>
 
 </div>
@@ -3522,7 +3532,7 @@ Cancelar
             </div>
             <div class="pendientes-acciones">
                 <button type="button" class="boton-pendientes-cancelar" onclick="cerrarModalPendientesAsistencia()">Cancelar</button>
-                <button type="button" class="boton-pendientes-confirmar" onclick="confirmarPendientesAsistencia()">✓ Confirmar elecciones</button>
+                <button type="button" class="boton-pendientes-confirmar" onclick="confirmarPendientesAsistencia()">✓ Continuar y guardar</button>
             </div>
         </div>
     </div>
@@ -5796,7 +5806,7 @@ function mostrarPendientesAsistencia() {
 
     if (mensaje) {
         mensaje.textContent =
-            `Faltan ${pendientes.length} estudiante(s). Debe elegir una opción para cada uno antes de guardar la asistencia.`;
+            `Faltan ${pendientes.length} estudiante(s). Debe elegir una opción para cada uno. Al pulsar "Continuar y guardar" se guardará la asistencia en la BD.`;
     }
 
     pendientes.forEach(estudiante => {
@@ -11095,6 +11105,12 @@ let mantenerCamaraQR = true;
 let modoQRAsistencia = false;
 let estudianteQRAsistencia = null;
 
+/* Control exclusivo del escáner QR de asistencia.
+   Marcado: conserva el guardado inmediato actual.
+   Desmarcado: acumula la asistencia localmente y la guarda en BD
+   solamente al terminar el escaneo y confirmar. */
+let guardarAutomaticoAsistenciaQR = true;
+
 /* Indica que se inició una toma de asistencia mediante QR.
    Permite guardar solo a los estudiantes que realmente tienen
    un estado registrado por el escáner, sin convertir los no
@@ -11480,6 +11496,12 @@ async function abrirEscanerAsistenciaQR() {
     mantenerCamaraQR =
     checkboxCamara ? checkboxCamara.checked : true;
 
+    const checkboxGuardarQR =
+    document.getElementById("guardarAutomaticoAsistenciaQR");
+
+    guardarAutomaticoAsistenciaQR =
+    checkboxGuardarQR ? checkboxGuardarQR.checked : true;
+
     const modal = document.getElementById("modalEscanerQR");
     const mensaje = document.getElementById("mensajeQR");
 
@@ -11680,7 +11702,7 @@ async function continuarEscaneoAsistenciaQR() {
             observacion: observacion || null
         };
 
-        if (guardadoAutomatico || guardadoManualEnCurso) {
+        if (guardarAutomaticoAsistenciaQR) {
             const { error } = await supabaseClient
                 .from("asistencia")
                 .upsert(registro, {
@@ -11709,14 +11731,15 @@ async function continuarEscaneoAsistenciaQR() {
 
         escaneoAsistenciaQRRealizado = true;
 
-        if (!guardadoAutomatico && !guardadoManualEnCurso) {
-            marcarAsistenciaPendiente();
+        if (!guardarAutomaticoAsistenciaQR) {
+            cambiosPendientesAsistencia = true;
+            actualizarEstadosGuardado();
         }
 
         mostrarMensaje(
-            guardadoAutomatico || guardadoManualEnCurso
+            guardarAutomaticoAsistenciaQR
                 ? "✓ Asistencia guardada: " + estudiante.nombre
-                : "✓ Asistencia preparada: " + estudiante.nombre
+                : "✓ Asistencia preparada (se guardará al finalizar): " + estudiante.nombre
         );
 
         document.getElementById("modalAsistenciaQR").classList.add("oculto");
