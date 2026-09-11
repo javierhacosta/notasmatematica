@@ -11524,17 +11524,12 @@ function calcularPromedioPonderado(
 ===================================================== */
 
 async function cerrarSesion() {
-    // Al cerrar sesión se elimina únicamente la lista de estudiantes
-    // guardada en la caché del dispositivo para el uso del QR.
-    try {
-        localStorage.removeItem(CLAVE_CACHE_ESTUDIANTES_QR);
-    } catch (e) {
-        console.warn("No se pudo borrar la caché de estudiantes QR:", e);
-    }
 
     await supabaseClient.auth.signOut();
+
     window.location.href =
     "login-docente.html";
+
 }
 
 
@@ -11626,15 +11621,6 @@ let estudianteQRAsistencia = null;
    escaneados en falta ni en asistencia. */
 let escaneoAsistenciaQRRealizado = false;
 let estadoQRAsistencia = "asistio";
-
-/*
- * Asistencia tomada por QR:
- * los registros se mantienen temporalmente en memoria durante toda
- * la sesión de escaneo y NO se envían a Supabase al pulsar
- * "Continuar escaneando". Se guardan todos juntos al cerrar
- * la ventana principal del escáner QR.
- */
-const asistenciasQRPendientesGuardar = new Map();
 
 /* =====================================================
    PROTECCIÓN SEGUNDA ETAPA - QR
@@ -11891,8 +11877,10 @@ function extraerCIDesdeQR(
     }
 
     try {
+
         const url =
         new URL(valor);
+
         const ci =
         url.searchParams.get(
             "ci"
@@ -11900,32 +11888,47 @@ function extraerCIDesdeQR(
 
         if (
             ci &&
-            ci.trim()
+            /^\d+$/.test(
+                ci.trim()
+            )
         ) {
+
             return ci.trim();
+
         }
+
     }
+
     catch(error) {
-        /* El QR puede contener directamente el CI. */
+        /* El QR puede contener directamente el número. */
     }
 
     const coincidencia =
     valor.match(
-        /(?:[?&]ci=)([^&#]+)/i
+        /(?:[?&]ci=)(\d+)/i
     );
 
     if (
         coincidencia &&
         coincidencia[1]
     ) {
-        return decodeURIComponent(
-            coincidencia[1]
-        ).trim();
+
+        return coincidencia[1];
+
     }
 
-    /* Acepta CI numérico o alfanumérico directamente. */
-    return valor;
+    if (
+        /^\d+$/.test(valor)
+    ) {
+
+        return valor;
+
+    }
+
+    return null;
+
 }
+
 
 function detenerCamaraQR() {
 
@@ -12159,15 +12162,14 @@ async function continuarEscaneoAsistenciaQR() {
 
     /*
        IMPORTANTE:
-       Al pulsar "Continuar escaneando" NO se guarda en la base de datos.
-       Solo se prepara y se coloca el registro en una cola temporal.
-       Todos los registros de esta toma QR se guardarán juntos cuando
-       se cierre la ventana principal del escáner QR.
+       Al pulsar "Continuar escaneando" se guarda INMEDIATAMENTE
+       solamente el estudiante que acaba de ser escaneado.
+       No se guarda toda la lista ni se vuelve a cargar la tabla.
     */
     if (boton) {
         boton.disabled = true;
         boton.dataset.textoOriginal = boton.innerHTML;
-        boton.innerHTML = "📷 Preparando...";
+        boton.innerHTML = "💾 Guardando...";
     }
 
     try {
@@ -12198,11 +12200,17 @@ async function continuarEscaneoAsistenciaQR() {
             observacion: observacion || null
         };
 
-        /*
-         * Si el mismo estudiante se escanea nuevamente durante esta
-         * misma toma, se conserva únicamente su último estado.
-         */
-        asistenciasQRPendientesGuardar.set(String(estudiante.id), registro);
+        if (guardadoAutomatico || guardadoManualEnCurso) {
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert(registro, {
+                    onConflict: "estudiante_id,fecha"
+                });
+
+            if (error) {
+                throw error;
+            }
+        }
 
         /* Mantener la información local sincronizada */
         registrosAsistencia[estudiante.id] = {
@@ -12220,11 +12228,15 @@ async function continuarEscaneoAsistenciaQR() {
         actualizarResumenAsistencia();
 
         escaneoAsistenciaQRRealizado = true;
-        marcarAsistenciaPendiente();
+
+        if (!guardadoAutomatico && !guardadoManualEnCurso) {
+            marcarAsistenciaPendiente();
+        }
 
         mostrarMensaje(
-            "✓ Asistencia preparada: " + estudiante.nombre +
-            " (se guardará al cerrar el escáner QR)"
+            guardadoAutomatico || guardadoManualEnCurso
+                ? "✓ Asistencia guardada: " + estudiante.nombre
+                : "✓ Asistencia preparada: " + estudiante.nombre
         );
 
         document.getElementById("modalAsistenciaQR").classList.add("oculto");
@@ -12232,7 +12244,7 @@ async function continuarEscaneoAsistenciaQR() {
         if (observacionQRGuardar) observacionQRGuardar.value = "";
         estudianteQRAsistencia = null;
 
-        /* La cámara continúa sin guardar ni recargar la asistencia. */
+        /* La cámara continúa sin volver a cargar estudiantes/asistencia. */
         if (streamQR) {
             escaneandoQR = true;
             requestAnimationFrame(solicitarLecturaQR);
@@ -12242,16 +12254,17 @@ async function continuarEscaneoAsistenciaQR() {
 
     } catch (error) {
 
-        console.error("Error al preparar asistencia QR:", error);
+        console.error("Error al guardar asistencia QR:", error);
 
         alert(
-            "No se pudo preparar la asistencia de " +
+            "No se pudo guardar la asistencia de " +
             estudiante.nombre +
             ": " +
             (error.message || error)
         );
 
     } finally {
+        guardadoManualEnCurso = false;
 
         if (boton) {
             boton.disabled = false;
@@ -12263,6 +12276,7 @@ async function continuarEscaneoAsistenciaQR() {
         }
     }
 }
+
 
 function cerrarModalAsistenciaQR(event) {
 
@@ -12777,136 +12791,7 @@ async function guardarCalificacionQR() {
 }
 
 
-async function guardarAsistenciasQRPendientes() {
-
-    if (asistenciasQRPendientesGuardar.size === 0) {
-        return true;
-    }
-
-    const registros = Array.from(asistenciasQRPendientesGuardar.values());
-
-    try {
-
-        const fecha = document.getElementById("fechaAsistencia")?.value;
-        if (!fecha) {
-            throw new Error("Selecciona una fecha de asistencia.");
-        }
-
-        mostrarMensaje(
-            "💾 Guardando " + registros.length +
-            (registros.length === 1 ? " asistencia QR..." : " asistencias QR...")
-        );
-
-        const ids = registros.map(r => Number(r.estudiante_id));
-
-        const { data: asistenciaAnterior, error: errorAnterior } =
-            await supabaseClient
-                .from("asistencia")
-                .select("estudiante_id,fecha,estado,hora,observacion")
-                .eq("fecha", fecha)
-                .in("estudiante_id", ids);
-
-        if (errorAnterior) throw errorAnterior;
-
-        const mapaAnterior = new Map(
-            (asistenciaAnterior || []).map(r => [Number(r.estudiante_id), r])
-        );
-
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(registros, {
-                onConflict: "estudiante_id,fecha"
-            });
-
-        if (error) throw error;
-
-        registros.forEach(registro => {
-            const estudiante = estudiantes.find(
-                e => Number(e.id) === Number(registro.estudiante_id)
-            );
-            const anterior =
-                mapaAnterior.get(Number(registro.estudiante_id)) || null;
-
-            const nuevo = {
-                estudiante_id: registro.estudiante_id,
-                fecha: registro.fecha,
-                estado: registro.estado,
-                hora: registro.hora || null,
-                observacion: registro.observacion || null
-            };
-
-            if (
-                anterior &&
-                String(anterior.estado ?? "") === String(nuevo.estado ?? "") &&
-                String(anterior.observacion ?? "") === String(nuevo.observacion ?? "")
-            ) {
-                return;
-            }
-
-            guardarHistorialInterno({
-                table_name: "asistencia",
-                operation: anterior ? "UPDATE" : "INSERT",
-                record_id: null,
-                curso: cursoSeleccionado,
-                estudiante_id: registro.estudiante_id,
-                estudiante_nombre:
-                    estudiante?.nombre ||
-                    estudiante?.nombre_completo ||
-                    null,
-                actividad_id: null,
-                actividad_nombre: null,
-                categoria: null,
-                fecha: registro.fecha,
-                old_data: anterior,
-                new_data: nuevo,
-                changed_at: new Date().toISOString()
-            });
-        });
-
-        asistenciasQRPendientesGuardar.clear();
-
-        await cargarFechasAsistencia();
-
-        const listaFechas = document.getElementById("listaFechasAsistencia");
-        if (listaFechas) {
-            listaFechas.value = fecha;
-        }
-
-        renderizarCalendarioFechasAsistencia();
-        await cargarAsistencia();
-
-        mostrarMensaje(
-            "✓ " + registros.length +
-            (registros.length === 1
-                ? " asistencia QR guardada correctamente."
-                : " asistencias QR guardadas correctamente.")
-        );
-
-        cambiosPendientesAsistencia = false;
-        actualizarEstadosGuardado();
-
-        return true;
-
-    } catch (error) {
-
-        console.error("Error al guardar asistencias QR pendientes:", error);
-
-        mostrarMensaje(
-            "✕ Error al guardar las asistencias QR: " +
-            (error.message || error),
-            true
-        );
-
-        /*
-         * La cola NO se borra si falla el guardado, para que no se
-         * pierdan los escaneos y puedan intentarse guardar nuevamente.
-         */
-        return false;
-    }
-}
-
-
-async function cerrarEscanerQR(
+function cerrarEscanerQR(
     event
 ) {
 
@@ -12920,18 +12805,8 @@ async function cerrarEscanerQR(
         return;
     }
 
-    const esAsistenciaQR = modoQRAsistencia;
-    const habiaEscaneosQR =
-        esAsistenciaQR &&
-        (
-            escaneoAsistenciaQRRealizado ||
-            asistenciasQRPendientesGuardar.size > 0
-        );
+    const mostrarPendientesAlCerrar = modoQRAsistencia && escaneoAsistenciaQRRealizado;
 
-    /*
-     * Primero se detiene la cámara y se cierra la ventana.
-     * Luego se guarda TODO lo escaneado durante esta sesión.
-     */
     detenerCamaraQR();
     modoQRAsistencia = false;
     estudianteQRAsistencia = null;
@@ -12946,34 +12821,17 @@ async function cerrarEscanerQR(
         "oculto"
     );
 
-    if (esAsistenciaQR && asistenciasQRPendientesGuardar.size > 0) {
-        const guardadoQR = await guardarAsistenciasQRPendientes();
-
-        if (!guardadoQR) {
-            /*
-             * Si hubo error, no se continúa con la revisión de faltantes
-             * como si todo hubiera quedado guardado.
-             */
-            return;
-        }
-    }
-
-    /*
-     * Después de guardar la sesión QR, conservar la lógica existente:
-     * mostrar los estudiantes que todavía no tienen estado registrado.
-     */
-    if (habiaEscaneosQR) {
-
+    /* Después de cerrar una toma QR, avisar si todavía hay
+       estudiantes sin registrar y exigir una elección para ellos. */
+    if (mostrarPendientesAlCerrar) {
         const pendientes = obtenerEstudiantesSinEstadoAsistencia();
-
         if (pendientes.length > 0) {
             mostrarPendientesAsistencia();
-        } else {
-            escaneoAsistenciaQRRealizado = false;
         }
     }
 
 }
+
 
 function cerrarModalCalificacionQR(
     event
