@@ -3365,68 +3365,6 @@ if (fechaNacimiento) {
     let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
     let mensajeTimer = null;
 
-    /* =================================================
-       SONIDOS DEL GATITO - SIN ARCHIVOS EXTERNOS
-       Se generan con Web Audio para que la página siga
-       funcionando sin conexión. El sonido se activa con
-       la primera interacción del estudiante.
-    ================================================= */
-    let audioCtx = null;
-    let sonidoActivado = false;
-
-    function activarSonido() {
-        try {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            sonidoActivado = true;
-        } catch (e) {}
-    }
-
-    function tono(frecuencia, duracion, tipo = 'sine', volumen = 0.035, inicio = 0) {
-        if (!sonidoActivado || !audioCtx) return;
-        try {
-            const ahora = audioCtx.currentTime + inicio;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = tipo;
-            osc.frequency.setValueAtTime(frecuencia, ahora);
-            gain.gain.setValueAtTime(0.0001, ahora);
-            gain.gain.exponentialRampToValueAtTime(volumen, ahora + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + duracion);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(ahora);
-            osc.stop(ahora + duracion + 0.02);
-        } catch (e) {}
-    }
-
-    function sonidoMiau() {
-        tono(620, 0.18, 'sine', 0.045);
-        tono(820, 0.22, 'sine', 0.035, 0.10);
-    }
-
-    function sonidoFeliz() {
-        tono(660, 0.12, 'sine', 0.035);
-        tono(830, 0.12, 'sine', 0.035, 0.10);
-        tono(1040, 0.20, 'sine', 0.04, 0.20);
-    }
-
-    function sonidoSorpresa() {
-        tono(900, 0.10, 'triangle', 0.04);
-        tono(1250, 0.20, 'triangle', 0.045, 0.08);
-    }
-
-    function sonidoRonroneo() {
-        if (!sonidoActivado || !audioCtx) return;
-        tono(105, 0.16, 'sine', 0.018);
-        tono(125, 0.16, 'sine', 0.014, 0.18);
-        tono(105, 0.16, 'sine', 0.018, 0.36);
-    }
-
     function decir(texto, tiempo = 1800) {
         mensaje.textContent = texto;
         gato.classList.add('mensaje');
@@ -3435,9 +3373,6 @@ if (fechaNacimiento) {
     }
 
     function acariciar() {
-        activarSonido();
-        sonidoMiau();
-        sonidoRonroneo();
         gato.classList.remove('caricia');
         void gato.offsetWidth;
         gato.classList.add('caricia');
@@ -3447,7 +3382,6 @@ if (fechaNacimiento) {
     }
 
     gato.addEventListener('pointerdown', e => {
-        activarSonido();
         arrastrando = true;
         desplazado = false;
         inicioX = e.clientX; inicioY = e.clientY;
@@ -3472,9 +3406,7 @@ if (fechaNacimiento) {
     });
 
     gato.addEventListener('dblclick', () => {
-        activarSonido();
-        sonidoSorpresa();
-        decir('¡Qué lindo! 😻');
+        decir(`¡${nombreEstudiante()}! ¿Otra vez me acaricias? 😹`, 2200);
         gato.classList.add('sorprendido');
         setTimeout(() => gato.classList.remove('sorprendido'), 700);
     });
@@ -3501,55 +3433,105 @@ if (fechaNacimiento) {
         return elementos.find(el => el !== gato && !gato.contains(el) && el !== document.body && el !== document.documentElement);
     }
 
-    function reaccionarSobre(texto) {
+    /* El gatito identifica lo que tiene detrás y, cuando hay Internet,
+       busca una curiosidad real relacionada para convertirla en un comentario divertido. */
+    let ultimaConsultaInternet = '';
+    let ultimaConsultaInternetTiempo = 0;
+
+    function limpiarTema(texto) {
+        return (texto || '')
+            .replace(/\s+/g, ' ')
+            .replace(/https?:\/\/\S+/gi, '')
+            .replace(/[^\p{L}\p{N}\sÁÉÍÓÚÜÑáéíóúüñ%°.,:;()\-]/gu, ' ')
+            .trim()
+            .slice(0, 120);
+    }
+
+    function obtenerTemaVisible(texto) {
+        const t = limpiarTema(texto);
+        const lineas = (texto || '').split(/\n+/).map(l => limpiarTema(l)).filter(Boolean);
+        const candidatas = lineas.filter(l =>
+            l.length >= 4 && l.length <= 90 &&
+            !/^(consultar tus datos|cerrar sesión|buscar|cargando|resultado|asistencia|calificaciones?)$/i.test(l)
+        );
+        return candidatas.sort((a,b) => {
+            const pa = /examen|actividad|tema|trimestre|matemática|matemáticas|ecuaci[oó]n|fracci[oó]n|geometr[ií]a|funci[oó]n|nota|promedio|asistencia/i.test(a) ? 1 : 0;
+            const pb = /examen|actividad|tema|trimestre|matemática|matemáticas|ecuaci[oó]n|fracci[oó]n|geometr[ií]a|funci[oó]n|nota|promedio|asistencia/i.test(b) ? 1 : 0;
+            return pb-pa || a.length-b.length;
+        })[0] || t.slice(0, 90);
+    }
+
+    async function curiosidadDeInternet(tema) {
+        const ahora = Date.now();
+        const clave = tema.toLowerCase();
+        if (clave === ultimaConsultaInternet && ahora - ultimaConsultaInternetTiempo < 45000) return null;
+        ultimaConsultaInternet = clave;
+        ultimaConsultaInternetTiempo = ahora;
+        try {
+            const url = 'https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' +
+                encodeURIComponent(tema) + '&gsrnamespace=0&gsrlimit=1&prop=extracts&exintro=1&explaintext=1&format=json&origin=*';
+            const r = await fetch(url, { method: 'GET', cache: 'no-store' });
+            if (!r.ok) return null;
+            const data = await r.json();
+            const pages = data && data.query && data.query.pages ? Object.values(data.query.pages) : [];
+            const page = pages[0];
+            if (!page) return null;
+            const extracto = String(page.extract || '').replace(/\s+/g, ' ').trim();
+            if (!extracto) return null;
+            const frase = extracto.split(/(?<=[.!?])\s+/)[0].slice(0, 180);
+            return { titulo: page.title || tema, frase };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function reaccionarSobre(texto) {
         const t = (texto || '').replace(/\s+/g, ' ').trim();
         if (!t) return;
-        const clave = t.toLowerCase().slice(0, 180);
+        const clave = t.toLowerCase().slice(0, 220);
         const ahora = Date.now();
-        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 7000) return;
+        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 9000) return;
         ultimoObjetivo = clave;
         ultimaReaccionObjetivo = ahora;
 
         const nombre = nombreEstudiante();
+        const tema = obtenerTemaVisible(texto);
         let respuesta = '';
         let gesto = 'mirando';
 
         if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            const opciones = [
-                `¡${nombre}, muy bien! Cada día que vienes cuenta. 🐾`,
-                `${nombre}, ¡a cuidar esa asistencia! Tu esfuerzo importa. 🌟`,
-                `¡Presente, ${nombre}! Así se construye el progreso. 💪`,
-                `${nombre}, venir y aprender ya es una gran victoria. 🐱`
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
+            respuesta = `¡${nombre}, aquí hay asistencia! Yo cuento presentes… pero no me hagas contar faltas. 😹`;
             gesto = 'mirando';
-        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n/i.test(t)) {
-            const opciones = [
-                `¡${nombre}, sigue así! Cada punto de esfuerzo cuenta. 🌟`,
-                `${nombre}, no te rindas: ¡la próxima nota puede ser aún mejor! 💪`,
-                `¡Vamos, ${nombre}! Tú puedes superar tus propias metas. 🚀`,
-                `${nombre}, lo importante es seguir aprendiendo y mejorando. 🧠`,
-                `¡Te estoy vigilando, ${nombre}! 👀🐾 ¡Sigue avanzando!`
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            gesto = Math.random() < .25 ? 'saltando' : 'mirando';
-        } else if (/estudiante|nombre|curso|materia|matem[aá]tica/i.test(t)) {
-            respuesta = `¡Hola, ${nombre}! 😺 Estoy contigo. 🐾`;
+        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n|examen|actividad/i.test(t)) {
+            respuesta = `¡${nombre}! Detecté “${tema}”. 🧐 Déjame investigar una curiosidad…`;
+            gesto = Math.random() < .5 ? 'mirando' : 'saltando';
+        } else {
+            respuesta = `¡${nombre}! Creo que detrás de mí hay “${tema}”. 🐾 ¿Qué será?`;
             gesto = 'mirando';
         }
 
-        if (respuesta) {
-            // El gatito conserva SIEMPRE su misma carita; la gracia está en sus gestos.
-            cuerpo.textContent = '🐱';
-            gato.classList.remove('mirando', 'saltando', 'gracioso', 'sorprendido');
-            void gato.offsetWidth;
-            gato.classList.add(gesto);
-            decir(respuesta, 2800);
-            activarSonido();
-            if (Math.random() < .7) sonidoMiau();
-            setTimeout(() => {
-                if (!arrastrando) gato.classList.remove('mirando', 'saltando', 'gracioso', 'sorprendido');
-            }, 900);
+        cuerpo.textContent = '🐱';
+        gato.classList.remove('mirando', 'saltando', 'gracioso', 'sorprendido');
+        void gato.offsetWidth;
+        gato.classList.add(gesto);
+        decir(respuesta, 3000);
+
+        // La consulta es opcional: si no hay Internet, el gatito sigue funcionando normalmente.
+        if (tema && tema.length >= 4) {
+            const dato = await curiosidadDeInternet(tema);
+            if (dato && !arrastrando) {
+                const bromas = [
+                    `¡${nombre}! Encontré algo sobre “${dato.titulo}”: ${dato.frase} 😹 ¡Yo solo quería mirar tus notas y terminé estudiando también!`,
+                    `Dato curioso para ${nombre}: “${dato.titulo}” — ${dato.frase} 🐱 Ahora entiendo por qué esto merece una pausa de gatito.`,
+                    `¡Atención, ${nombre}! Internet dice sobre “${dato.titulo}”: ${dato.frase} 🤓 Yo digo que eso suena a pregunta de examen. ¡Miau!`,
+                    `Investigación gatuna completada, ${nombre}: ${dato.frase} 🐾 ¿Quién dijo que estudiar no podía ser divertido?`,
+                    `¡${nombre}! Vine a vigilar “${dato.titulo}” y descubrí esto: ${dato.frase} 😹 Definitivamente los humanos complican mucho las cosas.`
+                ];
+                decir(bromas[Math.floor(Math.random() * bromas.length)], 6200);
+                gato.classList.remove('mirando', 'saltando', 'gracioso');
+                gato.classList.add(Math.random() < .5 ? 'gracioso' : 'saltando');
+                setTimeout(() => gato.classList.remove('mirando', 'saltando', 'gracioso'), 1400);
+            }
         }
     }
 
@@ -3580,8 +3562,6 @@ if (fechaNacimiento) {
         void gato.offsetWidth;
         gato.classList.add(Math.random() < .55 ? 'gracioso' : 'saltando');
         decir(b, 2800);
-        activarSonido();
-        sonidoMiau();
         setTimeout(() => {
             gato.classList.remove('gracioso', 'saltando', 'sorprendido', 'mirando');
             cuerpo.textContent = '🐱';
@@ -3600,8 +3580,7 @@ if (fechaNacimiento) {
         }
         if (/error|incorrectos|Error de conexión/i.test(texto)) {
             cuerpo.textContent = '🐱';
-            sonidoSorpresa();
-            gato.classList.add('sorprendido');
+                gato.classList.add('sorprendido');
             decir(`¡Ups, ${nombreEstudiante()}! Vamos a intentarlo de nuevo. 🐾`, 2000);
             return;
         }
@@ -3610,8 +3589,7 @@ if (fechaNacimiento) {
             const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
             if (notas.length && Math.max(...notas) >= 70) {
                 cuerpo.textContent = '🐱';
-                sonidoFeliz();
-                decir(`¡Muy bien, ${nombreEstudiante()}! 🎉`, 2200);
+                    decir(`¡Muy bien, ${nombreEstudiante()}! 🎉`, 2200);
             } else {
                 cuerpo.textContent = '🐱';
                 decir('Estoy mirando tus notas 👀', 2200);
@@ -3620,10 +3598,8 @@ if (fechaNacimiento) {
     }
 
     gato.addEventListener('mouseenter', () => {
-        activarSonido();
         gato.classList.add('mirando');
         if (!arrastrando && Math.random() < .45) {
-            sonidoMiau();
             decir(`¡Hola, ${nombreEstudiante()}! 👀🐾`, 1800);
         }
     });
