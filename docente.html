@@ -1248,6 +1248,27 @@ td:first-child {
     background: #11652f;
 }
 
+/* DÍAS ESPECIALES */
+.calendario-dia-asistencia.no-clases {
+    background: #c62828;
+    color: white;
+    font-weight: bold;
+}
+
+.calendario-dia-asistencia.no-clases:hover {
+    background: #a91f1f;
+}
+
+.calendario-dia-asistencia.clase-informal {
+    background: #f9a825;
+    color: white;
+    font-weight: bold;
+}
+
+.calendario-dia-asistencia.clase-informal:hover {
+    background: #d99000;
+}
+
 .calendario-dia-asistencia.seleccionado {
     box-shadow: inset 0 0 0 2px #ef6c00;
 }
@@ -1283,6 +1304,14 @@ td:first-child {
     border-radius: 50%;
     background: #16803c;
     flex-shrink: 0;
+}
+
+.punto-calendario-asistencia.no-clases {
+    background: #c62828;
+}
+
+.punto-calendario-asistencia.clase-informal {
+    background: #f9a825;
 }
 
 @media (max-width: 600px) {
@@ -2784,7 +2813,11 @@ Selecciona un curso
     <div id="diasCalendarioAsistencia" class="calendario-dias-asistencia"></div>
     <div class="leyenda-calendario-asistencia">
         <span class="punto-calendario-asistencia"></span>
-        <span>Día con asistencia guardada</span>
+        <span>Día con asistencia</span>
+        <span class="punto-calendario-asistencia no-clases"></span>
+        <span>Sin clases</span>
+        <span class="punto-calendario-asistencia clase-informal"></span>
+        <span>Clase informal</span>
     </div>
 </div>
 
@@ -4818,6 +4851,7 @@ async function guardarTipoDiaAsistencia() {
 ===================================================== */
 
 let fechasAsistenciaGuardadas = [];
+let tiposDiasAsistenciaGuardados = {};
 let mesCalendarioAsistencia = new Date();
 mesCalendarioAsistencia.setDate(1);
 
@@ -4868,6 +4902,8 @@ function renderizarCalendarioFechasAsistencia() {
         fechasAsistenciaGuardadas.map(f => String(f))
     );
 
+    const tiposDias = tiposDiasAsistenciaGuardados || {};
+
     for (let i = 0; i < desplazamiento; i++) {
         const vacio = document.createElement("span");
         vacio.className = "calendario-dia-asistencia vacio";
@@ -4880,12 +4916,24 @@ function renderizarCalendarioFechasAsistencia() {
         boton.type = "button";
         boton.className = "calendario-dia-asistencia";
         boton.textContent = dia;
-        boton.title = fechasGuardadas.has(clave)
-            ? "Asistencia guardada: " + formatearFechaGuardadaAsistencia(clave)
-            : "Seleccionar " + clave;
+        const tipoDia = String(tiposDias[clave] || "");
+        boton.title = tipoDia === "no_clases"
+            ? "No se pasó clases: " + formatearFechaGuardadaAsistencia(clave)
+            : tipoDia === "clase_informal"
+                ? "Clase informal: " + formatearFechaGuardadaAsistencia(clave)
+                : fechasGuardadas.has(clave)
+                    ? "Asistencia guardada: " + formatearFechaGuardadaAsistencia(clave)
+                    : "Seleccionar " + clave;
 
         if (fechasGuardadas.has(clave)) {
-            boton.classList.add("guardado");
+            if (tipoDia === "no_clases") {
+                boton.classList.add("no-clases");
+            } else if (tipoDia === "clase_informal") {
+                boton.classList.add("clase-informal");
+            } else {
+                boton.classList.add("guardado");
+            }
+
             const marca = document.createElement("span");
             marca.className = "marca-guardado";
             boton.appendChild(marca);
@@ -4923,6 +4971,7 @@ async function cargarFechasAsistencia() {
 
     select.innerHTML = `<option value="">Fechas guardadas</option>`;
     fechasAsistenciaGuardadas = [];
+    tiposDiasAsistenciaGuardados = {};
 
     if (!cursoSeleccionado) {
         renderizarCalendarioFechasAsistencia();
@@ -4955,7 +5004,7 @@ async function cargarFechasAsistencia() {
 
     const { data: dataTipos, error: errorTipos } = await supabaseClient
         .from("asistencia_tipos_dia")
-        .select("fecha")
+        .select("fecha,tipo")
         .eq("curso", cursoSeleccionado)
         .order("fecha", { ascending: false });
 
@@ -4965,6 +5014,13 @@ async function cargarFechasAsistencia() {
         renderizarCalendarioFechasAsistencia();
         return;
     }
+
+    tiposDiasAsistenciaGuardados = {};
+    (dataTipos || []).forEach(r => {
+        if (r?.fecha && r?.tipo) {
+            tiposDiasAsistenciaGuardados[String(r.fecha)] = String(r.tipo);
+        }
+    });
 
     const fechas = [...new Set([
         ...(dataAsistencia || []).map(r => r.fecha),
