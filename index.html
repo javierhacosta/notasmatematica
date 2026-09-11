@@ -3487,7 +3487,7 @@ if (fechaNacimiento) {
                 return partes[partes.length - 1];
             }
         } catch (e) {}
-        return 'estudiante';
+        return '';
     }
 
     function cursoEstudiante() {
@@ -3543,54 +3543,9 @@ if (fechaNacimiento) {
     let ultimaConsultaInternet = '';
     let ultimaConsultaInternetTiempo = 0;
 
-    function limpiarTema(texto) {
-        return (texto || '')
-            .replace(/\s+/g, ' ')
-            .replace(/https?:\/\/\S+/gi, '')
-            .replace(/[^\p{L}\p{N}\sÁÉÍÓÚÜÑáéíóúüñ%°.,:;()\-]/gu, ' ')
-            .trim()
-            .slice(0, 120);
-    }
-
-    function obtenerTemaVisible(texto) {
-        const t = limpiarTema(texto);
-        const lineas = (texto || '').split(/\n+/).map(l => limpiarTema(l)).filter(Boolean);
-        const candidatas = lineas.filter(l =>
-            l.length >= 4 && l.length <= 90 &&
-            !/^(consultar tus datos|cerrar sesión|buscar|cargando|resultado|asistencia|calificaciones?)$/i.test(l)
-        );
-        return candidatas.sort((a,b) => {
-            const pa = /examen|actividad|tema|trimestre|matemática|matemáticas|ecuaci[oó]n|fracci[oó]n|geometr[ií]a|funci[oó]n|nota|promedio|asistencia/i.test(a) ? 1 : 0;
-            const pb = /examen|actividad|tema|trimestre|matemática|matemáticas|ecuaci[oó]n|fracci[oó]n|geometr[ií]a|funci[oó]n|nota|promedio|asistencia/i.test(b) ? 1 : 0;
-            return pb-pa || a.length-b.length;
-        })[0] || t.slice(0, 90);
-    }
-
-    async function curiosidadDeInternet(tema) {
-        const ahora = Date.now();
-        const clave = tema.toLowerCase();
-        if (clave === ultimaConsultaInternet && ahora - ultimaConsultaInternetTiempo < 45000) return null;
-        ultimaConsultaInternet = clave;
-        ultimaConsultaInternetTiempo = ahora;
-        try {
-            const url = 'https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' +
-                encodeURIComponent(tema) + '&gsrnamespace=0&gsrlimit=1&prop=extracts&exintro=1&explaintext=1&format=json&origin=*';
-            const r = await fetch(url, { method: 'GET', cache: 'no-store' });
-            if (!r.ok) return null;
-            const data = await r.json();
-            const pages = data && data.query && data.query.pages ? Object.values(data.query.pages) : [];
-            const page = pages[0];
-            if (!page) return null;
-            const extracto = String(page.extract || '').replace(/\s+/g, ' ').trim();
-            if (!extracto) return null;
-            const frase = extracto.split(/(?<=[.!?])\s+/)[0].slice(0, 180);
-            return { titulo: page.title || tema, frase };
-        } catch (e) {
-            return null;
-        }
-    }
-
-    async function reaccionarSobre(texto) {
+    /* El gatito lee lo que tiene detrás, pero SOLO para elegir un consejo
+       corto sobre notas, asistencia o vida estudiantil. No muestra datos curiosos. */
+    function reaccionarSobre(texto) {
         const t = (texto || '').replace(/\s+/g, ' ').trim();
         if (!t) return;
         const clave = t.toLowerCase().slice(0, 220);
@@ -3600,25 +3555,66 @@ if (fechaNacimiento) {
         ultimaReaccionObjetivo = ahora;
 
         const nombre = nombreEstudiante();
-        const tema = obtenerTemaVisible(texto);
+        const curso = cursoEstudiante();
         let respuesta = '';
         let gesto = 'mirando';
 
+        const infantil = /^(1A|1B|2A|2B|3A|3B)$/.test(curso);
+        const intermedio = /^(4A|4B|5A|5B)$/.test(curso);
+        const ultimoCurso = /^(6A|6B)$/.test(curso);
+
         if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            const opciones = [
-                `¡${nombre}! 👀 ¡Asistencia de campeón!`,
-                `¡${nombre}! 🐾 ¡Venir a clase suma!`,
-                `¡${nombre}! 🌟 ¡No faltes al aprendizaje!`
+            const opciones = infantil ? [
+                `¡${nombre}! 🐾 ¡Venir a clase ayuda!`,
+                `¡${nombre}! 🌟 ¡No faltes, campeón!`,
+                `¡${nombre}! 😺 ¡Cada clase cuenta!`
+            ] : ultimoCurso ? [
+                `¡${nombre}! 🎓 ¡Tu presencia también cuenta!`,
+                `¡${nombre}! 💪 ¡Aprovecha cada clase!`,
+                `¡${nombre}! 🚀 ¡Ya casi llegas! Sigue firme.`
+            ] : [
+                `¡${nombre}! 💪 ¡Cada clase cuenta!`,
+                `¡${nombre}! 🌟 ¡Sigue siendo constante!`,
+                `¡${nombre}! 🐾 ¡Tu esfuerzo suma!`
             ];
             respuesta = opciones[Math.floor(Math.random() * opciones.length)];
             gesto = Math.random() < .5 ? 'mirando' : 'saltando';
         } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n|examen|actividad/i.test(t)) {
-            const consejos = consejoPorCurso();
-            respuesta = consejos[Math.floor(Math.random() * consejos.length)];
+            const opciones = infantil ? [
+                `¡${nombre}! ⭐ ¡Cada intento te hace mejor!`,
+                `¡${nombre}! 🧠 ¡Aprender es una aventura!`,
+                `¡${nombre}! 🚀 ¡Tú puedes con esa nota!`
+            ] : intermedio ? [
+                `¡${nombre}! 💪 ¡Tu esfuerzo se nota!`,
+                `¡${nombre}! ⭐ ¡Sigue mejorando paso a paso!`,
+                `¡${nombre}! 🧠 ¡Confía en lo que aprendiste!`
+            ] : ultimoCurso ? [
+                `¡${nombre}! 🎓 ¡Cada nota construye tu futuro!`,
+                `¡${nombre}! 🚀 ¡Ya estás cerca de la meta!`,
+                `¡${nombre}! 💪 ¡Tu esfuerzo de hoy abre caminos!`
+            ] : [
+                `¡${nombre}! 🌟 ¡Sigue dando lo mejor!`,
+                `¡${nombre}! 💪 ¡Tú puedes mejorar!`,
+                `¡${nombre}! 🧠 ¡Confía en tu aprendizaje!`
+            ];
+            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
             gesto = Math.random() < .45 ? 'saltando' : 'mirando';
         } else {
-            respuesta = `¡${nombre}! 👀 ¡Encontré algo!`;
-            gesto = 'mirando';
+            const opciones = infantil ? [
+                `¡${nombre}! 🌟 ¡Sigue aprendiendo!`,
+                `¡${nombre}! 🐾 ¡Hoy también puedes crecer!`,
+                `¡${nombre}! 😺 ¡Paso a paso se llega lejos!`
+            ] : ultimoCurso ? [
+                `¡${nombre}! 🎓 ¡Cree en todo lo que puedes lograr!`,
+                `¡${nombre}! 🚀 ¡Lo que viene también es tuyo!`,
+                `¡${nombre}! 💪 ¡Sigue adelante, falta poquito!`
+            ] : [
+                `¡${nombre}! 🌟 ¡Sigue adelante!`,
+                `¡${nombre}! 💪 ¡No te rindas!`,
+                `¡${nombre}! 🐾 ¡Tu esfuerzo vale mucho!`
+            ];
+            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
+            gesto = Math.random() < .5 ? 'mirando' : 'saltando';
         }
 
         cuerpo.textContent = '🐱';
@@ -3626,23 +3622,6 @@ if (fechaNacimiento) {
         void gato.offsetWidth;
         gato.classList.add(gesto);
         decir(respuesta, 2800);
-
-        // Curiosidad breve basada en el NOMBRE de la actividad/tema.
-        if (tema && tema.length >= 4) {
-            const dato = await curiosidadDeInternet(tema);
-            if (dato && !arrastrando) {
-                const frases = [
-                    `¡${nombre}! 😲 ¿Sabías esto?`,
-                    `¡${nombre}! 🤯 ¡Qué curioso!`,
-                    `¡${nombre}! 🧐 ¡Mira este dato!`,
-                    `¡${nombre}! 😺 ¡Internet me contó esto!`
-                ];
-                decir(frases[Math.floor(Math.random() * frases.length)] + ` ${dato.frase}`, 5200);
-                gato.classList.remove('mirando', 'saltando', 'gracioso');
-                gato.classList.add(Math.random() < .5 ? 'gracioso' : 'saltando');
-                setTimeout(() => gato.classList.remove('mirando', 'saltando', 'gracioso'), 1400);
-            }
-        }
     }
 
     function revisarDebajoDelGato() {
@@ -3656,13 +3635,14 @@ if (fechaNacimiento) {
     function hacerBroma() {
         if (arrastrando || document.hidden) return;
         const nombre = nombreEstudiante();
+        const saludo = nombre ? nombre : 'amigo';
         const consejos = consejoPorCurso();
         const bromas = [
-            `¡${nombre}! 🐾 ¡Inspección sorpresa!`,
-            `Pss, ${nombre}… ¡te estoy vigilando! 😹`,
-            `¡${nombre}! 🦋 ¡Me distraje otra vez!`,
-            `Zzz… ${nombre}, ¡era una mini siesta! 💤`,
-            `¡${nombre}! 👀 ¡Aquí no se escapa ni una nota!`,
+            `¡${saludo}! 🐾 ¡Inspección sorpresa!`,
+            `Pss, ${saludo}… ¡te estoy vigilando! 😹`,
+            `¡${saludo}! 🦋 ¡Me distraje otra vez!`,
+            `Zzz… ${saludo}, ¡era una mini siesta! 💤`,
+            `¡${saludo}! 👀 ¡Aquí no se escapa ni una nota!`,
             consejos[Math.floor(Math.random() * consejos.length)]
         ];
         const b = bromas[Math.floor(Math.random() * bromas.length)];
@@ -3691,7 +3671,7 @@ if (fechaNacimiento) {
         if (/error|incorrectos|Error de conexión/i.test(texto)) {
             cuerpo.textContent = '🐱';
                 gato.classList.add('sorprendido');
-            decir(`¡Ups, ${nombreEstudiante()}! Vamos a intentarlo de nuevo. 🐾`, 2000);
+            decir(nombreEstudiante() ? `¡Ups, ${nombreEstudiante()}! Vamos a intentarlo de nuevo. 🐾` : '¡Ups! Vamos a intentarlo de nuevo. 🐾', 2000);
             return;
         }
         if (texto.trim()) {
@@ -3702,7 +3682,7 @@ if (fechaNacimiento) {
                     decir(consejoPorCurso()[Math.floor(Math.random() * consejoPorCurso().length)], 2600);
             } else {
                 cuerpo.textContent = '🐱';
-                decir(`¡${nombreEstudiante()}! 👀 ¡Estoy curioseando!`, 2200);
+                decir(nombreEstudiante() ? `¡${nombreEstudiante()}! 💪 ¡Tú puedes!` : '¡Vamos! 💪 ¡Tú puedes!', 2200);
             }
         }
     }
@@ -3740,7 +3720,7 @@ if (fechaNacimiento) {
         }
     }, 2000);
 
-    setTimeout(() => decir(`¡Hola, ${nombreEstudiante()}! 🐾`, 2200), 900);
+    setTimeout(() => { const n = nombreEstudiante(); decir(n ? `¡Hola, ${n}! 🐾` : '¡Hola! 🐾', 2200); }, 900);
 })();
 </script>
 </body>
