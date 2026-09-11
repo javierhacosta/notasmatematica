@@ -737,21 +737,48 @@ button:hover {
 #gatoMensaje {
     position: absolute;
     left: 50%;
-    bottom: 68px;
-    transform: translateX(-50%);
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    padding: 6px 9px;
-    font-size: 11px;
+    bottom: 66px;
+    transform: translateX(-50%) scale(.92);
+    width: min(190px, 58vw);
+    box-sizing: border-box;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 20px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 600;
     color: #444;
-    white-space: nowrap;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
     box-shadow: 0 3px 12px rgba(0,0,0,.14);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease;
+    transition: opacity .2s ease, transform .2s ease;
 }
-#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; }
+/* Burbujitas de pensamiento */
+#gatoMensaje::before, #gatoMensaje::after {
+    content: '';
+    position: absolute;
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+}
+#gatoMensaje::before { width: 10px; height: 10px; bottom: -13px; left: 27px; }
+#gatoMensaje::after { width: 6px; height: 6px; bottom: -22px; left: 18px; }
+#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; transform: translateX(-50%) scale(1); }
+/* Pequeños gestos de sorpresa/asombro sin cambiar la carita del gatito */
+#gatoGesto {
+    position: absolute; left: 50%; top: -8px; transform: translateX(-50%);
+    font-size: 17px; font-weight: 900; opacity: 0; pointer-events: none;
+}
+#gatoInteractivo.sorprendido #gatoGesto { opacity: 1; animation: gestoSorpresa .65s ease-in-out; }
+@keyframes gestoSorpresa {
+    0%,100% { transform: translateX(-50%) scale(.7) rotate(0deg); }
+    40% { transform: translateX(-50%) scale(1.25) rotate(-8deg); }
+}
+
 #gatoCorazones {
     position: absolute;
     left: 50%;
@@ -773,7 +800,7 @@ button:hover {
 @media(max-width:500px) {
     #gatoInteractivo { left: 8px; bottom: 10px; width: 64px; height: 64px; }
     #gatoCuerpo { font-size: 46px; }
-    #gatoMensaje { bottom: 56px; font-size: 10px; }
+    #gatoMensaje { bottom: 56px; width: min(165px, 62vw); font-size: 10px; }
 }
 </style>
 
@@ -3348,6 +3375,7 @@ if (fechaNacimiento) {
 <!-- Gatito interactivo: elemento independiente del sistema de notas -->
 <div id="gatoInteractivo" aria-label="Gatito interactivo" title="Acaríciame 🐾">
     <div id="gatoMensaje"></div>
+    <div id="gatoGesto">‼️</div>
     <div id="gatoCorazones">💗</div>
     <div id="gatoCuerpo">🐱</div>
 </div>
@@ -3500,13 +3528,13 @@ if (fechaNacimiento) {
         let gesto = 'mirando';
 
         if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            respuesta = `¡${nombre}, aquí hay asistencia! Yo cuento presentes… pero no me hagas contar faltas. 😹`;
+            respuesta = `¡${nombre}! 👀 ¡Buena asistencia! ¡Así se hace! 😸`;
             gesto = 'mirando';
         } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n|examen|actividad/i.test(t)) {
-            respuesta = `¡${nombre}! Detecté “${tema}”. 🧐 Déjame investigar una curiosidad…`;
+            respuesta = `¡${nombre}! 👀 ¿Qué es “${tema}”? ¡Voy a curiosear! 😸`;
             gesto = Math.random() < .5 ? 'mirando' : 'saltando';
         } else {
-            respuesta = `¡${nombre}! Creo que detrás de mí hay “${tema}”. 🐾 ¿Qué será?`;
+            respuesta = `¡${nombre}! 🐾 ¡Hay algo aquí! 👀`;
             gesto = 'mirando';
         }
 
@@ -3521,11 +3549,11 @@ if (fechaNacimiento) {
             const dato = await curiosidadDeInternet(tema);
             if (dato && !arrastrando) {
                 const bromas = [
-                    `¡${nombre}! Encontré algo sobre “${dato.titulo}”: ${dato.frase} 😹 ¡Yo solo quería mirar tus notas y terminé estudiando también!`,
-                    `Dato curioso para ${nombre}: “${dato.titulo}” — ${dato.frase} 🐱 Ahora entiendo por qué esto merece una pausa de gatito.`,
-                    `¡Atención, ${nombre}! Internet dice sobre “${dato.titulo}”: ${dato.frase} 🤓 Yo digo que eso suena a pregunta de examen. ¡Miau!`,
-                    `Investigación gatuna completada, ${nombre}: ${dato.frase} 🐾 ¿Quién dijo que estudiar no podía ser divertido?`,
-                    `¡${nombre}! Vine a vigilar “${dato.titulo}” y descubrí esto: ${dato.frase} 😹 Definitivamente los humanos complican mucho las cosas.`
+                    `¡${nombre}! 🧐 “${dato.titulo}” tiene un dato curioso. ¡Miau!`,
+                    `¡${nombre}! 😲 ¡Mira lo que descubrí sobre “${dato.titulo}”!`,
+                    `Dato gatuno: “${dato.titulo}” 🐱 ¡Qué curioso!`,
+                    `¡${nombre}! 🤯 Internet también estudia conmigo.`,
+                    `¡Miau! 🐾 “${dato.titulo}” es más curioso de lo que parece.`
                 ];
                 decir(bromas[Math.floor(Math.random() * bromas.length)], 6200);
                 gato.classList.remove('mirando', 'saltando', 'gracioso');
@@ -3547,14 +3575,14 @@ if (fechaNacimiento) {
         if (arrastrando || document.hidden) return;
         const nombre = nombreEstudiante();
         const bromas = [
-            `¡${nombre}! Estoy revisando… pero creo que me distraje con una mariposa. 🐾`,
-            `Pss, ${nombre}… ¿estudiamos un poquito más? 😸`,
-            `¡Miau, ${nombre}! Solo estaba haciendo una inspección sorpresa. 😂`,
-            `${nombre}, oficialmente declaro que necesitas seguir intentándolo. ¡Yo te acompaño! 💪`,
-            `¡Ey, ${nombre}! ¡Mírame! 👀🐾 …Bueno, ya puedes seguir estudiando. 😹`,
-            `Zzz… ${nombre}, ¡era una mini siesta académica! 💤`,
-            `${nombre}, estoy vigilando esas notas con mucha atención. 👀🐾`,
-            `¡Miau! ${nombre}, recuerda: un pequeño avance sigue siendo un avance. 🌟`
+            `¡${nombre}! 🦋 ¡Me distraje! 😹`,
+            `Pss, ${nombre}… ¡un poquito más! 😸`,
+            `¡Miau, ${nombre}! ¡Inspección sorpresa! 😂`,
+            `${nombre}, ¡tú puedes! 💪🐱`,
+            `¡Ey, ${nombre}! 👀 ¡Te vi! 😹`,
+            `Zzz… ${nombre}, ¡mini siesta! 💤`,
+            `${nombre}, ¡vigilo esas notas! 👀🐾`,
+            `¡Miau, ${nombre}! ¡Sigue avanzando! 🌟`
         ];
         const b = bromas[Math.floor(Math.random() * bromas.length)];
         cuerpo.textContent = '🐱';
