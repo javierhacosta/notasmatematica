@@ -792,6 +792,59 @@ const FIN_3T = "2026-12-31";
 
 
 /* =================================================
+   CONTROL DE CONSULTAS REPETIDAS
+================================================= */
+let temporizadorVisita = null;
+
+function iniciarCuentaRegresivaVisita(segundos) {
+
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
+    }
+
+    const boton = document.querySelector('button[onclick="consultarNota()"]');
+    if (!boton || segundos <= 0) return;
+
+    const textoOriginal = "Consultar mi nota";
+
+    const actualizar = () => {
+
+        if (segundos <= 0) {
+            clearInterval(temporizadorVisita);
+            temporizadorVisita = null;
+            boton.disabled = false;
+            boton.style.opacity = "1";
+            boton.style.cursor = "pointer";
+            boton.textContent = textoOriginal;
+            return;
+        }
+
+        const horas = Math.floor(segundos / 3600);
+        const minutos = Math.floor((segundos % 3600) / 60);
+        const seg = segundos % 60;
+
+        let tiempo;
+
+        if (horas > 0) {
+            tiempo = `${horas} h ${minutos} min ${String(seg).padStart(2, "0")} s`;
+        } else {
+            tiempo = `${minutos} min ${String(seg).padStart(2, "0")} s`;
+        }
+
+        boton.disabled = true;
+        boton.style.opacity = "0.65";
+        boton.style.cursor = "not-allowed";
+        boton.textContent = `Podrás consultar nuevamente en ${tiempo}`;
+        segundos--;
+
+    };
+
+    actualizar();
+    temporizadorVisita = setInterval(actualizar, 1000);
+}
+
+/* =================================================
    CONSULTAR
 ================================================= */
 
@@ -883,12 +936,38 @@ async function consultarNota() {
 
 
         /* =================================================
+           EVITAR CONSULTAS REPETIDAS DURANTE 60 MINUTOS
+        ================================================= */
+        const CLAVE_BLOQUEO_VISITA =
+            `ultima_consulta_nota_${alumnoActual.id}`;
+        const DURACION_BLOQUEO_VISITA = 60 * 60 * 1000;
+        const ultimaConsulta =
+            Number(localStorage.getItem(CLAVE_BLOQUEO_VISITA) || 0);
+        const tiempoTranscurrido = Date.now() - ultimaConsulta;
+
+        if (ultimaConsulta && tiempoTranscurrido < DURACION_BLOQUEO_VISITA) {
+            iniciarCuentaRegresivaVisita(
+                Math.ceil((DURACION_BLOQUEO_VISITA - tiempoTranscurrido) / 1000)
+            );
+            mostrarResultado(alumnoActual);
+            return;
+        }
+
+        localStorage.setItem(
+            CLAVE_BLOQUEO_VISITA,
+            String(Date.now())
+        );
+
+        iniciarCuentaRegresivaVisita(60 * 60);
+
+
+        /* =================================================
            REGISTRAR VISITA DEL ESTUDIANTE
         ================================================= */
 
         try {
 
-            await fetch(
+            const respuestaVisita = await fetch(
 
                 `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
 
@@ -919,6 +998,7 @@ async function consultarNota() {
                 }
 
             );
+
 
         }
 
