@@ -11565,6 +11565,13 @@ let estudianteQRAsistencia = null;
 let escaneoAsistenciaQRRealizado = false;
 let estadoQRAsistencia = "asistio";
 
+/*
+ * Cola temporal de asistencia QR.
+ * Los estudiantes escaneados se mantienen aquí durante toda la toma
+ * y recién se envían a Supabase cuando se cierra la ventana del escáner.
+ */
+let asistenciasQRPendientesGuardar = new Map();
+
 /* =====================================================
    PROTECCIÓN SEGUNDA ETAPA - QR
    Evita procesar dos veces el mismo QR por accidente.
@@ -11926,6 +11933,9 @@ async function abrirEscanerAsistenciaQR() {
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
 
+    // Nueva toma QR: comenzar una cola temporal sin guardar todavía en BD.
+    asistenciasQRPendientesGuardar = new Map();
+
     /*
      * IMPORTANTE:
      * Al volver a abrir el escáner NO se reinicia la lista a "falta".
@@ -12104,15 +12114,15 @@ async function continuarEscaneoAsistenciaQR() {
     const estudiante = estudianteQRAsistencia;
 
     /*
-       IMPORTANTE:
-       Al pulsar "Continuar escaneando" se guarda INMEDIATAMENTE
-       solamente el estudiante que acaba de ser escaneado.
-       No se guarda toda la lista ni se vuelve a cargar la tabla.
-    */
+     * IMPORTANTE:
+     * "Continuar escaneando" NO guarda en Supabase.
+     * Solo coloca/actualiza el estudiante en una cola temporal.
+     * El guardado real se realiza al cerrar la ventana del escáner QR.
+     */
     if (boton) {
         boton.disabled = true;
         boton.dataset.textoOriginal = boton.innerHTML;
-        boton.innerHTML = "💾 Guardando...";
+        boton.innerHTML = "📷 Preparando...";
     }
 
     try {
@@ -12143,17 +12153,15 @@ async function continuarEscaneoAsistenciaQR() {
             observacion: observacion || null
         };
 
-        if (guardadoAutomatico || guardadoManualEnCurso) {
-            const { error } = await supabaseClient
-                .from("asistencia")
-                .upsert(registro, {
-                    onConflict: "estudiante_id,fecha"
-                });
-
-            if (error) {
-                throw error;
-            }
-        }
+        /*
+         * Guardado temporal en memoria.
+         * Si el mismo estudiante se escanea nuevamente durante la misma toma,
+         * se conserva el último estado/observación seleccionado.
+         */
+        asistenciasQRPendientesGuardar.set(
+            String(estudiante.id),
+            registro
+        );
 
         /* Mantener la información local sincronizada */
         registrosAsistencia[estudiante.id] = {
@@ -12171,15 +12179,11 @@ async function continuarEscaneoAsistenciaQR() {
         actualizarResumenAsistencia();
 
         escaneoAsistenciaQRRealizado = true;
-
-        if (!guardadoAutomatico && !guardadoManualEnCurso) {
-            marcarAsistenciaPendiente();
-        }
+        marcarAsistenciaPendiente();
 
         mostrarMensaje(
-            guardadoAutomatico || guardadoManualEnCurso
-                ? "✓ Asistencia guardada: " + estudiante.nombre
-                : "✓ Asistencia preparada: " + estudiante.nombre
+            "✓ Asistencia preparada: " + estudiante.nombre +
+            " · pendiente de guardar al cerrar el escáner"
         );
 
         document.getElementById("modalAsistenciaQR").classList.add("oculto");
@@ -12197,18 +12201,16 @@ async function continuarEscaneoAsistenciaQR() {
 
     } catch (error) {
 
-        console.error("Error al guardar asistencia QR:", error);
+        console.error("Error al preparar asistencia QR:", error);
 
         alert(
-            "No se pudo guardar la asistencia de " +
+            "No se pudo preparar la asistencia de " +
             estudiante.nombre +
             ": " +
             (error.message || error)
         );
 
     } finally {
-        guardadoManualEnCurso = false;
-
         if (boton) {
             boton.disabled = false;
 
@@ -12219,7 +12221,6 @@ async function continuarEscaneoAsistenciaQR() {
         }
     }
 }
-
 
 function cerrarModalAsistenciaQR(event) {
 
@@ -12348,12 +12349,57 @@ async function prepararCalificacionQR(
         "infoEstudianteQR"
     );
 
+    /* Mostrar el estado de asistencia correspondiente
+       exactamente a la fecha de la actividad. */
+    const claveAsistenciaQR =
+        String(data.id) +
+        "_" +
+        String(actividadQRSeleccionada.fecha || "");
+
+    const estadoAsistenciaQR =
+        String(
+            registrosAsistenciaActividades[claveAsistenciaQR] || ""
+        ).toLowerCase();
+
+    const datosAsistenciaQR = {
+        asistio: {
+            icono: "✓",
+            titulo: "Asistencia"
+        },
+        atraso: {
+            icono: "⏰",
+            titulo: "Atraso"
+        },
+        licencia: {
+            icono: "📄",
+            titulo: "Permiso"
+        },
+        permiso: {
+            icono: "📄",
+            titulo: "Permiso"
+        },
+        falta: {
+            icono: "✕",
+            titulo: "Falta"
+        }
+    };
+
+    const asistenciaQR =
+        datosAsistenciaQR[estadoAsistenciaQR]
+        ? datosAsistenciaQR[estadoAsistenciaQR].icono +
+          " " +
+          datosAsistenciaQR[estadoAsistenciaQR].titulo
+        : "— Sin registro";
+
     info.innerHTML = `
         <strong>N°:</strong>
         ${escapeHTML(String(data.num_lista))}
         <br>
         <strong>Estudiante:</strong>
         ${escapeHTML(data.nombre)}
+        <br>
+        <strong>Asistencia del día:</strong>
+        ${escapeHTML(asistenciaQR)}
         <br>
         <strong>Actividad:</strong>
         ${escapeHTML(actividadQRSeleccionada.nombre)}
@@ -12734,7 +12780,7 @@ async function guardarCalificacionQR() {
 }
 
 
-function cerrarEscanerQR(
+async function cerrarEscanerQR(
     event
 ) {
 
@@ -12748,7 +12794,13 @@ function cerrarEscanerQR(
         return;
     }
 
-    const mostrarPendientesAlCerrar = modoQRAsistencia && escaneoAsistenciaQRRealizado;
+    const eraQRAsistencia =
+        modoQRAsistencia &&
+        escaneoAsistenciaQRRealizado;
+
+    const colaQR = Array.from(
+        asistenciasQRPendientesGuardar.values()
+    );
 
     detenerCamaraQR();
     modoQRAsistencia = false;
@@ -12764,17 +12816,71 @@ function cerrarEscanerQR(
         "oculto"
     );
 
-    /* Después de cerrar una toma QR, avisar si todavía hay
-       estudiantes sin registrar y exigir una elección para ellos. */
-    if (mostrarPendientesAlCerrar) {
+    /*
+     * El guardado de la toma QR se realiza ÚNICAMENTE al cerrar
+     * la ventana del escáner. Todo lo escaneado se envía junto.
+     */
+    if (eraQRAsistencia && colaQR.length > 0) {
+
+        try {
+
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert(colaQR, {
+                    onConflict: "estudiante_id,fecha"
+                });
+
+            if (error) {
+                throw error;
+            }
+
+            asistenciasQRPendientesGuardar = new Map();
+            cambiosPendientesAsistencia = false;
+            actualizarEstadosGuardado();
+
+            mostrarMensaje(
+                `✓ Se guardaron ${colaQR.length} asistencia(s) escaneada(s) por QR.`
+            );
+
+        } catch (error) {
+
+            console.error("Error al guardar asistencia QR:", error);
+
+            /*
+             * Si falla el guardado, conservar la cola para no perder
+             * los escaneos. El docente puede volver a intentar guardar.
+             */
+            asistenciasQRPendientesGuardar = new Map(
+                colaQR.map(registro => [
+                    String(registro.estudiante_id),
+                    registro
+                ])
+            );
+
+            cambiosPendientesAsistencia = true;
+            actualizarEstadosGuardado();
+
+            alert(
+                "No se pudo guardar la asistencia escaneada por QR. " +
+                "Los cambios permanecen preparados para volver a intentar.\n\n" +
+                (error.message || error)
+            );
+        }
+    }
+
+    /*
+     * Después de terminar el guardado, avisar si todavía hay estudiantes
+     * sin registrar y mostrar la ventana correspondiente.
+     */
+    if (eraQRAsistencia) {
         const pendientes = obtenerEstudiantesSinEstadoAsistencia();
+
         if (pendientes.length > 0) {
             mostrarPendientesAsistencia();
         }
     }
 
 }
-
 
 function cerrarModalCalificacionQR(
     event
