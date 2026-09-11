@@ -500,6 +500,55 @@ input, select {
     background: #006b73;
 }
 
+/* =====================================================
+   BOTÓN DE GUARDADO MANUAL POR ACTIVIDAD
+   Solo aparece cuando se modifica manualmente una nota
+   o una observación de esa actividad.
+===================================================== */
+.boton-guardar-actividad-manual {
+    display: none;
+    width: 105px;
+    height: 34px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 7px;
+    background: #16803c;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.boton-guardar-actividad-manual.visible {
+    display: inline-flex;
+}
+
+.boton-guardar-actividad-manual:hover {
+    background: #11652f;
+}
+
+.boton-guardar-actividad-manual:active {
+    transform: scale(.97);
+}
+
+.boton-guardar-actividad-manual.guardando {
+    opacity: .75;
+    cursor: wait !important;
+    pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    .boton-guardar-actividad-manual {
+        width: 105px;
+        font-size: 12px;
+    }
+}
+
 .modal-qr {
     width: 100%;
     max-width: 480px;
@@ -7183,6 +7232,34 @@ function crearActividadHTML(
         }
     );
 
+    const botonGuardarActividad =
+    document.createElement(
+        "button"
+    );
+
+    botonGuardarActividad.type = "button";
+    botonGuardarActividad.className =
+        "boton-guardar-actividad-manual";
+    botonGuardarActividad.dataset.actividadId =
+        String(actividad.id);
+    botonGuardarActividad.innerHTML =
+        "💾 Guardar";
+    botonGuardarActividad.title =
+        "Guardar cambios manuales de esta actividad";
+
+    botonGuardarActividad.addEventListener(
+        "click",
+        function(event) {
+            event.stopPropagation();
+            guardarActividadManual(actividad.id);
+        }
+    );
+
+
+    /* El guardado manual queda a la izquierda de la cámara QR. */
+    derecha.appendChild(
+        botonGuardarActividad
+    );
 
     derecha.appendChild(
         botonEscanearQR
@@ -9122,19 +9199,17 @@ function obtenerFirmaActividad(input) {
 }
 
 function programarGuardadoCambioActividad(input) {
-    if (!guardadoAutomatico) {
-        marcarActividadesPendientes(input);
-        return;
-    }
+    /*
+       Las notas y observaciones escritas manualmente NO se guardan
+       automáticamente. Solo se detecta el cambio y se muestra el
+       botón de guardado de esa actividad.
+    */
     if (!input) return;
 
-    const clave = obtenerClaveActividadInput(input);
-    if (!clave) return;
+    const actividadId = String(input.dataset.actividad || "");
+    if (!actividadId) return;
 
-    /*
-       Si validarNota acaba de detectar una nota fuera de rango,
-       no programamos ningún guardado.
-    */
+    /* Si la nota está fuera de rango, no se intenta guardar. */
     if (
         input.classList.contains("nota-input") &&
         input.value !== ""
@@ -9148,74 +9223,72 @@ function programarGuardadoCambioActividad(input) {
             nota < 0 ||
             nota > maximo
         ) {
+            mostrarBotonGuardarActividadManual(actividadId);
             return;
         }
     }
 
-    const firmaActual = obtenerFirmaActividad(input);
-    if (!firmaActual) return;
+    const notaInput = document.querySelector(
+        `.nota-input[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
+    );
+
+    const observacionInput = document.querySelector(
+        `.observacion-actividad[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
+    );
+
+    const notaActual =
+        notaInput ? notaInput.value.trim() : "";
+
+    const notaInicial =
+        notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
+
+    const observacionActual =
+        observacionInput ? observacionInput.value.trim() : "";
+
+    const observacionInicial =
+        observacionInput
+        ? (observacionInput.dataset.valorInicial || "").trim()
+        : "";
 
     /*
-       Primera vez que vemos esta celda: tomar el valor existente
-       como valor ya guardado para no provocar un guardado simplemente
-       por renderizar la tabla.
+       Si el usuario volvió exactamente a los valores que estaban
+       guardados, el botón desaparece porque ya no hay cambio pendiente.
     */
-    if (!valoresActividadGuardados.has(clave)) {
-        const notaInicial = document.querySelector(
-            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
-        )?.dataset.valorInicial ?? "";
-
-        const observacionInicialInput = document.querySelector(
-            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${input.dataset.actividad}"]`
-        );
-
-        const observacionInicial =
-            observacionInicialInput?.dataset.valorInicial ?? "";
-
-        valoresActividadGuardados.set(
-            clave,
-            JSON.stringify({
-                nota: String(notaInicial).trim(),
-                observacion: String(observacionInicial).trim()
-            })
-        );
-
-        if (valoresActividadGuardados.get(clave) === firmaActual) {
-            return;
-        }
+    if (
+        notaActual === notaInicial &&
+        observacionActual === observacionInicial
+    ) {
+        actualizarBotonGuardarActividadManual(actividadId);
+        actividadesPendientes.delete(actividadId);
+    } else {
+        actividadesPendientes.add(actividadId);
+        mostrarBotonGuardarActividadManual(actividadId);
     }
 
-    /*
-       Si no hay cambio real, no guardar.
-    */
-    if (valoresActividadGuardados.get(clave) === firmaActual) {
-        return;
-    }
+    cambiosPendientesActividades =
+        actividadesPendientes.size > 0;
+}
 
-    /*
-       Debounce corto: mientras se escribe no hacemos una petición
-       por cada carácter; guardamos cuando termina la escritura.
-    */
-    if (temporizadoresActividad.has(clave)) {
-        clearTimeout(temporizadoresActividad.get(clave));
-    }
+/* Muestra únicamente el botón de la actividad modificada. */
+function mostrarBotonGuardarActividadManual(actividadId) {
+    const boton = document.querySelector(
+        `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
+    );
 
-    const temporizador = setTimeout(async () => {
-        temporizadoresActividad.delete(clave);
+    if (!boton) return;
 
-        const firmaAntesDeGuardar = obtenerFirmaActividad(input);
+    boton.classList.add("visible");
+}
 
-        if (
-            !firmaAntesDeGuardar ||
-            valoresActividadGuardados.get(clave) === firmaAntesDeGuardar
-        ) {
-            return;
-        }
+/* Oculta únicamente el botón de la actividad indicada. */
+function actualizarBotonGuardarActividadManual(actividadId) {
+    const boton = document.querySelector(
+        `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
+    );
 
-        await guardarCambioActividadIndividual(input, firmaAntesDeGuardar);
-    }, 600);
+    if (!boton) return;
 
-    temporizadoresActividad.set(clave, temporizador);
+    boton.classList.remove("visible");
 }
 
 async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
@@ -9428,6 +9501,453 @@ async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
 
     if (guardadosActividadIndividual.get(clave) === promesa) {
         guardadosActividadIndividual.delete(clave);
+    }
+}
+
+
+
+/* =====================================================
+   GUARDAR CAMBIOS MANUALES DE UNA SOLA ACTIVIDAD
+   No guarda automáticamente mientras se escribe.
+===================================================== */
+
+async function guardarActividadManual(actividadId) {
+
+    const id = Number(actividadId);
+
+    if (!id) return false;
+
+    if (guardandoNotasEnProceso) {
+        mostrarMensaje(
+            "⏳ Las calificaciones ya se están guardando. Espera a que termine."
+        );
+        return false;
+    }
+
+    const actividad = actividades.find(
+        a => Number(a.id) === id
+    );
+
+    if (!actividad) return false;
+
+    const boton = document.querySelector(
+        `.boton-guardar-actividad-manual[data-actividad-id="${id}"]`
+    );
+
+    const inputsNotas = Array.from(
+        document.querySelectorAll(
+            `.nota-input[data-actividad="${id}"]`
+        )
+    );
+
+    const inputsObservaciones = Array.from(
+        document.querySelectorAll(
+            `.observacion-actividad[data-actividad="${id}"]`
+        )
+    );
+
+    /*
+       Validar todas las notas de esta actividad antes de guardar.
+    */
+    for (const input of inputsNotas) {
+
+        if (input.value.trim() === "") continue;
+
+        const valor = Number(input.value);
+        const maximo = Number(
+            input.dataset.maximo ||
+            actividad.puntaje_maximo ||
+            LIMITES[actividad.categoria]
+        );
+
+        if (
+            isNaN(valor) ||
+            valor < 0 ||
+            valor > maximo
+        ) {
+            alert(
+                "⚠️ La nota debe estar entre 0 y " +
+                maximo +
+                "."
+            );
+
+            input.focus();
+            return false;
+        }
+    }
+
+    /*
+       Confirmar que realmente exista un cambio manual en esta actividad.
+    */
+    let hayCambios = false;
+
+    for (const input of inputsNotas) {
+        const actual =
+            input.value.trim();
+
+        const inicial =
+            (input.dataset.valorInicial || "").trim();
+
+        if (actual !== inicial) {
+            hayCambios = true;
+            break;
+        }
+    }
+
+    if (!hayCambios) {
+        for (const input of inputsObservaciones) {
+            const actual =
+                input.value.trim();
+
+            const inicial =
+                (input.dataset.valorInicial || "").trim();
+
+            if (actual !== inicial) {
+                hayCambios = true;
+                break;
+            }
+        }
+    }
+
+    if (!hayCambios) {
+        actividadesPendientes.delete(String(id));
+        actualizarBotonGuardarActividadManual(id);
+        cambiosPendientesActividades =
+            actividadesPendientes.size > 0;
+        return true;
+    }
+
+    if (boton) {
+        boton.disabled = true;
+        boton.classList.add("guardando");
+        boton.innerHTML = "⏳ Guardando...";
+    }
+
+    guardadoManualEnCurso = true;
+    guardandoNotasEnProceso = true;
+
+    try {
+
+        const registros = [];
+        const estudiantesAfectados = new Set();
+
+        /*
+           Crear los registros únicamente de esta actividad.
+        */
+        const observacionesPorEstudiante = new Map();
+
+        inputsObservaciones.forEach(input => {
+            observacionesPorEstudiante.set(
+                String(input.dataset.estudiante),
+                input.value.trim() || null
+            );
+        });
+
+        inputsNotas.forEach(input => {
+
+            const estudianteId =
+                Number(input.dataset.estudiante);
+
+            const nota =
+                input.value.trim() === ""
+                ? null
+                : Number(input.value);
+
+            const observacion =
+                observacionesPorEstudiante.get(
+                    String(estudianteId)
+                ) ?? null;
+
+            registros.push({
+                actividad_id: id,
+                estudiante_id: estudianteId,
+                nota,
+                observacion
+            });
+        });
+
+        if (registros.length === 0) {
+            actividadesPendientes.delete(String(id));
+            actualizarBotonGuardarActividadManual(id);
+            return true;
+        }
+
+        const idsEstudiantes = [
+            ...new Set(
+                registros.map(
+                    registro =>
+                        registro.estudiante_id
+                )
+            )
+        ];
+
+        const {
+            data: anteriores,
+            error: errorAnteriores
+        } = await supabaseClient
+            .from("calificaciones")
+            .select(
+                "actividad_id,estudiante_id,nota,observacion"
+            )
+            .eq("actividad_id", id)
+            .in(
+                "estudiante_id",
+                idsEstudiantes
+            );
+
+        if (errorAnteriores) {
+            throw errorAnteriores;
+        }
+
+        const mapaAnteriores = new Map(
+            (anteriores || []).map(registro => [
+                String(registro.estudiante_id),
+                registro
+            ])
+        );
+
+        const registrosCambios =
+            registros.filter(registro => {
+
+                const anterior =
+                    mapaAnteriores.get(
+                        String(
+                            registro.estudiante_id
+                        )
+                    );
+
+                const igual =
+                    anterior &&
+                    String(
+                        anterior.nota ?? ""
+                    ) ===
+                    String(
+                        registro.nota ?? ""
+                    ) &&
+                    String(
+                        anterior.observacion ?? ""
+                    ) ===
+                    String(
+                        registro.observacion ?? ""
+                    );
+
+                if (!igual) {
+                    estudiantesAfectados.add(
+                        Number(
+                            registro.estudiante_id
+                        )
+                    );
+                }
+
+                return !igual;
+            });
+
+        if (registrosCambios.length > 0) {
+
+            mostrarMensaje(
+                `Guardando ${registrosCambios.length} cambio(s) de la actividad...`
+            );
+
+            /*
+               Historial únicamente de los cambios reales.
+            */
+            registrosCambios.forEach(
+                registro => {
+
+                    const anterior =
+                        mapaAnteriores.get(
+                            String(
+                                registro.estudiante_id
+                            )
+                        ) || null;
+
+                    const estudiante =
+                        estudiantes.find(
+                            e =>
+                                Number(e.id) ===
+                                Number(
+                                    registro.estudiante_id
+                                )
+                        );
+
+                    guardarHistorialInterno({
+                        table_name:
+                            "calificaciones",
+                        operation:
+                            anterior
+                            ? "UPDATE"
+                            : "INSERT",
+                        record_id: null,
+                        curso:
+                            cursoSeleccionado,
+                        estudiante_id:
+                            registro.estudiante_id,
+                        estudiante_nombre:
+                            estudiante?.nombre ||
+                            estudiante?.nombre_completo ||
+                            null,
+                        actividad_id: id,
+                        actividad_nombre:
+                            actividad?.nombre ||
+                            actividad?.titulo ||
+                            null,
+                        categoria:
+                            actividad?.categoria ||
+                            null,
+                        fecha: null,
+                        old_data:
+                            anterior,
+                        new_data:
+                            registro,
+                        changed_at:
+                            new Date().toISOString()
+                    });
+                }
+            );
+
+            const {
+                error: errorCalificaciones
+            } = await supabaseClient
+                .from("calificaciones")
+                .upsert(
+                    registrosCambios,
+                    {
+                        onConflict:
+                            "actividad_id,estudiante_id"
+                    }
+                );
+
+            if (errorCalificaciones) {
+                throw new Error(
+                    "Error al guardar calificaciones: " +
+                    errorCalificaciones.message
+                );
+            }
+        }
+
+        /*
+           Sincronizar memoria local y marcar como guardados
+           exactamente los valores que quedaron en pantalla.
+        */
+        registros.forEach(registro => {
+
+            const estudianteId =
+                Number(
+                    registro.estudiante_id
+                );
+
+            if (!calificaciones[estudianteId]) {
+                calificaciones[estudianteId] = {};
+            }
+
+            calificaciones[estudianteId][id] = {
+                nota: registro.nota,
+                observacion:
+                    registro.observacion || ""
+            };
+        });
+
+        inputsNotas.forEach(input => {
+            input.dataset.valorInicial =
+                input.value.trim();
+
+            const clave =
+                obtenerClaveActividadInput(
+                    input
+                );
+
+            valoresActividadGuardados.set(
+                clave,
+                JSON.stringify({
+                    nota:
+                        input.value.trim(),
+                    observacion:
+                        document.querySelector(
+                            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
+                        )?.value.trim() || ""
+                })
+            );
+        });
+
+        inputsObservaciones.forEach(input => {
+            input.dataset.valorInicial =
+                input.value.trim();
+
+            const clave =
+                obtenerClaveActividadInput(
+                    input
+                );
+
+            valoresActividadGuardados.set(
+                clave,
+                JSON.stringify({
+                    nota:
+                        document.querySelector(
+                            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
+                        )?.value.trim() || "",
+                    observacion:
+                        input.value.trim()
+                })
+            );
+        });
+
+        /*
+           Recalcular únicamente los estudiantes afectados.
+        */
+        if (estudiantesAfectados.size > 0) {
+            recalcularNotasLocalesEstudiantes(
+                estudiantesAfectados
+            );
+        }
+
+        aplicarBusqueda();
+
+        actividadesPendientes.delete(
+            String(id)
+        );
+
+        cambiosPendientesActividades =
+            actividadesPendientes.size > 0;
+
+        actualizarBotonGuardarActividadManual(
+            id
+        );
+
+        mostrarMensaje(
+            registrosCambios.length > 0
+            ? `✓ ${registrosCambios.length} cambio(s) guardado(s) correctamente.`
+            : "✓ No había cambios nuevos que guardar."
+        );
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "Error al guardar actividad manual:",
+            error
+        );
+
+        mostrarMensaje(
+            "✕ No se pudo guardar el cambio.",
+            true
+        );
+
+        return false;
+
+    } finally {
+
+        guardandoNotasEnProceso = false;
+        guardadoManualEnCurso = false;
+
+        if (boton) {
+            boton.disabled = false;
+            boton.classList.remove(
+                "guardando"
+            );
+            boton.innerHTML =
+                "💾 Guardar";
+        }
     }
 }
 
