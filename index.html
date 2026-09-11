@@ -586,30 +586,6 @@ button:hover {
     color: #5d4037;
 }
 
-
-/* Reacciones del gatito al explorar la página */
-#gatoInteractivo.gracioso #gatoCuerpo { animation: gatoBroma .75s ease-in-out; }
-#gatoInteractivo.saltando #gatoCuerpo { animation: gatoSalto .65s ease-in-out; }
-#gatoInteractivo.asustado #gatoCuerpo { animation: gatoTemblor .5s ease-in-out; }
-@keyframes gatoBroma {
-    0%,100% { transform: rotate(0) scale(1); }
-    25% { transform: rotate(-15deg) scale(1.12); }
-    50% { transform: rotate(15deg) scale(1.12); }
-    75% { transform: rotate(-8deg) scale(1.06); }
-}
-@keyframes gatoSalto {
-    0%,100% { transform: translateY(0) scale(1); }
-    45% { transform: translateY(-18px) scale(1.12); }
-    70% { transform: translateY(0) scale(.96); }
-}
-@keyframes gatoTemblor {
-    0%,100% { transform: translateX(0); }
-    20% { transform: translateX(-5px); }
-    40% { transform: translateX(5px); }
-    60% { transform: translateX(-4px); }
-    80% { transform: translateX(4px); }
-}
-
 @media(max-width:500px) {
 
     .contenedor {
@@ -737,48 +713,21 @@ button:hover {
 #gatoMensaje {
     position: absolute;
     left: 50%;
-    bottom: 66px;
-    transform: translateX(-50%) scale(.92);
-    width: min(190px, 58vw);
-    box-sizing: border-box;
-    background: #fff;
-    border: 2px solid #ddd;
-    border-radius: 20px;
-    padding: 8px 10px;
-    font-size: 12px;
-    line-height: 1.25;
-    font-weight: 600;
+    bottom: 68px;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 14px;
+    padding: 6px 9px;
+    font-size: 11px;
     color: #444;
-    text-align: center;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
     box-shadow: 0 3px 12px rgba(0,0,0,.14);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease, transform .2s ease;
+    transition: opacity .2s ease;
 }
-/* Burbujitas de pensamiento */
-#gatoMensaje::before, #gatoMensaje::after {
-    content: '';
-    position: absolute;
-    background: #fff;
-    border: 2px solid #ddd;
-    border-radius: 50%;
-}
-#gatoMensaje::before { width: 10px; height: 10px; bottom: -13px; left: 27px; }
-#gatoMensaje::after { width: 6px; height: 6px; bottom: -22px; left: 18px; }
-#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; transform: translateX(-50%) scale(1); }
-/* Pequeños gestos de sorpresa/asombro sin cambiar la carita del gatito */
-#gatoGesto {
-    position: absolute; left: 50%; top: -8px; transform: translateX(-50%);
-    font-size: 17px; font-weight: 900; opacity: 0; pointer-events: none;
-}
-#gatoInteractivo.sorprendido #gatoGesto { opacity: 1; animation: gestoSorpresa .65s ease-in-out; }
-@keyframes gestoSorpresa {
-    0%,100% { transform: translateX(-50%) scale(.7) rotate(0deg); }
-    40% { transform: translateX(-50%) scale(1.25) rotate(-8deg); }
-}
-
+#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; }
 #gatoCorazones {
     position: absolute;
     left: 50%;
@@ -800,7 +749,7 @@ button:hover {
 @media(max-width:500px) {
     #gatoInteractivo { left: 8px; bottom: 10px; width: 64px; height: 64px; }
     #gatoCuerpo { font-size: 46px; }
-    #gatoMensaje { bottom: 56px; width: min(165px, 62vw); font-size: 10px; }
+    #gatoMensaje { bottom: 56px; font-size: 10px; }
 }
 </style>
 
@@ -3375,7 +3324,6 @@ if (fechaNacimiento) {
 <!-- Gatito interactivo: elemento independiente del sistema de notas -->
 <div id="gatoInteractivo" aria-label="Gatito interactivo" title="Acaríciame 🐾">
     <div id="gatoMensaje"></div>
-    <div id="gatoGesto">‼️</div>
     <div id="gatoCorazones">💗</div>
     <div id="gatoCuerpo">🐱</div>
 </div>
@@ -3393,34 +3341,66 @@ if (fechaNacimiento) {
     let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
     let mensajeTimer = null;
 
-    // Miau generado localmente: no usa archivos externos.
+    /* =================================================
+       SONIDOS DEL GATITO - SIN ARCHIVOS EXTERNOS
+       Se generan con Web Audio para que la página siga
+       funcionando sin conexión. El sonido se activa con
+       la primera interacción del estudiante.
+    ================================================= */
     let audioCtx = null;
-    let audioListo = false;
-    function prepararSonido() {
+    let sonidoActivado = false;
+
+    function activarSonido() {
         try {
-            const AC = window.AudioContext || window.webkitAudioContext;
-            if (!AC) return;
-            if (!audioCtx) audioCtx = new AC();
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                audioCtx = new AudioContext();
+            }
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            audioListo = true;
+            sonidoActivado = true;
         } catch (e) {}
     }
-    function miau() {
-        if (!audioListo || !audioCtx) return;
+
+    function tono(frecuencia, duracion, tipo = 'sine', volumen = 0.035, inicio = 0) {
+        if (!sonidoActivado || !audioCtx) return;
         try {
-            const ahora = audioCtx.currentTime;
+            const ahora = audioCtx.currentTime + inicio;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(620, ahora);
-            osc.frequency.exponentialRampToValueAtTime(900, ahora + 0.10);
-            osc.frequency.exponentialRampToValueAtTime(560, ahora + 0.28);
+            osc.type = tipo;
+            osc.frequency.setValueAtTime(frecuencia, ahora);
             gain.gain.setValueAtTime(0.0001, ahora);
-            gain.gain.exponentialRampToValueAtTime(0.045, ahora + 0.025);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + 0.30);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(ahora); osc.stop(ahora + 0.33);
+            gain.gain.exponentialRampToValueAtTime(volumen, ahora + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + duracion);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(ahora);
+            osc.stop(ahora + duracion + 0.02);
         } catch (e) {}
+    }
+
+    function sonidoMiau() {
+        tono(620, 0.18, 'sine', 0.045);
+        tono(820, 0.22, 'sine', 0.035, 0.10);
+    }
+
+    function sonidoFeliz() {
+        tono(660, 0.12, 'sine', 0.035);
+        tono(830, 0.12, 'sine', 0.035, 0.10);
+        tono(1040, 0.20, 'sine', 0.04, 0.20);
+    }
+
+    function sonidoSorpresa() {
+        tono(900, 0.10, 'triangle', 0.04);
+        tono(1250, 0.20, 'triangle', 0.045, 0.08);
+    }
+
+    function sonidoRonroneo() {
+        if (!sonidoActivado || !audioCtx) return;
+        tono(105, 0.16, 'sine', 0.018);
+        tono(125, 0.16, 'sine', 0.014, 0.18);
+        tono(105, 0.16, 'sine', 0.018, 0.36);
     }
 
     function decir(texto, tiempo = 1800) {
@@ -3431,8 +3411,9 @@ if (fechaNacimiento) {
     }
 
     function acariciar() {
-        prepararSonido();
-        miau();
+        activarSonido();
+        sonidoMiau();
+        sonidoRonroneo();
         gato.classList.remove('caricia');
         void gato.offsetWidth;
         gato.classList.add('caricia');
@@ -3442,7 +3423,7 @@ if (fechaNacimiento) {
     }
 
     gato.addEventListener('pointerdown', e => {
-        prepararSonido();
+        activarSonido();
         arrastrando = true;
         desplazado = false;
         inicioX = e.clientX; inicioY = e.clientY;
@@ -3467,196 +3448,12 @@ if (fechaNacimiento) {
     });
 
     gato.addEventListener('dblclick', () => {
-        decir(`¡${nombreEstudiante()}! ¿Otra vez me acaricias? 😹`, 2200);
+        activarSonido();
+        sonidoSorpresa();
+        decir('¡Qué lindo! 😻');
         gato.classList.add('sorprendido');
         setTimeout(() => gato.classList.remove('sorprendido'), 700);
     });
-
-    /* Detecta qué hay debajo del gatito cuando el estudiante lo coloca encima. */
-    let ultimoObjetivo = '';
-    let ultimaReaccionObjetivo = 0;
-
-    function nombreEstudiante() {
-        try {
-            const nombre = window.alumnoActual && window.alumnoActual.nombre
-                ? String(window.alumnoActual.nombre).trim()
-                : '';
-            if (nombre) {
-                const partes = nombre.split(/\s+/).filter(Boolean);
-                // En nombres como "COLQUE HUANCA ADRIANA", el gatito llama "ADRIANA".
-                return partes[partes.length - 1];
-            }
-        } catch (e) {}
-        return '';
-    }
-
-    function cursoEstudiante() {
-        try {
-            return String(window.alumnoActual && window.alumnoActual.curso || '').trim().toUpperCase();
-        } catch (e) { return ''; }
-    }
-
-    function consejoPorCurso() {
-        const curso = cursoEstudiante();
-        const nombre = nombreEstudiante();
-        if (/^(1A|1B|2A|2B|3A|3B)$/.test(curso)) {
-            return [
-                `¡${nombre}! 🌟 Paso a paso, tú puedes.`,
-                `¡${nombre}! 🐾 Aprender también es jugar.`,
-                `¡${nombre}! ⭐ Cada intento cuenta.`,
-                `¡${nombre}! 🚀 ¡Tu curiosidad es genial!`
-            ];
-        }
-        if (/^(4A|4B|5A|5B)$/.test(curso)) {
-            return [
-                `¡${nombre}! 💪 Ya vas con todo.`,
-                `¡${nombre}! 🧠 Piensa, intenta y aprende.`,
-                `¡${nombre}! 🌟 ¡Sigue subiendo!`,
-                `¡${nombre}! 🚀 Tu esfuerzo se nota.`
-            ];
-        }
-        if (/^(6A|6B)$/.test(curso)) {
-            return [
-                `¡${nombre}! 🎓 ¡Ya casi llegas!`,
-                `¡${nombre}! 💪 Tu esfuerzo abre caminos.`,
-                `¡${nombre}! 🚀 Prepárate para lo que viene.`,
-                `¡${nombre}! 🌟 ¡Este es tu último empujón!`
-            ];
-        }
-        return [
-            `¡${nombre}! 🌟 ¡Tú puedes!`,
-            `¡${nombre}! 💪 Sigue intentando.`,
-            `¡${nombre}! 🐾 ¡Cada día aprendes algo!`
-        ];
-    }
-
-    function elementoDebajoDelGato() {
-        const r = gato.getBoundingClientRect();
-        const x = r.left + r.width / 2;
-        const y = r.top + r.height / 2;
-        const elementos = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
-        return elementos.find(el => el !== gato && !gato.contains(el) && el !== document.body && el !== document.documentElement);
-    }
-
-    /* El gatito identifica lo que tiene detrás y, cuando hay Internet,
-       busca una curiosidad real relacionada para convertirla en un comentario divertido. */
-    let ultimaConsultaInternet = '';
-    let ultimaConsultaInternetTiempo = 0;
-
-    /* El gatito lee lo que tiene detrás, pero SOLO para elegir un consejo
-       corto sobre notas, asistencia o vida estudiantil. No muestra datos curiosos. */
-    function reaccionarSobre(texto) {
-        const t = (texto || '').replace(/\s+/g, ' ').trim();
-        if (!t) return;
-        const clave = t.toLowerCase().slice(0, 220);
-        const ahora = Date.now();
-        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 9000) return;
-        ultimoObjetivo = clave;
-        ultimaReaccionObjetivo = ahora;
-
-        const nombre = nombreEstudiante();
-        const curso = cursoEstudiante();
-        let respuesta = '';
-        let gesto = 'mirando';
-
-        const infantil = /^(1A|1B|2A|2B|3A|3B)$/.test(curso);
-        const intermedio = /^(4A|4B|5A|5B)$/.test(curso);
-        const ultimoCurso = /^(6A|6B)$/.test(curso);
-
-        if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            const opciones = infantil ? [
-                `¡${nombre}! 🐾 ¡Venir a clase ayuda!`,
-                `¡${nombre}! 🌟 ¡No faltes, campeón!`,
-                `¡${nombre}! 😺 ¡Cada clase cuenta!`
-            ] : ultimoCurso ? [
-                `¡${nombre}! 🎓 ¡Tu presencia también cuenta!`,
-                `¡${nombre}! 💪 ¡Aprovecha cada clase!`,
-                `¡${nombre}! 🚀 ¡Ya casi llegas! Sigue firme.`
-            ] : [
-                `¡${nombre}! 💪 ¡Cada clase cuenta!`,
-                `¡${nombre}! 🌟 ¡Sigue siendo constante!`,
-                `¡${nombre}! 🐾 ¡Tu esfuerzo suma!`
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            gesto = Math.random() < .5 ? 'mirando' : 'saltando';
-        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n|examen|actividad/i.test(t)) {
-            const opciones = infantil ? [
-                `¡${nombre}! ⭐ ¡Cada intento te hace mejor!`,
-                `¡${nombre}! 🧠 ¡Aprender es una aventura!`,
-                `¡${nombre}! 🚀 ¡Tú puedes con esa nota!`
-            ] : intermedio ? [
-                `¡${nombre}! 💪 ¡Tu esfuerzo se nota!`,
-                `¡${nombre}! ⭐ ¡Sigue mejorando paso a paso!`,
-                `¡${nombre}! 🧠 ¡Confía en lo que aprendiste!`
-            ] : ultimoCurso ? [
-                `¡${nombre}! 🎓 ¡Cada nota construye tu futuro!`,
-                `¡${nombre}! 🚀 ¡Ya estás cerca de la meta!`,
-                `¡${nombre}! 💪 ¡Tu esfuerzo de hoy abre caminos!`
-            ] : [
-                `¡${nombre}! 🌟 ¡Sigue dando lo mejor!`,
-                `¡${nombre}! 💪 ¡Tú puedes mejorar!`,
-                `¡${nombre}! 🧠 ¡Confía en tu aprendizaje!`
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            gesto = Math.random() < .45 ? 'saltando' : 'mirando';
-        } else {
-            const opciones = infantil ? [
-                `¡${nombre}! 🌟 ¡Sigue aprendiendo!`,
-                `¡${nombre}! 🐾 ¡Hoy también puedes crecer!`,
-                `¡${nombre}! 😺 ¡Paso a paso se llega lejos!`
-            ] : ultimoCurso ? [
-                `¡${nombre}! 🎓 ¡Cree en todo lo que puedes lograr!`,
-                `¡${nombre}! 🚀 ¡Lo que viene también es tuyo!`,
-                `¡${nombre}! 💪 ¡Sigue adelante, falta poquito!`
-            ] : [
-                `¡${nombre}! 🌟 ¡Sigue adelante!`,
-                `¡${nombre}! 💪 ¡No te rindas!`,
-                `¡${nombre}! 🐾 ¡Tu esfuerzo vale mucho!`
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            gesto = Math.random() < .5 ? 'mirando' : 'saltando';
-        }
-
-        cuerpo.textContent = '🐱';
-        gato.classList.remove('mirando', 'saltando', 'gracioso', 'sorprendido');
-        void gato.offsetWidth;
-        gato.classList.add(gesto);
-        decir(respuesta, 2800);
-    }
-
-    function revisarDebajoDelGato() {
-        if (arrastrando) return;
-        const el = elementoDebajoDelGato();
-        if (!el) return;
-        const texto = el.innerText || el.textContent || '';
-        reaccionarSobre(texto);
-    }
-
-    function hacerBroma() {
-        if (arrastrando || document.hidden) return;
-        const nombre = nombreEstudiante();
-        const saludo = nombre ? nombre : 'amigo';
-        const consejos = consejoPorCurso();
-        const bromas = [
-            `¡${saludo}! 🐾 ¡Inspección sorpresa!`,
-            `Pss, ${saludo}… ¡te estoy vigilando! 😹`,
-            `¡${saludo}! 🦋 ¡Me distraje otra vez!`,
-            `Zzz… ${saludo}, ¡era una mini siesta! 💤`,
-            `¡${saludo}! 👀 ¡Aquí no se escapa ni una nota!`,
-            consejos[Math.floor(Math.random() * consejos.length)]
-        ];
-        const b = bromas[Math.floor(Math.random() * bromas.length)];
-        cuerpo.textContent = '🐱';
-        gato.classList.remove('gracioso', 'saltando', 'sorprendido', 'mirando');
-        void gato.offsetWidth;
-        const gesto = Math.random();
-        gato.classList.add(gesto < .33 ? 'gracioso' : gesto < .66 ? 'saltando' : 'sorprendido');
-        decir(b, 3000);
-        setTimeout(() => {
-            gato.classList.remove('gracioso', 'saltando', 'sorprendido', 'mirando');
-            cuerpo.textContent = '🐱';
-        }, 1100);
-    }
 
     function observarResultado() {
         const resultado = document.getElementById('resultado');
@@ -3669,58 +3466,40 @@ if (fechaNacimiento) {
             return;
         }
         if (/error|incorrectos|Error de conexión/i.test(texto)) {
-            cuerpo.textContent = '🐱';
-                gato.classList.add('sorprendido');
-            decir(nombreEstudiante() ? `¡Ups, ${nombreEstudiante()}! Vamos a intentarlo de nuevo. 🐾` : '¡Ups! Vamos a intentarlo de nuevo. 🐾', 2000);
+            cuerpo.textContent = '🙀';
+            sonidoSorpresa();
+            gato.classList.add('sorprendido');
+            decir('¡Ups! 😿', 1800);
             return;
         }
         if (texto.trim()) {
             gato.classList.add('mirando');
             const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
             if (notas.length && Math.max(...notas) >= 70) {
-                cuerpo.textContent = '🐱';
-                    decir(consejoPorCurso()[Math.floor(Math.random() * consejoPorCurso().length)], 2600);
+                cuerpo.textContent = '😺';
+                sonidoFeliz();
+                decir('¡Muy bien! 🎉', 2200);
             } else {
                 cuerpo.textContent = '🐱';
-                decir(nombreEstudiante() ? `¡${nombreEstudiante()}! 💪 ¡Tú puedes!` : '¡Vamos! 💪 ¡Tú puedes!', 2200);
+                decir('Estoy mirando tus notas 👀', 2200);
             }
         }
     }
-
-    gato.addEventListener('mouseenter', () => {
-        gato.classList.add('mirando');
-        if (!arrastrando && Math.random() < .45) {
-            decir(`¡Hola, ${nombreEstudiante()}! 👀🐾`, 1800);
-        }
-    });
-
-    gato.addEventListener('mouseleave', () => {
-        if (!arrastrando) gato.classList.remove('mirando');
-    });
 
     const resultado = document.getElementById('resultado');
     if (resultado) new MutationObserver(observarResultado).observe(resultado, {childList:true, subtree:true, characterData:true});
 
     setInterval(() => {
-        revisarDebajoDelGato();
+        if (arrastrando) return;
         const r = document.getElementById('resultado');
         const t = r ? (r.innerText || '') : '';
         if (/asistencia/i.test(t)) {
             gato.classList.add('mirando');
-            if (Math.random() < .25) decir('También miro la asistencia 👀', 1800);
+            if (Math.random() < .35) decir('También miro la asistencia 👀', 1800);
         }
-    }, 1200);
+    }, 5000);
 
-    /* De vez en cuando hace alguna travesura por su cuenta. */
-    let proximaBroma = Date.now() + 12000 + Math.random() * 18000;
-    setInterval(() => {
-        if (Date.now() >= proximaBroma) {
-            hacerBroma();
-            proximaBroma = Date.now() + 18000 + Math.random() * 30000;
-        }
-    }, 2000);
-
-    setTimeout(() => { const n = nombreEstudiante(); decir(n ? `¡Hola, ${n}! 🐾` : '¡Hola! 🐾', 2200); }, 900);
+    setTimeout(() => decir('¡Hola! 🐾', 1800), 900);
 })();
 </script>
 </body>
