@@ -756,20 +756,6 @@ button:hover {
     </button>
 
 
-    <div id="estadoActualizacion" style="
-        display:none;
-        margin:12px auto 4px;
-        padding:10px 14px;
-        border-radius:12px;
-        background:#eef8ff;
-        color:#1769aa;
-        font-size:13px;
-        line-height:1.4;
-        text-align:center;
-        border:1px solid #cfe9fb;
-    "></div>
-
-
     <div id="resultado"></div>
 
 
@@ -811,33 +797,51 @@ const FIN_3T = "2026-12-31";
 let temporizadorVisita = null;
 
 function iniciarCuentaRegresivaVisita(segundos) {
-    const boton = document.querySelector('button[onclick="consultarNota()"]');
-    if (!boton) return;
 
-    if (window.temporizadorVisita) {
-        clearInterval(window.temporizadorVisita);
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
     }
 
-    // Después de consultar, el botón desaparece durante una hora.
-    boton.style.display = "none";
+    const boton = document.querySelector('button[onclick="consultarNota()"]');
+    if (!boton || segundos <= 0) return;
 
-    let restante = segundos;
+    const textoOriginal = "Consultar mi nota";
 
-    const actualizarBoton = () => {
-        if (restante <= 0) {
-            clearInterval(window.temporizadorVisita);
-            window.temporizadorVisita = null;
-            boton.style.display = "";
+    const actualizar = () => {
+
+        if (segundos <= 0) {
+            clearInterval(temporizadorVisita);
+            temporizadorVisita = null;
             boton.disabled = false;
-            boton.textContent = "Consultar mi nota";
+            boton.style.opacity = "1";
+            boton.style.cursor = "pointer";
+            boton.textContent = textoOriginal;
             return;
         }
 
-        restante--;
+        const horas = Math.floor(segundos / 3600);
+        const minutos = Math.floor((segundos % 3600) / 60);
+        const seg = segundos % 60;
+
+        let tiempo;
+
+        if (horas > 0) {
+            tiempo = `${horas} h ${minutos} min ${String(seg).padStart(2, "0")} s`;
+        } else {
+            tiempo = `${minutos} min ${String(seg).padStart(2, "0")} s`;
+        }
+
+        boton.disabled = true;
+        boton.style.opacity = "0.65";
+        boton.style.cursor = "not-allowed";
+        boton.textContent = `Podrás consultar nuevamente en ${tiempo}`;
+        segundos--;
+
     };
 
-    actualizarBoton();
-    window.temporizadorVisita = setInterval(actualizarBoton, 1000);
+    actualizar();
+    temporizadorVisita = setInterval(actualizar, 1000);
 }
 
 /* =================================================
@@ -846,18 +850,7 @@ function iniciarCuentaRegresivaVisita(segundos) {
 let temporizadorActualizacion = null;
 let actualizandoAutomaticamente = false;
 
-function mostrarEstadoActualizacion(mensaje = "🔄 Tus calificaciones se actualizan automáticamente") {
-
-    const estado = document.getElementById("estadoActualizacion");
-    if (!estado) return;
-
-    estado.innerHTML = `${mensaje}<br><span style="font-size:12px;opacity:.8;">Los cambios del docente aparecerán automáticamente.<br>🔒 El botón de consulta queda temporalmente bloqueado para evitar consultas repetidas.</span>`;
-    estado.style.display = "block";
-}
-
 function iniciarActualizacionAutomatica() {
-
-    mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
 
     if (temporizadorActualizacion) {
         clearInterval(temporizadorActualizacion);
@@ -1033,7 +1026,6 @@ async function consultarNota() {
             );
             await mostrarResultado(alumnoActual);
             iniciarActualizacionAutomatica();
-            mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
             return;
         }
 
@@ -1043,7 +1035,6 @@ async function consultarNota() {
         );
 
         iniciarCuentaRegresivaVisita(60 * 60);
-        mostrarEstadoActualizacion("🟢🔄 Actualización automática activa");
 
 
         /* =================================================
