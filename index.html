@@ -683,6 +683,74 @@ button:hover {
     .centralizador-tabla td:first-child { min-width: 190px; }
 }
 
+
+/* =================================================
+   GATITO INTERACTIVO
+================================================= */
+#gatoInteractivo {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    width: 76px;
+    height: 76px;
+    z-index: 9999;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: left .8s ease, top .8s ease, transform .25s ease;
+    font-family: system-ui, sans-serif;
+}
+#gatoInteractivo:active { cursor: grabbing; }
+#gatoCuerpo {
+    font-size: 54px;
+    line-height: 1;
+    text-align: center;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,.18));
+    transition: transform .2s ease;
+}
+#gatoInteractivo.mirando #gatoCuerpo { transform: rotate(-7deg) scale(1.08); }
+#gatoInteractivo.sorprendido #gatoCuerpo { transform: scale(1.18) rotate(5deg); }
+#gatoMensaje {
+    position: absolute;
+    left: 50%;
+    bottom: 68px;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 14px;
+    padding: 6px 9px;
+    font-size: 11px;
+    color: #444;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgba(0,0,0,.14);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+}
+#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; }
+#gatoCorazones {
+    position: absolute;
+    left: 50%;
+    top: -4px;
+    transform: translateX(-50%);
+    font-size: 20px;
+    opacity: 0;
+    pointer-events: none;
+}
+#gatoInteractivo.caricia #gatoCorazones {
+    opacity: 1;
+    animation: gatoCorazon 1s ease forwards;
+}
+@keyframes gatoCorazon {
+    from { transform: translate(-50%, 8px) scale(.7); opacity: 0; }
+    25% { opacity: 1; }
+    to { transform: translate(-50%, -32px) scale(1.2); opacity: 0; }
+}
+@media(max-width:500px) {
+    #gatoInteractivo { left: 8px; bottom: 10px; width: 64px; height: 64px; }
+    #gatoCuerpo { font-size: 46px; }
+    #gatoMensaje { bottom: 56px; font-size: 10px; }
+}
 </style>
 
 </head>
@@ -3252,6 +3320,118 @@ if (fechaNacimiento) {
 </script>
 
 
+
+<!-- Gatito interactivo: elemento independiente del sistema de notas -->
+<div id="gatoInteractivo" aria-label="Gatito interactivo" title="Acaríciame 🐾">
+    <div id="gatoMensaje"></div>
+    <div id="gatoCorazones">💗</div>
+    <div id="gatoCuerpo">🐱</div>
+</div>
+
+<script>
+/* =================================================
+   GATITO INTERACTIVO - NO INTERFIERE CON LAS NOTAS
+================================================= */
+(function () {
+    const gato = document.getElementById('gatoInteractivo');
+    const cuerpo = document.getElementById('gatoCuerpo');
+    const mensaje = document.getElementById('gatoMensaje');
+    if (!gato || !cuerpo) return;
+
+    let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
+    let mensajeTimer = null;
+
+    function decir(texto, tiempo = 1800) {
+        mensaje.textContent = texto;
+        gato.classList.add('mensaje');
+        clearTimeout(mensajeTimer);
+        mensajeTimer = setTimeout(() => gato.classList.remove('mensaje'), tiempo);
+    }
+
+    function acariciar() {
+        gato.classList.remove('caricia');
+        void gato.offsetWidth;
+        gato.classList.add('caricia');
+        gato.classList.add('mirando');
+        decir('¡Miau! 🐾');
+        setTimeout(() => gato.classList.remove('caricia'), 1000);
+    }
+
+    gato.addEventListener('pointerdown', e => {
+        arrastrando = true;
+        desplazado = false;
+        inicioX = e.clientX; inicioY = e.clientY;
+        const r = gato.getBoundingClientRect();
+        baseX = r.left; baseY = r.top;
+        gato.setPointerCapture?.(e.pointerId);
+    });
+
+    gato.addEventListener('pointermove', e => {
+        if (!arrastrando) return;
+        const dx = e.clientX - inicioX, dy = e.clientY - inicioY;
+        if (Math.abs(dx) + Math.abs(dy) > 6) desplazado = true;
+        gato.style.left = Math.max(4, Math.min(window.innerWidth - gato.offsetWidth - 4, baseX + dx)) + 'px';
+        gato.style.top = Math.max(4, Math.min(window.innerHeight - gato.offsetHeight - 4, baseY + dy)) + 'px';
+        gato.style.bottom = 'auto';
+    });
+
+    gato.addEventListener('pointerup', e => {
+        arrastrando = false;
+        if (!desplazado) acariciar();
+        gato.releasePointerCapture?.(e.pointerId);
+    });
+
+    gato.addEventListener('dblclick', () => {
+        decir('¡Qué lindo! 😻');
+        gato.classList.add('sorprendido');
+        setTimeout(() => gato.classList.remove('sorprendido'), 700);
+    });
+
+    function observarResultado() {
+        const resultado = document.getElementById('resultado');
+        if (!resultado) return;
+        const texto = resultado.innerText || '';
+        if (/Buscando|Cargando/i.test(texto)) {
+            cuerpo.textContent = '🐱';
+            gato.classList.add('mirando');
+            decir('Estoy mirando las notas… 👀', 1600);
+            return;
+        }
+        if (/error|incorrectos|Error de conexión/i.test(texto)) {
+            cuerpo.textContent = '🙀';
+            gato.classList.add('sorprendido');
+            decir('¡Ups! 😿', 1800);
+            return;
+        }
+        if (texto.trim()) {
+            gato.classList.add('mirando');
+            const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
+            if (notas.length && Math.max(...notas) >= 70) {
+                cuerpo.textContent = '😺';
+                decir('¡Muy bien! 🎉', 2200);
+            } else {
+                cuerpo.textContent = '🐱';
+                decir('Estoy mirando tus notas 👀', 2200);
+            }
+        }
+    }
+
+    const resultado = document.getElementById('resultado');
+    if (resultado) new MutationObserver(observarResultado).observe(resultado, {childList:true, subtree:true, characterData:true});
+
+    setInterval(() => {
+        if (arrastrando) return;
+        const r = document.getElementById('resultado');
+        const t = r ? (r.innerText || '') : '';
+        if (/asistencia/i.test(t)) {
+            gato.classList.add('mirando');
+            if (Math.random() < .35) decir('También miro la asistencia 👀', 1800);
+        }
+    }, 5000);
+
+    setTimeout(() => decir('¡Hola! 🐾', 1800), 900);
+})();
+</script>
 </body>
 
 </html>
