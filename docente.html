@@ -1203,11 +1203,6 @@ td:first-child {
     display: none !important;
 }
 
-/* La fecha de asistencia se selecciona únicamente desde el calendario. */
-.fecha-asistencia {
-    display: none !important;
-}
-
 .calendario-fechas-asistencia {
     width: 250px;
     background: white;
@@ -1244,22 +1239,6 @@ td:first-child {
 }
 
 .calendario-nav-asistencia:hover {
-    background: #dce4e9;
-}
-
-.boton-hoy-calendario-asistencia {
-    width: 100%;
-    border: none;
-    border-radius: 6px;
-    padding: 5px 8px;
-    margin-bottom: 7px;
-    background: #eef2f5;
-    color: #37474f;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.boton-hoy-calendario-asistencia:hover {
     background: #dce4e9;
 }
 
@@ -1591,6 +1570,16 @@ td:first-child {
     font-weight: bold;
     cursor: pointer;
     white-space: nowrap;
+}
+
+.boton-guardar-asistencia {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.boton-guardar-asistencia.visible {
+    display: inline-flex !important;
 }
 
 .boton-guardar-asistencia:hover {
@@ -1984,26 +1973,6 @@ td:first-child {
     .acciones-botones-superiores > button {
         flex: 1 1 0;
         min-width: 0;
-    }
-
-    /* 1. FECHAS GUARDADAS */
-    .lista-fechas-asistencia {
-        order: 1;
-        width: 100%;
-        min-width: 0;
-        max-width: none;
-        box-sizing: border-box;
-        padding: 7px 8px;
-        font-size: 13px;
-    }
-
-    /* 2. FECHA PARA ELEGIR */
-    .fecha-asistencia {
-        order: 2;
-        width: 100%;
-        min-width: 0;
-        max-width: none;
-        box-sizing: border-box;
     }
 
     /* 3. BOTONES */
@@ -2860,7 +2829,6 @@ Selecciona un curso
 
 </div>
 
-
 <div id="calendarioFechasAsistencia" class="calendario-fechas-asistencia"
      aria-label="Calendario de fechas de asistencia">
     <div class="calendario-cabecera-asistencia">
@@ -2870,8 +2838,6 @@ Selecciona un curso
         <button type="button" class="calendario-nav-asistencia"
                 onclick="cambiarMesCalendarioAsistencia(1)" title="Mes siguiente">›</button>
     </div>
-    <button type="button" class="boton-hoy-calendario-asistencia"
-            onclick="seleccionarFechaActualAsistencia()" title="Ir a la fecha actual y cargar la asistencia">📅 Hoy</button>
     <div class="calendario-semana-asistencia">
         <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
     </div>
@@ -2888,7 +2854,7 @@ Selecciona un curso
 
 
 <input
-    type="date"
+    type="hidden"
     id="fechaAsistencia"
     class="fecha-asistencia"
 >
@@ -2904,6 +2870,22 @@ Selecciona un curso
     title="Eliminar la asistencia de esta fecha del curso">
 
 🗑️
+
+</button>
+
+<button
+    type="button"
+    id="botonGuardarAsistencia"
+    class="boton-guardar-asistencia"
+    onclick="guardarAsistencia()"
+    title="Guardar cambios de asistencia">
+
+💾 Guardar
+
+<span
+    class="progreso-guardar"
+    id="progresoAsistencia">
+</span>
 
 </button>
 
@@ -2969,22 +2951,6 @@ Selecciona un curso
 
 </button>
 
-
-<button
-    type="button"
-    id="botonGuardarAsistencia"
-    class="boton-guardar-asistencia"
-    onclick="guardarAsistencia()"
-    title="Guardar asistencia">
-
-💾 Guardar
-
-<span
-    class="progreso-guardar"
-    id="progresoAsistencia">
-</span>
-
-</button>
 
 <span id="estadoGuardadoAsistencia" class="estado-guardado-pendiente">
     ⚠️ GUARDADO PENDIENTE
@@ -3846,8 +3812,8 @@ window.supabase.createClient(
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
 ===================================================== */
-let guardadoAutomatico = true;
-localStorage.setItem("panel_guardado_automatico", "true");
+let guardadoAutomatico = false;
+localStorage.setItem("panel_guardado_automatico", "false");
 let guardadoManualEnCurso = false;
 
 // Por defecto, los botones de respaldo permanecen ocultos.
@@ -4025,25 +3991,18 @@ function marcarActividadesPendientes(input = null) {
 }
 
 function actualizarInterfazGuardado() {
-    // El guardado automático es permanente. Los botones de guardado manual
-    // ya no se muestran en la interfaz.
-    guardadoAutomatico = true;
-    localStorage.setItem("panel_guardado_automatico", "true");
+    /* El guardado manual permanece activo. */
+    guardadoAutomatico = false;
+    localStorage.setItem("panel_guardado_automatico", "false");
 
-    // El guardado manual normal permanece oculto.
-    // La única excepción es el guardado del tipo especial de día:
-    // aparece únicamente después de elegir "No se pasó clases" o
-    // "Clase informal", para poder guardar también su motivo.
     document.querySelectorAll(
-        "#botonGuardarAsistencia, #botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral"
+        "#botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral"
     ).forEach(boton => {
         boton.classList.add("oculto");
         boton.style.display = "none";
     });
 
-    document.querySelectorAll(".estado-guardado-pendiente, .estado-guardado-actividad-nombre")
-        .forEach(el => { el.classList.remove("visible"); el.style.display = "none"; });
-
+    actualizarCambiosPendientesAsistencia();
     actualizarEstadosGuardado();
 }
 
@@ -5087,7 +5046,6 @@ async function cargarFechasAsistencia() {
 
     fechasAsistenciaGuardadas = fechas;
 
-
     // Mostrar automáticamente el mes de la fecha actualmente seleccionada,
     // si existe; de lo contrario, mantener el mes actual.
     const fechaActual = document.getElementById("fechaAsistencia")?.value || "";
@@ -5108,9 +5066,14 @@ async function cargarFechasAsistencia() {
 
 function seleccionarFechaAsistencia(fechaSeleccionada = "") {
 
-    const fecha = document.getElementById("fechaAsistencia");
+    const fecha =
+    document.getElementById(
+        "fechaAsistencia"
+    );
+
     if (!fecha || !fechaSeleccionada) return;
 
+    // La fecha se selecciona exclusivamente pulsando un día del calendario.
     fecha.value = fechaSeleccionada;
 
     const fechaCalendario = fechaLocalDesdeClaveAsistencia(fechaSeleccionada);
@@ -5123,20 +5086,9 @@ function seleccionarFechaAsistencia(fechaSeleccionada = "") {
     }
 
     renderizarCalendarioFechasAsistencia();
+    cargarAsistencia();
 
-    if (cursoSeleccionado) {
-        cargarAsistencia();
-    }
 }
-
-function seleccionarFechaActualAsistencia() {
-    const hoy = new Date();
-    const claveHoy = fechaClaveCalendarioAsistencia(
-        hoy.getFullYear(), hoy.getMonth(), hoy.getDate()
-    );
-    seleccionarFechaAsistencia(claveHoy);
-}
-
 
 
 async function eliminarFechaAsistencia() {
@@ -5314,6 +5266,9 @@ async function cargarAsistencia() {
 
     actualizarAvisoDiaEspecialAsistencia();
     mostrarTablaAsistencia();
+    cambiosPendientesAsistencia = false;
+    actualizarBotonGuardarAsistencia();
+    actualizarEstadosGuardado();
 }
 
 
@@ -5912,11 +5867,6 @@ async function confirmarPendientesAsistencia() {
             ? observacionInput.value.trim()
             : ((registrosAsistencia[estudiante.id] || {}).observacion || "");
 
-        registrosAsistencia[estudiante.id] = {
-            estado: seleccionado.value,
-            observacion: observacion
-        };
-
         const radioTabla = document.querySelector(
             `input[name="asistencia-${estudiante.id}"][value="${seleccionado.value}"]`
         );
@@ -5936,15 +5886,7 @@ async function confirmarPendientesAsistencia() {
     }
 
     actualizarResumenAsistencia();
-    mostrarTablaAsistencia();
-
-    // Además de confirmar las elecciones, guardar inmediatamente
-    // las asistencias faltantes que se acaban de completar.
-    const guardadoCorrecto = await guardarAsistencia();
-
-    if (!guardadoCorrecto) {
-        return false;
-    }
+    actualizarCambiosPendientesAsistencia();
 
     const modal = document.getElementById("modalPendientesAsistencia");
     if (modal) modal.classList.add("oculto");
@@ -5969,11 +5911,8 @@ function cerrarModalPendientesAsistencia(event) {
 const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
-
-    if (!guardadoAutomatico && !guardadoManualEnCurso) {
-        marcarAsistenciaPendiente();
-        return;
-    }
+    /* La asistencia manual NO se guarda automáticamente.
+       Solo se detecta el cambio y se muestra el botón Guardar. */
     if (!control || !asistenciaDesbloqueada) return;
 
     if (esDiaSinClasesAsistencia()) {
@@ -5983,116 +5922,69 @@ async function guardarAsistenciaIndividual(control) {
         return;
     }
 
-    const estudianteId = Number(
-        control.dataset.estudiante ||
-        String(control.name || "").replace("asistencia-", "")
-    );
-
-    const fecha = document.getElementById("fechaAsistencia")?.value;
-
-    if (!estudianteId || !fecha) return;
-
-    const seleccionado = document.querySelector(
-        `input[name="asistencia-${estudianteId}"]:checked`
-    );
-
-    if (!seleccionado) return;
-
-    const observacionInput = document.querySelector(
-        `.observacion-asistencia[data-estudiante="${estudianteId}"]`
-    );
-
-    const observacion = observacionInput
-        ? observacionInput.value.trim()
-        : "";
-
-    const clave = estudianteId + "|" + fecha;
-
-    /* Si ya había un guardado del mismo estudiante, esperamos a que termine. */
-    const anterior = guardadosAsistenciaIndividual.get(clave) || Promise.resolve();
-
-    const promesa = anterior
-        .catch(() => {})
-        .then(async () => {
-
-            
-
-            const { data: asistenciaAnterior, error: errorAnterior } = await supabaseClient
-                .from("asistencia")
-                .select("estudiante_id,fecha,estado,observacion")
-                .eq("estudiante_id", estudianteId).eq("fecha", fecha).maybeSingle();
-            if (errorAnterior) throw errorAnterior;
-            const datosNuevosAsistencia = { estudiante_id: estudianteId, fecha, estado: seleccionado.value, observacion: observacion || null };
-            const { error } = await supabaseClient.from("asistencia").upsert(datosNuevosAsistencia, { onConflict: "estudiante_id,fecha" });
-            if (error) throw error;
-            if (!asistenciaAnterior || String(asistenciaAnterior.estado ?? "") !== String(datosNuevosAsistencia.estado ?? "") || String(asistenciaAnterior.observacion ?? "") !== String(datosNuevosAsistencia.observacion ?? "")) {
-                const estudianteHist = estudiantes.find(e => Number(e.id) === estudianteId);
-                guardarHistorialInterno({ table_name:"asistencia", operation:asistenciaAnterior?"UPDATE":"INSERT", record_id:null, curso:cursoSeleccionado, estudiante_id:estudianteId, estudiante_nombre:estudianteHist?.nombre || estudianteHist?.nombre_completo || null, actividad_id:null, actividad_nombre:null, categoria:null, fecha, old_data:asistenciaAnterior || null, new_data:datosNuevosAsistencia, changed_at:new Date().toISOString() });
-            }
-
-            registrosAsistencia[estudianteId] = {
-                estado: seleccionado.value,
-                observacion: observacion
-            };
-
-            actualizarResumenAsistencia();
-
-            const estudiante = estudiantes.find(
-                e => Number(e.id) === estudianteId
-            );
-
-            mostrarMensaje(
-                "✓ Asistencia guardada" +
-                (estudiante ? ": " + estudiante.nombre : ".")
-            );
-        })
-        .catch(error => {
-
-            console.error("Error al guardar asistencia individual:", error);
-
-            mostrarMensaje(
-                "✕ Error al guardar la asistencia.",
-                true
-            );
-
-        });
-
-    guardadosAsistenciaIndividual.set(clave, promesa);
-
-    await promesa;
-
-    if (guardadosAsistenciaIndividual.get(clave) === promesa) {
-        guardadosAsistenciaIndividual.delete(clave);
-    }
+    actualizarCambiosPendientesAsistencia();
 }
-
 
 async function guardarObservacionAsistenciaIndividual(input) {
-
-    if (!guardadoAutomatico && !guardadoManualEnCurso) {
-        marcarAsistenciaPendiente();
-        return;
-    }
+    /* Las observaciones manuales tampoco se guardan automáticamente. */
     if (!input || !asistenciaDesbloqueada) return;
-
-    const estudianteId = Number(input.dataset.estudiante);
-    const fecha = document.getElementById("fechaAsistencia")?.value;
-
-    if (!estudianteId || !fecha) return;
-
-    const seleccionado = document.querySelector(
-        `input[name="asistencia-${estudianteId}"]:checked`
-    );
-
-    /*
-       Si todavía no existe un estado, no se crea una asistencia
-       solo por escribir una observación.
-    */
-    if (!seleccionado) return;
-
-    await guardarAsistenciaIndividual(seleccionado);
+    actualizarCambiosPendientesAsistencia();
 }
 
+
+/* =====================================================
+   DETECTAR CAMBIOS MANUALES DE ASISTENCIA
+   No guarda nada automáticamente. Solo muestra/oculta
+   el botón Guardar junto a la papelera.
+===================================================== */
+function actualizarCambiosPendientesAsistencia() {
+    if (!cursoSeleccionado) {
+        cambiosPendientesAsistencia = false;
+        actualizarBotonGuardarAsistencia();
+        actualizarEstadosGuardado();
+        return;
+    }
+
+    const estudiantesCurso = estudiantes.filter(
+        estudiante => estudiante.curso === cursoSeleccionado
+    );
+
+    const hayCambios = estudiantesCurso.some(estudiante => {
+        const base = registrosAsistencia[estudiante.id] || {};
+        const seleccionado = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"]:checked`
+        );
+        const observacionInput = document.querySelector(
+            `.observacion-asistencia[data-estudiante="${estudiante.id}"]`
+        );
+
+        const estadoActual = seleccionado ? seleccionado.value : "";
+        const observacionActual = observacionInput
+            ? observacionInput.value.trim()
+            : "";
+
+        return estadoActual !== String(base.estado || "") ||
+               observacionActual !== String(base.observacion || "");
+    });
+
+    cambiosPendientesAsistencia = hayCambios;
+    actualizarBotonGuardarAsistencia();
+    actualizarEstadosGuardado();
+}
+
+function actualizarBotonGuardarAsistencia() {
+    const botones = [
+        document.getElementById("botonGuardarAsistencia"),
+        document.getElementById("botonGuardarAsistenciaTabla")
+    ].filter(Boolean);
+
+    botones.forEach(boton => {
+        const visible = cambiosPendientesAsistencia && !esDiaSinClasesAsistencia();
+        boton.classList.toggle("visible", visible);
+        boton.classList.toggle("oculto", !visible);
+        boton.style.display = visible ? "" : "none";
+    });
+}
 
 /* =====================================================
    GUARDAR ASISTENCIA
@@ -6257,6 +6149,7 @@ async function guardarAsistencia() {
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
         cambiosPendientesAsistencia = false;
+        actualizarBotonGuardarAsistencia();
         actualizarEstadosGuardado();
 
         return true;
