@@ -3341,6 +3341,68 @@ if (fechaNacimiento) {
     let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
     let mensajeTimer = null;
 
+    /* =================================================
+       SONIDOS DEL GATITO - SIN ARCHIVOS EXTERNOS
+       Se generan con Web Audio para que la página siga
+       funcionando sin conexión. El sonido se activa con
+       la primera interacción del estudiante.
+    ================================================= */
+    let audioCtx = null;
+    let sonidoActivado = false;
+
+    function activarSonido() {
+        try {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            sonidoActivado = true;
+        } catch (e) {}
+    }
+
+    function tono(frecuencia, duracion, tipo = 'sine', volumen = 0.035, inicio = 0) {
+        if (!sonidoActivado || !audioCtx) return;
+        try {
+            const ahora = audioCtx.currentTime + inicio;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = tipo;
+            osc.frequency.setValueAtTime(frecuencia, ahora);
+            gain.gain.setValueAtTime(0.0001, ahora);
+            gain.gain.exponentialRampToValueAtTime(volumen, ahora + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + duracion);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(ahora);
+            osc.stop(ahora + duracion + 0.02);
+        } catch (e) {}
+    }
+
+    function sonidoMiau() {
+        tono(620, 0.18, 'sine', 0.045);
+        tono(820, 0.22, 'sine', 0.035, 0.10);
+    }
+
+    function sonidoFeliz() {
+        tono(660, 0.12, 'sine', 0.035);
+        tono(830, 0.12, 'sine', 0.035, 0.10);
+        tono(1040, 0.20, 'sine', 0.04, 0.20);
+    }
+
+    function sonidoSorpresa() {
+        tono(900, 0.10, 'triangle', 0.04);
+        tono(1250, 0.20, 'triangle', 0.045, 0.08);
+    }
+
+    function sonidoRonroneo() {
+        if (!sonidoActivado || !audioCtx) return;
+        tono(105, 0.16, 'sine', 0.018);
+        tono(125, 0.16, 'sine', 0.014, 0.18);
+        tono(105, 0.16, 'sine', 0.018, 0.36);
+    }
+
     function decir(texto, tiempo = 1800) {
         mensaje.textContent = texto;
         gato.classList.add('mensaje');
@@ -3349,6 +3411,9 @@ if (fechaNacimiento) {
     }
 
     function acariciar() {
+        activarSonido();
+        sonidoMiau();
+        sonidoRonroneo();
         gato.classList.remove('caricia');
         void gato.offsetWidth;
         gato.classList.add('caricia');
@@ -3358,6 +3423,7 @@ if (fechaNacimiento) {
     }
 
     gato.addEventListener('pointerdown', e => {
+        activarSonido();
         arrastrando = true;
         desplazado = false;
         inicioX = e.clientX; inicioY = e.clientY;
@@ -3382,6 +3448,8 @@ if (fechaNacimiento) {
     });
 
     gato.addEventListener('dblclick', () => {
+        activarSonido();
+        sonidoSorpresa();
         decir('¡Qué lindo! 😻');
         gato.classList.add('sorprendido');
         setTimeout(() => gato.classList.remove('sorprendido'), 700);
@@ -3399,6 +3467,7 @@ if (fechaNacimiento) {
         }
         if (/error|incorrectos|Error de conexión/i.test(texto)) {
             cuerpo.textContent = '🙀';
+            sonidoSorpresa();
             gato.classList.add('sorprendido');
             decir('¡Ups! 😿', 1800);
             return;
@@ -3408,6 +3477,7 @@ if (fechaNacimiento) {
             const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
             if (notas.length && Math.max(...notas) >= 70) {
                 cuerpo.textContent = '😺';
+                sonidoFeliz();
                 decir('¡Muy bien! 🎉', 2200);
             } else {
                 cuerpo.textContent = '🐱';
