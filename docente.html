@@ -11524,12 +11524,17 @@ function calcularPromedioPonderado(
 ===================================================== */
 
 async function cerrarSesion() {
+    // Al cerrar sesión se elimina únicamente la lista de estudiantes
+    // guardada en la caché del dispositivo para el uso del QR.
+    try {
+        localStorage.removeItem(CLAVE_CACHE_ESTUDIANTES_QR);
+    } catch (e) {
+        console.warn("No se pudo borrar la caché de estudiantes QR:", e);
+    }
 
     await supabaseClient.auth.signOut();
-
     window.location.href =
     "login-docente.html";
-
 }
 
 
