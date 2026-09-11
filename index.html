@@ -845,81 +845,6 @@ function iniciarCuentaRegresivaVisita(segundos) {
 }
 
 /* =================================================
-   ACTUALIZACIÓN AUTOMÁTICA DE CALIFICACIONES
-================================================= */
-let temporizadorActualizacion = null;
-let actualizandoAutomaticamente = false;
-
-function iniciarActualizacionAutomatica() {
-
-    if (temporizadorActualizacion) {
-        clearInterval(temporizadorActualizacion);
-    }
-
-    // Actualiza cada 10 segundos mientras el estudiante mantiene
-    // la página abierta. Esta actualización NO registra una visita.
-    temporizadorActualizacion = setInterval(
-        actualizarCalificacionesAutomaticamente,
-        10000
-    );
-}
-
-async function actualizarCalificacionesAutomaticamente() {
-
-    if (!alumnoActual || actualizandoAutomaticamente) {
-        return;
-    }
-
-    actualizandoAutomaticamente = true;
-
-    try {
-
-        const respuesta = await fetch(
-            `${SUPABASE_URL}/rest/v1/matematica?` +
-            `ci=eq.${encodeURIComponent(alumnoActual.ci)}` +
-            `&fecha_nacimiento=eq.${encodeURIComponent(alumnoActual.fecha_nacimiento)}` +
-            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t`,
-            {
-                headers: {
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": `Bearer ${SUPABASE_KEY}`
-                },
-                cache: "no-store"
-            }
-        );
-
-        if (!respuesta.ok) {
-            return;
-        }
-
-        const datos = await respuesta.json();
-
-        if (!datos.length) {
-            return;
-        }
-
-        // Actualiza los datos del estudiante sin registrar una nueva visita.
-        alumnoActual = datos[0];
-
-        await mostrarResultado(alumnoActual);
-
-    } catch (error) {
-
-        // Si falla una actualización automática, se conserva
-        // la información que el estudiante ya está viendo.
-        console.error(
-            "No se pudo actualizar automáticamente:",
-            error
-        );
-
-    } finally {
-
-        actualizandoAutomaticamente = false;
-
-    }
-}
-
-/* =================================================
    CONSULTAR
 ================================================= */
 
@@ -1024,8 +949,7 @@ async function consultarNota() {
             iniciarCuentaRegresivaVisita(
                 Math.ceil((DURACION_BLOQUEO_VISITA - tiempoTranscurrido) / 1000)
             );
-            await mostrarResultado(alumnoActual);
-            iniciarActualizacionAutomatica();
+            mostrarResultado(alumnoActual);
             return;
         }
 
@@ -1088,11 +1012,9 @@ async function consultarNota() {
         }
 
 
-        await mostrarResultado(
+        mostrarResultado(
             alumnoActual
         );
-
-        iniciarActualizacionAutomatica();
 
     }
 
@@ -1304,7 +1226,19 @@ async function mostrarResultado(alumno) {
                 }
 
             </div>
-<div
+
+
+            <button
+                class="boton-detalles"
+                onclick="mostrarDetalles()"
+            >
+
+                − Ocultar detalles del 3er trimestre
+
+            </button>
+
+
+            <div
                 id="detalle3T"
                 style="display:block"
             ></div>
@@ -1633,8 +1567,51 @@ async function mostrarDetalles() {
     }
 
 
+    if (
+        contenedor.style.display ===
+        "block" &&
+        contenedor.innerHTML.trim() !== ""
+    ) {
+
+        contenedor.style.display =
+            "none";
+
+
+        const boton =
+            document.querySelector(
+                ".boton-detalles"
+            );
+
+
+        if (boton) {
+
+            boton.innerHTML =
+                "📚 Ver detalles del 3er trimestre";
+
+        }
+
+
+        return;
+
+    }
+
+
     contenedor.style.display =
         "block";
+
+
+    const boton =
+        document.querySelector(
+            ".boton-detalles"
+        );
+
+
+    if (boton) {
+
+        boton.innerHTML =
+            "− Ocultar detalles del 3er trimestre";
+
+    }
 
 
     contenedor.innerHTML =
@@ -2765,7 +2742,20 @@ async function mostrarAsistenciaEnDetalle() {
 
 
                 </div>
-<div
+
+
+                <button
+                    type="button"
+                    class="boton-asistencia"
+                    onclick="alternarDetalleAsistencia(this)"
+                >
+
+                    − Ocultar detalle de asistencia
+
+                </button>
+
+
+                <div
                     class="detalle-asistencia"
                     id="tablaDetalleAsistencia"
                     style="display:block"
@@ -2902,7 +2892,363 @@ async function mostrarAsistenciaEnDetalle() {
    MOSTRAR / OCULTAR TABLA ASISTENCIA
 ================================================= */
 
+function alternarDetalleAsistencia(boton) {
 
+    const tabla =
+        document.getElementById(
+            "tablaDetalleAsistencia"
+        );
+
+
+    if (!tabla) {
+
+        return;
+
+    }
+
+
+    if (
+        tabla.style.display ===
+        "block"
+    ) {
+
+        tabla.style.display =
+            "none";
+
+
+        boton.innerHTML =
+            "＋ Ver detalle de asistencia";
+
+    }
+
+    else {
+
+        tabla.style.display =
+            "block";
+
+
+        boton.innerHTML =
+            "− Ocultar detalle de asistencia";
+
+    }
+
+}
+
+
+/* =================================================
+   NORMALIZAR ESTADO
+================================================= */
+
+function normalizarEstado(estado) {
+
+    if (
+        estado === null ||
+        estado === undefined
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(estado)
+
+        .trim()
+
+        .toLowerCase()
+
+        .normalize("NFD")
+
+        .replace(
+            /[\u0300-\u036f]/g,
+            ""
+        );
+
+}
+
+
+/* =================================================
+   ESTADOS DE ASISTENCIA
+================================================= */
+
+function obtenerEstadoAsistencia(estado) {
+
+    switch (estado) {
+
+        case "asistio":
+
+            return {
+
+                nombre: "Asistencia",
+
+                icono: "🟢",
+
+                clase: "estado-presente"
+
+            };
+
+
+        case "atraso":
+
+            return {
+
+                nombre: "Atraso",
+
+                icono: "🟡",
+
+                clase: "estado-atraso"
+
+            };
+
+
+        case "licencia":
+
+            return {
+
+                nombre: "Falta con licencia",
+
+                icono: "🔵",
+
+                clase: "estado-licencia"
+
+            };
+
+
+        case "falta":
+
+            return {
+
+                nombre: "Falta sin licencia",
+
+                icono: "🔴",
+
+                clase: "estado-falta"
+
+            };
+
+
+        default:
+
+            return {
+
+                nombre:
+                    estado
+                    ? estado
+                    : "Sin registro",
+
+                icono: "⚪",
+
+                clase: ""
+
+            };
+
+    }
+
+}
+
+
+/* =================================================
+   FORMATEAR FECHA
+================================================= */
+
+function formatearFecha(fecha) {
+
+    if (!fecha) {
+
+        return "—";
+
+    }
+
+
+    const partes =
+        String(fecha)
+        .split("-");
+
+
+    if (
+        partes.length === 3
+    ) {
+
+        const anio =
+            Number(partes[0]);
+
+        const mes =
+            Number(partes[1]) - 1;
+
+        const dia =
+            Number(partes[2]);
+
+
+        /*
+         * Se crea la fecha usando los valores
+         * locales para evitar problemas de zona horaria.
+         */
+
+        const fechaLocal =
+            new Date(
+                anio,
+                mes,
+                dia
+            );
+
+
+        const diasSemana = [
+
+            "Domingo",
+            "Lunes",
+            "Martes",
+            "Miércoles",
+            "Jueves",
+            "Viernes",
+            "Sábado"
+
+        ];
+
+
+        const nombreDia =
+            diasSemana[
+                fechaLocal.getDay()
+            ];
+
+
+        return `${nombreDia}, ${String(dia).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}/${anio}`;
+
+    }
+
+
+    return fecha;
+
+}
+
+
+/* =================================================
+   CONVERTIR NOTA
+================================================= */
+
+function convertirNota(nota) {
+
+    if (
+
+        nota === null ||
+
+        nota === undefined ||
+
+        nota === ""
+
+    ) {
+
+        return null;
+
+    }
+
+
+    const numero =
+        Number(nota);
+
+
+    if (
+        isNaN(numero)
+    ) {
+
+        return null;
+
+    }
+
+
+    return numero;
+
+}
+
+
+/* =================================================
+   REDONDEAR NOTA
+================================================= */
+
+function redondearNota(nota) {
+
+    const numero =
+        convertirNota(nota);
+
+
+    if (
+        numero === null
+    ) {
+
+        return null;
+
+    }
+
+
+    return Math.round(numero);
+
+}
+
+
+/* =================================================
+   ESCAPAR HTML
+================================================= */
+
+function escapeHTML(texto) {
+
+    return String(texto)
+
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+
+        .replace(
+            /</g,
+            "&lt;"
+        )
+
+        .replace(
+            />/g,
+            "&gt;"
+        )
+
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/* =================================================
+   OBTENER CI DESDE LA URL
+================================================= */
+
+const parametros =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const ci =
+    parametros.get("ci");
+
+const fechaNacimiento =
+    parametros.get("fecha_nacimiento");
+
+if (ci) {
+
+    document.getElementById("ci").value =
+        ci;
+
+}
+
+if (fechaNacimiento) {
+
+    document.getElementById("fecha_nacimiento").value =
+        fechaNacimiento;
+
+}
 </script>
 
 
