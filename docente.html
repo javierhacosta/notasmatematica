@@ -11600,6 +11600,7 @@ let tiempoUltimoQRProcesado = 0;
 const TIEMPO_ANTI_DUPLICADO_QR = 1800;
 
 let guardandoCalificacionQR = false;
+let guardandoQRAlCerrar = false;
 
 
 async function abrirEscanerQR(actividad) {
@@ -12621,7 +12622,7 @@ async function guardarCalificacionQR() {
 
     try {
 
-        if (guardadoAutomatico || guardadoManualEnCurso) {
+        if (guardadoAutomatico || guardadoManualEnCurso || guardandoQRAlCerrar) {
             const {
                 error
             } =
@@ -12949,7 +12950,12 @@ async function cerrarModalCalificacionQR(
             : "";
 
         if (valorNota !== "") {
-            await guardarCalificacionQR();
+            guardandoQRAlCerrar = true;
+            try {
+                await guardarCalificacionQR();
+            } finally {
+                guardandoQRAlCerrar = false;
+            }
         }
     }
 
