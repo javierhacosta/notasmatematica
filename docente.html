@@ -9477,6 +9477,11 @@ async function guardarActividadManual(actividadId) {
         `.boton-guardar-actividad-manual[data-actividad-id="${id}"]`
     );
 
+    /* Si esta actividad quedó pendiente por un cambio realizado mediante QR,
+       el guardado manual debe continuar aunque la tabla haya reconstruido
+       los valores iniciales de los campos. */
+    const pendienteQR = actividadesPendientes.has(String(id));
+
     const inputsNotas = Array.from(
         document.querySelectorAll(
             `.nota-input[data-actividad="${id}"]`
@@ -9552,7 +9557,7 @@ async function guardarActividadManual(actividadId) {
         }
     }
 
-    if (!hayCambios) {
+    if (!hayCambios && !pendienteQR) {
         actividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
         cambiosPendientesActividades =
