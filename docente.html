@@ -2780,6 +2780,138 @@ table tbody tr:nth-child(10n+10) td {
     .detalle-estudiante-cuerpo { padding:10px; }
 }
 
+
+/* =====================================================
+   BÚSQUEDA GENERAL DE ESTUDIANTE
+   No requiere seleccionar curso.
+===================================================== */
+.buscar-general-linea {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.campo-busqueda-general {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 220px;
+}
+
+.campo-busqueda-general label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+#buscarGeneralEstudiante {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+}
+
+#buscarGeneralEstudiante:focus {
+    outline: none;
+    border-color: #1557a6;
+    box-shadow: 0 0 0 3px rgba(21,87,166,.12);
+}
+
+.resultados-busqueda-general {
+    display: none;
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid #d8dee5;
+    border-radius: 10px;
+    background: white;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,.10);
+}
+
+.resultados-busqueda-general.visible {
+    display: block;
+}
+
+.tabla-busqueda-general-contenedor {
+    max-height: 330px;
+    overflow: auto;
+}
+
+.tabla-busqueda-general {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tabla-busqueda-general th,
+.tabla-busqueda-general td {
+    border: 1px solid #e1e5e9;
+    padding: 9px 8px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.tabla-busqueda-general th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f0f4f8;
+    color: #37474f;
+    text-align: center;
+}
+
+.tabla-busqueda-general td:first-child,
+.tabla-busqueda-general td:last-child {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.fila-estudiante-busqueda {
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.fila-estudiante-busqueda:hover {
+    background: #eef6ff;
+}
+
+.fila-estudiante-busqueda:active {
+    background: #dcecff;
+}
+
+.nombre-estudiante-busqueda {
+    color: #1557a6;
+    font-weight: bold;
+}
+
+.busqueda-general-vacia {
+    padding: 14px;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+}
+
+@media (max-width: 700px) {
+    .buscar-general-linea {
+        align-items: stretch;
+    }
+
+    .campo-busqueda-general {
+        min-width: 0;
+    }
+
+    .tabla-busqueda-general {
+        font-size: 13px;
+    }
+
+    .tabla-busqueda-general th,
+    .tabla-busqueda-general td {
+        padding: 8px 6px;
+    }
+}
+
 </style>
 
 </head>
@@ -2824,16 +2956,15 @@ Selecciona un curso
 
 <div class="buscar-estudiante-linea">
 
-<div class="campo-busqueda oculto" id="filtroBuscarEstudiante">
-
-<label>Buscar estudiante</label>
-
-<input
-    type="text"
-    id="buscarNombre"
-    placeholder="Buscar por nombre o Nº de lista..."
->
-
+<div class="campo-busqueda-general">
+    <label for="buscarGeneralEstudiante">🔎 Buscar estudiante</label>
+    <input
+        type="text"
+        id="buscarGeneralEstudiante"
+        autocomplete="off"
+        placeholder="Buscar por nombre, CI o N° de lista..."
+        aria-label="Búsqueda general de estudiante"
+    >
 </div>
 
 <button
@@ -2844,6 +2975,22 @@ Selecciona un curso
     📷 QR
 </button>
 
+</div>
+
+<div
+    id="resultadosBusquedaGeneral"
+    class="resultados-busqueda-general"
+    aria-live="polite">
+</div>
+
+<!-- Búsqueda del curso actual: se mantiene separada y aparece al seleccionar curso -->
+<div class="campo-busqueda oculto" id="filtroBuscarEstudiante">
+    <label>Buscar estudiante del curso</label>
+    <input
+        type="text"
+        id="buscarNombre"
+        placeholder="Buscar por nombre o Nº de lista..."
+    >
 </div>
 
 </div>
@@ -4293,6 +4440,11 @@ async function cargarEstudiantes() {
     cargarCursos();
 
     cargarCursosInforme();
+
+    // Si la búsqueda general está abierta, actualizar la tabla con los estudiantes cargados.
+    if (document.getElementById("resultadosBusquedaGeneral")?.classList.contains("visible")) {
+        mostrarResultadosBusquedaGeneral();
+    }
 
 }
 
@@ -8841,6 +8993,141 @@ document.addEventListener(
 
     }
 );
+
+
+/* =====================================================
+   BÚSQUEDA GENERAL DE ESTUDIANTE
+   Funciona sin seleccionar curso y utiliza la misma
+   consulta detallada que el botón QR.
+===================================================== */
+
+function normalizarTextoBusquedaGeneral(texto) {
+    return String(texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function mostrarResultadosBusquedaGeneral() {
+    const campo = document.getElementById("buscarGeneralEstudiante");
+    const contenedor = document.getElementById("resultadosBusquedaGeneral");
+
+    if (!campo || !contenedor) return;
+
+    const texto = normalizarTextoBusquedaGeneral(campo.value);
+
+    const lista = Array.isArray(estudiantes) ? estudiantes.filter(Boolean) : [];
+
+    const resultados = lista.filter(estudiante => {
+        if (!texto) return true;
+
+        const nombre = normalizarTextoBusquedaGeneral(estudiante.nombre);
+        const ci = normalizarTextoBusquedaGeneral(estudiante.ci);
+        const numero = normalizarTextoBusquedaGeneral(estudiante.num_lista);
+
+        return nombre.includes(texto) ||
+               ci.includes(texto) ||
+               numero.includes(texto);
+    });
+
+    if (!texto && resultados.length === 0) {
+        contenedor.innerHTML =
+            '<div class="busqueda-general-vacia">⏳ Cargando estudiantes...</div>';
+        contenedor.classList.add("visible");
+        return;
+    }
+
+    if (resultados.length === 0) {
+        contenedor.innerHTML =
+            '<div class="busqueda-general-vacia">🔎 No se encontraron estudiantes.</div>';
+        contenedor.classList.add("visible");
+        return;
+    }
+
+    const filas = resultados.map(estudiante => `
+        <tr
+            class="fila-estudiante-busqueda"
+            data-estudiante-id="${escapeHTML(String(estudiante.id ?? ""))}"
+            tabindex="0"
+            role="button"
+            title="Seleccionar a ${escapeHTML(estudiante.nombre || "estudiante")}">
+            <td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td>
+            <td class="nombre-estudiante-busqueda">${escapeHTML(estudiante.nombre || "")}</td>
+            <td>${escapeHTML(estudiante.curso || "")}</td>
+        </tr>
+    `).join("");
+
+    contenedor.innerHTML = `
+        <div class="tabla-busqueda-general-contenedor">
+            <table class="tabla-busqueda-general">
+                <thead>
+                    <tr>
+                        <th style="width:75px;">N°</th>
+                        <th>Nombre</th>
+                        <th style="width:150px;">Curso</th>
+                    </tr>
+                </thead>
+                <tbody>${filas}</tbody>
+            </table>
+        </div>
+    `;
+
+    contenedor.classList.add("visible");
+}
+
+function cerrarResultadosBusquedaGeneral() {
+    const contenedor = document.getElementById("resultadosBusquedaGeneral");
+    if (contenedor) contenedor.classList.remove("visible");
+}
+
+async function seleccionarEstudianteBusquedaGeneral(estudianteId) {
+    const id = String(estudianteId ?? "");
+    if (!id) return;
+
+    const estudiante = estudiantes.find(
+        e => String(e.id) === id
+    );
+
+    if (!estudiante) {
+        mostrarMensaje("⚠️ No se encontró la información del estudiante.");
+        return;
+    }
+
+    await mostrarDetalleEstudianteQR(estudiante);
+}
+
+const campoBusquedaGeneral = document.getElementById("buscarGeneralEstudiante");
+const resultadosBusquedaGeneral = document.getElementById("resultadosBusquedaGeneral");
+
+if (campoBusquedaGeneral) {
+    campoBusquedaGeneral.addEventListener("focus", () => {
+        mostrarResultadosBusquedaGeneral();
+    });
+
+    campoBusquedaGeneral.addEventListener("input", () => {
+        mostrarResultadosBusquedaGeneral();
+    });
+}
+
+if (resultadosBusquedaGeneral) {
+    resultadosBusquedaGeneral.addEventListener("click", event => {
+        const fila = event.target.closest(".fila-estudiante-busqueda");
+        if (!fila) return;
+
+        seleccionarEstudianteBusquedaGeneral(fila.dataset.estudianteId);
+    });
+
+    resultadosBusquedaGeneral.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        const fila = event.target.closest(".fila-estudiante-busqueda");
+        if (!fila) return;
+
+        event.preventDefault();
+        seleccionarEstudianteBusquedaGeneral(fila.dataset.estudianteId);
+    });
+}
 
 /* =====================================================
    BÚSQUEDA
