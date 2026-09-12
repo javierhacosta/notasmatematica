@@ -2713,6 +2713,73 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 
+
+/* =====================================================
+   CONSULTA GENERAL DE ESTUDIANTE POR QR
+===================================================== */
+.buscar-estudiante-linea { display:flex; align-items:flex-end; gap:8px; }
+.buscar-estudiante-linea .campo-busqueda { flex:1 1 auto; min-width:0; }
+.boton-qr-consulta {
+    min-height:42px; border:none; border-radius:8px; padding:10px 14px;
+    background:#00838f; color:white; font-size:15px; font-weight:bold;
+    cursor:pointer; white-space:nowrap;
+}
+.boton-qr-consulta:hover { background:#006b73; }
+.boton-qr-consulta:active { transform:scale(.98); }
+.modal-detalle-estudiante {
+    width:100%; max-width:1000px; max-height:92vh; background:white;
+    border-radius:14px; box-shadow:0 10px 35px rgba(0,0,0,.30);
+    overflow:hidden; display:flex; flex-direction:column;
+}
+.detalle-estudiante-cuerpo { padding:15px; overflow:auto; }
+.detalle-identificacion {
+    display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px; margin-bottom:14px;
+}
+.detalle-identificacion .dato {
+    background:#f4f6f8; border:1px solid #ddd; border-radius:9px; padding:10px;
+}
+.detalle-identificacion .dato strong {
+    display:block; color:#1557a6; font-size:12px; margin-bottom:3px;
+}
+.detalle-seccion {
+    border:1px solid #ddd; border-radius:10px; overflow:hidden; margin-top:12px;
+}
+.detalle-seccion h4 {
+    margin:0; padding:9px 11px; background:#f0f2f3; color:#37474f; font-size:15px;
+}
+.detalle-tabla-contenedor { width:100%; overflow-x:auto; }
+.detalle-tabla { width:100%; border-collapse:collapse; font-size:13px; }
+.detalle-tabla th,.detalle-tabla td {
+    border:1px solid #ddd; padding:7px; text-align:left; vertical-align:top;
+}
+.detalle-tabla th { background:#fafafa; white-space:nowrap; }
+.detalle-resumen-asistencia {
+    display:grid; grid-template-columns:repeat(5,minmax(80px,1fr)); gap:8px; padding:10px;
+}
+.detalle-resumen-asistencia .contador {
+    text-align:center; border-radius:9px; padding:10px 5px;
+    background:#f4f6f8; border:1px solid #ddd;
+}
+.detalle-resumen-asistencia .contador strong {
+    display:block; font-size:21px; color:#1557a6;
+}
+.detalle-vacio { padding:12px; color:#666; text-align:center; }
+.detalle-cargando { padding:25px; text-align:center; color:#555; font-weight:bold; }
+.detalle-badge {
+    display:inline-block; padding:3px 7px; border-radius:5px;
+    font-weight:bold; background:#eef2f5;
+}
+@media (max-width:700px) {
+    .detalle-identificacion { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .detalle-resumen-asistencia { grid-template-columns:repeat(3,minmax(70px,1fr)); }
+}
+@media (max-width:600px) {
+    .buscar-estudiante-linea { align-items:stretch; }
+    .boton-qr-consulta { min-width:52px; padding:9px 11px; font-size:20px; }
+    .detalle-estudiante-cuerpo { padding:10px; }
+}
+
 </style>
 
 </head>
@@ -2755,6 +2822,10 @@ Selecciona un curso
 
 <div class="filtro">
 
+<div class="buscar-estudiante-linea">
+
+<div class="campo-busqueda oculto" id="filtroBuscarEstudiante">
+
 <label>Buscar estudiante</label>
 
 <input
@@ -2762,6 +2833,18 @@ Selecciona un curso
     id="buscarNombre"
     placeholder="Buscar por nombre o Nº de lista..."
 >
+
+</div>
+
+<button
+    type="button"
+    class="boton-qr-consulta"
+    onclick="abrirEscanerConsultaEstudianteQR()"
+    title="Escanear QR y consultar toda la información del estudiante">
+    📷 QR
+</button>
+
+</div>
 
 </div>
 
@@ -3497,6 +3580,23 @@ Cancelar
 
 </div>
 
+
+<!-- =====================================================
+     MODAL CONSULTA GENERAL DE ESTUDIANTE POR QR
+===================================================== -->
+<div id="modalConsultaEstudianteQR" class="modal-fondo oculto"
+     onclick="cerrarConsultaEstudianteQR(event)">
+    <div class="modal-detalle-estudiante" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>🎓 Información completa del estudiante</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarConsultaEstudianteQR()">×</button>
+        </div>
+        <div id="detalleEstudianteQR" class="detalle-estudiante-cuerpo">
+            <div class="detalle-cargando">Cargando información...</div>
+        </div>
+    </div>
+</div>
 
 <!-- =====================================================
      MODAL ESTUDIANTES PENDIENTES DE ASISTENCIA
@@ -4275,6 +4375,23 @@ document.getElementById(
 
         cursoSeleccionado =
         this.value;
+
+        const filtroBuscarEstudiante =
+            document.getElementById("filtroBuscarEstudiante");
+
+        if (filtroBuscarEstudiante) {
+            filtroBuscarEstudiante.classList.toggle(
+                "oculto",
+                !cursoSeleccionado
+            );
+        }
+
+        const campoBuscarNombre =
+            document.getElementById("buscarNombre");
+
+        if (!cursoSeleccionado && campoBuscarNombre) {
+            campoBuscarNombre.value = "";
+        }
 
         document.getElementById(
             "contenedorActividades"
@@ -8708,6 +8825,16 @@ document.addEventListener(
         iniciarPanelesMinimizados();
         actualizarInterfazGuardado();
 
+        const filtroBuscarEstudianteInicial =
+            document.getElementById("filtroBuscarEstudiante");
+
+        if (filtroBuscarEstudianteInicial) {
+            filtroBuscarEstudianteInicial.classList.toggle(
+                "oculto",
+                !cursoSeleccionado
+            );
+        }
+
         if (cursoSeleccionado) {
             mostrarPanelInforme();
         }
@@ -9925,17 +10052,8 @@ async function exportarExcel() {
 
     try {
 
-        const guardado =
-        await guardarNotas();
-
-
-        if (guardado === false) {
-            return;
-        }
-
-
         mostrarMensaje(
-            "Preparando archivo Excel..."
+            "Preparando archivo Excel de todos los cursos..."
         );
 
 
@@ -9949,6 +10067,11 @@ async function exportarExcel() {
 
             return;
 
+        }
+
+        if (!Array.isArray(estudiantes) || estudiantes.length === 0) {
+            alert("No hay estudiantes cargados para exportar.");
+            return;
         }
 
 
@@ -10112,37 +10235,16 @@ async function exportarExcel() {
         });
 
 
-        const cursosConAsistencia =
-        new Set();
-
-
-        todaAsistencia.forEach(
-        registro => {
-
-            const estudiante =
-            estudiantes.find(
-                e =>
-                e.id ===
-                registro.estudiante_id
-            );
-
-
-            if (
-                estudiante &&
-                estudiante.curso
-            ) {
-
-                cursosConAsistencia.add(
-                    estudiante.curso
-                );
-
-            }
-
-        });
-
-
+        /*
+         * Exportación independiente del curso seleccionado:
+         * incluye todos los cursos presentes en la lista general.
+         */
         const cursos =
-        [...cursosConAsistencia]
+        [...new Set(
+            estudiantes
+                .map(e => e.curso)
+                .filter(Boolean)
+        )]
         .sort();
 
 
@@ -10151,7 +10253,7 @@ async function exportarExcel() {
         ) {
 
             alert(
-                "No existen registros de asistencia para exportar."
+                "No hay cursos disponibles para exportar."
             );
 
             return;
@@ -11058,6 +11160,7 @@ let estudianteQRSeleccionado = null;
 let escaneandoQR = false;
 let mantenerCamaraQR = true;
 let modoQRAsistencia = false;
+let modoQRConsultaEstudiante = false;
 let estudianteQRAsistencia = null;
 
 /* Indica que se inició una toma de asistencia mediante QR.
@@ -11089,6 +11192,7 @@ let guardandoCalificacionQR = false;
 async function abrirEscanerQR(actividad) {
 
     modoQRAsistencia = false;
+    modoQRConsultaEstudiante = false;
     actividadQRSeleccionada = actividad;
 
     const checkboxCamara =
@@ -11269,6 +11373,16 @@ async function solicitarLecturaQR() {
 
             if (modoQRAsistencia) {
                 await prepararAsistenciaQR(ci);
+                return;
+            }
+
+            if (modoQRConsultaEstudiante) {
+                if (!mantenerCamaraQR) {
+                    const modalEscaner = document.getElementById("modalEscanerQR");
+                    if (modalEscaner) modalEscaner.classList.add("oculto");
+                    detenerCamaraQR();
+                }
+                await prepararConsultaEstudianteQR(ci);
                 return;
             }
 
@@ -12316,6 +12430,357 @@ async function guardarCalificacionQR() {
 }
 
 
+/* =====================================================
+   CONSULTA GENERAL DE ESTUDIANTE POR QR
+   Funciona sin seleccionar curso.
+===================================================== */
+
+async function abrirEscanerConsultaEstudianteQR() {
+    modoQRAsistencia = false;
+    modoQRConsultaEstudiante = true;
+    actividadQRSeleccionada = null;
+    estudianteQRAsistencia = null;
+    estudianteQRSeleccionado = null;
+    procesandoQR = false;
+    ultimoCIPRProcesado = null;
+    tiempoUltimoQRProcesado = 0;
+
+    const modal = document.getElementById("modalEscanerQR");
+    const mensaje = document.getElementById("mensajeQR");
+    const checkboxCamara = document.getElementById("mantenerCamaraQR");
+
+    mantenerCamaraQR = checkboxCamara ? checkboxCamara.checked : true;
+
+    if (modal) modal.classList.remove("oculto");
+    if (mensaje) {
+        mensaje.textContent =
+            "📷 Escanea el QR del estudiante. No es necesario seleccionar un curso.";
+    }
+
+    if (!("BarcodeDetector" in window)) {
+        if (mensaje) mensaje.textContent =
+            "⚠️ Este navegador no admite el escáner QR integrado. Usa Chrome actualizado en Android.";
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (mensaje) mensaje.textContent =
+            "⚠️ Este dispositivo no permite acceder a la cámara desde el navegador.";
+        return;
+    }
+
+    try {
+        detectorQR = new BarcodeDetector({ formats: ["qr_code"] });
+        const video = document.getElementById("videoQR");
+
+        if (!streamQR) {
+            streamQR = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" } },
+                audio: false
+            });
+        }
+
+        if (video) {
+            video.srcObject = streamQR;
+            await video.play();
+        }
+
+        escaneandoQR = true;
+        solicitarLecturaQR();
+    } catch (error) {
+        console.error("Error al abrir consulta QR:", error);
+        if (mensaje) mensaje.textContent =
+            "⚠️ No se pudo abrir la cámara. Verifica el permiso de cámara del navegador.";
+    }
+}
+
+async function prepararConsultaEstudianteQR(ci) {
+    try {
+        let estudiante = buscarEstudianteQRLocal(ci);
+
+        if (!estudiante) {
+            const respuesta = await supabaseClient
+                .from("matematica")
+                .select("id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t")
+                .eq("ci", ci)
+                .maybeSingle();
+
+            if (respuesta.error) throw respuesta.error;
+            estudiante = respuesta.data;
+        }
+
+        if (!estudiante) {
+            alert("No se encontró ningún estudiante con el CI " + ci + ".");
+            procesandoQR = false;
+            if (streamQR && modoQRConsultaEstudiante) {
+                escaneandoQR = true;
+                requestAnimationFrame(solicitarLecturaQR);
+            }
+            return;
+        }
+
+        await mostrarDetalleEstudianteQR(estudiante);
+    } catch (error) {
+        console.error("Error al consultar estudiante por QR:", error);
+        alert("No se pudo cargar la información del estudiante.\n\n" +
+              (error.message || error));
+    } finally {
+        procesandoQR = false;
+    }
+}
+
+function formatearFechaDetalleQR(fecha) {
+    if (!fecha) return "";
+    const partes = String(fecha).split("-");
+    return partes.length === 3
+        ? `${partes[2]}/${partes[1]}/${partes[0]}`
+        : String(fecha);
+}
+
+function textoEstadoDetalleQR(estado) {
+    const mapa = {
+        asistio: "Asistencia",
+        atraso: "Atraso",
+        falta: "Falta",
+        licencia: "Permiso / Licencia",
+        permiso: "Permiso"
+    };
+    return mapa[String(estado || "").toLowerCase()] ||
+           (estado || "Sin estado");
+}
+
+function calcularNota3TDetalleQR(actividadesLista, calificacionesMapa) {
+    const limites = { SER:10, SABER:45, HACER:40, AUTOEVALUACION:5 };
+    let hayNota = false;
+    let total = 0;
+
+    ["SER","SABER","HACER","AUTOEVALUACION"].forEach(categoria => {
+        const lista = actividadesLista.filter(a => a.categoria === categoria);
+        if (!lista.length) return;
+
+        let suma = 0;
+        let maximos = 0;
+
+        lista.forEach(a => {
+            const registro = calificacionesMapa[String(a.id)];
+            const nota = registro ? registro.nota : null;
+
+            if (nota !== null && nota !== undefined &&
+                String(nota).trim() !== "") {
+                const n = Number(nota);
+                const max = Number(a.puntaje_maximo || limites[categoria]);
+
+                if (!Number.isNaN(n) && max > 0) {
+                    suma += n;
+                    maximos += max;
+                    hayNota = true;
+                }
+            }
+        });
+
+        if (maximos > 0) total += (suma / maximos) * limites[categoria];
+    });
+
+    return hayNota ? Math.round(total) : null;
+}
+
+async function mostrarDetalleEstudianteQR(estudiante) {
+    const modal = document.getElementById("modalConsultaEstudianteQR");
+    const contenedor = document.getElementById("detalleEstudianteQR");
+    if (!modal || !contenedor) return;
+
+    contenedor.innerHTML =
+        '<div class="detalle-cargando">⏳ Cargando asistencia, notas, actividades y observaciones...</div>';
+    modal.classList.remove("oculto");
+
+    const estudianteId = Number(estudiante.id);
+
+    const [respuestaAsistencia, respuestaActividades, respuestaCalificaciones] =
+        await Promise.all([
+            supabaseClient.from("asistencia")
+                .select("id,fecha,estado,hora,observacion")
+                .eq("estudiante_id", estudianteId)
+                .order("fecha", { ascending:false }),
+
+            supabaseClient.from("actividades")
+                .select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo")
+                .order("trimestre").order("orden"),
+
+            supabaseClient.from("calificaciones")
+                .select("actividad_id,estudiante_id,nota,observacion")
+                .eq("estudiante_id", estudianteId)
+        ]);
+
+    if (respuestaAsistencia.error) throw respuestaAsistencia.error;
+    if (respuestaActividades.error) throw respuestaActividades.error;
+    if (respuestaCalificaciones.error) throw respuestaCalificaciones.error;
+
+    const asistencia = respuestaAsistencia.data || [];
+    const actividadesTodas = respuestaActividades.data || [];
+    const calificacionesTodas = respuestaCalificaciones.data || [];
+
+    const calMap = {};
+    calificacionesTodas.forEach(c => {
+        calMap[String(c.actividad_id)] = {
+            nota:c.nota,
+            observacion:c.observacion || ""
+        };
+    });
+
+    const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
+    const nota3T = calcularNota3TDetalleQR(actividades3T, calMap);
+    const nota1T = convertirNumero(estudiante.nota_1t);
+    const nota2T = convertirNumero(estudiante.nota_2t);
+    const notaFinal =
+        nota1T !== null && nota2T !== null && nota3T !== null
+            ? Math.round((nota1T + nota2T + nota3T) / 3)
+            : null;
+
+    const conteos = { asistio:0, atraso:0, falta:0, licencia:0, permiso:0 };
+    asistencia.forEach(r => {
+        const estado = String(r.estado || "").toLowerCase();
+        if (conteos[estado] !== undefined) conteos[estado]++;
+    });
+
+    const totalPermisos = conteos.licencia + conteos.permiso;
+
+    const filasAsistencia = asistencia.map(r => `
+        <tr>
+            <td>${escapeHTML(formatearFechaDetalleQR(r.fecha))}</td>
+            <td><span class="detalle-badge">${escapeHTML(textoEstadoDetalleQR(r.estado))}</span></td>
+            <td>${escapeHTML(r.hora || "")}</td>
+            <td>${escapeHTML(r.observacion || "")}</td>
+        </tr>
+    `).join("");
+
+    const filasActividades = actividadesTodas.map(a => {
+        const registro = calMap[String(a.id)];
+        const tieneRegistro = !!registro;
+        const nota = registro && registro.nota !== null && registro.nota !== undefined
+            ? registro.nota : "";
+        const observacion = registro?.observacion || "";
+
+        return `
+            <tr>
+                <td>${escapeHTML(String(a.trimestre ?? ""))}T</td>
+                <td>${escapeHTML(a.curso || "")}</td>
+                <td>${escapeHTML(a.categoria || "")}</td>
+                <td>${escapeHTML(a.nombre || "")}</td>
+                <td>${escapeHTML(formatearFechaDetalleQR(a.fecha))}</td>
+                <td>${tieneRegistro ? "Sí" : "—"}</td>
+                <td>${escapeHTML(nota === "" ? "" : String(nota))}</td>
+                <td>${escapeHTML(observacion)}</td>
+            </tr>
+        `;
+    }).join("");
+
+    const observaciones = [
+        ...asistencia.filter(r => r.observacion).map(r => ({
+            fecha:r.fecha, tipo:"Asistencia", texto:r.observacion
+        })),
+        ...actividadesTodas.map(a => {
+            const c = calMap[String(a.id)];
+            return c?.observacion ? {
+                fecha:a.fecha,
+                tipo:`Actividad — ${a.nombre || ""}`,
+                texto:c.observacion
+            } : null;
+        }).filter(Boolean)
+    ];
+
+    const filasObservaciones = observaciones.map(o => `
+        <tr>
+            <td>${escapeHTML(formatearFechaDetalleQR(o.fecha))}</td>
+            <td>${escapeHTML(o.tipo)}</td>
+            <td>${escapeHTML(o.texto)}</td>
+        </tr>
+    `).join("");
+
+    contenedor.innerHTML = `
+        <div class="detalle-identificacion">
+            <div class="dato"><strong>Nombre</strong>${escapeHTML(estudiante.nombre || "")}</div>
+            <div class="dato"><strong>CI</strong>${escapeHTML(estudiante.ci || "")}</div>
+            <div class="dato"><strong>Curso</strong>${escapeHTML(estudiante.curso || "")}</div>
+            <div class="dato"><strong>N° de lista</strong>${escapeHTML(estudiante.num_lista ?? "")}</div>
+            <div class="dato"><strong>Fecha de nacimiento</strong>${escapeHTML(formatearFechaDetalleQR(estudiante.fecha_nacimiento))}</div>
+            <div class="dato"><strong>1er trimestre</strong>${escapeHTML(nota1T === null ? "—" : String(nota1T))}</div>
+            <div class="dato"><strong>2do trimestre</strong>${escapeHTML(nota2T === null ? "—" : String(nota2T))}</div>
+            <div class="dato"><strong>3er trimestre</strong>${escapeHTML(nota3T === null ? "—" : String(nota3T))}</div>
+            <div class="dato"><strong>Nota final</strong>${escapeHTML(notaFinal === null ? "—" : String(notaFinal))}</div>
+        </div>
+
+        <div class="detalle-seccion">
+            <h4>🗓️ Resumen de asistencia</h4>
+            <div class="detalle-resumen-asistencia">
+                <div class="contador"><strong>${conteos.asistio}</strong>Asistencias</div>
+                <div class="contador"><strong>${conteos.atraso}</strong>Atrasos</div>
+                <div class="contador"><strong>${conteos.falta}</strong>Faltas</div>
+                <div class="contador"><strong>${totalPermisos}</strong>Permisos</div>
+                <div class="contador"><strong>${asistencia.length}</strong>Total registros</div>
+            </div>
+        </div>
+
+        <div class="detalle-seccion">
+            <h4>📅 Detalle de asistencia, atrasos, faltas y permisos</h4>
+            <div class="detalle-tabla-contenedor">
+                <table class="detalle-tabla">
+                    <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Observación</th></tr></thead>
+                    <tbody>
+                        ${filasAsistencia ||
+                          '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="detalle-seccion">
+            <h4>📝 Trabajos / actividades registrados y notas</h4>
+            <div class="detalle-tabla-contenedor">
+                <table class="detalle-tabla">
+                    <thead>
+                        <tr><th>Trim.</th><th>Curso</th><th>Categoría</th><th>Actividad</th>
+                            <th>Fecha</th><th>Registro</th><th>Nota</th><th>Observación</th></tr>
+                    </thead>
+                    <tbody>
+                        ${filasActividades ||
+                          '<tr><td colspan="8" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="detalle-seccion">
+            <h4>💬 Todas las observaciones registradas</h4>
+            <div class="detalle-tabla-contenedor">
+                <table class="detalle-tabla">
+                    <thead><tr><th>Fecha</th><th>Origen</th><th>Observación</th></tr></thead>
+                    <tbody>
+                        ${filasObservaciones ||
+                          '<tr><td colspan="3" class="detalle-vacio">No existen observaciones registradas.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function cerrarConsultaEstudianteQR(event) {
+    if (event &&
+        event.target !== document.getElementById("modalConsultaEstudianteQR")) return;
+
+    const modal = document.getElementById("modalConsultaEstudianteQR");
+    if (modal) modal.classList.add("oculto");
+
+    if (modoQRConsultaEstudiante && mantenerCamaraQR && streamQR) {
+        escaneandoQR = true;
+        procesandoQR = false;
+        requestAnimationFrame(solicitarLecturaQR);
+    } else {
+        detenerCamaraQR();
+        modoQRConsultaEstudiante = false;
+    }
+}
+
 async function cerrarEscanerQR(
     event
 ) {
@@ -12340,6 +12805,7 @@ async function cerrarEscanerQR(
 
     detenerCamaraQR();
     modoQRAsistencia = false;
+    modoQRConsultaEstudiante = false;
     estudianteQRAsistencia = null;
     procesandoQR = false;
 
