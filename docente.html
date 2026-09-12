@@ -2745,6 +2745,22 @@ table tbody tr:nth-child(10n+10) td {
 .detalle-seccion {
     border:1px solid #ddd; border-radius:10px; overflow:hidden; margin-top:12px;
 }
+/* DÍAS ESPECIALES EN EL DETALLE INDIVIDUAL POR QR/BÚSQUEDA */
+.detalle-fila-no-clases td {
+    background: #fff1f1;
+}
+.detalle-fila-no-clases td:nth-child(2) .detalle-badge {
+    background: #c62828;
+    color: white;
+}
+.detalle-fila-clase-informal td {
+    background: #fff8e1;
+}
+.detalle-fila-clase-informal td:nth-child(2) .detalle-badge {
+    background: #f9a825;
+    color: white;
+}
+
 .detalle-seccion h4 {
     margin:0; padding:9px 11px; background:#f0f2f3; color:#37474f; font-size:15px;
 }
@@ -12882,11 +12898,19 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     const estudianteId = Number(estudiante.id);
 
-    const [respuestaAsistencia, respuestaActividades, respuestaCalificaciones] =
+    const [respuestaAsistencia, respuestaTiposDia, respuestaActividades, respuestaCalificaciones] =
         await Promise.all([
             supabaseClient.from("asistencia")
                 .select("id,fecha,estado,hora,observacion")
                 .eq("estudiante_id", estudianteId)
+                .order("fecha", { ascending:false }),
+
+            // Los días especiales pertenecen al curso, no al estudiante.
+            // Se consultan aparte para mostrarlos también en la consulta
+            // individual por QR o búsqueda general.
+            supabaseClient.from("asistencia_tipos_dia")
+                .select("curso,fecha,tipo,motivo")
+                .eq("curso", estudiante.curso)
                 .order("fecha", { ascending:false }),
 
             supabaseClient.from("actividades")
@@ -12899,10 +12923,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         ]);
 
     if (respuestaAsistencia.error) throw respuestaAsistencia.error;
+    if (respuestaTiposDia.error) throw respuestaTiposDia.error;
     if (respuestaActividades.error) throw respuestaActividades.error;
     if (respuestaCalificaciones.error) throw respuestaCalificaciones.error;
 
     const asistencia = respuestaAsistencia.data || [];
+    const tiposDiasEstudiante = respuestaTiposDia.data || [];
     // IMPORTANTE: en la consulta individual (QR o búsqueda general)
     // solo se muestran actividades del curso al que pertenece ESTE estudiante.
     // Las calificaciones ya están filtradas por estudiante_id, pero las
@@ -12938,12 +12964,60 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     const totalPermisos = conteos.licencia + conteos.permiso;
 
-    const filasAsistencia = asistencia.map(r => `
-        <tr>
+    // Combinar la asistencia del estudiante con los días especiales del curso.
+    // Así también aparecen fechas sin registro de asistencia porque no se
+    // pasó clases o porque la clase fue informal.
+    const mapaDetalleAsistencia = new Map();
+
+    asistencia.forEach(r => {
+        mapaDetalleAsistencia.set(String(r.fecha), {
+            fecha: r.fecha,
+            tipo: "asistencia",
+            estado: textoEstadoDetalleQR(r.estado),
+            hora: r.hora || "",
+            observacion: r.observacion || ""
+        });
+    });
+
+    tiposDiasEstudiante.forEach(dia => {
+        const fecha = String(dia.fecha || "");
+        if (!fecha) return;
+
+        const tipo = String(dia.tipo || "").toLowerCase();
+        const esNoClases = tipo === "no_clases";
+        const esInformal = tipo === "clase_informal";
+
+        if (!esNoClases && !esInformal) return;
+
+        // El tipo de día tiene prioridad para evitar información contradictoria.
+        mapaDetalleAsistencia.set(fecha, {
+            fecha: dia.fecha,
+            tipo: esNoClases ? "no_clases" : "clase_informal",
+            estado: esNoClases
+                ? "🚫 No se pasó clases"
+                : "ℹ️ Clase informal",
+            hora: "",
+            observacion: dia.motivo || (
+                esNoClases
+                    ? "No se registró el motivo."
+                    : "No se registró el motivo o detalle."
+            )
+        });
+    });
+
+    const detalleAsistencia = Array.from(mapaDetalleAsistencia.values())
+        .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+
+    const filasAsistencia = detalleAsistencia.map(r => `
+        <tr class="${r.tipo === "no_clases"
+            ? "detalle-fila-no-clases"
+            : r.tipo === "clase_informal"
+                ? "detalle-fila-clase-informal"
+                : ""}">
             <td>${escapeHTML(formatearFechaDetalleQR(r.fecha))}</td>
-            <td><span class="detalle-badge">${escapeHTML(textoEstadoDetalleQR(r.estado))}</span></td>
-            <td>${escapeHTML(r.hora || "")}</td>
-            <td>${escapeHTML(r.observacion || "")}</td>
+            <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
+            <td>${escapeHTML(r.hora || "—")}</td>
+            <td>${escapeHTML(r.observacion || "—")}</td>
         </tr>
     `).join("");
 
@@ -13018,10 +13092,10 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <h4>📅 Detalle de asistencia, atrasos, faltas y permisos</h4>
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla">
-                    <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Observación</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Motivo / Observación</th></tr></thead>
                     <tbody>
                         ${filasAsistencia ||
-                          '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia.</td></tr>'}
+                          '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia ni días especiales registrados.</td></tr>'}
                     </tbody>
                 </table>
             </div>
