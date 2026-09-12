@@ -12903,7 +12903,14 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     if (respuestaCalificaciones.error) throw respuestaCalificaciones.error;
 
     const asistencia = respuestaAsistencia.data || [];
-    const actividadesTodas = respuestaActividades.data || [];
+    // IMPORTANTE: en la consulta individual (QR o búsqueda general)
+    // solo se muestran actividades del curso al que pertenece ESTE estudiante.
+    // Las calificaciones ya están filtradas por estudiante_id, pero las
+    // actividades deben filtrarse también por curso para no mezclar cursos.
+    const actividadesTodas = (respuestaActividades.data || []).filter(a =>
+        String(a.curso || "").trim().toLowerCase() ===
+        String(estudiante.curso || "").trim().toLowerCase()
+    );
     const calificacionesTodas = respuestaCalificaciones.data || [];
 
     const calMap = {};
