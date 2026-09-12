@@ -2968,7 +2968,7 @@ Selecciona un curso
 </div>
 
 
-<div class="filtro">
+<div class="filtro" id="filtroBusquedaGeneralEstudiante">
 
 <div class="buscar-estudiante-linea">
 
@@ -4552,6 +4552,30 @@ document.getElementById(
                 "oculto",
                 !cursoSeleccionado
             );
+        }
+
+        // La búsqueda general y el QR general solo funcionan sin curso seleccionado.
+        // Al seleccionar un curso, ambos desaparecen para evitar mezclar modos de consulta.
+        const filtroBusquedaGeneral =
+            document.getElementById("filtroBusquedaGeneralEstudiante");
+        const campoBusquedaGeneral =
+            document.getElementById("buscarGeneralEstudiante");
+        const resultadosBusquedaGeneral =
+            document.getElementById("resultadosBusquedaGeneral");
+
+        if (filtroBusquedaGeneral) {
+            filtroBusquedaGeneral.classList.toggle(
+                "oculto",
+                !!cursoSeleccionado
+            );
+        }
+
+        if (cursoSeleccionado) {
+            if (campoBusquedaGeneral) campoBusquedaGeneral.value = "";
+            if (resultadosBusquedaGeneral) {
+                resultadosBusquedaGeneral.innerHTML = "";
+                resultadosBusquedaGeneral.classList.remove("visible");
+            }
         }
 
         const campoBuscarNombre =
@@ -8995,11 +9019,20 @@ document.addEventListener(
 
         const filtroBuscarEstudianteInicial =
             document.getElementById("filtroBuscarEstudiante");
+        const filtroBusquedaGeneralInicial =
+            document.getElementById("filtroBusquedaGeneralEstudiante");
 
         if (filtroBuscarEstudianteInicial) {
             filtroBuscarEstudianteInicial.classList.toggle(
                 "oculto",
                 !cursoSeleccionado
+            );
+        }
+
+        if (filtroBusquedaGeneralInicial) {
+            filtroBusquedaGeneralInicial.classList.toggle(
+                "oculto",
+                !!cursoSeleccionado
             );
         }
 
