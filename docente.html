@@ -2789,6 +2789,33 @@ table tbody tr:nth-child(10n+10) td {
     background:#fafafa;
     white-space:nowrap;
 }
+/* Resumen de notas y promedios dentro de Información completa del estudiante */
+.detalle-notas-trimestres {
+    display:flex; flex-direction:row; align-items:stretch; justify-content:center;
+    gap:8px; margin-top:14px; margin-bottom:2px;
+}
+.detalle-nota-trimestre {
+    flex:1 1 0; min-width:0; text-align:center; border:1px solid #ddd;
+    border-radius:8px; padding:8px 5px; background:#f4f6f8;
+}
+.detalle-nota-trimestre strong {
+    display:block; font-size:12px; color:#555; margin-bottom:3px;
+}
+.detalle-nota-trimestre span {
+    display:block; font-size:19px; font-weight:bold; color:#1557a6;
+}
+.detalle-nota-trimestre.nota-baja span { color:#c62828; font-weight:bold; }
+.detalle-fila-promedio td { background:#fafafa !important; font-weight:bold; }
+.detalle-fila-promedio td.detalle-promedio-valor {
+    color:#1557a6; font-size:15px;
+}
+@media (max-width:600px) {
+    .detalle-notas-trimestres { gap:5px; }
+    .detalle-nota-trimestre { padding:7px 3px; }
+    .detalle-nota-trimestre strong { font-size:10px; }
+    .detalle-nota-trimestre span { font-size:17px; }
+}
+
 .detalle-resumen-asistencia {
     display:grid; grid-template-columns:repeat(5,minmax(80px,1fr)); gap:8px; padding:10px;
 }
@@ -13260,6 +13287,54 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             </tr>
         `;
     }).join("");
+    
+    // Promedios de las actividades por categoría (3er trimestre).
+    const limitesPromedioDetalleQR = { SER:10, SABER:45, HACER:40, AUTOEVALUACION:5 };
+    const calcularPromedioCategoriaDetalleQR = categoria => {
+        const lista = actividadesOrdenadasDetalle.filter(
+            a => String(a.categoria || "").toUpperCase() === categoria &&
+                 Number(a.trimestre) === 3
+        );
+        if (!lista.length) return null;
+        let suma = 0, maximos = 0;
+        lista.forEach(a => {
+            const r = calMap[String(a.id)];
+            if (!r || r.nota === null || r.nota === undefined ||
+                String(r.nota).trim() === "") return;
+            const n = Number(r.nota);
+            const max = Number(a.puntaje_maximo || limitesPromedioDetalleQR[categoria] || 0);
+            if (!Number.isNaN(n) && max > 0) { suma += n; maximos += max; }
+        });
+        return maximos > 0
+            ? Math.round((suma / maximos) * limitesPromedioDetalleQR[categoria])
+            : null;
+    };
+    const promediosDetalleQR = {
+        SER: calcularPromedioCategoriaDetalleQR("SER"),
+        SABER: calcularPromedioCategoriaDetalleQR("SABER"),
+        HACER: calcularPromedioCategoriaDetalleQR("HACER"),
+        AUTOEVALUACION: calcularPromedioCategoriaDetalleQR("AUTOEVALUACION")
+    };
+    const filasPromediosActividades = [
+        ["Promedio SER", promediosDetalleQR.SER],
+        ["Promedio del SABER", promediosDetalleQR.SABER],
+        ["Promedio del HACER", promediosDetalleQR.HACER],
+        ["Promedio AUTOEVALUACIÓN", promediosDetalleQR.AUTOEVALUACION]
+    ].map(([nombre, valor]) => `
+        <tr class="detalle-fila-promedio">
+            <td>${escapeHTML(nombre)}</td>
+            <td>3er trimestre</td>
+            <td class="detalle-promedio-valor">${valor === null ? "—" : String(valor)}</td>
+            <td>Promedio de las actividades</td>
+        </tr>
+    `).join("");
+    const filasActividadesConPromedios = filasActividades + filasPromediosActividades;
+
+    const claseNotaDetalleQR = valor => {
+        const n = convertirNumero(valor);
+        return n !== null && n <= 50 ? "nota-baja" : "";
+    };
+
 
     const observaciones = [
         ...asistencia.filter(r => r.observacion).map(r => ({
@@ -13293,10 +13368,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <div class="dato"><strong>Curso</strong>${escapeHTML(estudiante.curso || "")}</div>
             <div class="dato"><strong>N° de lista</strong>${escapeHTML(estudiante.num_lista ?? "")}</div>
             <div class="dato"><strong>Fecha de nacimiento</strong>${escapeHTML(formatearFechaDetalleQR(estudiante.fecha_nacimiento))}</div>
-            <div class="dato"><strong>1er trimestre</strong>${escapeHTML(nota1T === null ? "—" : String(nota1T))}</div>
-            <div class="dato"><strong>2do trimestre</strong>${escapeHTML(nota2T === null ? "—" : String(nota2T))}</div>
-            <div class="dato"><strong>3er trimestre</strong><span id="detalleNota3T">${escapeHTML(nota3T === null ? "—" : String(nota3T))}</span></div>
-            <div class="dato"><strong>Nota final</strong><span id="detalleNotaFinal">${escapeHTML(notaFinal === null ? "—" : String(notaFinal))}</span></div>
+
         </div>
 
         <div class="detalle-seccion">
@@ -13331,10 +13403,29 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                         <tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th></tr>
                     </thead>
                     <tbody>
-                        ${filasActividades ||
+                        ${filasActividadesConPromedios ||
                           '<tr><td colspan="4" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <div class="detalle-notas-trimestres">
+            <div class="detalle-nota-trimestre ${claseNotaDetalleQR(nota1T)}">
+                <strong>1er trimestre</strong>
+                <span>${escapeHTML(nota1T === null ? "—" : String(nota1T))}</span>
+            </div>
+            <div class="detalle-nota-trimestre ${claseNotaDetalleQR(nota2T)}">
+                <strong>2do trimestre</strong>
+                <span>${escapeHTML(nota2T === null ? "—" : String(nota2T))}</span>
+            </div>
+            <div id="detalleCajaNota3T" class="detalle-nota-trimestre ${claseNotaDetalleQR(nota3T)}">
+                <strong>3er trimestre</strong>
+                <span id="detalleNota3T">${escapeHTML(nota3T === null ? "—" : String(nota3T))}</span>
+            </div>
+            <div id="detalleCajaNotaFinal" class="detalle-nota-trimestre ${claseNotaDetalleQR(notaFinal)}">
+                <strong>Nota final</strong>
+                <span id="detalleNotaFinal">${escapeHTML(notaFinal === null ? "—" : String(notaFinal))}</span>
             </div>
         </div>
 
@@ -13402,8 +13493,16 @@ function actualizarCalculoDetalleEstudianteQR() {
 
     const el3T = document.getElementById("detalleNota3T");
     const elFinal = document.getElementById("detalleNotaFinal");
-    if (el3T) el3T.textContent = nota3T === null ? "—" : String(nota3T);
-    if (elFinal) elFinal.textContent = notaFinal === null ? "—" : String(notaFinal);
+    if (el3T) {
+        el3T.textContent = nota3T === null ? "—" : String(nota3T);
+        const caja3T = document.getElementById("detalleCajaNota3T");
+        if (caja3T) caja3T.classList.toggle("nota-baja", nota3T !== null && nota3T <= 50);
+    }
+    if (elFinal) {
+        elFinal.textContent = notaFinal === null ? "—" : String(notaFinal);
+        const cajaFinal = document.getElementById("detalleCajaNotaFinal");
+        if (cajaFinal) cajaFinal.classList.toggle("nota-baja", notaFinal !== null && notaFinal <= 50);
+    }
 
     // También mantiene actualizados los cálculos del panel general en memoria.
     if (detalleEstudianteQRActual && detalleEstudianteQRActual.id != null) {
