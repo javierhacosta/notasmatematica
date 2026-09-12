@@ -2739,10 +2739,8 @@ table tbody tr:nth-child(10n+10) td {
 /* Solo dos botones principales de guardado manual:
    Asistencia y Actividades. */
 #botonGuardarAsistenciaTabla,
-.fila-guardar-tabla .boton-guardar-notas,
-#botonGuardadoManualGeneral {
+.fila-guardar-tabla .boton-guardar-notas {
     display: none !important;
-
 }
 
 /* =====================================================
@@ -3973,6 +3971,19 @@ function actualizarEstadosGuardado() {
     if (actividades && cambiosPendientesActividades) {
         actividades.textContent = "⚠️ GUARDADO PENDIENTE";
         actividades.classList.add("visible");
+    }
+
+    const botonGeneral = document.getElementById("botonGuardadoManualGeneral");
+    const hayPendientes = cambiosPendientesAsistencia || cambiosPendientesActividades;
+
+    if (botonGeneral) {
+        if (!guardadoAutomatico && hayPendientes) {
+            botonGeneral.classList.remove("oculto");
+            botonGeneral.style.display = "inline-flex";
+        } else {
+            botonGeneral.classList.add("oculto");
+            botonGeneral.style.display = "none";
+        }
     }
 
     /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
@@ -9860,6 +9871,8 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
+
+        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
