@@ -12701,13 +12701,53 @@ async function guardarCalificacionQR() {
         };
 
         /*
-           QR + guardado manual: marcar la actividad DESPUÉS de registrar
-           el cambio local. Así el aviso se conserva aunque luego se
-           reconstruya la lista de actividades.
+           El guardado por QR se realiza directamente en Supabase.
+           Después de guardarlo correctamente, no debe quedar marcado
+           como "GUARDADO PENDIENTE".
+        */
+        const actividadIdGuardadaQR = String(actividadQRSeleccionada.id);
+        const estudianteIdGuardadoQR = String(estudianteQRSeleccionado.id);
+
+        const notaTablaQR = document.querySelector(
+            `.nota-input[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
+        );
+        const observacionTablaQR = document.querySelector(
+            `.observacion-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
+        );
+
+        if (notaTablaQR) {
+            notaTablaQR.value = String(nota);
+            notaTablaQR.dataset.valorInicial = String(nota);
+        }
+
+        if (observacionTablaQR) {
+            observacionTablaQR.value = observacion;
+            observacionTablaQR.dataset.valorInicial = observacion;
+        }
+
+        /*
+           La actividad solo permanece como pendiente si todavía existe
+           algún cambio manual sin guardar en otra fila de esta actividad.
         */
         if (!guardadoAutomatico) {
-            actividadesPendientes.add(String(actividadQRSeleccionada.id));
-            cambiosPendientesActividades = true;
+            const quedanCambiosActividadQR = Array.from(
+                document.querySelectorAll(
+                    `.nota-input[data-actividad="${actividadIdGuardadaQR}"], .observacion-actividad[data-actividad="${actividadIdGuardadaQR}"]`
+                )
+            ).some(input => {
+                const actual = (input.value || "").trim();
+                const inicial = (input.dataset.valorInicial || "").trim();
+                return actual !== inicial;
+            });
+
+            if (quedanCambiosActividadQR) {
+                actividadesPendientes.add(actividadIdGuardadaQR);
+            } else {
+                actividadesPendientes.delete(actividadIdGuardadaQR);
+            }
+
+            cambiosPendientesActividades = actividadesPendientes.size > 0;
+            actualizarEstadosGuardado();
         }
 
                 const nombreEstudianteQR =
