@@ -9757,23 +9757,55 @@ async function guardarActividadManual(actividadId) {
                 }
             );
 
-            const {
-                error: errorCalificaciones
-            } = await supabaseClient
-                .from("calificaciones")
-                .upsert(
-                    registrosCambios,
-                    {
-                        onConflict:
-                            "actividad_id,estudiante_id"
-                    }
-                );
+            /*
+               Guardar directamente cada cambio.
+               Primero actualizamos si ya existe el registro y, si no existe,
+               lo insertamos. Así el botón funciona aunque la tabla no tenga
+               una restricción UNIQUE sobre actividad_id + estudiante_id.
+            */
+            for (const registro of registrosCambios) {
+                const { data: existente, error: errorBusqueda } =
+                    await supabaseClient
+                        .from("calificaciones")
+                        .select("id")
+                        .eq("actividad_id", registro.actividad_id)
+                        .eq("estudiante_id", registro.estudiante_id)
+                        .maybeSingle();
 
-            if (errorCalificaciones) {
-                throw new Error(
-                    "Error al guardar calificaciones: " +
-                    errorCalificaciones.message
-                );
+                if (errorBusqueda) {
+                    throw new Error(
+                        "Error al buscar la calificación: " +
+                        errorBusqueda.message
+                    );
+                }
+
+                let resultado;
+
+                if (existente?.id != null) {
+                    resultado = await supabaseClient
+                        .from("calificaciones")
+                        .update({
+                            nota: registro.nota,
+                            observacion: registro.observacion
+                        })
+                        .eq("id", existente.id);
+                } else {
+                    resultado = await supabaseClient
+                        .from("calificaciones")
+                        .insert({
+                            actividad_id: registro.actividad_id,
+                            estudiante_id: registro.estudiante_id,
+                            nota: registro.nota,
+                            observacion: registro.observacion
+                        });
+                }
+
+                if (resultado.error) {
+                    throw new Error(
+                        "Error al guardar calificaciones: " +
+                        resultado.error.message
+                    );
+                }
             }
         }
 
