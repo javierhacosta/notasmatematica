@@ -11,7 +11,7 @@
 <title>Panel Docente</title>
 
 
-<script type="text/javascript" src="http://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=2bjWSHYN931iirzS79WW-aqRjGAUJSr8gglCk3M8Drf796hAhrBunymEakMJHTRo7IYxmV2fUAi-XW8psTFk2N5qkcynPec6PBIuwF7SVXd6vYukKLgLNW3IK8oi7Ye8" charset="UTF-8"></script><style>
+<style>
 #botonContinuarAsistenciaQR {
     width: 100%;
     min-height: 60px;
@@ -583,42 +583,11 @@ input, select {
     box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
 }
 
-.boton-bloquear-enfoque-qr {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    width: 42px;
-    height: 42px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,.58);
-    color: white;
-    font-size: 21px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 5;
-    box-shadow: 0 2px 8px rgba(0,0,0,.30);
-}
-.boton-bloquear-enfoque-qr:hover {
-    background: rgba(0,0,0,.78);
-}
-.boton-bloquear-enfoque-qr:active {
-    transform: scale(.94);
-}
-.boton-bloquear-enfoque-qr.bloqueado {
-    background: #16803c;
-}
-@media (max-width: 600px) {
-    .boton-bloquear-enfoque-qr {
-        width: 40px;
-        height: 40px;
-        right: 10px;
-        top: 10px;
-    }
-}
+.qr-esquina { position:absolute; width:34px; height:34px; border-color:#00e676; border-style:solid; border-width:0; }
+.qr-esquina-tl { left:-3px; top:-3px; border-left-width:5px; border-top-width:5px; border-radius:10px 0 0 0; }
+.qr-esquina-tr { right:-3px; top:-3px; border-right-width:5px; border-top-width:5px; border-radius:0 10px 0 0; }
+.qr-esquina-bl { left:-3px; bottom:-3px; border-left-width:5px; border-bottom-width:5px; border-radius:0 0 0 10px; }
+.qr-esquina-br { right:-3px; bottom:-3px; border-right-width:5px; border-bottom-width:5px; border-radius:0 0 10px 0; }
 
 .qr-mensaje {
     padding: 12px 16px;
@@ -3773,17 +3742,7 @@ Cancelar
                 playsinline>
             </video>
 
-            <div class="qr-marco"></div>
-
-            <button
-                type="button"
-                id="botonBloquearEnfoqueQR"
-                class="boton-bloquear-enfoque-qr"
-                onclick="alternarBloqueoEnfoqueQR()"
-                aria-label="Bloquear enfoque de la cámara"
-                title="Bloquear enfoque">
-                🔓
-            </button>
+            <div class="qr-marco"><span class="qr-esquina qr-esquina-tl"></span><span class="qr-esquina qr-esquina-tr"></span><span class="qr-esquina qr-esquina-bl"></span><span class="qr-esquina qr-esquina-br"></span></div>
 
         </div>
 
@@ -11625,6 +11584,22 @@ function crearDetectorQR() {
 }
 
 
+async function optimizarEnfoqueCamaraQR() {
+    if (!streamQR) return;
+    const track = streamQR.getVideoTracks && streamQR.getVideoTracks()[0];
+    if (!track || !track.applyConstraints) return;
+    try {
+        const c = track.getCapabilities ? track.getCapabilities() : {};
+        const a = [];
+        if (Array.isArray(c.focusMode) && c.focusMode.includes("continuous")) a.push({focusMode:"continuous"});
+        if (c.focusDistance && Number.isFinite(Number(c.focusDistance.min)) && Number.isFinite(Number(c.focusDistance.max))) {
+            const min=Number(c.focusDistance.min), max=Number(c.focusDistance.max);
+            a.push({focusDistance:min+(max-min)*0.15});
+        }
+        if (a.length) await track.applyConstraints({advanced:a});
+    } catch(e) { console.debug("Enfoque QR avanzado no disponible:",e); }
+}
+
 async function abrirEscanerQR(actividad) {
 
     modoQRAsistencia = false;
@@ -12016,115 +11991,6 @@ async function abrirEscanerAsistenciaQR() {
 }
 
 
-/* Bloqueo manual del enfoque para acelerar la lectura QR */
-let enfoqueQRBloqueado = false;
-
-async function aplicarBloqueoEnfoqueQR(bloquear) {
-    const boton = document.getElementById("botonBloquearEnfoqueQR");
-    const track = streamQR?.getVideoTracks?.()[0];
-
-    if (!track || typeof track.applyConstraints !== "function") return false;
-
-    try {
-        const capacidades =
-            typeof track.getCapabilities === "function"
-                ? track.getCapabilities()
-                : {};
-        const actuales =
-            typeof track.getSettings === "function"
-                ? track.getSettings()
-                : {};
-
-        if (bloquear) {
-            const ajuste = {};
-
-            if (
-                Array.isArray(capacidades.focusMode) &&
-                capacidades.focusMode.includes("manual")
-            ) {
-                ajuste.focusMode = "manual";
-                if (Number.isFinite(actuales.focusDistance)) {
-                    ajuste.focusDistance = actuales.focusDistance;
-                }
-            } else if (
-                Array.isArray(capacidades.focusMode) &&
-                capacidades.focusMode.includes("single-shot")
-            ) {
-                ajuste.focusMode = "single-shot";
-            } else {
-                ajuste.focusMode = "manual";
-                if (Number.isFinite(actuales.focusDistance)) {
-                    ajuste.focusDistance = actuales.focusDistance;
-                }
-            }
-
-            try {
-                await track.applyConstraints({ advanced: [ajuste] });
-            } catch (e) {
-                if (
-                    Array.isArray(capacidades.focusMode) &&
-                    capacidades.focusMode.includes("single-shot")
-                ) {
-                    await track.applyConstraints({
-                        advanced: [{ focusMode: "single-shot" }]
-                    });
-                } else {
-                    throw e;
-                }
-            }
-
-            enfoqueQRBloqueado = true;
-            if (boton) {
-                boton.classList.add("bloqueado");
-                boton.textContent = "🔒";
-                boton.title = "Enfoque bloqueado · pulsar para desbloquear";
-                boton.setAttribute(
-                    "aria-label",
-                    "Enfoque bloqueado. Pulsar para desbloquear"
-                );
-            }
-            return true;
-        }
-
-        if (
-            Array.isArray(capacidades.focusMode) &&
-            capacidades.focusMode.includes("continuous")
-        ) {
-            await track.applyConstraints({
-                advanced: [{ focusMode: "continuous" }]
-            });
-        } else {
-            await track.applyConstraints({ advanced: [{}] });
-        }
-
-        enfoqueQRBloqueado = false;
-        if (boton) {
-            boton.classList.remove("bloqueado");
-            boton.textContent = "🔓";
-            boton.title = "Bloquear enfoque";
-            boton.setAttribute(
-                "aria-label",
-                "Bloquear enfoque de la cámara"
-            );
-        }
-        return true;
-
-    } catch (error) {
-        console.warn("Esta cámara no permite bloquear el enfoque:", error);
-        enfoqueQRBloqueado = false;
-        if (boton) {
-            boton.classList.remove("bloqueado");
-            boton.textContent = "🔓";
-            boton.title = "Bloquear enfoque (no compatible)";
-        }
-        return false;
-    }
-}
-
-async function alternarBloqueoEnfoqueQR() {
-    await aplicarBloqueoEnfoqueQR(!enfoqueQRBloqueado);
-}
-
 async function iniciarCamaraQR() {
 
     const modal = document.getElementById("modalEscanerQR");
@@ -12163,6 +12029,7 @@ async function iniciarCamaraQR() {
 
         video.srcObject = streamQR;
         await video.play();
+        await optimizarEnfoqueCamaraQR();
 
         escaneandoQR = true;
         solicitarLecturaQR();
