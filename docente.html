@@ -2739,8 +2739,10 @@ table tbody tr:nth-child(10n+10) td {
 /* Solo dos botones principales de guardado manual:
    Asistencia y Actividades. */
 #botonGuardarAsistenciaTabla,
-.fila-guardar-tabla .boton-guardar-notas {
+.fila-guardar-tabla .boton-guardar-notas,
+#botonGuardadoManualGeneral {
     display: none !important;
+
 }
 
 /* =====================================================
@@ -3971,19 +3973,6 @@ function actualizarEstadosGuardado() {
     if (actividades && cambiosPendientesActividades) {
         actividades.textContent = "⚠️ GUARDADO PENDIENTE";
         actividades.classList.add("visible");
-    }
-
-    const botonGeneral = document.getElementById("botonGuardadoManualGeneral");
-    const hayPendientes = cambiosPendientesAsistencia || cambiosPendientesActividades;
-
-    if (botonGeneral) {
-        if (!guardadoAutomatico && hayPendientes) {
-            botonGeneral.classList.remove("oculto");
-            botonGeneral.style.display = "inline-flex";
-        } else {
-            botonGeneral.classList.add("oculto");
-            botonGeneral.style.display = "none";
-        }
     }
 
     /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
@@ -9488,11 +9477,6 @@ async function guardarActividadManual(actividadId) {
         `.boton-guardar-actividad-manual[data-actividad-id="${id}"]`
     );
 
-    /* Si esta actividad quedó pendiente por un cambio realizado mediante QR,
-       el guardado manual debe continuar aunque la tabla haya reconstruido
-       los valores iniciales de los campos. */
-    const pendienteQR = actividadesPendientes.has(String(id));
-
     const inputsNotas = Array.from(
         document.querySelectorAll(
             `.nota-input[data-actividad="${id}"]`
@@ -9568,7 +9552,7 @@ async function guardarActividadManual(actividadId) {
         }
     }
 
-    if (!hayCambios && !pendienteQR) {
+    if (!hayCambios) {
         actividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
         cambiosPendientesActividades =
@@ -9871,8 +9855,6 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
-
-        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
@@ -11600,7 +11582,6 @@ let tiempoUltimoQRProcesado = 0;
 const TIEMPO_ANTI_DUPLICADO_QR = 1800;
 
 let guardandoCalificacionQR = false;
-let guardandoQRAlCerrar = false;
 
 
 async function abrirEscanerQR(actividad) {
@@ -12622,27 +12603,28 @@ async function guardarCalificacionQR() {
 
     try {
 
-        if (guardadoAutomatico || guardadoManualEnCurso || guardandoQRAlCerrar) {
-            const {
-                error
-            } =
-            await supabaseClient
-            .from("calificaciones")
-            .upsert(
-                {
-                    actividad_id: actividadQRSeleccionada.id,
-                    estudiante_id: estudianteQRSeleccionado.id,
-                    nota: nota,
-                    observacion: observacion || null
-                },
-                {
-                    onConflict: "actividad_id,estudiante_id"
-                }
-            );
-
-            if (error) {
-                throw error;
+        /* Al pulsar "Guardar" en la ventana QR de actividades,
+           guardar siempre directamente en Supabase, independientemente
+           del modo de guardado seleccionado. */
+        const {
+            error
+        } =
+        await supabaseClient
+        .from("calificaciones")
+        .upsert(
+            {
+                actividad_id: actividadQRSeleccionada.id,
+                estudiante_id: estudianteQRSeleccionado.id,
+                nota: nota,
+                observacion: observacion || null
+            },
+            {
+                onConflict: "actividad_id,estudiante_id"
             }
+        );
+
+        if (error) {
+            throw error;
         }
 
         if (
@@ -12686,12 +12668,9 @@ async function guardarCalificacionQR() {
             observacion: observacion || null
         };
 
-        const huboCambioQR =
-            !anteriorHistorialQR ||
+        if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
-            String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "");
-
-        if (huboCambioQR) {
+            String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
                 operation: anteriorHistorialQR ? "UPDATE" : "INSERT",
@@ -12726,7 +12705,7 @@ async function guardarCalificacionQR() {
            el cambio local. Así el aviso se conserva aunque luego se
            reconstruya la lista de actividades.
         */
-        if (!guardadoAutomatico && huboCambioQR) {
+        if (!guardadoAutomatico) {
             actividadesPendientes.add(String(actividadQRSeleccionada.id));
             cambiosPendientesActividades = true;
         }
@@ -12744,17 +12723,9 @@ async function guardarCalificacionQR() {
 
             mostrarActividades();
 
-            // Si el guardado automático está desactivado y el QR realmente
-            // modificó la nota/observación, mostrar exactamente el mismo
-            // botón "💾 Guardar" que aparece con una modificación manual.
-            if (!guardadoAutomatico && huboCambioQR) {
-                mostrarBotonGuardarActividadManual(
-                    actividadQRSeleccionada.id
-                );
-            }
-
             // Volver a aplicar el estado pendiente después de reconstruir
-            // la lista de actividades.
+            // la lista de actividades, para que el aviso quede visible
+            // específicamente en esta actividad cuando el guardado manual está activo.
             actualizarEstadosGuardado();
 
             mostrarMensaje(
@@ -12771,14 +12742,6 @@ async function guardarCalificacionQR() {
             cerrarModalCalificacionQR();
 
             mostrarActividades();
-
-            // Si el guardado automático está desactivado y el QR realmente
-            // modificó la nota/observación, mostrar el mismo botón manual.
-            if (!guardadoAutomatico && huboCambioQR) {
-                mostrarBotonGuardarActividadManual(
-                    actividadQRSeleccionada.id
-                );
-            }
 
             // Volver a aplicar el estado pendiente después de reconstruir
             // la lista de actividades.
@@ -12920,7 +12883,7 @@ async function cerrarEscanerQR(
 
 }
 
-async function cerrarModalCalificacionQR(
+function cerrarModalCalificacionQR(
     event
 ) {
 
@@ -12932,31 +12895,6 @@ async function cerrarModalCalificacionQR(
         )
     ) {
         return;
-    }
-
-    /*
-     * QR ACTIVIDADES:
-     * Al cerrar la ventana, guardar automáticamente en Supabase
-     * la calificación y observación que quedaron en el formulario.
-     */
-    if (
-        actividadQRSeleccionada &&
-        estudianteQRSeleccionado &&
-        !guardandoCalificacionQR
-    ) {
-        const notaInput = document.getElementById("notaQR");
-        const valorNota = notaInput
-            ? notaInput.value.trim()
-            : "";
-
-        if (valorNota !== "") {
-            guardandoQRAlCerrar = true;
-            try {
-                await guardarCalificacionQR();
-            } finally {
-                guardandoQRAlCerrar = false;
-            }
-        }
     }
 
     document.getElementById(
@@ -12977,10 +12915,11 @@ async function cerrarModalCalificacionQR(
 
         actividadQRSeleccionada =
         null;
-
     }
 
 }
+
+
 
 /* =====================================================
    HISTORIAL DE CAMBIOS
