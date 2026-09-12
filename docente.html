@@ -2769,7 +2769,26 @@ table tbody tr:nth-child(10n+10) td {
 .detalle-tabla th,.detalle-tabla td {
     border:1px solid #ddd; padding:7px; text-align:left; vertical-align:top;
 }
-.detalle-tabla th { background:#fafafa; white-space:nowrap; }
+/* Colores de categoría para la tabla de actividades de la búsqueda general */
+.detalle-tabla-actividades-general tr.detalle-fila-ser td {
+    background: #f3e5f5;
+}
+.detalle-tabla-actividades-general tr.detalle-fila-saber td {
+    background: #e3f2fd;
+}
+.detalle-tabla-actividades-general tr.detalle-fila-hacer td {
+    background: #fff3e0;
+}
+.detalle-tabla-actividades-general tr.detalle-fila-auto td {
+    background: #e0f7fa;
+}
+.detalle-tabla-actividades-general tr:hover td {
+    filter: brightness(.97);
+}
+.detalle-tabla-actividades-general th {
+    background:#fafafa;
+    white-space:nowrap;
+}
 .detalle-resumen-asistencia {
     display:grid; grid-template-columns:repeat(5,minmax(80px,1fr)); gap:8px; padding:10px;
 }
@@ -13054,23 +13073,36 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         </tr>
     `).join("");
 
+    /*
+     * En la consulta general del estudiante se muestran únicamente:
+     * Actividad, Fecha, Nota y Observación.
+     * La categoría se conserva visualmente mediante el color de fondo
+     * de toda la fila, sin agregar una columna adicional.
+     */
     const filasActividades = actividadesTodas.map(a => {
         const registro = calMap[String(a.id)];
-        const tieneRegistro = !!registro;
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
 
+        const categoria = String(a.categoria || "").toUpperCase();
+        const claseCategoria =
+            categoria === "SER"
+                ? "detalle-fila-ser"
+                : categoria === "SABER"
+                    ? "detalle-fila-saber"
+                    : categoria === "HACER"
+                        ? "detalle-fila-hacer"
+                        : categoria === "AUTOEVALUACION" || categoria === "AUTOEVALUACIÓN"
+                            ? "detalle-fila-auto"
+                            : "";
+
         return `
-            <tr>
-                <td>${escapeHTML(String(a.trimestre ?? ""))}T</td>
-                <td>${escapeHTML(a.curso || "")}</td>
-                <td>${escapeHTML(a.categoria || "")}</td>
+            <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}">
                 <td>${escapeHTML(a.nombre || "")}</td>
                 <td>${escapeHTML(formatearFechaDetalleQR(a.fecha))}</td>
-                <td>${tieneRegistro ? "Sí" : "—"}</td>
                 <td>${escapeHTML(nota === "" ? "" : String(nota))}</td>
-                <td>${escapeHTML(observacion)}</td>
+                <td>${escapeHTML(observacion || "—")}</td>
             </tr>
         `;
     }).join("");
@@ -13137,14 +13169,13 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         <div class="detalle-seccion">
             <h4>📝 Trabajos / actividades registrados y notas</h4>
             <div class="detalle-tabla-contenedor">
-                <table class="detalle-tabla">
+                <table class="detalle-tabla detalle-tabla-actividades-general">
                     <thead>
-                        <tr><th>Trim.</th><th>Curso</th><th>Categoría</th><th>Actividad</th>
-                            <th>Fecha</th><th>Registro</th><th>Nota</th><th>Observación</th></tr>
+                        <tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th></tr>
                     </thead>
                     <tbody>
                         ${filasActividades ||
-                          '<tr><td colspan="8" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
+                          '<tr><td colspan="4" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
                     </tbody>
                 </table>
             </div>
