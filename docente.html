@@ -583,6 +583,12 @@ input, select {
     box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
 }
 
+.qr-esquina { position:absolute; width:34px; height:34px; border-color:#00e676; border-style:solid; border-width:0; }
+.qr-esquina-tl { left:-3px; top:-3px; border-left-width:5px; border-top-width:5px; border-radius:10px 0 0 0; }
+.qr-esquina-tr { right:-3px; top:-3px; border-right-width:5px; border-top-width:5px; border-radius:0 10px 0 0; }
+.qr-esquina-bl { left:-3px; bottom:-3px; border-left-width:5px; border-bottom-width:5px; border-radius:0 0 0 10px; }
+.qr-esquina-br { right:-3px; bottom:-3px; border-right-width:5px; border-bottom-width:5px; border-radius:0 0 10px 0; }
+
 .qr-mensaje {
     padding: 12px 16px;
     text-align: center;
@@ -3736,7 +3742,7 @@ Cancelar
                 playsinline>
             </video>
 
-            <div class="qr-marco"></div>
+            <div class="qr-marco"><span class="qr-esquina qr-esquina-tl"></span><span class="qr-esquina qr-esquina-tr"></span><span class="qr-esquina qr-esquina-bl"></span><span class="qr-esquina qr-esquina-br"></span></div>
 
         </div>
 
@@ -11578,6 +11584,22 @@ function crearDetectorQR() {
 }
 
 
+async function optimizarEnfoqueCamaraQR() {
+    if (!streamQR) return;
+    const track = streamQR.getVideoTracks && streamQR.getVideoTracks()[0];
+    if (!track || !track.applyConstraints) return;
+    try {
+        const c = track.getCapabilities ? track.getCapabilities() : {};
+        const a = [];
+        if (Array.isArray(c.focusMode) && c.focusMode.includes("continuous")) a.push({focusMode:"continuous"});
+        if (c.focusDistance && Number.isFinite(Number(c.focusDistance.min)) && Number.isFinite(Number(c.focusDistance.max))) {
+            const min=Number(c.focusDistance.min), max=Number(c.focusDistance.max);
+            a.push({focusDistance:min+(max-min)*0.15});
+        }
+        if (a.length) await track.applyConstraints({advanced:a});
+    } catch(e) { console.debug("Enfoque QR avanzado no disponible:",e); }
+}
+
 async function abrirEscanerQR(actividad) {
 
     modoQRAsistencia = false;
@@ -12007,6 +12029,7 @@ async function iniciarCamaraQR() {
 
         video.srcObject = streamQR;
         await video.play();
+        await optimizarEnfoqueCamaraQR();
 
         escaneandoQR = true;
         solicitarLecturaQR();
