@@ -4044,6 +4044,7 @@ Cancelar
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
+
 <script>
 
 /* =====================================================
@@ -11543,6 +11544,39 @@ const TIEMPO_ANTI_DUPLICADO_QR = 1800;
 
 let guardandoCalificacionQR = false;
 
+// Detector QR compatible con celular y PC. En PC usa la cámara web sin exigir facingMode.
+let canvasQR = null;
+let contextoCanvasQR = null;
+
+function crearDetectorQR() {
+    if ("BarcodeDetector" in window) {
+        return new BarcodeDetector({ formats: ["qr_code"] });
+    }
+
+    if (typeof jsQR === "function") {
+        if (!canvasQR) {
+            canvasQR = document.createElement("canvas");
+            contextoCanvasQR = canvasQR.getContext("2d", { willReadFrequently: true });
+        }
+
+        return {
+            async detect(video) {
+                if (!video.videoWidth || !video.videoHeight) return [];
+                canvasQR.width = video.videoWidth;
+                canvasQR.height = video.videoHeight;
+                contextoCanvasQR.drawImage(video, 0, 0, canvasQR.width, canvasQR.height);
+                const imagen = contextoCanvasQR.getImageData(0, 0, canvasQR.width, canvasQR.height);
+                const resultado = jsQR(imagen.data, imagen.width, imagen.height, {
+                    inversionAttempts: "attemptBoth"
+                });
+                return resultado ? [{ rawValue: resultado.data }] : [];
+            }
+        };
+    }
+
+    return null;
+}
+
 
 async function abrirEscanerQR(actividad) {
 
@@ -11578,7 +11612,13 @@ async function abrirEscanerQR(actividad) {
     mensaje.textContent =
     "Apunta la cámara al código QR del estudiante.";
 
-if (
+    if (!("BarcodeDetector" in window) && typeof jsQR !== "function") {
+        mensaje.textContent =
+        "⚠️ Este navegador no permite escanear QR con la cámara.";
+        return;
+    }
+
+    if (
         !navigator.mediaDevices ||
         !navigator.mediaDevices.getUserMedia
     ) {
@@ -11593,17 +11633,14 @@ if (
     try {
 
         detectorQR =
-        new BarcodeDetector({
-            formats: ["qr_code"]
-        });
+        crearDetectorQR();
 
+        const esPC = !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
         streamQR =
         await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: {
-                    ideal: "environment"
-                }
-            },
+            video: esPC
+                ? { width: { ideal: 1280 }, height: { ideal: 720 } }
+                : { facingMode: { ideal: "environment" } },
             audio: false
         });
 
@@ -11632,7 +11669,10 @@ if (
 
 async function solicitarLecturaQR() {
 
-    if (!escaneandoQR) {
+    if (
+        !escaneandoQR ||
+        !detectorQR
+    ) {
         return;
     }
 
@@ -11641,112 +11681,33 @@ async function solicitarLecturaQR() {
         "videoQR"
     );
 
-    if (!video) {
-        return;
-    }
-
     if (
         video.readyState <
         HTMLMediaElement.HAVE_CURRENT_DATA
     ) {
+
         requestAnimationFrame(
             solicitarLecturaQR
         );
+
         return;
+
     }
 
     try {
 
-        let textoQR = "";
+        const codigos =
+        await detectorQR.detect(
+            video
+        );
 
-        /*
-         * En navegadores que tienen BarcodeDetector se mantiene
-         * el método original.
-         */
-        if (detectorQR) {
-
-            const codigos =
-            await detectorQR.detect(
-                video
-            );
-
-            if (
-                codigos &&
-                codigos.length > 0
-            ) {
-                textoQR =
-                codigos[0].rawValue || "";
-            }
-
-        }
-
-        /*
-         * En PC y navegadores que no tienen BarcodeDetector,
-         * usamos jsQR sobre un fotograma de la cámara web.
-         */
-        else if (
-            typeof jsQR === "function" &&
-            video.videoWidth > 0 &&
-            video.videoHeight > 0
+        if (
+            codigos &&
+            codigos.length > 0
         ) {
 
-            if (!window.canvasQR) {
-                window.canvasQR =
-                document.createElement("canvas");
-
-                window.contextoCanvasQR =
-                window.canvasQR.getContext(
-                    "2d",
-                    { willReadFrequently: true }
-                );
-            }
-
-            const canvas =
-            window.canvasQR;
-
-            const contexto =
-            window.contextoCanvasQR;
-
-            canvas.width =
-            video.videoWidth;
-
-            canvas.height =
-            video.videoHeight;
-
-            contexto.drawImage(
-                video,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-            const imagen =
-            contexto.getImageData(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-
-            const codigo =
-            jsQR(
-                imagen.data,
-                imagen.width,
-                imagen.height,
-                {
-                    inversionAttempts:
-                    "attemptBoth"
-                }
-            );
-
-            if (codigo) {
-                textoQR =
-                codigo.data || "";
-            }
-        }
-
-        if (textoQR) {
+            const textoQR =
+            codigos[0].rawValue || "";
 
             const ci =
             extraerCIDesdeQR(
@@ -11765,6 +11726,7 @@ async function solicitarLecturaQR() {
                 );
 
                 return;
+
             }
 
             /*
@@ -11827,9 +11789,11 @@ async function solicitarLecturaQR() {
             );
 
             return;
+
         }
 
     }
+
     catch(error) {
 
         console.error(
@@ -11839,13 +11803,12 @@ async function solicitarLecturaQR() {
 
     }
 
-    if (escaneandoQR) {
-        requestAnimationFrame(
-            solicitarLecturaQR
-        );
-    }
+    requestAnimationFrame(
+        solicitarLecturaQR
+    );
 
 }
+
 
 function extraerCIDesdeQR(
     texto
@@ -12014,113 +11977,47 @@ async function iniciarCamaraQR() {
 
     if (modal) modal.classList.remove("oculto");
 
+    if (!("BarcodeDetector" in window) && typeof jsQR !== "function") {
+        mensaje.textContent =
+        "⚠️ Este navegador no permite escanear QR con la cámara.";
+        return;
+    }
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         mensaje.textContent =
-        "⚠️ Este navegador no permite acceder a la cámara. Abre la página mediante HTTPS y permite el uso de la cámara.";
+        "⚠️ Este dispositivo no permite acceder a la cámara desde el navegador.";
         return;
     }
 
     try {
+        detectorQR = crearDetectorQR();
 
-        /*
-         * Preferimos BarcodeDetector cuando está disponible.
-         * Si no está disponible (por ejemplo, algunos navegadores
-         * de PC), usamos jsQR como alternativa.
-         */
-        if ("BarcodeDetector" in window) {
-            detectorQR =
-            new BarcodeDetector({
-                formats: ["qr_code"]
-            });
-        } else if (typeof jsQR === "function") {
-            detectorQR = null;
-        } else {
-            mensaje.textContent =
-            "⚠️ No se pudo cargar el lector QR. Verifica tu conexión a Internet.";
-            return;
-        }
-
-        /*
-         * En celular se intenta usar la cámara trasera.
-         * En PC se solicita la cámara web sin forzar facingMode,
-         * para que el navegador pueda seleccionar la webcam.
-         */
-        const esDispositivoMovil =
-        /Android|iPhone|iPad|iPod|Windows Phone/i.test(
-            navigator.userAgent
-        );
-
-        const restriccionesVideo =
-        esDispositivoMovil
-        ? {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
-        : {
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        };
-
-        streamQR =
-        await navigator.mediaDevices.getUserMedia({
-            video: restriccionesVideo,
+        const esPC = !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+        streamQR = await navigator.mediaDevices.getUserMedia({
+            video: esPC
+                ? { width: { ideal: 1280 }, height: { ideal: 720 } }
+                : {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    focusMode: { ideal: "continuous" }
+                  },
             audio: false
         });
 
-        video.srcObject =
-        streamQR;
-
+        video.srcObject = streamQR;
         await video.play();
 
         escaneandoQR = true;
-
         solicitarLecturaQR();
 
-    }
-    catch (error) {
-
+    } catch (error) {
         console.error(error);
-
-        /*
-         * Algunos equipos de PC rechazan las restricciones de
-         * resolución. Como respaldo, solicitamos simplemente una
-         * cámara disponible.
-         */
-        try {
-
-            if (!streamQR) {
-
-                streamQR =
-                await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false
-                });
-
-                video.srcObject =
-                streamQR;
-
-                await video.play();
-
-                escaneandoQR = true;
-
-                solicitarLecturaQR();
-
-                return;
-            }
-
-        } catch (errorSecundario) {
-
-            console.error(
-                "Error de cámara de respaldo:",
-                errorSecundario
-            );
-        }
-
         mensaje.textContent =
-        "⚠️ No se pudo abrir la cámara web. Verifica el permiso de cámara del navegador y que exista una cámara disponible.";
+        "⚠️ No se pudo abrir la cámara. Verifica el permiso de cámara del navegador.";
     }
 }
+
 
 async function prepararAsistenciaQR(ci) {
 
@@ -12944,25 +12841,44 @@ async function abrirEscanerConsultaEstudianteQR() {
             "📷 Escanea el QR del estudiante. No es necesario seleccionar un curso.";
     }
 
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (!("BarcodeDetector" in window)) {
+        if (mensaje) mensaje.textContent =
+            "⚠️ Este navegador no admite el escáner QR integrado. Usa Chrome actualizado en Android.";
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         if (mensaje) mensaje.textContent =
             "⚠️ Este dispositivo no permite acceder a la cámara desde el navegador.";
         return;
     }
 
     try {
-        await iniciarCamaraQR();
+        detectorQR = crearDetectorQR();
+        const video = document.getElementById("videoQR");
 
-        if (escaneandoQR && mensaje) {
-            mensaje.textContent =
-                "📷 Escanea el QR del estudiante. No es necesario seleccionar un curso.";
+        if (!streamQR) {
+            streamQR = await navigator.mediaDevices.getUserMedia({
+                video: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+                    ? { facingMode: { ideal: "environment" } }
+                    : {},
+                audio: false
+            });
         }
 
+        if (video) {
+            video.srcObject = streamQR;
+            await video.play();
+        }
+
+        escaneandoQR = true;
+        solicitarLecturaQR();
     } catch (error) {
         console.error("Error al abrir consulta QR:", error);
         if (mensaje) mensaje.textContent =
             "⚠️ No se pudo abrir la cámara. Verifica el permiso de cámara del navegador.";
     }
+}
 
 async function prepararConsultaEstudianteQR(ci) {
     try {
