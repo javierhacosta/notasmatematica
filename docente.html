@@ -3975,23 +3975,30 @@ function actualizarEstadosGuardado() {
         actividades.classList.add("visible");
     }
 
-    /* Mostrar el aviso y el botón únicamente en las actividades que tienen cambios pendientes. */
+    /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
     document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
         const actividadId = String(el.dataset.actividadId || "");
         if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
             el.textContent = "⚠️ GUARDADO PENDIENTE";
             el.classList.add("visible");
+
+            // Mostrar también el botón de guardado de la actividad cuando
+            // el cambio pendiente proviene del escáner QR.
+            const botonGuardar = document.querySelector(
+                `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
+            );
+            if (botonGuardar) {
+                botonGuardar.classList.add("visible");
+            }
         } else {
             el.classList.remove("visible");
-        }
-    });
 
-    document.querySelectorAll(".boton-guardar-actividad-manual").forEach(boton => {
-        const actividadId = String(boton.dataset.actividadId || "");
-        if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
-            boton.classList.add("visible");
-        } else {
-            boton.classList.remove("visible");
+            const botonGuardar = document.querySelector(
+                `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
+            );
+            if (botonGuardar) {
+                botonGuardar.classList.remove("visible");
+            }
         }
     });
 }
@@ -9757,55 +9764,23 @@ async function guardarActividadManual(actividadId) {
                 }
             );
 
-            /*
-               Guardar directamente cada cambio.
-               Primero actualizamos si ya existe el registro y, si no existe,
-               lo insertamos. Así el botón funciona aunque la tabla no tenga
-               una restricción UNIQUE sobre actividad_id + estudiante_id.
-            */
-            for (const registro of registrosCambios) {
-                const { data: existente, error: errorBusqueda } =
-                    await supabaseClient
-                        .from("calificaciones")
-                        .select("id")
-                        .eq("actividad_id", registro.actividad_id)
-                        .eq("estudiante_id", registro.estudiante_id)
-                        .maybeSingle();
+            const {
+                error: errorCalificaciones
+            } = await supabaseClient
+                .from("calificaciones")
+                .upsert(
+                    registrosCambios,
+                    {
+                        onConflict:
+                            "actividad_id,estudiante_id"
+                    }
+                );
 
-                if (errorBusqueda) {
-                    throw new Error(
-                        "Error al buscar la calificación: " +
-                        errorBusqueda.message
-                    );
-                }
-
-                let resultado;
-
-                if (existente?.id != null) {
-                    resultado = await supabaseClient
-                        .from("calificaciones")
-                        .update({
-                            nota: registro.nota,
-                            observacion: registro.observacion
-                        })
-                        .eq("id", existente.id);
-                } else {
-                    resultado = await supabaseClient
-                        .from("calificaciones")
-                        .insert({
-                            actividad_id: registro.actividad_id,
-                            estudiante_id: registro.estudiante_id,
-                            nota: registro.nota,
-                            observacion: registro.observacion
-                        });
-                }
-
-                if (resultado.error) {
-                    throw new Error(
-                        "Error al guardar calificaciones: " +
-                        resultado.error.message
-                    );
-                }
+            if (errorCalificaciones) {
+                throw new Error(
+                    "Error al guardar calificaciones: " +
+                    errorCalificaciones.message
+                );
             }
         }
 
@@ -12741,29 +12716,13 @@ async function guardarCalificacionQR() {
         };
 
         /*
-           QR + guardado manual: dejar pendiente SOLO si el QR produjo
-           realmente un cambio respecto al valor que estaba guardado
-           localmente. El botón de Guardar se mostrará al reconstruir
-           la actividad y permanecerá oculto si no hay cambios pendientes.
+           QR + guardado manual: marcar la actividad DESPUÉS de registrar
+           el cambio local. Así el aviso se conserva aunque luego se
+           reconstruya la lista de actividades.
         */
         if (!guardadoAutomatico) {
-            const notaAnteriorQR =
-                registroAnterior && typeof registroAnterior === "object"
-                ? registroAnterior.nota ?? null
-                : registroAnterior ?? null;
-
-            const huboCambioQR =
-                String(notaAnteriorQR ?? "") !== String(nota ?? "") ||
-                String(observacionAnterior ?? "") !== String(observacion ?? "");
-
-            if (huboCambioQR) {
-                actividadesPendientes.add(String(actividadQRSeleccionada.id));
-            } else {
-                actividadesPendientes.delete(String(actividadQRSeleccionada.id));
-            }
-
-            cambiosPendientesActividades =
-                actividadesPendientes.size > 0;
+            actividadesPendientes.add(String(actividadQRSeleccionada.id));
+            cambiosPendientesActividades = true;
         }
 
                 const nombreEstudianteQR =
