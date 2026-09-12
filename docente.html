@@ -1183,26 +1183,6 @@ td:first-child {
     gap: 7px;
 }
 
-.lista-fechas-asistencia {
-    width: 145px;
-    padding: 7px 8px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    background: white;
-    color: #222;
-    cursor: pointer;
-}
-
-/* =====================================================
-   CALENDARIO DE FECHAS GUARDADAS DE ASISTENCIA
-   Sustituye visualmente el listado sin modificar su lógica.
-===================================================== */
-
-.lista-fechas-asistencia {
-    display: none !important;
-}
-
 .calendario-fechas-asistencia {
     width: 250px;
     background: white;
@@ -2602,10 +2582,9 @@ td,
         overflow-x: hidden;
     }
 
-    h1, h2, h3 { line-height: 1.2; }
+    h1, h3 { line-height: 1.2; }
     h1 { font-size: 1.45rem; }
-    h2 { font-size: 1.2rem; }
-    h3 { font-size: 1.05rem; }
+h3 { font-size: 1.05rem; }
 
     button, input, select, textarea {
         font-size: 16px;
@@ -2619,19 +2598,16 @@ td,
     }
 
     /* Tarjetas y bloques */
-    .card, .tarjeta, .panel, .seccion, .bloque,
-    .formulario, .filtros, .resultado, .modal-contenido {
+    .panel, .filtros {
         border-radius: 14px;
     }
 
     /* Filtros */
-    .filtros, .filtros-curso, .controles, .barra-controles {
+    .filtros {
         gap: 8px !important;
     }
 
-    .filtros select, .filtros input,
-    .filtros-curso select, .controles select,
-    .controles input {
+    .filtros select, .filtros input {
         width: 100%;
         max-width: 100%;
     }
@@ -2662,56 +2638,40 @@ td,
     }
 
     /* Actividades */
-    .actividad, .actividad-item, .tarjeta-actividad,
-    .actividad-card {
+    .actividad {
         width: 100%;
         margin-bottom: 10px;
     }
 
-    .actividad input, .actividad select,
-    .actividad textarea, .actividad-item input,
-    .actividad-item select, .actividad-item textarea {
+    .actividad input, .actividad select, .actividad textarea {
         max-width: 100%;
     }
 
     /* Botones cómodos para tocar */
-    .boton, .btn, button {
+    button {
         min-height: 42px;
         border-radius: 10px;
     }
 
     /* Modales */
-    .modal, .modal-overlay {
+    .modal-fondo {
         padding: 10px !important;
     }
 
-    .modal-contenido, .modal-content {
-        width: min(100%, 480px) !important;
-        max-width: 100% !important;
-        max-height: 90vh;
-        overflow-y: auto;
-        margin: auto;
-        padding: 16px !important;
-    }
-
-    /* Cámara QR */
-    #lectorQR, #reader, #qr-reader,
+/* Cámara QR */
     video {
         max-width: 100%;
         border-radius: 12px;
     }
 
     /* Evita que filas de botones se salgan de la pantalla */
-    .acciones, .acciones-botones, .botones,
-    .botones-acciones, .grupo-botones {
+    .botones {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
     }
 
-    .acciones button, .acciones-botones button,
-    .botones button, .botones-acciones button,
-    .grupo-botones button {
+    .botones button {
         flex: 1 1 auto;
     }
 }
@@ -2719,7 +2679,6 @@ td,
 @media (max-width: 380px) {
     body { padding: 7px; }
     th, td { padding: 7px 5px; }
-    .modal-contenido, .modal-content { padding: 12px !important; }
 }
 
 /* =====================================================
@@ -2739,8 +2698,7 @@ table tbody tr:nth-child(10n+10) td {
 /* Solo dos botones principales de guardado manual:
    Asistencia y Actividades. */
 #botonGuardarAsistenciaTabla,
-.fila-guardar-tabla .boton-guardar-notas,
-#botonGuardadoManualGeneral {
+.fila-guardar-tabla .boton-guardar-notas {
     display: none !important;
 
 }
@@ -3241,23 +3199,6 @@ Selecciona un curso
 <span id="estadoGuardadoActividades" class="estado-guardado-pendiente">
     ⚠️ GUARDADO PENDIENTE
 </span>
-
-
-<button
-    id="botonGuardadoManualGeneral"
-    class="guardar boton-guardado-manual-general oculto"
-    onclick="guardarTodoManual()">
-
-💾 Guardar cambios
-
-<span
-    id="progresoGuardadoManualGeneral"
-    class="progreso-guardar">
-</span>
-
-</button>
-
-
 <button
     class="exportar"
     onclick="exportarExcel()">
@@ -3276,13 +3217,6 @@ Selecciona un curso
 </button>
 
 </div>
-
-
-<div
-    id="mensaje"
-    class="mensaje">
-</div>
-
 </div>
 
 </div>
@@ -3850,7 +3784,6 @@ window.supabase.createClient(
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
 ===================================================== */
 let guardadoAutomatico = false;
-localStorage.setItem("panel_guardado_automatico", "false");
 let guardadoManualEnCurso = false;
 
 // Por defecto, los botones de respaldo permanecen ocultos.
@@ -3993,47 +3926,12 @@ function marcarAsistenciaPendiente() {
     actualizarEstadosGuardado();
 }
 
-function marcarActividadesPendientes(input = null) {
-    if (guardadoAutomatico) return;
-
-    if (input && input.dataset && input.dataset.actividad) {
-        const actividadId = String(input.dataset.actividad);
-        const notaInput = document.querySelector(
-            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
-        );
-        const observacionInput = document.querySelector(
-            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${actividadId}"]`
-        );
-
-        // En el formulario QR no existen estos inputs de la tabla.
-        // Si no se encuentran, la actividad igualmente debe quedar pendiente.
-        if (!notaInput && !observacionInput) {
-            actividadesPendientes.add(actividadId);
-        } else {
-            const notaActual = notaInput ? notaInput.value.trim() : "";
-            const notaInicial = notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
-            const observacionActual = observacionInput ? observacionInput.value.trim() : "";
-            const observacionInicial = observacionInput ? (observacionInput.dataset.valorInicial || "").trim() : "";
-
-            if (notaActual !== notaInicial || observacionActual !== observacionInicial) {
-                actividadesPendientes.add(actividadId);
-            } else {
-                actividadesPendientes.delete(actividadId);
-            }
-        }
-    }
-
-    cambiosPendientesActividades = actividadesPendientes.size > 0;
-    actualizarEstadosGuardado();
-}
-
 function actualizarInterfazGuardado() {
     /* El guardado manual permanece activo. */
     guardadoAutomatico = false;
-    localStorage.setItem("panel_guardado_automatico", "false");
-
+    
     document.querySelectorAll(
-        "#botonGuardarAsistenciaTabla, #botonGuardarNotas, #botonGuardadoManualGeneral"
+        "#botonGuardarAsistenciaTabla, #botonGuardarNotas"
     ).forEach(boton => {
         boton.classList.add("oculto");
         boton.style.display = "none";
@@ -4042,55 +3940,6 @@ function actualizarInterfazGuardado() {
     actualizarCambiosPendientesAsistencia();
     actualizarEstadosGuardado();
 }
-
-async function guardarTodoManual() {
-    if (guardadoAutomatico) return;
-
-    const boton = document.getElementById("botonGuardadoManualGeneral");
-    if (boton) {
-        boton.disabled = true;
-        boton.classList.add("guardando");
-    }
-
-    guardadoManualEnCurso = true;
-
-    try {
-        let guardadoAlgo = false;
-
-        // Guarda la asistencia pendiente, si existe.
-        const resultadoAsistencia = guardarAsistencia();
-        if (resultadoAsistencia && typeof resultadoAsistencia.then === "function") {
-            const okAsistencia = await resultadoAsistencia;
-            guardadoAlgo = guardadoAlgo || okAsistencia === true;
-        } else {
-            guardadoAlgo = guardadoAlgo || resultadoAsistencia === true;
-        }
-
-        // Guarda las actividades/notas pendientes, si existen.
-        const resultadoNotas = guardarNotas();
-        if (resultadoNotas && typeof resultadoNotas.then === "function") {
-            const okNotas = await resultadoNotas;
-            guardadoAlgo = guardadoAlgo || okNotas === true;
-        } else {
-            guardadoAlgo = guardadoAlgo || resultadoNotas === true;
-        }
-
-        if (guardadoAlgo) {
-            mostrarMensaje("✓ Cambios guardados correctamente.");
-        }
-    } catch (error) {
-        console.error("Error en el guardado manual general:", error);
-        mostrarMensaje("✕ Error al guardar los cambios: " + (error.message || error), true);
-    } finally {
-        guardadoManualEnCurso = false;
-        if (boton) {
-            boton.disabled = false;
-            boton.classList.remove("guardando");
-        }
-    }
-}
-
-
 
 /* =====================================================
    VARIABLES
@@ -5962,11 +5811,8 @@ function cerrarModalPendientesAsistencia(event) {
 }
 
 /* =====================================================
-   GUARDADO AUTOMÁTICO INDIVIDUAL DE ASISTENCIA
-   Solo envía a Supabase el estudiante que fue cambiado.
+   DETECCIÓN DE CAMBIOS DE ASISTENCIA
 ===================================================== */
-
-const guardadosAsistenciaIndividual = new Map();
 
 async function guardarAsistenciaIndividual(control) {
     /* La asistencia manual NO se guarda automáticamente.
@@ -8743,8 +8589,7 @@ async function cargarInformeGeneral() {
     agregarEncabezadosActividades(auto, "categoria-auto");
     encabezado1 += `<th class="nota-trimestre-general">Nota 1T</th><th class="nota-trimestre-general">Nota 2T</th><th class="nota-trimestre-general">Nota 3T</th><th class="nota-final-general">Nota Final</th><th class="visitas-general">Visitas a la página</th></tr>`;
 
-    let encabezado2 = "";
-
+    
     let cuerpo = "";
     estudiantesCurso.forEach(estudiante => {
         const totales = {asistio:0, atraso:0, licencia:0, falta:0};
@@ -8810,18 +8655,6 @@ async function() {
 /* =====================================================
    INTEGRACIÓN CON CAMBIO DE CURSO
 ===================================================== */
-
-const actualizarInformeDespuesDeCurso =
-async function() {
-
-    if (!cursoSeleccionado) {
-        return;
-    }
-
-    mostrarPanelInforme();
-
-};
-
 
 /* =====================================================
    ACTUALIZAR INFORME CON LA BÚSQUEDA GENERAL
@@ -9089,11 +8922,8 @@ function aplicarBusqueda() {
 
 
 /* =====================================================
-   GUARDADO AUTOMÁTICO INDIVIDUAL DE ACTIVIDADES
-   Solo guarda la actividad y el estudiante modificados.
+   DETECCIÓN DE CAMBIOS EN ACTIVIDADES
 ===================================================== */
-
-const guardadosActividadIndividual = new Map();
 
 /*
    GUARDADO AUTOMÁTICO SOLO CUANDO REALMENTE CAMBIA UNA NOTA
@@ -9106,44 +8936,10 @@ const guardadosActividadIndividual = new Map();
    - Si el valor vuelve a ser el último valor guardado, no se envía nada.
 */
 const valoresActividadGuardados = new Map();
-const temporizadoresActividad = new Map();
-
 function obtenerClaveActividadInput(input) {
     if (!input) return "";
     return String(input.dataset.estudiante || "") + "|" +
            String(input.dataset.actividad || "");
-}
-
-function obtenerValoresActividadActual(input) {
-    if (!input) return null;
-
-    const estudianteId = Number(input.dataset.estudiante);
-    const actividadId = Number(input.dataset.actividad);
-
-    if (!estudianteId || !actividadId) return null;
-
-    const notaInput = document.querySelector(
-        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-    );
-
-    const observacionInput = document.querySelector(
-        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-    );
-
-    return {
-        nota: notaInput ? notaInput.value.trim() : "",
-        observacion: observacionInput ? observacionInput.value.trim() : ""
-    };
-}
-
-function obtenerFirmaActividad(input) {
-    const valores = obtenerValoresActividadActual(input);
-    if (!valores) return "";
-
-    return JSON.stringify({
-        nota: valores.nota,
-        observacion: valores.observacion
-    });
 }
 
 function programarGuardadoCambioActividad(input) {
@@ -9238,221 +9034,6 @@ function actualizarBotonGuardarActividadManual(actividadId) {
 
     boton.classList.remove("visible");
 }
-
-async function guardarCambioActividadIndividual(input, firmaEsperada = null) {
-
-    if (!guardadoAutomatico && !guardadoManualEnCurso) return;
-    if (!input) return;
-
-    const estudianteId = Number(input.dataset.estudiante);
-    const actividadId = Number(input.dataset.actividad);
-
-    if (!estudianteId || !actividadId) return;
-
-    const clave = obtenerClaveActividadInput(input);
-    const firmaActualInicial = obtenerFirmaActividad(input);
-
-    if (!firmaActualInicial) return;
-
-    /*
-       Segunda protección: si entre la escritura y el momento del
-       guardado el valor volvió al último valor guardado, no hacemos
-       ninguna petición.
-    */
-    if (
-        valoresActividadGuardados.get(clave) === firmaActualInicial
-    ) {
-        return;
-    }
-
-    if (
-        firmaEsperada &&
-        firmaEsperada !== firmaActualInicial
-    ) {
-        /*
-           El usuario siguió escribiendo antes de que comenzara este
-           guardado. No guardamos una versión antigua.
-        */
-        return;
-    }
-
-    const actividad = actividades.find(
-        a => Number(a.id) === actividadId
-    );
-
-    if (!actividad) return;
-
-    const notaInput = document.querySelector(
-        `.nota-input[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-    );
-
-    const observacionInput = document.querySelector(
-        `.observacion-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividadId}"]`
-    );
-
-    let nota = null;
-
-    if (notaInput && notaInput.value.trim() !== "") {
-
-        nota = Number(notaInput.value);
-
-        const maximo = Number(
-            notaInput.dataset.maximo ||
-            actividad.puntaje_maximo ||
-            LIMITES[actividad.categoria]
-        );
-
-        if (
-            isNaN(nota) ||
-            nota < 0 ||
-            nota > maximo
-        ) {
-            alert(
-                "La calificación debe estar entre 0 y " +
-                maximo +
-                "."
-            );
-
-            notaInput.focus();
-            return;
-        }
-    }
-
-    const observacion =
-        observacionInput
-        ? observacionInput.value.trim()
-        : "";
-
-    const anterior =
-        guardadosActividadIndividual.get(clave) ||
-        Promise.resolve();
-
-    const promesa = anterior
-        .catch(() => {})
-        .then(async () => {
-
-            
-
-            /* Capturar el valor anterior ANTES de actualizarlo.
-               Esto permite que el historial de actividades también pueda
-               mostrar y restaurar correctamente el cambio. */
-            const registroAnteriorHistorial =
-                calificaciones?.[estudianteId]?.[actividadId];
-            const anteriorHistorial =
-                registroAnteriorHistorial && typeof registroAnteriorHistorial === "object"
-                ? {
-                    actividad_id: actividadId,
-                    estudiante_id: estudianteId,
-                    nota: registroAnteriorHistorial.nota ?? null,
-                    observacion: registroAnteriorHistorial.observacion ?? null
-                }
-                : null;
-
-            const nuevoHistorial = {
-                actividad_id: actividadId,
-                estudiante_id: estudianteId,
-                nota: nota,
-                observacion: observacion || null
-            };
-
-            const { error } = await supabaseClient
-                .from("calificaciones")
-                .upsert({
-                    actividad_id: actividadId,
-                    estudiante_id: estudianteId,
-                    nota: nota,
-                    observacion: observacion || null
-                }, {
-                    onConflict: "actividad_id,estudiante_id"
-                });
-
-            if (error) throw error;
-
-            const estudianteHistorial = estudiantes.find(
-                e => Number(e.id) === Number(estudianteId)
-            );
-
-            if (!anteriorHistorial ||
-                String(anteriorHistorial.nota ?? "") !== String(nuevoHistorial.nota ?? "") ||
-                String(anteriorHistorial.observacion ?? "") !== String(nuevoHistorial.observacion ?? "")) {
-                guardarHistorialInterno({
-                    table_name: "calificaciones",
-                    operation: anteriorHistorial ? "UPDATE" : "INSERT",
-                    record_id: null,
-                    curso: cursoSeleccionado,
-                    estudiante_id: estudianteId,
-                    estudiante_nombre: estudianteHistorial?.nombre || estudianteHistorial?.nombre_completo || null,
-                    actividad_id: actividadId,
-                    actividad_nombre: actividad?.nombre || actividad?.titulo || null,
-                    categoria: actividad?.categoria || null,
-                    fecha: null,
-                    old_data: anteriorHistorial,
-                    new_data: nuevoHistorial,
-                    changed_at: new Date().toISOString()
-                });
-            }
-
-            /* Mantener la memoria local sincronizada */
-            if (!calificaciones[estudianteId]) {
-                calificaciones[estudianteId] = {};
-            }
-
-            calificaciones[estudianteId][actividadId] = {
-                nota: nota,
-                observacion: observacion
-            };
-
-            /*
-               Marcar exactamente esta combinación nota+observación como
-               guardada. Así, perder el foco, minimizar/maximizar o
-               bloquear/desbloquear no provoca otro guardado.
-            */
-            valoresActividadGuardados.set(
-                clave,
-                JSON.stringify({
-                    nota: notaInput ? notaInput.value.trim() : "",
-                    observacion: observacionInput ? observacionInput.value.trim() : ""
-                })
-            );
-
-            /*
-               Recalcular SOLO al estudiante modificado.
-               Ya no se recorren todos los estudiantes del curso.
-            */
-            await actualizarMatematicaEstudianteIndividual(estudianteId);
-
-            const estudiante = estudiantes.find(
-                e => Number(e.id) === estudianteId
-            );
-
-            mostrarMensaje(
-                "✓ Guardado" +
-                (estudiante ? ": " + estudiante.nombre : ".")
-            );
-        })
-        .catch(error => {
-
-            console.error(
-                "Error al guardar actividad individual:",
-                error
-            );
-
-            mostrarMensaje(
-                "✕ No se pudo guardar el cambio.",
-                true
-            );
-        });
-
-    guardadosActividadIndividual.set(clave, promesa);
-
-    await promesa;
-
-    if (guardadosActividadIndividual.get(clave) === promesa) {
-        guardadosActividadIndividual.delete(clave);
-    }
-}
-
-
 
 /* =====================================================
    GUARDAR CAMBIOS MANUALES DE UNA SOLA ACTIVIDAD
@@ -9897,90 +9478,6 @@ async function guardarActividadManual(actividadId) {
                 "💾 Guardar";
         }
     }
-}
-
-
-function actualizarMatematicaEstudianteIndividual(estudianteId) {
-
-    const estudiante = estudiantes.find(
-        e => Number(e.id) === Number(estudianteId)
-    );
-
-    if (!estudiante) return;
-
-    const actividadesSER = actividades.filter(
-        a => a.categoria === "SER"
-    );
-
-    const actividadesSABER = actividades.filter(
-        a => a.categoria === "SABER"
-    );
-
-    const actividadesHACER = actividades.filter(
-        a => a.categoria === "HACER"
-    );
-
-    const actividadesAUTO = actividades.filter(
-        a => a.categoria === "AUTOEVALUACION"
-    );
-
-    const puntosSER = calcularPuntosCategoria(
-        estudianteId,
-        actividadesSER,
-        LIMITES.SER
-    );
-
-    const puntosSABER = calcularPuntosCategoria(
-        estudianteId,
-        actividadesSABER,
-        LIMITES.SABER
-    );
-
-    const puntosHACER = calcularPuntosCategoria(
-        estudianteId,
-        actividadesHACER,
-        LIMITES.HACER
-    );
-
-    const puntosAUTO = calcularPuntosCategoria(
-        estudianteId,
-        actividadesAUTO,
-        LIMITES.AUTOEVALUACION
-    );
-
-    const nota3T = redondear(
-        puntosSER +
-        puntosSABER +
-        puntosHACER +
-        puntosAUTO
-    );
-
-    const nota1T = convertirNumero(estudiante.nota_1t);
-    const nota2T = convertirNumero(estudiante.nota_2t);
-
-    let notaFinal = null;
-
-    if (
-        nota1T !== null &&
-        nota2T !== null &&
-        nota3T !== null
-    ) {
-        notaFinal = redondear(
-            (nota1T + nota2T + nota3T) / 3
-        );
-    }
-
-    /*
-       NOTA 3T Y NOTA FINAL: SOLO EN EL HTML.
-       No se envían a Supabase ni se guardan en una tabla de historial externa.
-    */
-    estudiante.nota_3t = nota3T;
-    estudiante.final = notaFinal;
-
-    const celdaNota3T = document.getElementById(`nota3t-${estudiante.id}`);
-    const celdaFinal = document.getElementById(`final-${estudiante.id}`);
-    if (celdaNota3T) celdaNota3T.textContent = mostrarNota(nota3T);
-    if (celdaFinal) celdaFinal.textContent = mostrarNota(notaFinal);
 }
 
 
@@ -12650,13 +12147,6 @@ async function guardarCalificacionQR() {
         ][
             actividadQRSeleccionada.id
         ];
-
-        const observacionAnterior =
-        registroAnterior &&
-        typeof registroAnterior === "object"
-        ? registroAnterior.observacion || ""
-        : "";
-
         const anteriorHistorialQR = registroAnterior && typeof registroAnterior === "object"
         ? {
             actividad_id: actividadQRSeleccionada.id,
