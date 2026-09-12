@@ -2749,7 +2749,65 @@ table tbody tr:nth-child(10n+10) td {
 .detalle-fila-no-clases td {
     background: #fff1f1;
 }
-.detalle-fila-no-clases td:nth-child(2) .detalle-badge {
+.detalle-fila-no-clases td:nth-child(2) .detalle-acciones-edicion {
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:10px;
+    margin-top:16px;
+    padding-top:12px;
+    border-top:1px solid #ddd;
+}
+.detalle-boton-editar,
+.detalle-boton-guardar,
+.detalle-boton-cancelar {
+    border:none;
+    border-radius:8px;
+    padding:11px 17px;
+    font-size:15px;
+    font-weight:bold;
+    cursor:pointer;
+}
+.detalle-boton-editar {
+    background:#1565c0;
+    color:white;
+}
+.detalle-boton-guardar {
+    background:#16803c;
+    color:white;
+}
+.detalle-boton-guardar:disabled {
+    opacity:.55;
+    cursor:not-allowed;
+}
+.detalle-boton-cancelar {
+    background:#777;
+    color:white;
+}
+.detalle-nota-input {
+    width:78px;
+    min-width:65px;
+    padding:7px;
+    border:2px solid #ef6c00;
+    border-radius:7px;
+    text-align:center;
+    font-size:14px;
+    background:#fffde7;
+}
+.detalle-nota-input.detalle-nota-invalida {
+    border-color:#c62828;
+    background:#ffebee;
+}
+@media (max-width:600px) {
+    .detalle-acciones-edicion {
+        justify-content:stretch;
+    }
+    .detalle-acciones-edicion button {
+        flex:1;
+        min-height:42px;
+    }
+}
+.detalle-badge {
     background: #c62828;
     color: white;
 }
@@ -12996,6 +13054,10 @@ function calcularNota3TDetalleQR(actividadesLista, calificacionesMapa) {
     return hayNota ? Math.round(total) : null;
 }
 
+let detalleEstudianteQRState = null;
+let detalleEstudianteQREditando = false;
+let detalleEstudianteQRCambios = new Map();
+
 async function mostrarDetalleEstudianteQR(estudiante) {
     const modal = document.getElementById("modalConsultaEstudianteQR");
     const contenedor = document.getElementById("detalleEstudianteQR");
@@ -13014,9 +13076,6 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 .eq("estudiante_id", estudianteId)
                 .order("fecha", { ascending:false }),
 
-            // Los días especiales pertenecen al curso, no al estudiante.
-            // Se consultan aparte para mostrarlos también en la consulta
-            // individual por QR o búsqueda general.
             supabaseClient.from("asistencia_tipos_dia")
                 .select("curso,fecha,tipo,motivo")
                 .eq("curso", estudiante.curso)
@@ -13036,78 +13095,90 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     if (respuestaActividades.error) throw respuestaActividades.error;
     if (respuestaCalificaciones.error) throw respuestaCalificaciones.error;
 
-    const asistencia = respuestaAsistencia.data || [];
-    const tiposDiasEstudiante = respuestaTiposDia.data || [];
-    // IMPORTANTE: en la consulta individual (QR o búsqueda general)
-    // solo se muestran actividades del curso al que pertenece ESTE estudiante.
-    // Las calificaciones ya están filtradas por estudiante_id, pero las
-    // actividades deben filtrarse también por curso para no mezclar cursos.
     const actividadesTodas = (respuestaActividades.data || []).filter(a =>
         String(a.curso || "").trim().toLowerCase() ===
         String(estudiante.curso || "").trim().toLowerCase()
     );
-    const calificacionesTodas = respuestaCalificaciones.data || [];
 
     const calMap = {};
-    calificacionesTodas.forEach(c => {
+    (respuestaCalificaciones.data || []).forEach(c => {
         calMap[String(c.actividad_id)] = {
             nota:c.nota,
             observacion:c.observacion || ""
         };
     });
 
-    const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
-    const nota3T = calcularNota3TDetalleQR(actividades3T, calMap);
-    const nota1T = convertirNumero(estudiante.nota_1t);
-    const nota2T = convertirNumero(estudiante.nota_2t);
+    detalleEstudianteQRState = {
+        estudiante: {...estudiante},
+        asistencia: respuestaAsistencia.data || [],
+        tiposDiasEstudiante: respuestaTiposDia.data || [],
+        actividadesTodas,
+        calMap
+    };
+    detalleEstudianteQREditando = false;
+    detalleEstudianteQRCambios = new Map();
+
+    renderDetalleEstudianteQR();
+}
+
+function calcularNotasDetalleEstudianteQR() {
+    const s = detalleEstudianteQRState;
+    if (!s) return { nota3T:null, notaFinal:null };
+
+    const actividades3T = s.actividadesTodas.filter(a => Number(a.trimestre) === 3);
+    const nota3T = calcularNota3TDetalleQR(actividades3T, s.calMap);
+    const nota1T = convertirNumero(s.estudiante.nota_1t);
+    const nota2T = convertirNumero(s.estudiante.nota_2t);
     const notaFinal =
         nota1T !== null && nota2T !== null && nota3T !== null
             ? Math.round((nota1T + nota2T + nota3T) / 3)
             : null;
+
+    return { nota3T, notaFinal };
+}
+
+function renderDetalleEstudianteQR() {
+    const s = detalleEstudianteQRState;
+    const contenedor = document.getElementById("detalleEstudianteQR");
+    if (!s || !contenedor) return;
+
+    const estudiante = s.estudiante;
+    const asistencia = s.asistencia;
+    const tiposDiasEstudiante = s.tiposDiasEstudiante;
+    const actividadesTodas = s.actividadesTodas;
+    const calMap = s.calMap;
+
+    const { nota3T, notaFinal } = calcularNotasDetalleEstudianteQR();
+    const nota1T = convertirNumero(estudiante.nota_1t);
+    const nota2T = convertirNumero(estudiante.nota_2t);
 
     const conteos = { asistio:0, atraso:0, falta:0, licencia:0, permiso:0 };
     asistencia.forEach(r => {
         const estado = String(r.estado || "").toLowerCase();
         if (conteos[estado] !== undefined) conteos[estado]++;
     });
-
     const totalPermisos = conteos.licencia + conteos.permiso;
 
-    // Combinar la asistencia del estudiante con los días especiales del curso.
-    // Así también aparecen fechas sin registro de asistencia porque no se
-    // pasó clases o porque la clase fue informal.
     const mapaDetalleAsistencia = new Map();
-
     asistencia.forEach(r => {
         mapaDetalleAsistencia.set(String(r.fecha), {
-            fecha: r.fecha,
-            tipo: "asistencia",
-            estado: textoEstadoDetalleQR(r.estado),
-            hora: r.hora || "",
-            observacion: r.observacion || ""
+            fecha:r.fecha, tipo:"asistencia",
+            estado:textoEstadoDetalleQR(r.estado),
+            hora:r.hora || "", observacion:r.observacion || ""
         });
     });
-
     tiposDiasEstudiante.forEach(dia => {
         const fecha = String(dia.fecha || "");
         if (!fecha) return;
-
         const tipo = String(dia.tipo || "").toLowerCase();
-        const esNoClases = tipo === "no_clases";
-        const esInformal = tipo === "clase_informal";
-
-        if (!esNoClases && !esInformal) return;
-
-        // El tipo de día tiene prioridad para evitar información contradictoria.
+        if (tipo !== "no_clases" && tipo !== "clase_informal") return;
         mapaDetalleAsistencia.set(fecha, {
-            fecha: dia.fecha,
-            tipo: esNoClases ? "no_clases" : "clase_informal",
-            estado: esNoClases
-                ? "🚫 No se pasó clases"
-                : "ℹ️ Clase informal",
-            hora: "",
-            observacion: dia.motivo || (
-                esNoClases
+            fecha:dia.fecha,
+            tipo,
+            estado:tipo === "no_clases" ? "🚫 No se pasó clases" : "ℹ️ Clase informal",
+            hora:"",
+            observacion:dia.motivo || (
+                tipo === "no_clases"
                     ? "No se registró el motivo."
                     : "No se registró el motivo o detalle."
             )
@@ -13115,14 +13186,11 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     });
 
     const detalleAsistencia = Array.from(mapaDetalleAsistencia.values())
-        .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+        .sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)));
 
     const filasAsistencia = detalleAsistencia.map(r => `
-        <tr class="${r.tipo === "no_clases"
-            ? "detalle-fila-no-clases"
-            : r.tipo === "clase_informal"
-                ? "detalle-fila-clase-informal"
-                : ""}">
+        <tr class="${r.tipo === "no_clases" ? "detalle-fila-no-clases" :
+            r.tipo === "clase_informal" ? "detalle-fila-clase-informal" : ""}">
             <td>${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
@@ -13130,44 +13198,43 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         </tr>
     `).join("");
 
-    /*
-     * En la consulta general del estudiante se muestran únicamente:
-     * Actividad, Fecha, Nota y Observación.
-     * La categoría se conserva visualmente mediante el color de fondo
-     * de toda la fila, sin agregar una columna adicional.
-     */
-    const actividadesOrdenadasDetalle = [...actividadesTodas]
-        .sort((a, b) => {
-            const fechaA = String(a.fecha || "9999-12-31");
-            const fechaB = String(b.fecha || "9999-12-31");
-            const comparacionFecha = fechaA.localeCompare(fechaB);
-            if (comparacionFecha !== 0) return comparacionFecha;
-            return Number(a.orden || 0) - Number(b.orden || 0);
-        });
+    const actividadesOrdenadasDetalle = [...actividadesTodas].sort((a,b) => {
+        const fechaA = String(a.fecha || "9999-12-31");
+        const fechaB = String(b.fecha || "9999-12-31");
+        const cmp = fechaA.localeCompare(fechaB);
+        return cmp !== 0 ? cmp : Number(a.orden || 0) - Number(b.orden || 0);
+    });
 
     const filasActividades = actividadesOrdenadasDetalle.map(a => {
         const registro = calMap[String(a.id)];
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
-
         const categoria = String(a.categoria || "").toUpperCase();
         const claseCategoria =
-            categoria === "SER"
-                ? "detalle-fila-ser"
-                : categoria === "SABER"
-                    ? "detalle-fila-saber"
-                    : categoria === "HACER"
-                        ? "detalle-fila-hacer"
-                        : categoria === "AUTOEVALUACION" || categoria === "AUTOEVALUACIÓN"
-                            ? "detalle-fila-auto"
-                            : "";
+            categoria === "SER" ? "detalle-fila-ser" :
+            categoria === "SABER" ? "detalle-fila-saber" :
+            categoria === "HACER" ? "detalle-fila-hacer" :
+            categoria === "AUTOEVALUACION" || categoria === "AUTOEVALUACIÓN" ? "detalle-fila-auto" : "";
+
+        const valorInput = nota === "" ? "" : String(nota);
+        const maximo = Number(a.puntaje_maximo || ({SER:10,SABER:45,HACER:40,AUTOEVALUACION:5}[categoria] || 100));
 
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}">
                 <td>${escapeHTML(a.nombre || "")}</td>
                 <td>${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}</td>
-                <td>${escapeHTML(nota === "" ? "" : String(nota))}</td>
+                <td>
+                    ${detalleEstudianteQREditando
+                        ? `<input type="number" class="detalle-nota-input"
+                             data-actividad-id="${Number(a.id)}"
+                             data-maximo="${maximo}"
+                             min="0" max="${maximo}" step="any"
+                             value="${escapeHTML(valorInput)}"
+                             placeholder="—"
+                             aria-label="Nota de ${escapeHTML(a.nombre || "")}">`
+                        : escapeHTML(valorInput)}
+                </td>
                 <td>${escapeHTML(observacion || "—")}</td>
             </tr>
         `;
@@ -13180,23 +13247,20 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         ...actividadesTodas.map(a => {
             const c = calMap[String(a.id)];
             return c?.observacion ? {
-                fecha:a.fecha,
-                tipo:`Actividad — ${a.nombre || ""}`,
-                texto:c.observacion
+                fecha:a.fecha, tipo:`Actividad — ${a.nombre || ""}`, texto:c.observacion
             } : null;
         }).filter(Boolean)
     ];
 
-    const observacionesOrdenadasDetalle = [...observaciones]
-        .sort((a, b) => String(a.fecha || "9999-12-31").localeCompare(String(b.fecha || "9999-12-31")));
-
-    const filasObservaciones = observacionesOrdenadasDetalle.map(o => `
-        <tr>
-            <td>${escapeHTML(formatearFechaTablaDetalleQR(o.fecha))}</td>
-            <td>${escapeHTML(o.tipo)}</td>
-            <td>${escapeHTML(o.texto)}</td>
-        </tr>
-    `).join("");
+    const filasObservaciones = [...observaciones]
+        .sort((a,b) => String(a.fecha || "9999-12-31").localeCompare(String(b.fecha || "9999-12-31")))
+        .map(o => `
+            <tr>
+                <td>${escapeHTML(formatearFechaTablaDetalleQR(o.fecha))}</td>
+                <td>${escapeHTML(o.tipo)}</td>
+                <td>${escapeHTML(o.texto)}</td>
+            </tr>
+        `).join("");
 
     contenedor.innerHTML = `
         <div class="detalle-identificacion">
@@ -13207,8 +13271,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <div class="dato"><strong>Fecha de nacimiento</strong>${escapeHTML(formatearFechaDetalleQR(estudiante.fecha_nacimiento))}</div>
             <div class="dato"><strong>1er trimestre</strong>${escapeHTML(nota1T === null ? "—" : String(nota1T))}</div>
             <div class="dato"><strong>2do trimestre</strong>${escapeHTML(nota2T === null ? "—" : String(nota2T))}</div>
-            <div class="dato"><strong>3er trimestre</strong>${escapeHTML(nota3T === null ? "—" : String(nota3T))}</div>
-            <div class="dato"><strong>Nota final</strong>${escapeHTML(notaFinal === null ? "—" : String(notaFinal))}</div>
+            <div class="dato"><strong>3er trimestre</strong><span id="detalleNota3T">${escapeHTML(nota3T === null ? "—" : String(nota3T))}</span></div>
+            <div class="dato"><strong>Nota anual</strong><span id="detalleNotaFinal">${escapeHTML(notaFinal === null ? "—" : String(notaFinal))}</span></div>
         </div>
 
         <div class="detalle-seccion">
@@ -13227,10 +13291,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla">
                     <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Motivo / Observación</th></tr></thead>
-                    <tbody>
-                        ${filasAsistencia ||
-                          '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia ni días especiales registrados.</td></tr>'}
-                    </tbody>
+                    <tbody>${filasAsistencia || '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia ni días especiales registrados.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
@@ -13239,13 +13300,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <h4>📝 Trabajos / actividades registrados y notas</h4>
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla detalle-tabla-actividades-general">
-                    <thead>
-                        <tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th></tr>
-                    </thead>
-                    <tbody>
-                        ${filasActividades ||
-                          '<tr><td colspan="4" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
-                    </tbody>
+                    <thead><tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th></tr></thead>
+                    <tbody>${filasActividades || '<tr><td colspan="4" class="detalle-vacio">No existen actividades registradas.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
@@ -13255,14 +13311,173 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla">
                     <thead><tr><th>Fecha</th><th>Origen</th><th>Observación</th></tr></thead>
-                    <tbody>
-                        ${filasObservaciones ||
-                          '<tr><td colspan="3" class="detalle-vacio">No existen observaciones registradas.</td></tr>'}
-                    </tbody>
+                    <tbody>${filasObservaciones || '<tr><td colspan="3" class="detalle-vacio">No existen observaciones registradas.</td></tr>'}</tbody>
                 </table>
             </div>
         </div>
+
+        <div class="detalle-acciones-edicion">
+            ${detalleEstudianteQREditando
+                ? `<button type="button" class="detalle-boton-cancelar" onclick="cancelarEdicionDetalleEstudianteQR()">Cancelar</button>
+                   <button type="button" id="botonGuardarDetalleEstudianteQR" class="detalle-boton-guardar" onclick="guardarCambiosDetalleEstudianteQR()" disabled>💾 Guardar cambios</button>`
+                : `<button type="button" class="detalle-boton-editar" onclick="activarEdicionDetalleEstudianteQR()">✏️ Editar</button>`}
+        </div>
     `;
+
+    if (detalleEstudianteQREditando) {
+        document.querySelectorAll("#detalleEstudianteQR .detalle-nota-input")
+            .forEach(input => input.addEventListener("input", manejarCambioNotaDetalleEstudianteQR));
+    }
+}
+
+function activarEdicionDetalleEstudianteQR() {
+    if (!detalleEstudianteQRState) return;
+    detalleEstudianteQREditando = true;
+    detalleEstudianteQRCambios = new Map();
+    renderDetalleEstudianteQR();
+}
+
+function cancelarEdicionDetalleEstudianteQR() {
+    if (!detalleEstudianteQRState) return;
+    detalleEstudianteQREditando = false;
+    detalleEstudianteQRCambios = new Map();
+    renderDetalleEstudianteQR();
+}
+
+function manejarCambioNotaDetalleEstudianteQR(event) {
+    const input = event.target;
+    const actividadId = Number(input.dataset.actividadId);
+    const maximo = Number(input.dataset.maximo);
+    const valor = input.value.trim();
+
+    if (valor !== "" && (!Number.isFinite(Number(valor)) || Number(valor) < 0 || Number(valor) > maximo)) {
+        input.setCustomValidity(`La nota no puede ser mayor que ${maximo}.`);
+        input.reportValidity();
+        input.classList.add("detalle-nota-invalida");
+        return;
+    }
+
+    input.setCustomValidity("");
+    input.classList.remove("detalle-nota-invalida");
+
+    const registroOriginal = detalleEstudianteQRState.calMap[String(actividadId)] || {};
+    const original = registroOriginal.nota === null || registroOriginal.nota === undefined ? "" : String(registroOriginal.nota);
+    const normalizado = valor === "" ? "" : String(Number(valor));
+
+    if (normalizado === original) {
+        detalleEstudianteQRCambios.delete(actividadId);
+    } else {
+        detalleEstudianteQRCambios.set(actividadId, valor === "" ? null : Number(valor));
+    }
+
+    // El cálculo se hace inmediatamente en HTML, sin guardar todavía en la BD.
+    const boton = document.getElementById("botonGuardarDetalleEstudianteQR");
+    if (boton) boton.disabled = detalleEstudianteQRCambios.size === 0;
+
+    const { nota3T, notaFinal } = calcularNotasDetalleEstudianteQR();
+    const n3 = document.getElementById("detalleNota3T");
+    const nf = document.getElementById("detalleNotaFinal");
+    if (n3) n3.textContent = nota3T === null ? "—" : String(nota3T);
+    if (nf) nf.textContent = notaFinal === null ? "—" : String(notaFinal);
+}
+
+async function guardarCambiosDetalleEstudianteQR() {
+    const s = detalleEstudianteQRState;
+    if (!s || detalleEstudianteQRCambios.size === 0) return;
+
+    const boton = document.getElementById("botonGuardarDetalleEstudianteQR");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "⏳ Guardando...";
+    }
+
+    const registrosCambios = [];
+    const mapaAnteriores = new Map();
+
+    try {
+        for (const [actividadId, nuevaNota] of detalleEstudianteQRCambios.entries()) {
+            const actividad = s.actividadesTodas.find(a => Number(a.id) === actividadId);
+            if (!actividad) continue;
+
+            const maximo = Number(actividad.puntaje_maximo ||
+                ({SER:10,SABER:45,HACER:40,AUTOEVALUACION:5}[String(actividad.categoria || "").toUpperCase()] || 100));
+
+            if (nuevaNota !== null && (Number.isNaN(Number(nuevaNota)) || Number(nuevaNota) < 0 || Number(nuevaNota) > maximo)) {
+                throw new Error(`La nota de "${actividad.nombre || "actividad"}" debe estar entre 0 y ${maximo}.`);
+            }
+
+            const anterior = s.calMap[String(actividadId)] || null;
+            mapaAnteriores.set(`${actividadId}|${s.estudiante.id}`, anterior);
+
+            registrosCambios.push({
+                actividad_id: actividadId,
+                estudiante_id: Number(s.estudiante.id),
+                nota: nuevaNota,
+                observacion: anterior?.observacion || null
+            });
+        }
+
+        if (!registrosCambios.length) return;
+
+        const { error } = await supabaseClient
+            .from("calificaciones")
+            .upsert(registrosCambios, { onConflict:"actividad_id,estudiante_id" });
+
+        if (error) throw error;
+
+        registrosCambios.forEach(registro => {
+            s.calMap[String(registro.actividad_id)] = {
+                nota:registro.nota,
+                observacion:registro.observacion || ""
+            };
+
+            if (typeof calificaciones === "object") {
+                if (!calificaciones[registro.estudiante_id]) calificaciones[registro.estudiante_id] = {};
+                calificaciones[registro.estudiante_id][registro.actividad_id] = {
+                    nota:registro.nota,
+                    observacion:registro.observacion || ""
+                };
+            }
+
+            const actividad = s.actividadesTodas.find(a => Number(a.id) === Number(registro.actividad_id));
+            const estudianteActual = estudiantes.find(e => Number(e.id) === Number(registro.estudiante_id)) || s.estudiante;
+
+            guardarHistorialInterno({
+                table_name:"calificaciones",
+                operation:mapaAnteriores.get(`${registro.actividad_id}|${registro.estudiante_id}`) ? "UPDATE" : "INSERT",
+                record_id:null,
+                curso:s.estudiante.curso,
+                estudiante_id:registro.estudiante_id,
+                estudiante_nombre:estudianteActual?.nombre || null,
+                actividad_id:registro.actividad_id,
+                actividad_nombre:actividad?.nombre || null,
+                categoria:actividad?.categoria || null,
+                fecha:actividad?.fecha || null,
+                old_data:mapaAnteriores.get(`${registro.actividad_id}|${registro.estudiante_id}`),
+                new_data:registro,
+                changed_at:new Date().toISOString()
+            });
+        });
+
+        const estudianteGlobal = estudiantes.find(e => Number(e.id) === Number(s.estudiante.id));
+        if (estudianteGlobal) {
+            const calculadas = calcularNotasDetalleEstudianteQR();
+            estudianteGlobal.nota_3t = calculadas.nota3T;
+            estudianteGlobal.final = calculadas.notaFinal;
+        }
+
+        detalleEstudianteQRCambios = new Map();
+        detalleEstudianteQREditando = false;
+        renderDetalleEstudianteQR();
+        mostrarMensaje(`✓ ${registrosCambios.length} cambio(s) de actividad guardado(s) correctamente.`);
+    } catch (error) {
+        console.error("Error al guardar cambios del detalle del estudiante:", error);
+        mostrarMensaje("✕ No se pudieron guardar los cambios de las actividades.", true);
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "💾 Guardar cambios";
+        }
+    }
 }
 
 function cerrarConsultaEstudianteQR(event) {
