@@ -2713,6 +2713,26 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 
+
+/* =====================================================
+   PANEL DOCENTE PRO - MEJORAS VISUALES Y ACCESO RÁPIDO
+   No modifica la lógica de guardado existente.
+===================================================== */
+.panel-pro { margin: 0 0 18px; }
+.panel-pro-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.pro-card { background:#fff; border:1px solid #e1e5e9; border-radius:12px; padding:12px; min-height:78px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.pro-card .pro-icon { font-size:20px; }
+.pro-card .pro-value { display:block; font-size:22px; font-weight:800; margin-top:3px; color:#1557a6; }
+.pro-card .pro-label { color:#667085; font-size:12px; }
+.pro-tools { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.pro-tool { border:1px solid #d5dbe1; background:#fff; border-radius:9px; padding:9px 12px; cursor:pointer; font-weight:700; font-size:13px; }
+.pro-tool:hover { background:#f4f7fa; transform:translateY(-1px); }
+.pro-status { margin-top:10px; padding:9px 12px; border-radius:9px; background:#f5f7f9; color:#555; font-size:13px; }
+.pro-status.ok { background:#eaf7ee; color:#176b35; }
+.pro-status.warn { background:#fff7df; color:#795b00; }
+@media(max-width:800px){ .panel-pro-grid{grid-template-columns:repeat(3,1fr);} }
+@media(max-width:600px){ .panel-pro-grid{grid-template-columns:repeat(2,1fr); gap:7px;} .pro-card{padding:9px;min-height:70px;} .pro-card .pro-value{font-size:20px;} .pro-tools{display:grid;grid-template-columns:1fr 1fr;} .pro-tool{min-height:42px;} }
+
 </style>
 
 </head>
@@ -2767,6 +2787,25 @@ Selecciona un curso
 
 </div>
 
+<!-- =====================================================
+     RESUMEN RÁPIDO DEL CURSO
+===================================================== -->
+<div id="panelDocentePro" class="panel-pro">
+  <div class="panel-pro-grid">
+    <div class="pro-card"><span class="pro-icon">👥</span><span id="proTotalEstudiantes" class="pro-value">—</span><span class="pro-label">Estudiantes</span></div>
+    <div class="pro-card"><span class="pro-icon">📝</span><span id="proTotalActividades" class="pro-value">—</span><span class="pro-label">Actividades</span></div>
+    <div class="pro-card"><span class="pro-icon">✅</span><span id="proAsistencias" class="pro-value">—</span><span class="pro-label">Asistencias</span></div>
+    <div class="pro-card"><span class="pro-icon">⚠️</span><span id="proPendientes" class="pro-value">—</span><span class="pro-label">Pendientes</span></div>
+    <div class="pro-card"><span class="pro-icon">📊</span><span id="proPromedio" class="pro-value">—</span><span class="pro-label">Promedio visible</span></div>
+  </div>
+  <div class="pro-tools">
+    <button type="button" class="pro-tool" onclick="document.getElementById('buscarNombre')?.focus()">🔎 Buscar estudiante</button>
+    <button type="button" class="pro-tool" onclick="if(typeof mostrarPendientesAsistencia==='function') mostrarPendientesAsistencia()">⚠️ Ver pendientes</button>
+    <button type="button" class="pro-tool" onclick="document.getElementById('panelAsistencia')?.scrollIntoView({behavior:'smooth',block:'start'})">🗓️ Ir a asistencia</button>
+    <button type="button" class="pro-tool" onclick="document.getElementById('contenedorActividades')?.scrollIntoView({behavior:'smooth',block:'start'})">📝 Ir a actividades</button>
+  </div>
+  <div id="proEstado" class="pro-status">Selecciona un curso para ver el resumen.</div>
+</div>
 
 <!-- =====================================================
      ASISTENCIA
@@ -12869,6 +12908,42 @@ async function restaurarCambioHistorial(historialId) {
 ===================================================== */
 
 comprobarSesion();
+
+
+
+/* =====================================================
+   PANEL DOCENTE PRO - RESUMEN EN TIEMPO REAL
+===================================================== */
+(function(){
+  function numVisible(selector){ return document.querySelectorAll(selector).length; }
+  function actualizarPanelDocentePro(){
+    const total=document.querySelectorAll('#contenedorActividades table tbody tr, .tabla-asistencia tbody tr').length;
+    const actividades=document.querySelectorAll('#contenedorActividades .actividad').length;
+    const radios=[...document.querySelectorAll('.tabla-asistencia tbody input[type="radio"]:checked')];
+    const asist=radios.filter(x=>x.value==='asistio').length;
+    const pendientes=typeof cambiosPendientesAsistencia!=='undefined' && cambiosPendientesAsistencia ? 'Sí' : '0';
+    const notas=[...document.querySelectorAll('#contenedorActividades .nota-input:not(:disabled)')].map(x=>parseFloat(x.value)).filter(Number.isFinite);
+    const promedio=notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1) : '—';
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set('proTotalEstudiantes', total || '—');
+    set('proTotalActividades', actividades || '0');
+    set('proAsistencias', asist || '0');
+    set('proPendientes', pendientes);
+    set('proPromedio', promedio);
+    const estado=document.getElementById('proEstado');
+    const curso=document.getElementById('buscarCurso');
+    if(!curso || !curso.value){ if(estado) estado.textContent='Selecciona un curso para ver el resumen.'; return; }
+    if(estado){
+      estado.className='pro-status '+((pendientes!=='0')?'warn':'ok');
+      estado.textContent=(pendientes!=='0') ? '⚠️ Hay cambios de asistencia pendientes de revisar o guardar.' : '✅ Panel listo. Los datos visibles están sincronizados con la pantalla actual.';
+    }
+  }
+  window.actualizarPanelDocentePro=actualizarPanelDocentePro;
+  document.addEventListener('input',actualizarPanelDocentePro);
+  document.addEventListener('change',actualizarPanelDocentePro);
+  setInterval(actualizarPanelDocentePro,1800);
+  setTimeout(actualizarPanelDocentePro,700);
+})();
 
 </script>
 
