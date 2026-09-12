@@ -3975,14 +3975,28 @@ function actualizarEstadosGuardado() {
         actividades.classList.add("visible");
     }
 
-    /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
+    /* Mostrar el aviso y el botón únicamente en las actividades
+       que realmente tienen datos pendientes de guardar. */
     document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
         const actividadId = String(el.dataset.actividadId || "");
-        if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
+        const pendiente = !guardadoAutomatico &&
+                          actividadesPendientes.has(actividadId);
+
+        if (pendiente) {
             el.textContent = "⚠️ GUARDADO PENDIENTE";
             el.classList.add("visible");
         } else {
             el.classList.remove("visible");
+        }
+
+        /* El botón de Guardar debe aparecer exactamente cuando
+           la actividad está pendiente; si no hay pendientes, se oculta. */
+        const boton = document.querySelector(
+            `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
+        );
+
+        if (boton) {
+            boton.classList.toggle("visible", pendiente);
         }
     });
 }
@@ -9220,7 +9234,11 @@ function mostrarBotonGuardarActividadManual(actividadId) {
 
     if (!boton) return;
 
-    boton.classList.add("visible");
+    const pendiente =
+        !guardadoAutomatico &&
+        actividadesPendientes.has(String(actividadId));
+
+    boton.classList.toggle("visible", pendiente);
 }
 
 /* Oculta únicamente el botón de la actividad indicada. */
@@ -12700,14 +12718,37 @@ async function guardarCalificacionQR() {
         };
 
         /*
-           QR + guardado manual: marcar la actividad DESPUÉS de registrar
-           el cambio local. Así el aviso se conserva aunque luego se
-           reconstruya la lista de actividades.
+           QR + guardado manual:
+           solo marcar como pendiente si el dato realmente cambió.
+           Así el botón de Guardar aparece únicamente cuando hay algo
+           nuevo que guardar.
         */
         if (!guardadoAutomatico) {
-            actividadesPendientes.add(String(actividadQRSeleccionada.id));
-            cambiosPendientesActividades = true;
+            const notaAnterior = registroAnterior && typeof registroAnterior === "object"
+                ? (registroAnterior.nota ?? null)
+                : null;
+            const observacionAnterior = registroAnterior && typeof registroAnterior === "object"
+                ? (registroAnterior.observacion ?? "")
+                : "";
+
+            const notaNuevaNormalizada = nota ?? null;
+            const observacionNuevaNormalizada = observacion || "";
+
+            const huboCambioQR =
+                String(notaAnterior ?? "") !== String(notaNuevaNormalizada ?? "") ||
+                String(observacionAnterior ?? "") !== String(observacionNuevaNormalizada);
+
+            if (huboCambioQR) {
+                actividadesPendientes.add(String(actividadQRSeleccionada.id));
+            } else {
+                actividadesPendientes.delete(String(actividadQRSeleccionada.id));
+            }
+
+            cambiosPendientesActividades = actividadesPendientes.size > 0;
         }
+
+        /* Actualizar inmediatamente el botón de esta actividad. */
+        actualizarEstadosGuardado();
 
                 const nombreEstudianteQR =
         estudianteQRSeleccionado.nombre;
