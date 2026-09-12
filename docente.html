@@ -3975,28 +3975,14 @@ function actualizarEstadosGuardado() {
         actividades.classList.add("visible");
     }
 
-    /* Mostrar el aviso y el botón únicamente en las actividades
-       que realmente tienen datos pendientes de guardar. */
+    /* Mostrar el aviso únicamente en las actividades que tienen cambios pendientes. */
     document.querySelectorAll(".estado-guardado-actividad-nombre").forEach(el => {
         const actividadId = String(el.dataset.actividadId || "");
-        const pendiente = !guardadoAutomatico &&
-                          actividadesPendientes.has(actividadId);
-
-        if (pendiente) {
+        if (!guardadoAutomatico && actividadesPendientes.has(actividadId)) {
             el.textContent = "⚠️ GUARDADO PENDIENTE";
             el.classList.add("visible");
         } else {
             el.classList.remove("visible");
-        }
-
-        /* El botón de Guardar debe aparecer exactamente cuando
-           la actividad está pendiente; si no hay pendientes, se oculta. */
-        const boton = document.querySelector(
-            `.boton-guardar-actividad-manual[data-actividad-id="${actividadId}"]`
-        );
-
-        if (boton) {
-            boton.classList.toggle("visible", pendiente);
         }
     });
 }
@@ -5540,6 +5526,41 @@ function mostrarTablaAsistencia() {
         const observacion =
         registro.observacion || "";
 
+
+        /*
+           Si existe un valor guardado previamente para esta combinación
+           estudiante + actividad, usarlo como referencia de comparación.
+           Esto permite que un cambio hecho por QR siga siendo pendiente
+           aunque la lista de actividades se reconstruya.
+        */
+        let notaInicialActividad =
+            nota === null ? "" : String(nota);
+        let observacionInicialActividad =
+            observacion || "";
+
+        const claveActividadEstudiante =
+            String(estudiante.id) + "|" +
+            String(actividad.id);
+
+        const valorGuardadoActividad =
+            valoresActividadGuardados.get(
+                claveActividadEstudiante
+            );
+
+        if (valorGuardadoActividad) {
+            try {
+                const datosGuardados =
+                    JSON.parse(valorGuardadoActividad);
+
+                notaInicialActividad =
+                    datosGuardados.nota ?? "";
+
+                observacionInicialActividad =
+                    datosGuardados.observacion ?? "";
+            } catch (_) {
+                /* Usar el valor actual si el dato local no es válido. */
+            }
+        }
 
         const fila =
         document.createElement(
@@ -7424,9 +7445,7 @@ function crearActividadHTML(
                     data-maximo="${
                         puntajeMaximo
                     }"
-                    data-valor-inicial="${
-                        nota === null ? "" : nota
-                    }"
+                    data-valor-inicial="${escapeHTML(notaInicialActividad)}"
 
                     disabled
 
@@ -7458,7 +7477,7 @@ function crearActividadHTML(
                     }"
 
                     placeholder="-"
-                    data-valor-inicial="${escapeHTML(observacion)}"
+                    data-valor-inicial="${escapeHTML(observacionInicialActividad)}"
                     oninput="programarGuardadoCambioActividad(this)"
 
                     disabled
@@ -9234,11 +9253,7 @@ function mostrarBotonGuardarActividadManual(actividadId) {
 
     if (!boton) return;
 
-    const pendiente =
-        !guardadoAutomatico &&
-        actividadesPendientes.has(String(actividadId));
-
-    boton.classList.toggle("visible", pendiente);
+    boton.classList.add("visible");
 }
 
 /* Oculta únicamente el botón de la actividad indicada. */
@@ -12705,6 +12720,32 @@ async function guardarCalificacionQR() {
             });
         }
 
+        /*
+           QR + guardado manual:
+           conservar como valor inicial el dato que estaba guardado antes
+           del escaneo. Así, después de reconstruir la tabla, el botón
+           Guardar seguirá detectando el cambio pendiente.
+        */
+        if (!guardadoAutomatico) {
+            const claveQR =
+                String(estudianteQRSeleccionado.id) + "|" +
+                String(actividadQRSeleccionada.id);
+
+            valoresActividadGuardados.set(
+                claveQR,
+                JSON.stringify({
+                    nota:
+                        registroAnterior && typeof registroAnterior === "object"
+                        ? (registroAnterior.nota ?? "")
+                        : "",
+                    observacion:
+                        registroAnterior && typeof registroAnterior === "object"
+                        ? (registroAnterior.observacion ?? "")
+                        : ""
+                })
+            );
+        }
+
         calificaciones[
             estudianteQRSeleccionado.id
         ][
@@ -12718,37 +12759,14 @@ async function guardarCalificacionQR() {
         };
 
         /*
-           QR + guardado manual:
-           solo marcar como pendiente si el dato realmente cambió.
-           Así el botón de Guardar aparece únicamente cuando hay algo
-           nuevo que guardar.
+           QR + guardado manual: marcar la actividad DESPUÉS de registrar
+           el cambio local. Así el aviso se conserva aunque luego se
+           reconstruya la lista de actividades.
         */
         if (!guardadoAutomatico) {
-            const notaAnterior = registroAnterior && typeof registroAnterior === "object"
-                ? (registroAnterior.nota ?? null)
-                : null;
-            const observacionAnterior = registroAnterior && typeof registroAnterior === "object"
-                ? (registroAnterior.observacion ?? "")
-                : "";
-
-            const notaNuevaNormalizada = nota ?? null;
-            const observacionNuevaNormalizada = observacion || "";
-
-            const huboCambioQR =
-                String(notaAnterior ?? "") !== String(notaNuevaNormalizada ?? "") ||
-                String(observacionAnterior ?? "") !== String(observacionNuevaNormalizada);
-
-            if (huboCambioQR) {
-                actividadesPendientes.add(String(actividadQRSeleccionada.id));
-            } else {
-                actividadesPendientes.delete(String(actividadQRSeleccionada.id));
-            }
-
-            cambiosPendientesActividades = actividadesPendientes.size > 0;
+            actividadesPendientes.add(String(actividadQRSeleccionada.id));
+            cambiosPendientesActividades = true;
         }
-
-        /* Actualizar inmediatamente el botón de esta actividad. */
-        actualizarEstadosGuardado();
 
                 const nombreEstudianteQR =
         estudianteQRSeleccionado.nombre;
