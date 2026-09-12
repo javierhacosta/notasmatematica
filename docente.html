@@ -12919,7 +12919,7 @@ async function cerrarEscanerQR(
 
 }
 
-function cerrarModalCalificacionQR(
+async function cerrarModalCalificacionQR(
     event
 ) {
 
@@ -12931,6 +12931,26 @@ function cerrarModalCalificacionQR(
         )
     ) {
         return;
+    }
+
+    /*
+     * QR ACTIVIDADES:
+     * Al cerrar la ventana, guardar automáticamente en Supabase
+     * la calificación y observación que quedaron en el formulario.
+     */
+    if (
+        actividadQRSeleccionada &&
+        estudianteQRSeleccionado &&
+        !guardandoCalificacionQR
+    ) {
+        const notaInput = document.getElementById("notaQR");
+        const valorNota = notaInput
+            ? notaInput.value.trim()
+            : "";
+
+        if (valorNota !== "") {
+            await guardarCalificacionQR();
+        }
     }
 
     document.getElementById(
@@ -12951,11 +12971,10 @@ function cerrarModalCalificacionQR(
 
         actividadQRSeleccionada =
         null;
+
     }
 
 }
-
-
 
 /* =====================================================
    HISTORIAL DE CAMBIOS
