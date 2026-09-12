@@ -6203,6 +6203,11 @@ async function guardarAsistencia() {
         renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
+        // Actualizar inmediatamente la asistencia que se muestra dentro de Actividades.
+        // Antes solo se actualizaba después de recargar la página.
+        await cargarAsistenciaActividades();
+        mostrarActividades();
+
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
@@ -12878,6 +12883,11 @@ async function cerrarEscanerQR(
             asistenciasQRPendientesGuardar = new Map();
             cambiosPendientesAsistencia = false;
             actualizarEstadosGuardado();
+
+            // Sin recargar la página, volver a cargar la asistencia que utilizan
+            // los iconos/estados dentro de Actividades y actualizar su vista.
+            await cargarAsistenciaActividades();
+            mostrarActividades();
 
             mostrarMensaje(
                 `✓ Se guardaron ${colaQR.length} asistencia(s) escaneada(s) por QR.`
