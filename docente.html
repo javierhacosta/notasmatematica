@@ -12892,6 +12892,32 @@ function formatearFechaDetalleQR(fecha) {
         : String(fecha);
 }
 
+/* Fecha para las tablas de información completa del estudiante:
+   orden cronológico y día de la semana en español. */
+function formatearFechaTablaDetalleQR(fecha) {
+    if (!fecha) return "";
+
+    const partes = String(fecha).split("-");
+    if (partes.length !== 3) return String(fecha);
+
+    const fechaLocal = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+    );
+
+    if (Number.isNaN(fechaLocal.getTime())) return String(fecha);
+
+    const texto = fechaLocal.toLocaleDateString("es-BO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 function textoEstadoDetalleQR(estado) {
     const mapa = {
         asistio: "Asistencia",
@@ -13058,7 +13084,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     });
 
     const detalleAsistencia = Array.from(mapaDetalleAsistencia.values())
-        .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+        .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
     const filasAsistencia = detalleAsistencia.map(r => `
         <tr class="${r.tipo === "no_clases"
@@ -13066,7 +13092,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             : r.tipo === "clase_informal"
                 ? "detalle-fila-clase-informal"
                 : ""}">
-            <td>${escapeHTML(formatearFechaDetalleQR(r.fecha))}</td>
+            <td>${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
             <td>${escapeHTML(r.observacion || "—")}</td>
@@ -13079,7 +13105,16 @@ async function mostrarDetalleEstudianteQR(estudiante) {
      * La categoría se conserva visualmente mediante el color de fondo
      * de toda la fila, sin agregar una columna adicional.
      */
-    const filasActividades = actividadesTodas.map(a => {
+    const actividadesOrdenadasDetalle = [...actividadesTodas]
+        .sort((a, b) => {
+            const fechaA = String(a.fecha || "9999-12-31");
+            const fechaB = String(b.fecha || "9999-12-31");
+            const comparacionFecha = fechaA.localeCompare(fechaB);
+            if (comparacionFecha !== 0) return comparacionFecha;
+            return Number(a.orden || 0) - Number(b.orden || 0);
+        });
+
+    const filasActividades = actividadesOrdenadasDetalle.map(a => {
         const registro = calMap[String(a.id)];
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
@@ -13100,7 +13135,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}">
                 <td>${escapeHTML(a.nombre || "")}</td>
-                <td>${escapeHTML(formatearFechaDetalleQR(a.fecha))}</td>
+                <td>${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}</td>
                 <td>${escapeHTML(nota === "" ? "" : String(nota))}</td>
                 <td>${escapeHTML(observacion || "—")}</td>
             </tr>
@@ -13121,9 +13156,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         }).filter(Boolean)
     ];
 
-    const filasObservaciones = observaciones.map(o => `
+    const observacionesOrdenadasDetalle = [...observaciones]
+        .sort((a, b) => String(a.fecha || "9999-12-31").localeCompare(String(b.fecha || "9999-12-31")));
+
+    const filasObservaciones = observacionesOrdenadasDetalle.map(o => `
         <tr>
-            <td>${escapeHTML(formatearFechaDetalleQR(o.fecha))}</td>
+            <td>${escapeHTML(formatearFechaTablaDetalleQR(o.fecha))}</td>
             <td>${escapeHTML(o.tipo)}</td>
             <td>${escapeHTML(o.texto)}</td>
         </tr>
