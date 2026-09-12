@@ -12880,14 +12880,24 @@ async function cerrarEscanerQR(
                 throw error;
             }
 
+            /*
+             * IMPORTANTE:
+             * Después de guardar el lote QR en Supabase, actualizar también
+             * inmediatamente la asistencia principal en memoria y su tabla.
+             * Así los cambios se ven sin tener que refrescar la página.
+             */
             asistenciasQRPendientesGuardar = new Map();
-            cambiosPendientesAsistencia = false;
-            actualizarEstadosGuardado();
 
-            // Sin recargar la página, volver a cargar la asistencia que utilizan
-            // los iconos/estados dentro de Actividades y actualizar su vista.
+            await cargarAsistencia();
+
+            // Mantener sincronizada también la asistencia que se muestra
+            // dentro de Actividades, sin recargar la página.
             await cargarAsistenciaActividades();
             mostrarActividades();
+
+            cambiosPendientesAsistencia = false;
+            actualizarBotonGuardarAsistencia();
+            actualizarEstadosGuardado();
 
             mostrarMensaje(
                 `✓ Se guardaron ${colaQR.length} asistencia(s) escaneada(s) por QR.`
