@@ -582,43 +582,12 @@ input, select {
     pointer-events: none;
     box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
 }
+.qr-esquina { position:absolute; width:34px; height:34px; border-color:#00e676; border-style:solid; border-width:0; }
+.qr-esquina-tl { left:-3px; top:-3px; border-left-width:5px; border-top-width:5px; border-radius:10px 0 0 0; }
+.qr-esquina-tr { right:-3px; top:-3px; border-right-width:5px; border-top-width:5px; border-radius:0 10px 0 0; }
+.qr-esquina-bl { left:-3px; bottom:-3px; border-left-width:5px; border-bottom-width:5px; border-radius:0 0 0 10px; }
+.qr-esquina-br { right:-3px; bottom:-3px; border-right-width:5px; border-bottom-width:5px; border-radius:0 0 10px 0; }
 
-.boton-bloquear-enfoque-qr {
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    width: 42px;
-    height: 42px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,.58);
-    color: white;
-    font-size: 21px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 5;
-    box-shadow: 0 2px 8px rgba(0,0,0,.30);
-}
-.boton-bloquear-enfoque-qr:hover {
-    background: rgba(0,0,0,.78);
-}
-.boton-bloquear-enfoque-qr:active {
-    transform: scale(.94);
-}
-.boton-bloquear-enfoque-qr.bloqueado {
-    background: #16803c;
-}
-@media (max-width: 600px) {
-    .boton-bloquear-enfoque-qr {
-        width: 40px;
-        height: 40px;
-        right: 10px;
-        top: 10px;
-    }
-}
 
 .qr-mensaje {
     padding: 12px 16px;
@@ -3773,17 +3742,7 @@ Cancelar
                 playsinline>
             </video>
 
-            <div class="qr-marco"></div>
-
-            <button
-                type="button"
-                id="botonBloquearEnfoqueQR"
-                class="boton-bloquear-enfoque-qr"
-                onclick="alternarBloqueoEnfoqueQR()"
-                aria-label="Bloquear enfoque de la cámara"
-                title="Bloquear enfoque">
-                🔓
-            </button>
+            <div class="qr-marco"><span class="qr-esquina qr-esquina-tl"></span><span class="qr-esquina qr-esquina-tr"></span><span class="qr-esquina qr-esquina-bl"></span><span class="qr-esquina qr-esquina-br"></span></div>
 
         </div>
 
@@ -11714,6 +11673,27 @@ async function abrirEscanerQR(actividad) {
 }
 
 
+async function detectarQREnZonaCentral(video) {
+    const w = video.videoWidth; const h = video.videoHeight;
+    if (!w || !h) return [];
+    const lado = Math.floor(Math.min(w, h) * 0.70);
+    const sx = Math.floor((w - lado) / 2);
+    const sy = Math.floor((h - lado) / 2);
+    const canvas = document.createElement("canvas");
+    canvas.width = lado; canvas.height = lado;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(video, sx, sy, lado, lado, 0, 0, lado, lado);
+    if (typeof BarcodeDetector !== "undefined" && detectorQR instanceof BarcodeDetector) {
+        try { return await detectorQR.detect(canvas); } catch(e) {}
+    }
+    if (typeof jsQR === "function") {
+        const img = ctx.getImageData(0, 0, lado, lado);
+        const r = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+        return r ? [{ rawValue: r.data }] : [];
+    }
+    return [];
+}
+
 async function solicitarLecturaQR() {
 
     if (
@@ -11744,9 +11724,7 @@ async function solicitarLecturaQR() {
     try {
 
         const codigos =
-        await detectorQR.detect(
-            video
-        );
+        await detectarQREnZonaCentral(video);
 
         if (
             codigos &&
@@ -12015,152 +11993,6 @@ async function abrirEscanerAsistenciaQR() {
     await iniciarCamaraQR();
 }
 
-
-/* Bloqueo del enfoque QR sin provocar un nuevo desenfoque */
-let enfoqueQRBloqueado = false;
-
-async function aplicarBloqueoEnfoqueQR(bloquear) {
-    const boton = document.getElementById("botonBloquearEnfoqueQR");
-    const video = document.getElementById("videoQR");
-    const track = streamQR?.getVideoTracks?.()[0];
-
-    if (!track || typeof track.applyConstraints !== "function") return false;
-
-    try {
-        const capacidades =
-            typeof track.getCapabilities === "function"
-                ? track.getCapabilities()
-                : {};
-        const antes =
-            typeof track.getSettings === "function"
-                ? track.getSettings()
-                : {};
-
-        if (bloquear) {
-            /*
-             * Primero hacemos un único enfoque. Después tomamos la distancia
-             * que realmente quedó seleccionada por la cámara y la congelamos.
-             * Así evitamos cambiar bruscamente el enfoque al pulsar el botón.
-             */
-            if (
-                Array.isArray(capacidades.focusMode) &&
-                capacidades.focusMode.includes("single-shot")
-            ) {
-                try {
-                    await track.applyConstraints({
-                        advanced: [{ focusMode: "single-shot" }]
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 250));
-                } catch (_) {}
-            }
-
-            const enfocado =
-                typeof track.getSettings === "function"
-                    ? track.getSettings()
-                    : antes;
-
-            const ajuste = {};
-
-            if (
-                Array.isArray(capacidades.focusMode) &&
-                capacidades.focusMode.includes("manual")
-            ) {
-                ajuste.focusMode = "manual";
-
-                if (Number.isFinite(enfocado.focusDistance)) {
-                    ajuste.focusDistance = enfocado.focusDistance;
-                } else if (Number.isFinite(antes.focusDistance)) {
-                    ajuste.focusDistance = antes.focusDistance;
-                }
-
-                /*
-                 * Si existe distancia de enfoque, usamos exactamente la
-                 * distancia que la cámara acabó de escoger.
-                 */
-                await track.applyConstraints({
-                    advanced: [ajuste]
-                });
-            } else if (
-                Array.isArray(capacidades.focusMode) &&
-                capacidades.focusMode.includes("single-shot")
-            ) {
-                /*
-                 * single-shot ya dejó el enfoque quieto. No volvemos a
-                 * aplicar otra restricción que pueda provocar desenfoque.
-                 */
-            } else {
-                /*
-                 * Esta cámara no expone control de enfoque desde el navegador.
-                 * No hacemos nada para evitar provocar un desenfoque.
-                 */
-                console.warn("La cámara no expone bloqueo de enfoque compatible.");
-                return false;
-            }
-
-            enfoqueQRBloqueado = true;
-
-            if (boton) {
-                boton.classList.add("bloqueado");
-                boton.textContent = "🔒";
-                boton.title = "Enfoque bloqueado · pulsar para desbloquear";
-                boton.setAttribute(
-                    "aria-label",
-                    "Enfoque bloqueado. Pulsar para desbloquear"
-                );
-            }
-
-            return true;
-        }
-
-        /*
-         * Al desbloquear, sólo volvemos a enfoque continuo si la cámara
-         * realmente lo admite. No usamos una restricción vacía porque puede
-         * hacer que algunas cámaras vuelvan a enfocar bruscamente.
-         */
-        if (
-            Array.isArray(capacidades.focusMode) &&
-            capacidades.focusMode.includes("continuous")
-        ) {
-            await track.applyConstraints({
-                advanced: [{ focusMode: "continuous" }]
-            });
-        }
-
-        enfoqueQRBloqueado = false;
-
-        if (boton) {
-            boton.classList.remove("bloqueado");
-            boton.textContent = "🔓";
-            boton.title = "Bloquear enfoque actual";
-            boton.setAttribute(
-                "aria-label",
-                "Bloquear enfoque actual de la cámara"
-            );
-        }
-
-        return true;
-
-    } catch (error) {
-        console.warn("No se pudo bloquear el enfoque sin alterar la cámara:", error);
-        enfoqueQRBloqueado = false;
-
-        if (boton) {
-            boton.classList.remove("bloqueado");
-            boton.textContent = "🔓";
-            boton.title = "Bloquear enfoque actual";
-            boton.setAttribute(
-                "aria-label",
-                "Bloquear enfoque actual de la cámara"
-            );
-        }
-
-        return false;
-    }
-}
-
-async function alternarBloqueoEnfoqueQR() {
-    await aplicarBloqueoEnfoqueQR(!enfoqueQRBloqueado);
-}
 
 async function iniciarCamaraQR() {
 
