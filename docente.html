@@ -3326,6 +3326,135 @@ table tbody tr:nth-child(10n+10) td {
     .boton-distribucion-guardar { flex: 1 1 140px; }
 }
 
+
+/* =====================================================
+   NUEVO: EDICIÓN Y CONFIGURACIÓN DE MESAS
+   Añadido sin modificar los estilos existentes.
+===================================================== */
+.boton-configurar-aula,
+.boton-editar-asiento-aula {
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boton-configurar-aula {
+    width: 34px;
+    height: 34px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 18px;
+}
+
+.boton-configurar-aula:hover { background: rgba(255,255,255,.30); }
+
+.boton-editar-asiento-aula {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 25px;
+    height: 25px;
+    background: #1565c0;
+    color: white;
+    font-size: 13px;
+    z-index: 3;
+}
+
+.boton-editar-asiento-aula:hover { background: #0d47a1; }
+
+.configuracion-aula-panel {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 8px 4px 4px;
+}
+
+.configuracion-aula-titulo {
+    margin: 0 0 6px;
+    color: #37474f;
+    font-size: 18px;
+}
+
+.configuracion-aula-ayuda {
+    margin: 0 0 18px;
+    color: #666;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.configuracion-aula-campos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.configuracion-aula-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.configuracion-aula-campo label {
+    font-weight: bold;
+    color: #37474f;
+    font-size: 13px;
+}
+
+.configuracion-aula-campo input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 11px;
+    border: 1px solid #c8c8c8;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.configuracion-aula-resumen {
+    margin-top: 15px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    background: #f1f5f8;
+    color: #455a64;
+    font-size: 13px;
+    text-align: center;
+}
+
+.edicion-asiento-aula {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.select-editar-asiento-aula {
+    flex: 1;
+    min-width: 0;
+    padding: 6px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    font-size: 11px;
+    background: white;
+}
+
+.boton-confirmar-edicion-asiento-aula {
+    width: 27px;
+    height: 27px;
+    border: none;
+    border-radius: 6px;
+    background: #16803c;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+@media (max-width: 700px) {
+    .configuracion-aula-campos { grid-template-columns: 1fr; }
+    .boton-configurar-aula,
+    .boton-editar-asiento-aula { flex-shrink: 0; }
+}
+
 </style>
 
 </head>
@@ -4415,6 +4544,11 @@ Cancelar
                         class="boton-lista-asientos"
                         onclick="mostrarListaAsientos()"
                         title="Ver lista de estudiantes y asientos">☷</button>
+                <button type="button"
+                        id="botonConfigurarAula"
+                        class="boton-configurar-aula"
+                        onclick="mostrarConfiguracionAula()"
+                        title="Definir filas y columnas de mesas">⚙️</button>
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalDistribucionAula()">×</button>
             </div>
@@ -4437,6 +4571,29 @@ Cancelar
                     </thead>
                     <tbody id="tablaListaAsientosAula"></tbody>
                 </table>
+            </div>
+
+            <div id="vistaConfiguracionAula" class="lista-distribucion-aula">
+                <div class="configuracion-aula-panel">
+                    <h4 class="configuracion-aula-titulo">⚙️ Configurar mesas del aula</h4>
+                    <p class="configuracion-aula-ayuda">
+                        Define cuántas filas y columnas de mesas tendrá este curso. Cada mesa tiene 2 asientos, por lo que el total de sillas se calcula automáticamente.
+                    </p>
+                    <div class="configuracion-aula-campos">
+                        <div class="configuracion-aula-campo">
+                            <label for="cantidadFilasAula">Filas de mesas</label>
+                            <input id="cantidadFilasAula" type="number" min="1" max="20" step="1">
+                        </div>
+                        <div class="configuracion-aula-campo">
+                            <label for="cantidadColumnasAula">Columnas de mesas</label>
+                            <input id="cantidadColumnasAula" type="number" min="1" max="10" step="1">
+                        </div>
+                    </div>
+                    <div id="resumenConfiguracionAula" class="configuracion-aula-resumen"></div>
+                    <div class="distribucion-acciones">
+                        <button type="button" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()">✓ Aplicar configuración</button>
+                    </div>
+                </div>
             </div>
 
             <div class="distribucion-pie">
@@ -14760,6 +14917,7 @@ async function restaurarCambioHistorial(historialId) {
    No interviene en la lógica existente de asistencia.
 ===================================================== */
 const CLAVE_DISTRIBUCION_AULA = "distribucion_aula_v1";
+const CLAVE_CONFIGURACION_AULA = "configuracion_aula_v1";
 const ASIENTOS_AULA = [
     [36, 35, 24, 23, 12, 11],
     [34, 33, 22, 21, 10, 9],
@@ -14803,6 +14961,7 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
+let configuracionAulaActual = { filas: 6, columnas: 3 };
 
 function claveDistribucionAula(curso) {
     return String(curso || "").trim();
@@ -14814,6 +14973,53 @@ function cargarDistribucionesAulaGuardadas() {
     } catch (_) {
         return {};
     }
+}
+
+function cargarConfiguracionesAulaGuardadas() {
+    try {
+        return JSON.parse(localStorage.getItem(CLAVE_CONFIGURACION_AULA) || "{}");
+    } catch (_) {
+        return {};
+    }
+}
+
+function obtenerConfiguracionAulaCurso() {
+    const todas = cargarConfiguracionesAulaGuardadas();
+    const guardada = todas[claveDistribucionAula(cursoSeleccionado)];
+
+    const filas = Math.max(1, Math.min(20, Number(guardada?.filas) || 6));
+    const columnas = Math.max(1, Math.min(10, Number(guardada?.columnas) || 3));
+
+    return { filas, columnas };
+}
+
+function guardarConfiguracionAulaCurso(filas, columnas) {
+    const todas = cargarConfiguracionesAulaGuardadas();
+    todas[claveDistribucionAula(cursoSeleccionado)] = { filas, columnas };
+    localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
+}
+
+function obtenerCantidadAsientosAula() {
+    return Number(configuracionAulaActual.filas || 1) * Number(configuracionAulaActual.columnas || 1) * 2;
+}
+
+/* Genera la numeración según las mesas configuradas: cada mesa = 2 asientos. */
+function obtenerAsientosConfiguradosAula() {
+    const filas = Number(configuracionAulaActual.filas || 1);
+    const columnas = Number(configuracionAulaActual.columnas || 1);
+    const resultado = [];
+    let numero = 1;
+
+    for (let fila = 0; fila < filas; fila++) {
+        const filaMesas = [];
+        for (let columna = 0; columna < columnas; columna++) {
+            filaMesas.push([numero, numero + 1]);
+            numero += 2;
+        }
+        resultado.push(filaMesas);
+    }
+
+    return resultado;
 }
 
 function esCurso1B(curso) {
@@ -14830,8 +15036,10 @@ function crearDistribucionAulaInicial() {
         .sort((a, b) => Number(a.num_lista ?? 9999) - Number(b.num_lista ?? 9999));
 
     const mapa = {};
+    const totalAsientos = obtenerCantidadAsientosAula();
 
-    if (esCurso1B(cursoSeleccionado)) {
+    /* Para 1B se conserva el PDF cuando la configuración es la original 6 x 3. */
+    if (esCurso1B(cursoSeleccionado) && totalAsientos === 36) {
         Object.entries(DISTRIBUCION_1B_PDF).forEach(([asiento, numLista]) => {
             const estudiante = estudiantesCurso.find(
                 e => Number(e.num_lista) === Number(numLista)
@@ -14841,8 +15049,8 @@ function crearDistribucionAulaInicial() {
         return mapa;
     }
 
-    /* Para otros cursos se conserva un orden inicial sencillo por Nº de lista. */
-    estudiantesCurso.slice(0, 36).forEach((estudiante, indice) => {
+    /* En cualquier otra configuración, se numeran los asientos desde 1. */
+    estudiantesCurso.slice(0, totalAsientos).forEach((estudiante, indice) => {
         mapa[String(indice + 1)] = estudiante.id;
     });
 
@@ -14881,6 +15089,7 @@ function abrirModalDistribucionAula() {
     const modal = document.getElementById("modalDistribucionAula");
     if (!modal) return;
 
+    configuracionAulaActual = obtenerConfiguracionAulaCurso();
     distribucionAulaActual = obtenerDistribucionAulaCurso();
 
     const titulo = document.getElementById("tituloDistribucionAula");
@@ -14916,17 +15125,31 @@ function crearAsientoVisualAula(numero) {
     nombreEl.textContent = construirNombreCortoAula(estudiante);
     asiento.appendChild(nombreEl);
 
+    const botonEditar = document.createElement("button");
+    botonEditar.type = "button";
+    botonEditar.className = "boton-editar-asiento-aula";
+    botonEditar.textContent = "✏️";
+    botonEditar.title = estudiante ? `Editar asiento de ${estudiante.nombre}` : "Asignar estudiante a este asiento";
+    botonEditar.setAttribute("aria-label", botonEditar.title);
+    botonEditar.addEventListener("click", function(event) {
+        event.stopPropagation();
+        editarAsientoDesdeDistribucion(numero);
+    });
+    asiento.appendChild(botonEditar);
+
     return asiento;
 }
 
 function mostrarVistaDistribucionAula() {
     const vista = document.getElementById("vistaDistribucionAula");
     const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
     const boton = document.getElementById("botonListaAsientos");
     if (!vista || !lista) return;
 
     vista.style.display = "block";
     lista.classList.remove("visible");
+    if (configuracion) configuracion.classList.remove("visible");
     if (boton) {
         boton.textContent = "☷";
         boton.title = "Ver lista de estudiantes y asientos";
@@ -14936,50 +15159,40 @@ function mostrarVistaDistribucionAula() {
     if (!tablero) return;
     tablero.innerHTML = "";
 
-    for (let columna = 0; columna < 3; columna++) {
+    const mesas = obtenerAsientosConfiguradosAula();
+    const columnas = Number(configuracionAulaActual.columnas || 1);
+
+    tablero.style.gridTemplateColumns = `repeat(${columnas}, minmax(190px, 1fr))`;
+    tablero.style.minWidth = `${Math.max(300, columnas * 210)}px`;
+
+    for (let columna = 0; columna < columnas; columna++) {
         const contenedor = document.createElement("div");
         contenedor.className = "columna-mesas-aula";
 
-        for (let fila = 0; fila < ASIENTOS_AULA.length; fila++) {
-            const indice = columna * 2;
+        for (let fila = 0; fila < mesas.length; fila++) {
             const mesa = document.createElement("div");
             mesa.className = "mesa-aula";
-            mesa.appendChild(crearAsientoVisualAula(ASIENTOS_AULA[fila][indice]));
-            mesa.appendChild(crearAsientoVisualAula(ASIENTOS_AULA[fila][indice + 1]));
+            mesa.appendChild(crearAsientoVisualAula(mesas[fila][columna][0]));
+            mesa.appendChild(crearAsientoVisualAula(mesas[fila][columna][1]));
             contenedor.appendChild(mesa);
         }
 
         tablero.appendChild(contenedor);
     }
 
-    const etiquetas = document.createElement("div");
-    etiquetas.className = "columna-mesas-aula";
-    for (let fila = 0; fila < ASIENTOS_AULA.length; fila++) {
-        const etiqueta = document.createElement("div");
-        etiqueta.className = "etiqueta-fila-aula";
-        etiqueta.textContent = 6 - fila;
-        etiquetas.appendChild(etiqueta);
-    }
-    tablero.appendChild(etiquetas);
-
     actualizarResumenDistribucionAula();
 }
 
-function mostrarListaAsientos() {
+function mostrarListaAsientos(asientoEnfocado = null) {
     const vista = document.getElementById("vistaDistribucionAula");
     const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
     const boton = document.getElementById("botonListaAsientos");
     if (!vista || !lista) return;
 
-    const estaVisible = lista.classList.contains("visible");
-
-    if (estaVisible) {
-        mostrarVistaDistribucionAula();
-        return;
-    }
-
     vista.style.display = "none";
     lista.classList.add("visible");
+    if (configuracion) configuracion.classList.remove("visible");
     if (boton) {
         boton.textContent = "🪑";
         boton.title = "Ver distribución de mesas";
@@ -14993,7 +15206,9 @@ function mostrarListaAsientos() {
         .slice()
         .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
 
-    for (let numero = 1; numero <= 36; numero++) {
+    const totalAsientos = obtenerCantidadAsientosAula();
+
+    for (let numero = 1; numero <= totalAsientos; numero++) {
         const fila = document.createElement("tr");
 
         const tdAsiento = document.createElement("td");
@@ -15036,6 +15251,80 @@ function mostrarListaAsientos() {
     }
 
     actualizarSelectsDistribucionAula();
+
+    if (asientoEnfocado != null) {
+        const select = document.querySelector(`.select-asiento-aula[data-asiento="${asientoEnfocado}"]`);
+        if (select) {
+            select.focus();
+            select.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }
+}
+
+function editarAsientoDesdeDistribucion(numero) {
+    mostrarListaAsientos(numero);
+}
+
+function mostrarConfiguracionAula() {
+    const vista = document.getElementById("vistaDistribucionAula");
+    const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
+    const botonLista = document.getElementById("botonListaAsientos");
+    if (!vista || !configuracion) return;
+
+    vista.style.display = "none";
+    lista.classList.remove("visible");
+    configuracion.classList.add("visible");
+    if (botonLista) {
+        botonLista.textContent = "🪑";
+        botonLista.title = "Ver distribución de mesas";
+    }
+
+    const inputFilas = document.getElementById("cantidadFilasAula");
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    if (inputFilas) inputFilas.value = configuracionAulaActual.filas;
+    if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
+
+    actualizarResumenConfiguracionAula();
+
+    [inputFilas, inputColumnas].forEach(input => {
+        if (input) input.oninput = actualizarResumenConfiguracionAula;
+    });
+}
+
+function actualizarResumenConfiguracionAula() {
+    const resumen = document.getElementById("resumenConfiguracionAula");
+    if (!resumen) return;
+
+    const filas = Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1));
+    const columnas = Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1));
+    const mesas = filas * columnas;
+    const asientos = mesas * 2;
+
+    resumen.innerHTML = `<strong>${mesas}</strong> mesas · <strong>${asientos}</strong> asientos (numerados del 1 al ${asientos})`;
+}
+
+function aplicarConfiguracionAula() {
+    const filas = Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1));
+    const columnas = Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1));
+    const totalNuevo = filas * columnas * 2;
+    const totalAnterior = obtenerCantidadAsientosAula();
+
+    configuracionAulaActual = { filas, columnas };
+
+    /* Se conservan las asignaciones existentes dentro del nuevo rango. */
+    Object.keys(distribucionAulaActual).forEach(numero => {
+        if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
+    });
+
+    guardarConfiguracionAulaCurso(filas, columnas);
+
+    if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
+        distribucionAulaActual = crearDistribucionAulaInicial();
+    }
+
+    mostrarMensaje(`✓ Aula configurada: ${filas} filas × ${columnas} columnas = ${totalNuevo} asientos.`);
+    mostrarVistaDistribucionAula();
 }
 
 function actualizarSelectsDistribucionAula() {
@@ -15063,8 +15352,12 @@ function actualizarResumenDistribucionAula() {
     if (!resumen) return;
 
     const totalEstudiantes = obtenerEstudiantesCursoActual().length;
-    const ocupados = Object.values(distribucionAulaActual || {}).filter(Boolean).length;
-    const libres = Math.max(36 - ocupados, 0);
+    const totalAsientos = obtenerCantidadAsientosAula();
+    const ocupados = Object.keys(distribucionAulaActual || {})
+        .filter(numero => Number(numero) <= totalAsientos)
+        .map(numero => distribucionAulaActual[numero])
+        .filter(Boolean).length;
+    const libres = Math.max(totalAsientos - ocupados, 0);
     resumen.innerHTML = `<strong>${ocupados}</strong> asientos ocupados · <strong>${libres}</strong> libres · <strong>${totalEstudiantes}</strong> estudiantes en el curso`;
 }
 
@@ -15079,7 +15372,10 @@ function guardarDistribucionAula() {
         const usados = new Set();
         for (const select of selects) {
             const valor = select.value;
-            if (!valor) continue;
+            if (!valor) {
+                distribucionAulaActual[select.dataset.asiento] = null;
+                continue;
+            }
             if (usados.has(valor)) {
                 alert("⚠️ Un estudiante no puede ocupar dos asientos.");
                 return;
@@ -15090,6 +15386,11 @@ function guardarDistribucionAula() {
     }
 
     try {
+        guardarConfiguracionAulaCurso(
+            Number(configuracionAulaActual.filas),
+            Number(configuracionAulaActual.columnas)
+        );
+
         const todas = cargarDistribucionesAulaGuardadas();
         todas[claveDistribucionAula(cursoSeleccionado)] = { ...distribucionAulaActual };
         localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
