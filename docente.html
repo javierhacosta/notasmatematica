@@ -15234,6 +15234,7 @@ async function restaurarCambioHistorial(historialId) {
 ===================================================== */
 const CLAVE_DISTRIBUCION_AULA = "distribucion_aula_v1";
 const CLAVE_CONFIGURACION_AULA = "configuracion_aula_v1";
+const TABLA_DISTRIBUCION_AULA_BD = "distribuciones_aula";
 const ASIENTOS_AULA = [
     [36, 35, 24, 23, 12, 11],
     [34, 33, 22, 21, 10, 9],
@@ -15300,22 +15301,74 @@ function cargarConfiguracionesAulaGuardadas() {
     }
 }
 
+function normalizarConfiguracionAula(datos = {}) {
+    const filas = Math.max(1, Math.min(20, Number(datos.filas) || 6));
+    const columnas = Math.max(1, Math.min(10, Number(datos.columnas) || 3));
+    const anchoMesa = Math.max(60, Math.min(500, Number(datos.anchoMesa ?? datos.ancho_mesa) || 130));
+    const largoMesa = Math.max(40, Math.min(300, Number(datos.largoMesa ?? datos.largo_mesa) || 72));
+    return { filas, columnas, anchoMesa, largoMesa };
+}
+
 function obtenerConfiguracionAulaCurso() {
     const todas = cargarConfiguracionesAulaGuardadas();
     const guardada = todas[claveDistribucionAula(cursoSeleccionado)];
-
-    const filas = Math.max(1, Math.min(20, Number(guardada?.filas) || 6));
-    const columnas = Math.max(1, Math.min(10, Number(guardada?.columnas) || 3));
-    const anchoMesa = Math.max(60, Math.min(500, Number(guardada?.anchoMesa) || 130));
-    const largoMesa = Math.max(40, Math.min(300, Number(guardada?.largoMesa) || 72));
-
-    return { filas, columnas, anchoMesa, largoMesa };
+    return normalizarConfiguracionAula(guardada || {});
 }
 
 function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72) {
     const todas = cargarConfiguracionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { filas, columnas, anchoMesa, largoMesa };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
+}
+
+async function cargarConfiguracionDistribucionAulaBD() {
+    if (!cursoSeleccionado) return null;
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_DISTRIBUCION_AULA_BD)
+            .select("curso,filas,columnas,ancho_mesa,largo_mesa,distribucion")
+            .eq("curso", cursoSeleccionado)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+
+        const config = normalizarConfiguracionAula(data);
+        const distribucion = data.distribucion && typeof data.distribucion === "object"
+            ? { ...data.distribucion } : null;
+
+        configuracionAulaActual = config;
+        if (distribucion) distribucionAulaActual = distribucion;
+        return { ...config, distribucion };
+    } catch (error) {
+        console.warn("No se pudo cargar la distribución del aula desde la BD. Se usará la configuración local.", error);
+        return null;
+    }
+}
+
+async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) {
+    if (!cursoSeleccionado) return false;
+    const config = normalizarConfiguracionAula(configuracionAulaActual);
+    const datos = {
+        curso: cursoSeleccionado,
+        filas: config.filas,
+        columnas: config.columnas,
+        ancho_mesa: config.anchoMesa,
+        largo_mesa: config.largoMesa,
+        distribucion: { ...(distribucion || {}) },
+        updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabaseClient
+        .from(TABLA_DISTRIBUCION_AULA_BD)
+        .upsert(datos, { onConflict: "curso" });
+    if (error) throw error;
+
+    // Se conserva también la copia local como respaldo, sin cambiar el comportamiento existente.
+    guardarConfiguracionAulaCurso(config.filas, config.columnas, config.anchoMesa, config.largoMesa);
+    const todas = cargarDistribucionesAulaGuardadas();
+    todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
+    localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+    return true;
 }
 
 function obtenerCantidadAsientosAula() {
@@ -15403,7 +15456,7 @@ function construirNombreCortoAula(estudiante) {
     return String(estudiante.nombre || "Sin nombre");
 }
 
-function abrirModalDistribucionAula() {
+async function abrirModalDistribucionAula() {
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -15414,6 +15467,10 @@ function abrirModalDistribucionAula() {
 
     configuracionAulaActual = obtenerConfiguracionAulaCurso();
     distribucionAulaActual = obtenerDistribucionAulaCurso();
+    await cargarConfiguracionDistribucionAulaBD();
+    if (!distribucionAulaActual || typeof distribucionAulaActual !== "object" || Object.keys(distribucionAulaActual).length === 0) {
+        distribucionAulaActual = obtenerDistribucionAulaCurso();
+    }
     distribucionAulaGirado = true;
 
     const titulo = document.getElementById("tituloDistribucionAula");
@@ -15845,6 +15902,7 @@ function aplicarConfiguracionAula() {
     });
 
     guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa);
+    guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
         distribucionAulaActual = crearDistribucionAulaInicial();
@@ -15890,7 +15948,7 @@ function actualizarResumenDistribucionAula() {
 
 
 
-function vaciarAsientosAula() {
+async function vaciarAsientosAula() {
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -15911,9 +15969,7 @@ function vaciarAsientosAula() {
     }
 
     try {
-        const todas = cargarDistribucionesAulaGuardadas();
-        todas[claveDistribucionAula(cursoSeleccionado)] = { ...distribucionAulaActual };
-        localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+        await guardarDistribucionAulaBD();
         mostrarMensaje("✓ Se vaciaron todos los asientos de la distribución actual.");
         mostrarVistaDistribucionAula();
     } catch (error) {
@@ -15922,7 +15978,7 @@ function vaciarAsientosAula() {
     }
 }
 
-function guardarDistribucionAula() {
+async function guardarDistribucionAula() {
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -15947,14 +16003,7 @@ function guardarDistribucionAula() {
     }
 
     try {
-        guardarConfiguracionAulaCurso(
-            Number(configuracionAulaActual.filas),
-            Number(configuracionAulaActual.columnas)
-        );
-
-        const todas = cargarDistribucionesAulaGuardadas();
-        todas[claveDistribucionAula(cursoSeleccionado)] = { ...distribucionAulaActual };
-        localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+        await guardarDistribucionAulaBD();
         mostrarMensaje("✓ Distribución de asientos guardada correctamente.");
         mostrarVistaDistribucionAula();
     } catch (error) {
