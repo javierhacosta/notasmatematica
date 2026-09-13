@@ -3485,6 +3485,73 @@ table tbody tr:nth-child(10n+10) td {
     .boton-editar-asiento-aula { flex-shrink: 0; }
 }
 
+
+
+/* =====================================================
+   NUEVO: AJUSTE MÓVIL Y VACIADO DE ASIENTOS
+   Añadido sin modificar los estilos existentes.
+===================================================== */
+@media (max-width: 700px) {
+    /* Cuando hay 3 columnas, las tres caben dentro del ancho visible del celular. */
+    .distribucion-tablero[style*="repeat(3,"] {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .columna-mesas-aula {
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .mesa-aula {
+        min-width: 0;
+        min-height: 58px;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .asiento-aula {
+        min-width: 0;
+        min-height: 58px;
+        padding: 10px 3px 5px 20px;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .numero-asiento-aula {
+        left: 3px;
+        top: 3px;
+        font-size: 10px;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .nombre-asiento-aula {
+        font-size: 8px;
+        line-height: 1.1;
+    }
+
+    .distribucion-tablero[style*="repeat(3,"] .silla-aula {
+        width: 19px;
+        height: 6px;
+        top: -8px;
+    }
+}
+
+.boton-vaciar-asientos-aula {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boton-vaciar-asientos-aula:hover {
+    background: rgba(198,40,40,.85);
+}
+
 </style>
 
 </head>
@@ -4584,6 +4651,13 @@ Cancelar
                         class="boton-girar-distribucion-aula"
                         onclick="alternarGiroDistribucionAula()"
                         title="Girar distribución 180°">🔄</button>
+
+                <button type="button"
+                        id="botonVaciarAsientosAula"
+                        class="boton-vaciar-asientos-aula"
+                        onclick="vaciarAsientosAula()"
+                        title="Vaciar todos los asientos">🗑️</button>
+
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalDistribucionAula()">×</button>
             </div>
@@ -15405,6 +15479,40 @@ function actualizarResumenDistribucionAula() {
         .filter(Boolean).length;
     const libres = Math.max(totalAsientos - ocupados, 0);
     resumen.innerHTML = `<strong>${ocupados}</strong> asientos ocupados · <strong>${libres}</strong> libres · <strong>${totalEstudiantes}</strong> estudiantes en el curso`;
+}
+
+
+
+function vaciarAsientosAula() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const confirmar = confirm(
+        "⚠️ ADVERTENCIA\n\n" +
+        "Se borrará la distribución actual de todos los estudiantes de este curso.\n\n" +
+        "¿Deseas vaciar todos los asientos?"
+    );
+
+    if (!confirmar) return;
+
+    const totalAsientos = obtenerCantidadAsientosAula();
+    distribucionAulaActual = {};
+    for (let numero = 1; numero <= totalAsientos; numero++) {
+        distribucionAulaActual[String(numero)] = null;
+    }
+
+    try {
+        const todas = cargarDistribucionesAulaGuardadas();
+        todas[claveDistribucionAula(cursoSeleccionado)] = { ...distribucionAulaActual };
+        localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+        mostrarMensaje("✓ Se vaciaron todos los asientos de la distribución actual.");
+        mostrarVistaDistribucionAula();
+    } catch (error) {
+        console.error("Error al vaciar distribución del aula:", error);
+        alert("No se pudo vaciar la distribución de asientos en este dispositivo.");
+    }
 }
 
 function guardarDistribucionAula() {
