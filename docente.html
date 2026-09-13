@@ -3332,7 +3332,7 @@ table tbody tr:nth-child(10n+10) td {
    Añadido sin modificar los estilos existentes.
 ===================================================== */
 .boton-configurar-aula,
-.boton-editar-asiento-aula {
+.boton-girar-distribucion-aula {
     border: none;
     border-radius: 7px;
     cursor: pointer;
@@ -3351,16 +3351,24 @@ table tbody tr:nth-child(10n+10) td {
 
 .boton-configurar-aula:hover { background: rgba(255,255,255,.30); }
 
-.boton-editar-asiento-aula {
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 25px;
-    height: 25px;
-    background: #1565c0;
+.boton-girar-distribucion-aula {
+    width: 34px;
+    height: 34px;
+    background: rgba(255,255,255,.18);
     color: white;
-    font-size: 13px;
-    z-index: 3;
+    font-size: 18px;
+}
+
+.boton-girar-distribucion-aula:hover { background: rgba(255,255,255,.30); }
+
+/* Giro de la vista física del aula; los botones del encabezado permanecen normales. */
+#contenedorVisualDistribucionAula {
+    transform-origin: center center;
+    transition: transform .25s ease;
+}
+
+#contenedorVisualDistribucionAula.girado-180 {
+    transform: rotate(180deg);
 }
 
 .boton-editar-asiento-aula:hover { background: #0d47a1; }
@@ -4549,6 +4557,11 @@ Cancelar
                         class="boton-configurar-aula"
                         onclick="mostrarConfiguracionAula()"
                         title="Definir filas y columnas de mesas">⚙️</button>
+                <button type="button"
+                        id="botonGirarDistribucionAula"
+                        class="boton-girar-distribucion-aula"
+                        onclick="alternarGiroDistribucionAula()"
+                        title="Girar distribución 180°">🔄</button>
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalDistribucionAula()">×</button>
             </div>
@@ -4556,8 +4569,10 @@ Cancelar
 
         <div class="distribucion-cuerpo">
             <div id="vistaDistribucionAula">
-                <div class="distribucion-frente">⬆️ FRENTE / PIZARRA</div>
-                <div id="tableroDistribucionAula" class="distribucion-tablero"></div>
+                <div id="contenedorVisualDistribucionAula">
+                    <div class="distribucion-frente">⬆️ FRENTE / PIZARRA</div>
+                    <div id="tableroDistribucionAula" class="distribucion-tablero"></div>
+                </div>
             </div>
 
             <div id="vistaListaAsientos" class="lista-distribucion-aula">
@@ -14962,6 +14977,7 @@ const DISTRIBUCION_1B_PDF = {
 
 let distribucionAulaActual = {};
 let configuracionAulaActual = { filas: 6, columnas: 3 };
+let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
     return String(curso || "").trim();
@@ -15008,13 +15024,17 @@ function obtenerAsientosConfiguradosAula() {
     const filas = Number(configuracionAulaActual.filas || 1);
     const columnas = Number(configuracionAulaActual.columnas || 1);
     const resultado = [];
-    let numero = 1;
 
+    /*
+       La numeración avanza hacia abajo por una columna completa y
+       recién después continúa en la siguiente columna.
+       Cada mesa conserva sus 2 asientos consecutivos.
+    */
     for (let fila = 0; fila < filas; fila++) {
         const filaMesas = [];
         for (let columna = 0; columna < columnas; columna++) {
-            filaMesas.push([numero, numero + 1]);
-            numero += 2;
+            const inicio = (columna * filas * 2) + (fila * 2) + 1;
+            filaMesas.push([inicio, inicio + 1]);
         }
         resultado.push(filaMesas);
     }
@@ -15091,6 +15111,7 @@ function abrirModalDistribucionAula() {
 
     configuracionAulaActual = obtenerConfiguracionAulaCurso();
     distribucionAulaActual = obtenerDistribucionAulaCurso();
+    distribucionAulaGirado = true;
 
     const titulo = document.getElementById("tituloDistribucionAula");
     if (titulo) titulo.textContent = `🪑 Distribución del aula — ${cursoSeleccionado}`;
@@ -15125,18 +15146,6 @@ function crearAsientoVisualAula(numero) {
     nombreEl.textContent = construirNombreCortoAula(estudiante);
     asiento.appendChild(nombreEl);
 
-    const botonEditar = document.createElement("button");
-    botonEditar.type = "button";
-    botonEditar.className = "boton-editar-asiento-aula";
-    botonEditar.textContent = "✏️";
-    botonEditar.title = estudiante ? `Editar asiento de ${estudiante.nombre}` : "Asignar estudiante a este asiento";
-    botonEditar.setAttribute("aria-label", botonEditar.title);
-    botonEditar.addEventListener("click", function(event) {
-        event.stopPropagation();
-        editarAsientoDesdeDistribucion(numero);
-    });
-    asiento.appendChild(botonEditar);
-
     return asiento;
 }
 
@@ -15169,6 +15178,7 @@ function mostrarVistaDistribucionAula() {
         const contenedor = document.createElement("div");
         contenedor.className = "columna-mesas-aula";
 
+        /* La numeración baja por toda la columna antes de continuar en la siguiente. */
         for (let fila = 0; fila < mesas.length; fila++) {
             const mesa = document.createElement("div");
             mesa.className = "mesa-aula";
@@ -15180,7 +15190,21 @@ function mostrarVistaDistribucionAula() {
         tablero.appendChild(contenedor);
     }
 
+    const visual = document.getElementById("contenedorVisualDistribucionAula");
+    if (visual) visual.classList.toggle("girado-180", distribucionAulaGirado);
+
+    const botonGiro = document.getElementById("botonGirarDistribucionAula");
+    if (botonGiro) {
+        botonGiro.textContent = distribucionAulaGirado ? "↩️" : "🔄";
+        botonGiro.title = distribucionAulaGirado ? "Volver a orientación normal" : "Girar distribución 180°";
+    }
+
     actualizarResumenDistribucionAula();
+}
+
+function alternarGiroDistribucionAula() {
+    distribucionAulaGirado = !distribucionAulaGirado;
+    mostrarVistaDistribucionAula();
 }
 
 function mostrarListaAsientos(asientoEnfocado = null) {
