@@ -3552,6 +3552,34 @@ table tbody tr:nth-child(10n+10) td {
     background: rgba(198,40,40,.85);
 }
 
+
+/* NUEVO: asistencia individual dentro de la distribución */
+.nombre-asiento-aula:not(.vacio) { border: none; background: transparent; cursor: pointer; width: 100%; }
+.nombre-asiento-aula.vacio { cursor: default; }
+.indicadores-asistencia-asiento { display:inline-flex; align-items:center; justify-content:center; gap:2px; position:absolute; right:3px; bottom:3px; z-index:3; font-size:10px; line-height:1; }
+.indicador-estado-asistencia { font-weight:bold; }
+.indicador-estado-asistencia.estado-asistio { color:#16803c; }
+.indicador-estado-asistencia.estado-atraso { color:#ef6c00; }
+.indicador-estado-asistencia.estado-licencia { color:#1565c0; }
+.indicador-estado-asistencia.estado-falta { color:#c62828; }
+.indicador-observacion-asistencia { font-size:9px; }
+.modal-asistencia-distribucion { position:absolute; inset:0; z-index:20; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; padding:14px; }
+.modal-asistencia-distribucion.oculto { display:none; }
+.panel-asistencia-distribucion { width:min(520px,100%); max-height:90vh; overflow:auto; background:white; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.25); }
+.cabecera-asistencia-distribucion { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; background:#37474f; color:white; }
+.subtitulo-asistencia-distribucion { font-size:12px; opacity:.85; margin-top:2px; }
+.dias-asistencia-distribucion { display:flex; gap:6px; overflow-x:auto; padding:9px 10px; border-bottom:1px solid #ddd; -webkit-overflow-scrolling:touch; }
+.dia-asistencia-distribucion { flex:0 0 auto; border:1px solid #ccd4d9; border-radius:7px; background:#f7f8f9; color:#333; padding:7px 10px; font-size:12px; cursor:pointer; }
+.dia-asistencia-distribucion.seleccionado { background:#1565c0; color:white; border-color:#1565c0; font-weight:bold; }
+.cuerpo-asistencia-distribucion { padding:14px; }
+.estados-asistencia-distribucion { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px; }
+.estados-asistencia-distribucion button { border:1px solid #ddd; border-radius:7px; background:#f7f8f9; padding:8px 5px; cursor:pointer; font-size:12px; font-weight:bold; }
+.estados-asistencia-distribucion button.seleccionado { border-color:#1565c0; background:#e3f2fd; box-shadow:inset 0 0 0 1px #1565c0; }
+.etiqueta-observacion-distribucion { display:block; font-weight:bold; font-size:13px; margin-bottom:5px; }
+.observacion-asistencia-distribucion { width:100%; min-height:90px; box-sizing:border-box; border:1px solid #ccc; border-radius:7px; padding:8px; resize:vertical; font-family:Arial,sans-serif; font-size:13px; }
+.acciones-asistencia-distribucion { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+@media (max-width:600px) { .estados-asistencia-distribucion { grid-template-columns:repeat(2,1fr); } .modal-asistencia-distribucion { padding:8px; } }
+
 </style>
 
 </head>
@@ -4703,6 +4731,34 @@ Cancelar
                     <div id="resumenConfiguracionAula" class="configuracion-aula-resumen"></div>
                     <div class="distribucion-acciones">
                         <button type="button" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()">✓ Aplicar configuración</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NUEVO: ventana de asistencia individual desde la distribución -->
+            <div id="modalAsistenciaDesdeDistribucion" class="modal-asistencia-distribucion oculto" onclick="cerrarAsistenciaDesdeDistribucion(event)">
+                <div class="panel-asistencia-distribucion" onclick="event.stopPropagation()">
+                    <div class="cabecera-asistencia-distribucion">
+                        <div>
+                            <strong id="tituloAsistenciaDesdeDistribucion">Asistencia</strong>
+                            <div id="subtituloAsistenciaDesdeDistribucion" class="subtitulo-asistencia-distribucion"></div>
+                        </div>
+                        <button type="button" class="boton-cerrar-modal" onclick="cerrarAsistenciaDesdeDistribucion()">×</button>
+                    </div>
+                    <div id="diasAsistenciaDesdeDistribucion" class="dias-asistencia-distribucion"></div>
+                    <div class="cuerpo-asistencia-distribucion">
+                        <div class="estados-asistencia-distribucion" id="estadosAsistenciaDesdeDistribucion">
+                            <button type="button" data-estado="asistio" onclick="seleccionarEstadoDesdeDistribucion('asistio')">✓ Presente</button>
+                            <button type="button" data-estado="atraso" onclick="seleccionarEstadoDesdeDistribucion('atraso')">⏰ Atraso</button>
+                            <button type="button" data-estado="licencia" onclick="seleccionarEstadoDesdeDistribucion('licencia')">📄 Licencia</button>
+                            <button type="button" data-estado="falta" onclick="seleccionarEstadoDesdeDistribucion('falta')">✕ Falta</button>
+                        </div>
+                        <label class="etiqueta-observacion-distribucion" for="observacionAsistenciaDesdeDistribucion">Observación</label>
+                        <textarea id="observacionAsistenciaDesdeDistribucion" class="observacion-asistencia-distribucion" placeholder="Escribe o edita la observación..."></textarea>
+                        <div class="acciones-asistencia-distribucion">
+                            <button type="button" class="boton-cancelar" onclick="cerrarAsistenciaDesdeDistribucion()">Cancelar</button>
+                            <button type="button" class="boton-crear-modal" id="botonGuardarAsistenciaDesdeDistribucion" onclick="guardarAsistenciaDesdeDistribucion()">💾 Guardar</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -15237,13 +15293,202 @@ function crearAsientoVisualAula(numero) {
     numeroEl.textContent = numero;
     asiento.appendChild(numeroEl);
 
-    const nombreEl = document.createElement("span");
+    const nombreEl = document.createElement("button");
+    nombreEl.type = "button";
     nombreEl.className = "nombre-asiento-aula" + (estudiante ? "" : " vacio");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
+    nombreEl.title = estudiante ? "Abrir asistencia del estudiante" : "Asiento vacío";
+    nombreEl.disabled = !estudiante;
+    if (estudiante) {
+        nombreEl.addEventListener("click", function(event) {
+            event.stopPropagation();
+            abrirAsistenciaDesdeDistribucion(estudiante);
+        });
+    }
     asiento.appendChild(nombreEl);
+
+    if (estudiante) {
+        const indicadores = document.createElement("span");
+        indicadores.className = "indicadores-asistencia-asiento";
+        indicadores.dataset.estudiante = String(estudiante.id);
+        asiento.appendChild(indicadores);
+        actualizarIndicadoresAsistenciaAsiento(indicadores, estudiante.id);
+    }
 
     return asiento;
 }
+
+/* =====================================================
+   ASISTENCIA INDIVIDUAL DESDE DISTRIBUCIÓN DEL AULA
+===================================================== */
+let estudianteAsistenciaDistribucion = null;
+let fechaAsistenciaDistribucion = "";
+let estadoAsistenciaDistribucion = "";
+let fechasAsistenciaDistribucion = [];
+let datosAsistenciaDistribucion = {};
+
+function obtenerIconoEstadoAsistenciaDistribucion(estado) {
+    const iconos = { asistio: "✓", atraso: "⏰", licencia: "📄", falta: "✕" };
+    return iconos[String(estado || "").toLowerCase()] || "";
+}
+
+function obtenerEtiquetaEstadoAsistenciaDistribucion(estado) {
+    const etiquetas = { asistio: "Presente", atraso: "Atraso", licencia: "Licencia", falta: "Falta" };
+    return etiquetas[String(estado || "").toLowerCase()] || "Sin marcar";
+}
+
+function actualizarIndicadoresAsistenciaAsiento(contenedor, estudianteId) {
+    if (!contenedor || estudianteId == null) return;
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    const registro = fecha ? (registrosAsistencia[String(estudianteId)] || registrosAsistencia[estudianteId] || null) : null;
+    contenedor.innerHTML = "";
+    if (!registro) return;
+    const estado = String(registro.estado || "").toLowerCase();
+    const observacion = String(registro.observacion || "").trim();
+    if (estado) {
+        const icono = document.createElement("span");
+        icono.className = `indicador-estado-asistencia estado-${estado}`;
+        icono.textContent = obtenerIconoEstadoAsistenciaDistribucion(estado);
+        icono.title = `Asistencia: ${obtenerEtiquetaEstadoAsistenciaDistribucion(estado)}`;
+        contenedor.appendChild(icono);
+    }
+    if (observacion) {
+        const iconoObs = document.createElement("span");
+        iconoObs.className = "indicador-observacion-asistencia";
+        iconoObs.textContent = "💬";
+        iconoObs.title = "Tiene una observación";
+        contenedor.appendChild(iconoObs);
+    }
+}
+
+function formatearDiaCortoDistribucion(fecha) {
+    if (!fecha) return "";
+    const d = fechaLocalDesdeClaveAsistencia(fecha);
+    if (!d) return fecha;
+    return d.toLocaleDateString("es-BO", { day: "2-digit", month: "short" }).replace(/\./g, "");
+}
+
+function renderizarDiasAsistenciaDesdeDistribucion() {
+    const contenedor = document.getElementById("diasAsistenciaDesdeDistribucion");
+    if (!contenedor) return;
+    contenedor.innerHTML = "";
+    fechasAsistenciaDistribucion.forEach(fecha => {
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "dia-asistencia-distribucion" + (fecha === fechaAsistenciaDistribucion ? " seleccionado" : "");
+        boton.textContent = formatearDiaCortoDistribucion(fecha);
+        boton.title = `Seleccionar ${formatearFechaGuardadaAsistencia(fecha)}`;
+        boton.onclick = () => cargarFechaAsistenciaDesdeDistribucion(fecha);
+        contenedor.appendChild(boton);
+    });
+}
+
+async function abrirAsistenciaDesdeDistribucion(estudiante) {
+    if (!estudiante) return;
+    estudianteAsistenciaDistribucion = estudiante;
+    fechaAsistenciaDistribucion = document.getElementById("fechaAsistencia")?.value || "";
+    estadoAsistenciaDistribucion = "";
+    datosAsistenciaDistribucion = {};
+    const modal = document.getElementById("modalAsistenciaDesdeDistribucion");
+    const titulo = document.getElementById("tituloAsistenciaDesdeDistribucion");
+    const subtitulo = document.getElementById("subtituloAsistenciaDesdeDistribucion");
+    if (!modal) return;
+    if (titulo) titulo.textContent = `👤 ${estudiante.nombre || "Estudiante"}`;
+    if (subtitulo) subtitulo.textContent = `Lista ${estudiante.num_lista ?? "—"}`;
+    modal.classList.remove("oculto");
+    try {
+        const { data, error } = await supabaseClient
+            .from("asistencia")
+            .select("fecha,estado,hora,observacion")
+            .eq("estudiante_id", estudiante.id)
+            .order("fecha", { ascending: false });
+        if (error) throw error;
+        (data || []).forEach(r => datosAsistenciaDistribucion[r.fecha] = r);
+        const fechas = new Set((data || []).map(r => r.fecha).filter(Boolean));
+        if (fechaAsistenciaDistribucion) fechas.add(fechaAsistenciaDistribucion);
+        fechasAsistenciaDistribucion = Array.from(fechas).sort((a,b) => b.localeCompare(a));
+    } catch (error) {
+        console.error("Error al cargar asistencia individual:", error);
+        fechasAsistenciaDistribucion = fechaAsistenciaDistribucion ? [fechaAsistenciaDistribucion] : [];
+        mostrarMensaje("⚠️ No se pudo cargar el historial de asistencia del estudiante.");
+    }
+    renderizarDiasAsistenciaDesdeDistribucion();
+    await cargarFechaAsistenciaDesdeDistribucion(fechaAsistenciaDistribucion || fechasAsistenciaDistribucion[0] || "");
+}
+
+async function cargarFechaAsistenciaDesdeDistribucion(fecha) {
+    if (!estudianteAsistenciaDistribucion || !fecha) return;
+    fechaAsistenciaDistribucion = fecha;
+    const registro = datosAsistenciaDistribucion[fecha] || {};
+    estadoAsistenciaDistribucion = String(registro.estado || "").toLowerCase();
+    const obs = document.getElementById("observacionAsistenciaDesdeDistribucion");
+    if (obs) obs.value = registro.observacion || "";
+    document.querySelectorAll("#estadosAsistenciaDesdeDistribucion button[data-estado]").forEach(boton => {
+        boton.classList.toggle("seleccionado", boton.dataset.estado === estadoAsistenciaDistribucion);
+    });
+    renderizarDiasAsistenciaDesdeDistribucion();
+}
+
+function seleccionarEstadoDesdeDistribucion(estado) {
+    estadoAsistenciaDistribucion = estado;
+    document.querySelectorAll("#estadosAsistenciaDesdeDistribucion button[data-estado]").forEach(boton => {
+        boton.classList.toggle("seleccionado", boton.dataset.estado === estado);
+    });
+}
+
+async function guardarAsistenciaDesdeDistribucion() {
+    if (!estudianteAsistenciaDistribucion || !fechaAsistenciaDistribucion) {
+        alert("Selecciona un día y un estudiante.");
+        return;
+    }
+    if (!estadoAsistenciaDistribucion) {
+        alert("Selecciona el estado de asistencia.");
+        return;
+    }
+    const observacion = document.getElementById("observacionAsistenciaDesdeDistribucion")?.value.trim() || "";
+    const boton = document.getElementById("botonGuardarAsistenciaDesdeDistribucion");
+    if (boton) { boton.disabled = true; boton.textContent = "⏳ Guardando..."; }
+    try {
+        const registro = {
+            estudiante_id: estudianteAsistenciaDistribucion.id,
+            fecha: fechaAsistenciaDistribucion,
+            estado: estadoAsistenciaDistribucion,
+            hora: (datosAsistenciaDistribucion[fechaAsistenciaDistribucion] || {}).hora || null,
+            observacion: observacion || null
+        };
+        const { error } = await supabaseClient.from("asistencia").upsert([registro], { onConflict: "estudiante_id,fecha" });
+        if (error) throw error;
+        datosAsistenciaDistribucion[fechaAsistenciaDistribucion] = registro;
+        if (!fechasAsistenciaDistribucion.includes(fechaAsistenciaDistribucion)) {
+            fechasAsistenciaDistribucion.push(fechaAsistenciaDistribucion);
+            fechasAsistenciaDistribucion.sort((a,b) => b.localeCompare(a));
+        }
+        if (fechaAsistenciaDistribucion === (document.getElementById("fechaAsistencia")?.value || "")) {
+            registrosAsistencia[estudianteAsistenciaDistribucion.id] = {
+                estado: registro.estado, hora: registro.hora || "", observacion: registro.observacion || ""
+            };
+        }
+        mostrarVistaDistribucionAula();
+        renderizarDiasAsistenciaDesdeDistribucion();
+        await cargarFechaAsistenciaDesdeDistribucion(fechaAsistenciaDistribucion);
+        mostrarMensaje("✓ Asistencia y observación guardadas.");
+    } catch (error) {
+        console.error("Error al guardar asistencia individual:", error);
+        alert("No se pudo guardar la asistencia: " + (error.message || error));
+    } finally {
+        if (boton) { boton.disabled = false; boton.textContent = "💾 Guardar"; }
+    }
+}
+
+function cerrarAsistenciaDesdeDistribucion(event) {
+    if (event && event.target !== document.getElementById("modalAsistenciaDesdeDistribucion")) return;
+    const modal = document.getElementById("modalAsistenciaDesdeDistribucion");
+    if (modal) modal.classList.add("oculto");
+    estudianteAsistenciaDistribucion = null;
+    fechaAsistenciaDistribucion = "";
+    estadoAsistenciaDistribucion = "";
+}
+
 
 function mostrarVistaDistribucionAula() {
     const vista = document.getElementById("vistaDistribucionAula");
