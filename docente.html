@@ -6186,7 +6186,7 @@ async function cargarFechasAsistencia() {
 }
 
 
-function seleccionarFechaAsistencia(fechaSeleccionada = "") {
+async function seleccionarFechaAsistencia(fechaSeleccionada = "") {
 
     const fecha =
     document.getElementById(
@@ -6208,7 +6208,17 @@ function seleccionarFechaAsistencia(fechaSeleccionada = "") {
     }
 
     renderizarCalendarioFechasAsistencia();
-    cargarAsistencia();
+
+    // Esperar a que se carguen los registros del día seleccionado antes de
+    // volver a pintar la distribución, para evitar mostrar temporalmente las
+    // asistencias del día anterior.
+    await cargarAsistencia();
+    actualizarSelectorDiasAsistenciaAula();
+
+    const modalDistribucion = document.getElementById("modalDistribucionAula");
+    if (modalDistribucion && !modalDistribucion.classList.contains("oculto")) {
+        mostrarVistaDistribucionAula();
+    }
 
 }
 
