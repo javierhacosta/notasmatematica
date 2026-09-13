@@ -13110,6 +13110,8 @@ let detalleEstudianteQRActual = null;
 let detalleEdicionQRActiva = false;
 let detalleCambiosQR = new Map();
 let detalleDatosOriginalesQR = new Map();
+    detalleNombresOriginalesQR = new Map();
+let detalleNombresOriginalesQR = new Map();
 
 async function mostrarDetalleEstudianteQR(estudiante) {
     const modal = document.getElementById("modalConsultaEstudianteQR");
@@ -13273,10 +13275,13 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             nota: nota === "" ? "" : String(nota),
             observacion: observacion
         });
+        detalleNombresOriginalesQR.set(String(a.id), String(a.nombre || ""));
 
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${Number(a.id)}">
-                <td>${escapeHTML(a.nombre || "")}</td>
+                <td class="detalle-celda-nombre">
+                    <span class="detalle-valor-nombre">${escapeHTML(a.nombre || "")}</span>
+                </td>
                 <td>${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}</td>
                 <td class="detalle-celda-nota">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
@@ -13550,14 +13555,23 @@ function activarEdicionDetalleEstudianteQR() {
         const datos = detalleEstudianteQRActual.__detalleActividadesQR[id];
         if (!datos) return;
 
+        const celdaNombre = fila.querySelector(".detalle-celda-nombre");
         const celdaNota = fila.querySelector(".detalle-celda-nota");
         const celdaObs = fila.querySelector(".detalle-celda-observacion");
-        if (!celdaNota || !celdaObs) return;
+        if (!celdaNombre || !celdaNota || !celdaObs) return;
 
+        const nombreActual = datos.actividad.nombre ?? "";
         const notaActual = datos.nota ?? "";
         const obsActual = datos.observacion ?? "";
         const maximo = Number(datos.actividad.puntaje_maximo || 100);
 
+        celdaNombre.innerHTML = `
+            <input type="text"
+                   class="detalle-edicion-input detalle-edicion-nombre"
+                   data-actividad-detalle="${id}"
+                   value="${escapeHTML(String(nombreActual))}"
+                   placeholder="Nombre de la actividad">
+        `;
         celdaNota.innerHTML = `
             <input type="number" step="any" min="0" max="${maximo}"
                    class="detalle-edicion-input detalle-edicion-nota"
@@ -13580,7 +13594,7 @@ function activarEdicionDetalleEstudianteQR() {
     const botonEditar = document.getElementById("botonEditarDetalleQR");
     if (botonEditar) botonEditar.style.display = "none";
 
-    document.querySelectorAll("#detalleEstudianteQR .detalle-edicion-nota, #detalleEstudianteQR .detalle-edicion-observacion")
+    document.querySelectorAll("#detalleEstudianteQR .detalle-edicion-nombre, #detalleEstudianteQR .detalle-edicion-nota, #detalleEstudianteQR .detalle-edicion-observacion")
         .forEach(input => {
             input.addEventListener("input", manejarCambioDetalleEstudianteQR);
         });
@@ -13596,26 +13610,38 @@ function manejarCambioDetalleEstudianteQR(event) {
     if (!datos) return;
 
     const fila = input.closest("tr");
+    const nombreInput = fila?.querySelector(".detalle-edicion-nombre");
     const notaInput = fila?.querySelector(".detalle-edicion-nota");
     const obsInput = fila?.querySelector(".detalle-edicion-observacion");
 
+    const nombre = nombreInput ? nombreInput.value.trim() : String(datos.actividad.nombre || "").trim();
     const nota = notaInput ? notaInput.value.trim() : "";
     const observacion = obsInput ? obsInput.value.trim() : "";
-    const original = detalleDatosOriginalesQR.get(id) || {nota:"", observacion:""};
+    const originalCal = detalleDatosOriginalesQR.get(id) || {nota:"", observacion:""};
+    const originalNombre = String(detalleNombresOriginalesQR.get(id) ?? datos.actividad.nombre ?? "").trim();
 
+    datos.actividad.nombre = nombre;
     datos.nota = nota;
     datos.observacion = observacion;
 
-    if (nota === String(original.nota ?? "").trim() &&
-        observacion === String(original.observacion ?? "").trim()) {
+    const nombreCambio = nombre !== originalNombre;
+    const calCambio =
+        nota !== String(originalCal.nota ?? "").trim() ||
+        observacion !== String(originalCal.observacion ?? "").trim();
+
+    if (!nombreCambio && !calCambio) {
         detalleCambiosQR.delete(id);
     } else {
         detalleCambiosQR.set(id, {
             actividad: datos.actividad,
+            nombre,
+            originalNombre,
             nota,
             observacion,
-            originalNota: String(original.nota ?? "").trim(),
-            originalObservacion: String(original.observacion ?? "").trim()
+            originalNota: String(originalCal.nota ?? "").trim(),
+            originalObservacion: String(originalCal.observacion ?? "").trim(),
+            cambioNombre: nombreCambio,
+            cambioCalificacion: calCambio
         });
     }
 
@@ -13636,57 +13662,88 @@ async function guardarEdicionDetalleEstudianteQR() {
     try {
         // Validar todo antes de enviar cualquier cambio.
         for (const cambio of detalleCambiosQR.values()) {
-            if (cambio.nota !== "") {
+            if (cambio.cambioNombre && !String(cambio.nombre || "").trim()) {
+                throw new Error("El nombre de la actividad no puede estar vacío.");
+            }
+            if (cambio.cambioCalificacion && cambio.nota !== "") {
                 const n = Number(cambio.nota);
                 const max = Number(cambio.actividad.puntaje_maximo || 100);
                 if (Number.isNaN(n) || n < 0 || n > max) {
                     throw new Error(
-                        `La nota de "${cambio.actividad.nombre}" debe estar entre 0 y ${max}.`
+                        `La nota de "${cambio.nombre || cambio.actividad.nombre}" debe estar entre 0 y ${max}.`
                     );
                 }
             }
         }
 
         const cambios = Array.from(detalleCambiosQR.values());
-        const registros = cambios.map(cambio => ({
-            actividad_id: Number(cambio.actividad.id),
-            estudiante_id: Number(detalleEstudianteQRActual.id),
-            nota: cambio.nota === "" ? null : Number(cambio.nota),
-            observacion: cambio.observacion || null
-        }));
+        const cambiosNombre = cambios.filter(c => c.cambioNombre);
+        const cambiosCalificacion = cambios.filter(c => c.cambioCalificacion);
 
-        const { data, error } = await supabaseClient
-            .from("calificaciones")
-            .upsert(registros, {
-                onConflict: "actividad_id,estudiante_id"
-            })
-            .select("id,actividad_id,estudiante_id,nota,observacion");
+        // Guardar los nombres modificados en la tabla actividades.
+        for (const cambio of cambiosNombre) {
+            const { error } = await supabaseClient
+                .from("actividades")
+                .update({ nombre: String(cambio.nombre).trim() })
+                .eq("id", Number(cambio.actividad.id));
 
-        if (error) throw error;
-
-        // Actualizar inmediatamente la memoria local y la tabla general.
-        if (!calificaciones[detalleEstudianteQRActual.id]) {
-            calificaciones[detalleEstudianteQRActual.id] = {};
+            if (error) throw error;
         }
 
-        (data || registros).forEach(registro => {
-            calificaciones[detalleEstudianteQRActual.id][registro.actividad_id] = {
-                nota: registro.nota,
-                observacion: registro.observacion || ""
-            };
-        });
+        // Guardar notas/observaciones modificadas en calificaciones.
+        let data = [];
+        if (cambiosCalificacion.length > 0) {
+            const registros = cambiosCalificacion.map(cambio => ({
+                actividad_id: Number(cambio.actividad.id),
+                estudiante_id: Number(detalleEstudianteQRActual.id),
+                nota: cambio.nota === "" ? null : Number(cambio.nota),
+                observacion: cambio.observacion || null
+            }));
 
+            const respuesta = await supabaseClient
+                .from("calificaciones")
+                .upsert(registros, {
+                    onConflict: "actividad_id,estudiante_id"
+                })
+                .select("id,actividad_id,estudiante_id,nota,observacion");
+
+            if (respuesta.error) throw respuesta.error;
+            data = respuesta.data || registros;
+
+            if (!calificaciones[detalleEstudianteQRActual.id]) {
+                calificaciones[detalleEstudianteQRActual.id] = {};
+            }
+
+            data.forEach(registro => {
+                calificaciones[detalleEstudianteQRActual.id][registro.actividad_id] = {
+                    nota: registro.nota,
+                    observacion: registro.observacion || ""
+                };
+            });
+        }
+
+        // Actualizar inmediatamente la memoria local.
         const actividadMap = detalleEstudianteQRActual.__detalleActividadesQR || {};
         cambios.forEach(cambio => {
             const id = String(cambio.actividad.id);
-            const registro = calificaciones[detalleEstudianteQRActual.id][cambio.actividad.id];
-            detalleDatosOriginalesQR.set(id, {
-                nota: registro?.nota == null ? "" : String(registro.nota),
-                observacion: registro?.observacion || ""
-            });
-            if (actividadMap[id]) {
-                actividadMap[id].nota = registro?.nota ?? null;
-                actividadMap[id].observacion = registro?.observacion || "";
+            if (cambio.cambioNombre) {
+                cambio.actividad.nombre = String(cambio.nombre).trim();
+                detalleNombresOriginalesQR.set(id, cambio.actividad.nombre);
+            }
+
+            const registro = cambiosCalificacion.some(c => String(c.actividad.id) === id)
+                ? calificaciones[detalleEstudianteQRActual.id][cambio.actividad.id]
+                : null;
+
+            if (registro) {
+                detalleDatosOriginalesQR.set(id, {
+                    nota: registro?.nota == null ? "" : String(registro.nota),
+                    observacion: registro?.observacion || ""
+                });
+                if (actividadMap[id]) {
+                    actividadMap[id].nota = registro?.nota ?? null;
+                    actividadMap[id].observacion = registro?.observacion || "";
+                }
             }
         });
 
@@ -13701,7 +13758,7 @@ async function guardarEdicionDetalleEstudianteQR() {
         } catch (_) {}
 
         mostrarMensaje(
-            `✓ ${cambios.length} actividad(es) actualizada(s) correctamente.`
+            `✓ ${cambios.length} cambio(s) actualizado(s) correctamente.`
         );
 
     } catch (error) {
@@ -13739,6 +13796,7 @@ function cerrarConsultaEstudianteQR(event) {
     detalleEdicionQRActiva = false;
     detalleCambiosQR = new Map();
     detalleDatosOriginalesQR = new Map();
+    detalleNombresOriginalesQR = new Map();
 
     if (modoQRConsultaEstudiante && mantenerCamaraQR && streamQR) {
         escaneandoQR = true;
