@@ -13071,6 +13071,53 @@ function textoEstadoDetalleQR(estado) {
            (estado || "Sin estado");
 }
 
+/* Ícono de asistencia dentro de la fecha de cada actividad
+   en "Información completa del estudiante". */
+function obtenerIconoAsistenciaActividadDetalleQR(asistencia, fecha) {
+    if (!fecha || !Array.isArray(asistencia)) return "";
+
+    const registro = asistencia.find(r =>
+        String(r.fecha || "") === String(fecha)
+    );
+
+    if (!registro) return "";
+
+    const estado = String(registro.estado || "").toLowerCase();
+
+    const datos = {
+        asistio: {
+            icono: "✓",
+            titulo: "Asistencia"
+        },
+        atraso: {
+            icono: "⏰",
+            titulo: "Atraso"
+        },
+        licencia: {
+            icono: "📄",
+            titulo: "Permiso / licencia"
+        },
+        permiso: {
+            icono: "📄",
+            titulo: "Permiso"
+        },
+        falta: {
+            icono: "✕",
+            titulo: "Falta"
+        }
+    };
+
+    if (!datos[estado]) return "";
+
+    return `
+        <span
+            class="icono-asistencia-actividad ${estado}"
+            title="${datos[estado].titulo}">
+            ${datos[estado].icono}
+        </span>
+    `;
+}
+
 function calcularNota3TDetalleQR(actividadesLista, calificacionesMapa) {
     const limites = { SER:10, SABER:45, HACER:40, AUTOEVALUACION:5 };
     let hayNota = false;
@@ -13278,7 +13325,10 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${Number(a.id)}">
                 <td class="detalle-celda-nombre">${escapeHTML(a.nombre || "")}</td>
-                <td>${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}</td>
+                <td>
+                    ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
+                    ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
+                </td>
                 <td class="detalle-celda-nota">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
                 </td>
