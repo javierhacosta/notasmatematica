@@ -3446,6 +3446,15 @@ table tbody tr:nth-child(10n+10) td {
     background: white;
 }
 
+.boton-borrar-asiento-aula {
+    margin-left: 6px;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
 @media (max-width: 700px) {
     .modal-distribucion-aula { max-width: 100%; max-height: 96vh; }
     .distribucion-cuerpo { padding: 10px; }
@@ -15653,13 +15662,19 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         vacio.textContent = "— Asiento vacío —";
         select.appendChild(vacio);
 
+        const estudianteAsignado = String(distribucionAulaActual[String(numero)] || "");
         estudiantesCurso.forEach(estudiante => {
+            const idEstudiante = String(estudiante.id);
+            const yaAsignadoEnOtroAsiento = Object.keys(distribucionAulaActual || {}).some(asiento =>
+                String(asiento) !== String(numero) &&
+                String(distribucionAulaActual[asiento] || "") === idEstudiante
+            );
+            if (yaAsignadoEnOtroAsiento) return;
+
             const opcion = document.createElement("option");
-            opcion.value = String(estudiante.id);
+            opcion.value = idEstudiante;
             opcion.textContent = `${estudiante.nombre} — lista ${estudiante.num_lista ?? ""}`;
-            if (String(distribucionAulaActual[String(numero)] || "") === String(estudiante.id)) {
-                opcion.selected = true;
-            }
+            if (estudianteAsignado === idEstudiante) opcion.selected = true;
             select.appendChild(opcion);
         });
 
@@ -15669,6 +15684,17 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         });
 
         tdNombre.appendChild(select);
+
+        const botonBorrar = document.createElement("button");
+        botonBorrar.type = "button";
+        botonBorrar.className = "boton-borrar-asiento-aula";
+        botonBorrar.textContent = "🗑️";
+        botonBorrar.title = "Borrar estudiante de este asiento";
+        botonBorrar.addEventListener("click", function() {
+            distribucionAulaActual[String(numero)] = null;
+            mostrarListaAsientos(numero);
+        });
+        tdNombre.appendChild(botonBorrar);
 
         const tdCurso = document.createElement("td");
         tdCurso.textContent = cursoSeleccionado || "—";
@@ -15915,17 +15941,20 @@ function aplicarConfiguracionAula() {
 function actualizarSelectsDistribucionAula() {
     const selects = Array.from(document.querySelectorAll(".select-asiento-aula"));
     const seleccionados = new Set(
-        selects.map(select => select.value).filter(Boolean)
+        Object.values(distribucionAulaActual || {}).filter(Boolean).map(String)
     );
 
     selects.forEach(select => {
-        const valorPropio = select.value;
+        const valorPropio = String(select.value || "");
         Array.from(select.options).forEach(opcion => {
             if (!opcion.value) {
                 opcion.disabled = false;
+                opcion.hidden = false;
                 return;
             }
-            opcion.disabled = opcion.value !== valorPropio && seleccionados.has(opcion.value);
+            const asignadoEnOtroAsiento = seleccionados.has(String(opcion.value)) && String(opcion.value) !== valorPropio;
+            opcion.disabled = false;
+            opcion.hidden = asignadoEnOtroAsiento;
         });
     });
 
