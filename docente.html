@@ -4097,8 +4097,7 @@ table tbody tr:nth-child(10n+10) td {
 .estadistica-barra { height:28px; display:flex; align-items:center; gap:7px; margin:7px 0; }
 .estadistica-barra .etiqueta { width:145px; min-width:145px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
 .estadistica-barra .pista { flex:1; height:18px; background:#edf1f5; border-radius:9px; overflow:hidden; }
-.estadistica-barra .relleno { height:100%; border-radius:9px; background:#4b83c4; transition:background .25s ease; transform-origin:left center; transform:scaleX(0); animation:estadisticaBarraDesdeCero .95s cubic-bezier(.22,1,.36,1) forwards; }
-@keyframes estadisticaBarraDesdeCero { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+.estadistica-barra .relleno { height:100%; width:0; display:block; border-radius:9px; background-color:#4b83c4; transition:width 1s cubic-bezier(.22,1,.36,1); }
 .estadistica-barra .valor { width:48px; text-align:right; font-size:12px; font-weight:bold; }
 .estadistica-barra-porcentaje { margin:-4px 48px 4px 152px; font-size:10px; color:#777; text-align:right; }
 .estadistica-vacio { padding:20px; text-align:center; color:#777; }
@@ -11011,15 +11010,34 @@ function prepararGraficaEstadistica(titulo, items, unidad = "") {
         ${lista.length ? lista.map(x => {
             const porcentaje = total > 0 ? (x.valor / total) * 100 : 0;
             const ancho = maximo > 0 ? (x.valor / maximo) * 100 : 0;
-            const color = `hsl(${Math.max(0, Math.min(120, Math.round(porcentaje * 1.2)))} 70% 45%)`;
+            // Color compatible con navegadores antiguos: rojo → amarillo → verde según porcentaje.
+            const hue = Math.max(0, Math.min(120, porcentaje * 1.2));
+            const color = `hsl(${Math.round(hue)}, 70%, 45%)`;
             return `<div class="estadistica-barra">
                 <span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span>
-                <span class="pista"><span class="relleno" style="width:${Math.max(0, Math.min(100, ancho))}%;background:${color}"></span></span>
+                <span class="pista"><span class="relleno" data-ancho="${Math.max(0, Math.min(100, ancho)).toFixed(2)}" style="background-color:${color};width:0"></span></span>
                 <span class="valor">${escEstadistica(String(x.valor))}${unidad}</span>
             </div>
             <div class="estadistica-barra-porcentaje"><strong>${porcentaje.toFixed(1)}%</strong> del total</div>`;
         }).join("") : '<div class="estadistica-vacio">No hay datos para mostrar.</div>'}
     </div>`;
+}
+
+function animarBarrasEstadistica(panel) {
+    if (!panel) return;
+    const barras = panel.querySelectorAll('.estadistica-barra .relleno[data-ancho]');
+    barras.forEach((barra, indice) => {
+        barra.style.transition = 'none';
+        barra.style.width = '0%';
+        // Fuerza un frame en 0% para que el navegador no salte directamente al valor final.
+        void barra.offsetWidth;
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                barra.style.transition = `width 1s cubic-bezier(.22,1,.36,1) ${Math.min(indice * 45, 900)}ms`;
+                barra.style.width = `${barra.dataset.ancho}%`;
+            }, 30);
+        });
+    });
 }
 
 async function prepararEstadisticas() {
@@ -11227,15 +11245,19 @@ function mostrarEstadistica(tipo, boton) {
     document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
     document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.remove("activo"));
     const mapa={ingresos:"estadisticaIngresos",general:"estadisticaGeneral",cursos:"estadisticaCursos",rendimiento:"estadisticaRendimiento",asistencia:"estadisticaAsistencia",actividades:"estadisticaActividades"};
-    document.getElementById(mapa[tipo])?.classList.add("visible"); if(boton) boton.classList.add("activo");
-    if(tipo==="ingresos") abrirModalVisitasEstudiantes(); else prepararEstadisticas();
+    const panelActivo = document.getElementById(mapa[tipo]);
+    panelActivo?.classList.add("visible"); if(boton) boton.classList.add("activo");
+    if(tipo==="ingresos") abrirModalVisitasEstudiantes();
+    else prepararEstadisticas().then(() => animarBarrasEstadistica(panelActivo));
 }
 
 function abrirModalEstadisticas() {
     const modal=document.getElementById("modalEstadisticas"); if(!modal) return;
-    modal.classList.remove("oculto"); prepararEstadisticas();
+    modal.classList.remove("oculto");
     document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
-    document.getElementById("estadisticaGeneral")?.classList.add("visible");
+    const panelGeneral = document.getElementById("estadisticaGeneral");
+    panelGeneral?.classList.add("visible");
+    prepararEstadisticas().then(() => animarBarrasEstadistica(panelGeneral));
     document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.toggle("activo",b.dataset.estadistica==="general"));
 }
 
