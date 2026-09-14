@@ -4014,278 +4014,172 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 /* =====================================================
-   REGISTRO DE INGRESOS DE ESTUDIANTES
-   (Añadido sin alterar los estilos existentes)
+   NUEVO FORMATO ANIMADO DE DISTRIBUCIÓN DEL AULA
+   Tarjetas de estudiante: nombre destacado + asiento debajo.
 ===================================================== */
-.filtro-curso-linea {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-}
-
-.filtro-curso-linea select {
-    flex: 1;
+.contenido-asiento-aula {
+    width: 100%;
     min-width: 0;
-}
-
-.boton-visitas-estudiantes {
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background: white;
-    color: #1557a6;
-    font-size: 21px;
-    cursor: pointer;
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 5px;
+    position: relative;
+    z-index: 2;
 }
 
-.boton-visitas-estudiantes:hover {
-    background: #f2f6fb;
+.asiento-aula {
+    border-radius: 10px;
+    overflow: visible;
+    transition: transform .22s ease, box-shadow .22s ease, filter .22s ease;
+    animation: aparecerAsientoAula .45s cubic-bezier(.22,1,.36,1) both;
+    will-change: transform;
 }
 
-#botonEstadisticas {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 110px;
-    padding: 0 10px;
-    font-size: 14px;
+.asiento-aula:nth-child(1) { animation-delay: .03s; }
+.asiento-aula:nth-child(2) { animation-delay: .07s; }
+.asiento-aula:nth-child(3) { animation-delay: .11s; }
+
+.asiento-aula:hover {
+    transform: translateY(-3px) scale(1.025);
+    box-shadow: 0 7px 16px rgba(0,0,0,.14);
+    filter: saturate(1.04);
+    z-index: 5;
+}
+
+.asiento-aula:active {
+    transform: scale(.98);
+}
+
+.asiento-aula.estado-asiento-asistio {
+    background: #e8f5e9;
+    border-color: #81c784;
+}
+
+.asiento-aula.estado-asiento-atraso {
+    background: #fff8e1;
+    border-color: #ffca28;
+}
+
+.asiento-aula.estado-asiento-falta {
+    background: #ffebee;
+    border-color: #ef9a9a;
+}
+
+.asiento-aula.estado-asiento-licencia,
+.asiento-aula.estado-asiento-permiso {
+    background: #e3f2fd;
+    border-color: #90caf9;
+}
+
+.asiento-aula:not(.vacio):not(.estado-asiento-asistio):not(.estado-asiento-atraso):not(.estado-asiento-falta):not(.estado-asiento-licencia):not(.estado-asiento-permiso) {
+    background: #f5f7fa;
+    border-color: #cfd8dc;
+}
+
+.asiento-aula.vacio {
+    background: #f1f3f4;
+    border-color: #d5dadd;
+}
+
+.nombre-asiento-aula {
+    width: 100%;
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+    transition: transform .2s ease;
+}
+
+.nombre-asiento-aula.clicable {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.nombre-asiento-aula.clicable:hover {
+    transform: scale(1.035);
+}
+
+.numero-asiento-debajo-aula {
+    display: block;
+    color: #c62828;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: .2px;
+    opacity: .95;
+}
+
+.numero-asiento-aula {
+    display: none !important;
+}
+
+.leyenda-distribucion-aula {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px 13px;
+    margin: 16px auto 0;
+    padding: 9px 12px;
+    border: 1px solid #e0e5e9;
+    border-radius: 10px;
+    background: #fafbfc;
+    color: #5f6368;
+    font-size: 11px;
+}
+
+.leyenda-distribucion-aula span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     white-space: nowrap;
 }
 
-
-/* =====================================================
-   PANEL DE ESTADÍSTICAS
-===================================================== */
-.modal-estadisticas {
-    width: 100%;
-    max-width: 1050px;
-    max-height: 92vh;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    animation: aparecerModal .18s ease-out;
-}
-.estadisticas-cuerpo { padding: 15px; overflow: auto; }
-.estadisticas-menu {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:10px; margin-bottom:15px;
-}
-.boton-estadistica {
-    border:1px solid #d4dce7; background:#f7f9fc; color:#174a7e;
-    border-radius:10px; padding:12px 10px; cursor:pointer; font-weight:700;
-    transition:.15s;
-}
-.boton-estadistica:hover,.boton-estadistica.activo { background:#eaf2fb; border-color:#8fb2d5; transform:translateY(-1px); }
-.estadistica-panel { display:none; }
-.estadistica-panel.visible { display:block; }
-.estadistica-resumen {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:15px;
-}
-.estadistica-tarjeta { background:#f8fafc; border:1px solid #e1e6ed; border-radius:10px; padding:12px; text-align:center; }
-.estadistica-tarjeta strong { display:block; font-size:22px; color:#1557a6; margin-top:4px; }
-.estadistica-tarjeta span { font-size:12px; color:#666; }
-.estadistica-grafica { background:white; border:1px solid #e1e6ed; border-radius:10px; padding:12px; margin-bottom:12px; }
-.estadistica-grafica h4 { margin:0 0 10px; color:#333; }
-.estadistica-barra { height:28px; display:flex; align-items:center; gap:7px; margin:7px 0; }
-.estadistica-barra .etiqueta { width:145px; min-width:145px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
-.estadistica-barra .pista { flex:1; height:18px; background:#edf1f5; border-radius:9px; overflow:hidden; }
-.estadistica-barra .relleno { height:100%; width:0; display:block; border-radius:9px; background-color:#4b83c4; transition:width 1s cubic-bezier(.22,1,.36,1); }
-.estadistica-barra .valor { width:48px; text-align:right; font-size:12px; font-weight:bold; }
-.estadistica-barra-porcentaje { margin:-4px 48px 4px 152px; font-size:10px; color:#777; text-align:right; }
-.estadistica-vacio { padding:20px; text-align:center; color:#777; }
-@media(max-width:768px){
- .modal-estadisticas{max-height:94vh;} .estadisticas-cuerpo{padding:10px;}
- .estadisticas-menu{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
- .boton-estadistica{padding:10px 6px;font-size:12px;}
- .estadistica-barra .etiqueta{width:95px;min-width:95px;font-size:10px;} .estadistica-barra-porcentaje{margin:-4px 48px 4px 102px;font-size:9px;}
+.leyenda-distribucion-aula i {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,.12);
+    display: inline-block;
 }
 
-.modal-visitas-estudiantes {
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
-    background: white;
-    border-radius: 14px;
-    box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    animation: aparecerModal .18s ease-out;
-}
+.leyenda-color-asistio { background: #e8f5e9; }
+.leyenda-color-atraso { background: #fff8e1; }
+.leyenda-color-falta { background: #ffebee; }
+.leyenda-color-licencia { background: #e3f2fd; }
+.leyenda-color-sinmarcar { background: #f5f7fa; }
 
-.visitas-estudiantes-cuerpo {
-    padding: 15px;
-    overflow: auto;
-}
-
-.visitas-estudiantes-filtros {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: end;
-    margin-bottom: 12px;
-}
-
-.visitas-estudiantes-filtro {
-    flex: 1 1 200px;
-}
-
-.visitas-estudiantes-filtro label {
-    margin-bottom: 5px;
-}
-
-.visitas-estudiantes-acciones {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-
-.visitas-estudiantes-seleccionados {
-    color: #666;
-    font-size: 14px;
-}
-
-.boton-eliminar-visitas {
-    background: #c62828;
-    color: white;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.boton-eliminar-visitas:disabled {
-    opacity: .55;
-    cursor: not-allowed;
-}
-
-.tabla-visitas-estudiantes-contenedor {
-    width: 100%;
-    overflow-x: auto;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-}
-
-.tabla-visitas-estudiantes {
-    width: 100%;
-    max-width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.tabla-visitas-estudiantes th,
-.tabla-visitas-estudiantes td {
-    padding: 10px 9px;
-    border-bottom: 1px solid #e5e5e5;
-    text-align: left;
-}
-
-.tabla-visitas-estudiantes th {
-    background: #f1f4f7;
-    font-weight: bold;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.tabla-visitas-estudiantes tbody tr:hover {
-    background: #f8fbff;
-}
-
-.tabla-visitas-estudiantes td:first-child,
-.tabla-visitas-estudiantes th:first-child {
-    width: 42px;
-    text-align: center;
-}
-
-.tabla-visitas-estudiantes td {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-.visitas-estudiantes-vacio {
-    padding: 25px 10px;
-    text-align: center;
-    color: #666;
-}
-
-@media (max-width: 768px) {
-    .visitas-estudiantes-filtro select {
-        font-size: 11px;
-        white-space: nowrap;
-        text-overflow: ellipsis;
+@keyframes aparecerAsientoAula {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(.94);
     }
-
-    #filtroVisitasEstudiante {
-        font-size: 10px;
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
+}
 
-    .boton-visitas-estudiantes {
-        flex-basis: 42px;
-        width: 42px;
-        height: 42px;
+@media (max-width: 700px) {
+    .contenido-asiento-aula { gap: 3px; }
+    .nombre-asiento-aula { font-size: 9px; line-height: 1.12; }
+    .numero-asiento-debajo-aula { font-size: 8px; }
+    .leyenda-distribucion-aula {
+        gap: 6px 9px;
+        font-size: 9px;
+        padding: 8px 7px;
     }
+    .leyenda-distribucion-aula i { width: 10px; height: 10px; }
+}
 
-    .modal-visitas-estudiantes {
-        max-height: 94vh;
-    }
-
-    .visitas-estudiantes-cuerpo {
-        padding: 10px;
-        overflow-x: hidden;
-    }
-
-    .tabla-visitas-estudiantes-contenedor {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: hidden;
-    }
-
-    .tabla-visitas-estudiantes {
-        width: 100%;
-        min-width: 0;
-        table-layout: fixed;
-        font-size: 12px;
-    }
-
-    .tabla-visitas-estudiantes th,
-    .tabla-visitas-estudiantes td {
-        padding: 7px 4px;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-    }
-
-    .tabla-visitas-estudiantes th:nth-child(1),
-    .tabla-visitas-estudiantes td:nth-child(1) {
-        width: 34px;
-    }
-
-    .tabla-visitas-estudiantes th:nth-child(2),
-    .tabla-visitas-estudiantes td:nth-child(2) {
-        width: 43%;
-    }
-
-    .tabla-visitas-estudiantes th:nth-child(3),
-    .tabla-visitas-estudiantes td:nth-child(3) {
-        width: 30%;
-    }
-
-    .tabla-visitas-estudiantes th:nth-child(4),
-    .tabla-visitas-estudiantes td:nth-child(4) {
-        width: calc(27% - 34px);
-    }
+/* Al girar el aula, el contenido conserva su orientación legible. */
+#contenedorVisualDistribucionAula.girado-180 .contenido-asiento-aula,
+#contenedorVisualDistribucionAula.girado-180 .numero-asiento-debajo-aula,
+#contenedorVisualDistribucionAula.girado-180 .leyenda-distribucion-aula {
+    transform: rotate(180deg);
 }
 </style>
 
@@ -4316,17 +4210,6 @@ Usuario:
 
 <label>Curso</label>
 
-<div class="filtro-curso-linea">
-<button
-    type="button"
-    id="botonEstadisticas"
-    class="boton-visitas-estudiantes"
-    onclick="abrirModalEstadisticas()"
-    title="Estadísticas"
-    aria-label="Estadísticas">
-    📊 Estadísticas
-</button>
-
 <select id="buscarCurso">
 
 <option value="">
@@ -4334,7 +4217,6 @@ Selecciona un curso
 </option>
 
 </select>
-</div>
 
 </div>
 
@@ -5524,6 +5406,13 @@ Cancelar
                 <div id="contenedorVisualDistribucionAula">
                     <div class="distribucion-frente">⬆️ FRENTE / PIZARRA</div>
                     <div id="tableroDistribucionAula" class="distribucion-tablero"></div>
+                    <div class="leyenda-distribucion-aula" aria-label="Estados de asistencia">
+                        <span><i class="leyenda-color-asistio"></i>Asistió</span>
+                        <span><i class="leyenda-color-atraso"></i>Atraso</span>
+                        <span><i class="leyenda-color-falta"></i>Falta</span>
+                        <span><i class="leyenda-color-licencia"></i>Licencia / Permiso</span>
+                        <span><i class="leyenda-color-sinmarcar"></i>Sin marcar</span>
+                    </div>
                 </div>
             </div>
 
@@ -5664,93 +5553,6 @@ Cancelar
         <div class="historial-cuerpo">
             <div id="contenidoHistorial" class="historial-vacio">
                 Cargando historial...
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- =====================================================
-     MODAL ESTADÍSTICAS
-===================================================== -->
-<div id="modalEstadisticas" class="modal-fondo oculto" onclick="cerrarModalEstadisticas(event)">
-  <div class="modal-estadisticas" onclick="event.stopPropagation()">
-    <div class="modal-cabecera">
-      <h3>📊 Estadísticas</h3>
-      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalEstadisticas()">×</button>
-    </div>
-    <div class="estadisticas-cuerpo">
-      <div class="estadisticas-menu">
-        <button type="button" class="boton-estadistica activo" data-estadistica="ingresos" onclick="mostrarEstadistica('ingresos',this)">👁️ Estudiantes que ingresaron</button>
-        <button type="button" class="boton-estadistica" data-estadistica="general" onclick="mostrarEstadistica('general',this)">📊 Resumen general</button>
-        <button type="button" class="boton-estadistica" data-estadistica="cursos" onclick="mostrarEstadistica('cursos',this)">🏫 Por curso</button>
-        <button type="button" class="boton-estadistica" data-estadistica="rendimiento" onclick="mostrarEstadistica('rendimiento',this)">🎓 Rendimiento académico</button>
-        <button type="button" class="boton-estadistica" data-estadistica="asistencia" onclick="mostrarEstadistica('asistencia',this)">🕒 Asistencia</button>
-        <button type="button" class="boton-estadistica" data-estadistica="actividades" onclick="mostrarEstadistica('actividades',this)">📝 Actividades</button>
-      </div>
-      <div id="estadisticaIngresos" class="estadistica-panel visible"></div>
-      <div id="estadisticaGeneral" class="estadistica-panel"></div>
-      <div id="estadisticaCursos" class="estadistica-panel"></div>
-      <div id="estadisticaRendimiento" class="estadistica-panel"></div>
-      <div id="estadisticaAsistencia" class="estadistica-panel"></div>
-      <div id="estadisticaActividades" class="estadistica-panel"></div>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================
-     MODAL INGRESOS DE ESTUDIANTES
-===================================================== -->
-<div id="modalVisitasEstudiantes" class="modal-fondo oculto"
-     onclick="cerrarModalVisitasEstudiantes(event)">
-    <div class="modal-visitas-estudiantes" onclick="event.stopPropagation()">
-        <div class="modal-cabecera">
-            <h3>👁️ Estudiantes que ingresaron</h3>
-            <button type="button" class="boton-cerrar-modal"
-                    onclick="cerrarModalVisitasEstudiantes()">×</button>
-        </div>
-
-        <div class="visitas-estudiantes-cuerpo">
-            <div class="visitas-estudiantes-filtros">
-                <div class="visitas-estudiantes-filtro">
-                    <label for="filtroVisitasCurso">Curso</label>
-                    <select id="filtroVisitasCurso">
-                        <option value="">Todos los cursos</option>
-                    </select>
-                </div>
-                <div class="visitas-estudiantes-filtro">
-                    <label for="filtroVisitasEstudiante">Estudiante</label>
-                    <select id="filtroVisitasEstudiante">
-                        <option value="">Todos los estudiantes</option>
-                    </select>
-                </div>
-                <div class="visitas-estudiantes-filtro">
-                    <label for="filtroVisitasFecha">Fecha</label>
-                    <input type="date" id="filtroVisitasFecha">
-                </div>
-            </div>
-
-            <div class="visitas-estudiantes-acciones">
-                <span id="visitasEstudiantesSeleccionadas" class="visitas-estudiantes-seleccionados">0 seleccionadas</span>
-                <button type="button" id="botonEliminarVisitasSeleccionadas"
-                        class="boton-eliminar-visitas"
-                        onclick="eliminarVisitasEstudiantesSeleccionadas()"
-                        disabled>🗑️ Eliminar selección</button>
-            </div>
-
-            <div class="tabla-visitas-estudiantes-contenedor">
-                <table class="tabla-visitas-estudiantes">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="seleccionarTodasVisitas" title="Seleccionar todas"></th>
-                            <th>Nombre</th>
-                            <th>Fecha</th>
-                            <th>Curso</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaVisitasEstudiantesCuerpo">
-                        <tr><td colspan="4" class="visitas-estudiantes-vacio">Abriendo...</td></tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -6306,9 +6108,6 @@ document.getElementById(
 
         cursoSeleccionado =
         this.value;
-
-        const botonEstadisticas = document.getElementById("botonEstadisticas");
-        if (botonEstadisticas) botonEstadisticas.classList.toggle("oculto", !!cursoSeleccionado);
 
         const filtroBuscarEstudiante =
             document.getElementById("filtroBuscarEstudiante");
@@ -10760,576 +10559,6 @@ function mostrarComentarioInforme(titulo, comentario) {
     caja.appendChild(cuerpoComentario);
     fondo.appendChild(caja);
     document.body.appendChild(fondo);
-}
-
-/* =====================================================
-   INGRESOS DE ESTUDIANTES
-===================================================== */
-let registrosVisitasEstudiantes = [];
-let visitasEstudiantesCargadas = false;
-
-function obtenerNombreEstudianteVisita(estudianteId) {
-    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
-    return estudiante ? (estudiante.nombre || estudiante.nombre_completo || "Estudiante") : "Estudiante";
-}
-
-function obtenerCursoEstudianteVisita(estudianteId) {
-    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
-    return estudiante ? String(estudiante.curso || "") : "";
-}
-
-function obtenerFechaLocalVisita(fechaHora) {
-    const fecha = new Date(fechaHora);
-    if (Number.isNaN(fecha.getTime())) return "";
-    const y = fecha.getFullYear();
-    const m = String(fecha.getMonth() + 1).padStart(2, "0");
-    const d = String(fecha.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-}
-
-function formatearFechaHoraVisita(fechaHora) {
-    const fecha = new Date(fechaHora);
-    if (Number.isNaN(fecha.getTime())) return String(fechaHora || "");
-    return `${fecha.toLocaleDateString("es-BO", { day: "2-digit", month: "2-digit", year: "numeric" })} — ${fecha.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
-}
-
-function cargarCursosFiltroVisitas() {
-    const select = document.getElementById("filtroVisitasCurso");
-    if (!select) return;
-    const valorAnterior = select.value;
-    const cursos = [...new Set((estudiantes || []).map(e => e.curso).filter(Boolean))].sort();
-    select.innerHTML = `<option value="">Todos los cursos</option>`;
-    cursos.forEach(curso => {
-        const opcion = document.createElement("option");
-        opcion.value = curso;
-        opcion.textContent = curso;
-        select.appendChild(opcion);
-    });
-    if (valorAnterior && cursos.includes(valorAnterior)) select.value = valorAnterior;
-}
-
-function cargarEstudiantesFiltroVisitas() {
-    const select = document.getElementById("filtroVisitasEstudiante");
-    if (!select) return;
-    const valorAnterior = select.value;
-    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
-    const estudiantesCurso = (estudiantes || []).filter(e => !curso || String(e.curso || "") === curso).slice().sort((a,b) => String(a.nombre || a.nombre_completo || "").localeCompare(String(b.nombre || b.nombre_completo || ""), "es"));
-    const conteoVisitas = {};
-    (registrosVisitasEstudiantes || []).forEach(v => { const id=String(v.estudiante_id); conteoVisitas[id]=(conteoVisitas[id]||0)+1; });
-    select.innerHTML = `<option value="">Todos los estudiantes</option>`;
-    estudiantesCurso.forEach(e => {
-        const o=document.createElement("option"); o.value=e.id;
-        o.textContent=`${e.nombre || e.nombre_completo || "Estudiante"} — ${conteoVisitas[String(e.id)] || 0} vistas`;
-        select.appendChild(o);
-    });
-    if (valorAnterior && estudiantesCurso.some(e => String(e.id) === String(valorAnterior))) select.value=valorAnterior;
-}
-
-function obtenerVisitasEstudiantesFiltradas() {
-    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
-    const estudianteId = String(document.getElementById("filtroVisitasEstudiante")?.value || "");
-    const fecha = String(document.getElementById("filtroVisitasFecha")?.value || "");
-    return (registrosVisitasEstudiantes || [])
-        .map(visita => ({
-            ...visita,
-            nombre_estudiante: obtenerNombreEstudianteVisita(visita.estudiante_id),
-            curso_estudiante: obtenerCursoEstudianteVisita(visita.estudiante_id),
-            fecha_local: obtenerFechaLocalVisita(visita.fecha_hora)
-        }))
-        .filter(visita => !curso || visita.curso_estudiante === curso)
-        .filter(visita => !estudianteId || String(visita.estudiante_id) === estudianteId)
-        .filter(visita => !fecha || visita.fecha_local === fecha)
-        .sort((a,b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
-}
-
-function actualizarEstadoSeleccionVisitas() {
-    const filas = [...document.querySelectorAll(".check-visita-estudiante")];
-    const seleccionadas = filas.filter(c => c.checked).length;
-    const texto = document.getElementById("visitasEstudiantesSeleccionadas");
-    const boton = document.getElementById("botonEliminarVisitasSeleccionadas");
-    const todas = document.getElementById("seleccionarTodasVisitas");
-
-    if (texto) texto.textContent = `${seleccionadas} seleccionada${seleccionadas === 1 ? "" : "s"}`;
-    if (boton) boton.disabled = seleccionadas === 0;
-    if (todas) {
-        todas.checked = filas.length > 0 && seleccionadas === filas.length;
-        todas.indeterminate = seleccionadas > 0 && seleccionadas < filas.length;
-    }
-}
-
-function renderizarVisitasEstudiantes() {
-    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
-    if (!cuerpo) return;
-
-    const visitas = obtenerVisitasEstudiantesFiltradas();
-    if (!visitas.length) {
-        cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No existen ingresos registrados con los filtros seleccionados.</td></tr>`;
-        actualizarEstadoSeleccionVisitas();
-        return;
-    }
-
-    cuerpo.innerHTML = visitas.map(visita => `
-        <tr>
-            <td><input type="checkbox" class="check-visita-estudiante" value="${String(visita.id).replace(/"/g, "&quot;")}" aria-label="Seleccionar ingreso"></td>
-            <td>${String(visita.nombre_estudiante || "Estudiante").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</td>
-            <td>${String(formatearFechaHoraVisita(visita.fecha_hora)).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
-            <td>${String(visita.curso_estudiante || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
-        </tr>
-    `).join("");
-
-    cuerpo.querySelectorAll(".check-visita-estudiante").forEach(check => {
-        check.addEventListener("change", actualizarEstadoSeleccionVisitas);
-    });
-    actualizarEstadoSeleccionVisitas();
-}
-
-async function cargarVisitasEstudiantes() {
-    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
-    if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">Cargando ingresos...</td></tr>`;
-
-    try {
-        const todas = [];
-        const tamanoPagina = 1000;
-        let desde = 0;
-
-        while (true) {
-            const { data, error } = await supabaseClient
-                .from("visitas_estudiantes")
-                .select("id,estudiante_id,fecha_hora")
-                .order("fecha_hora", { ascending: false })
-                .range(desde, desde + tamanoPagina - 1);
-
-            if (error) throw error;
-            const pagina = data || [];
-            todas.push(...pagina);
-            if (pagina.length < tamanoPagina) break;
-            desde += tamanoPagina;
-        }
-
-        registrosVisitasEstudiantes = todas;
-        visitasEstudiantesCargadas = true;
-        cargarCursosFiltroVisitas();
-        cargarEstudiantesFiltroVisitas();
-        renderizarVisitasEstudiantes();
-    } catch (error) {
-        console.error("Error al cargar los ingresos de estudiantes:", error);
-        registrosVisitasEstudiantes = [];
-        if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No se pudieron cargar los ingresos de estudiantes.</td></tr>`;
-        const texto = document.getElementById("visitasEstudiantesSeleccionadas");
-        if (texto) texto.textContent = "0 seleccionadas";
-    }
-}
-
-
-function cerrarModalEstadisticas(event) {
-    const modal = document.getElementById("modalEstadisticas");
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.add("oculto");
-}
-
-function escEstadistica(v) {
-    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-function barrasEstadistica(items, max=0) {
-    if (!items.length) return '<div class="estadistica-vacio">No hay datos suficientes para mostrar esta estadística.</div>';
-    const limite=max || Math.max(...items.map(x=>Number(x.valor)||0),1);
-    return items.map(x=>{ const val=Number(x.valor)||0; const pct=Math.max(0,Math.min(100,(val/limite)*100)); return `<div class="estadistica-barra"><span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span><span class="pista"><span class="relleno" style="width:${pct}%"></span></span><span class="valor">${escEstadistica(x.texto ?? val)}</span></div>`; }).join("");
-}
-
-async function cargarTodosLosRegistrosEstadisticas(tabla, campos, orden = "id") {
-    const todos = [];
-    const tamanoPagina = 1000;
-    let desde = 0;
-
-    while (true) {
-        const { data, error } = await supabaseClient
-            .from(tabla)
-            .select(campos)
-            .order(orden, { ascending: true })
-            .range(desde, desde + tamanoPagina - 1);
-
-        if (error) throw error;
-        const pagina = data || [];
-        todos.push(...pagina);
-        if (pagina.length < tamanoPagina) break;
-        desde += tamanoPagina;
-    }
-
-    return todos;
-}
-
-function calcularNota3TEstadisticas(estudianteId, actividades3T, mapaCalificaciones) {
-    let total = 0;
-    let hayNotas = false;
-
-    ["SER", "SABER", "HACER", "AUTOEVALUACION"].forEach(categoria => {
-        const lista = actividades3T.filter(a => String(a.categoria || "").toUpperCase() === categoria);
-        if (!lista.length) return;
-
-        let sumaNotas = 0;
-        let sumaMaximos = 0;
-
-        lista.forEach(a => {
-            const r = mapaCalificaciones[String(estudianteId) + "_" + String(a.id)];
-            if (!r || r.nota === null || r.nota === undefined || String(r.nota).trim() === "") return;
-
-            const nota = Number(r.nota);
-            const maximo = Number(a.puntaje_maximo || LIMITES[categoria] || 0);
-            if (!Number.isFinite(nota) || !Number.isFinite(maximo) || maximo <= 0) return;
-
-            sumaNotas += nota;
-            sumaMaximos += maximo;
-            hayNotas = true;
-        });
-
-        if (sumaMaximos > 0) {
-            total += (sumaNotas / sumaMaximos) * LIMITES[categoria];
-        }
-    });
-
-    return hayNotas ? Math.round(total) : null;
-}
-
-let xOrdenCursosEstadistica = false;
-
-function prepararGraficaEstadistica(titulo, items, unidad = "") {
-    const lista = (items || [])
-        .map((x, indice) => ({ nombre: String(x.nombre ?? ""), valor: Number(x.valor) || 0, indice }))
-        .sort((a, b) => {
-            if (/curso/i.test(titulo) && a.nombre !== b.nombre) return a.nombre.localeCompare(b.nombre, undefined, { numeric:true, sensitivity:"base" });
-            return b.valor - a.valor;
-        });
-
-    const total = lista.reduce((s, x) => s + x.valor, 0);
-    const maximo = Math.max(...lista.map(x => x.valor), 1);
-
-    return `<div class="estadistica-grafica">
-        <h4>${escEstadistica(titulo)}</h4>
-        ${lista.length ? lista.map(x => {
-            const porcentaje = total > 0 ? (x.valor / total) * 100 : 0;
-            const ancho = maximo > 0 ? (x.valor / maximo) * 100 : 0;
-            const coloresCursos = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#ca8a04","#db2777","#4f46e5","#65a30d","#0f766e","#c2410c","#7c3aed","#be123c","#0369a1"];
-            let color;
-            if (/curso/i.test(titulo)) {
-                const clave = x.nombre.trim().toUpperCase();
-                let hash = 0;
-                for (let i = 0; i < clave.length; i++) hash = ((hash * 31) + clave.charCodeAt(i)) >>> 0;
-                color = coloresCursos[hash % coloresCursos.length];
-            } else {
-                const hue = Math.max(0, Math.min(120, porcentaje * 1.2));
-                color = `hsl(${Math.round(hue)}, 70%, 45%)`;
-            }
-            return `<div class="estadistica-barra">
-                <span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span>
-                <span class="pista"><span class="relleno" data-ancho="${Math.max(0, Math.min(100, ancho)).toFixed(2)}" style="background-color:${color};width:0"></span></span>
-                <span class="valor">${escEstadistica(String(x.valor))}${unidad}</span>
-            </div>
-            <div class="estadistica-barra-porcentaje"><strong>${porcentaje.toFixed(1)}%</strong> del total</div>`;
-        }).join("") : '<div class="estadistica-vacio">No hay datos para mostrar.</div>'}
-    </div>`;
-}
-
-function animarBarrasEstadistica(panel) {
-    if (!panel) return;
-    const barras = panel.querySelectorAll('.estadistica-barra .relleno[data-ancho]');
-    barras.forEach((barra, indice) => {
-        barra.style.transition = 'none';
-        barra.style.width = '0%';
-        // Fuerza un frame en 0% para que el navegador no salte directamente al valor final.
-        void barra.offsetWidth;
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                barra.style.transition = `width 1s cubic-bezier(.22,1,.36,1) ${Math.min(indice * 45, 900)}ms`;
-                barra.style.width = `${barra.dataset.ancho}%`;
-            }, 30);
-        });
-    });
-}
-
-async function prepararEstadisticas() {
-    const general = document.getElementById("estadisticaGeneral");
-    const cursosPanel = document.getElementById("estadisticaCursos");
-    const rendimiento = document.getElementById("estadisticaRendimiento");
-    const asistenciaPanel = document.getElementById("estadisticaAsistencia");
-    const actividadesPanel = document.getElementById("estadisticaActividades");
-
-    [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => {
-        if (el) el.innerHTML = '<div class="estadistica-vacio">⏳ Cargando todas las estadísticas...</div>';
-    });
-
-    try {
-        // Las estadísticas se cargan independientemente del curso seleccionado.
-        // Se obtienen todas las páginas para no quedar limitados a los primeros 1000 registros.
-        const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
-            cargarTodosLosRegistrosEstadisticas(
-                "matematica",
-                "id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t",
-                "id"
-            ),
-            cargarTodosLosRegistrosEstadisticas(
-                "asistencia",
-                "id,estudiante_id,fecha,estado,hora,observacion",
-                "fecha"
-            ),
-            cargarTodosLosRegistrosEstadisticas(
-                "actividades",
-                "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo",
-                "id"
-            ),
-            cargarTodosLosRegistrosEstadisticas(
-                "calificaciones",
-                "id,actividad_id,estudiante_id,nota,observacion",
-                "id"
-            )
-        ]);
-
-        // Los ingresos de estudiantes ya tienen carga completa y paginada.
-        if (!visitasEstudiantesCargadas) {
-            try {
-                await cargarVisitasEstudiantes();
-            } catch (_) {}
-        }
-
-        const visitas = registrosVisitasEstudiantes || [];
-        const cursos = [...new Set(est.map(e => e.curso).filter(Boolean))].sort();
-        const mapaEstudiante = new Map(est.map(e => [String(e.id), e]));
-        const mapaCalificaciones = {};
-        calificacionesTodas.forEach(r => {
-            mapaCalificaciones[String(r.estudiante_id) + "_" + String(r.actividad_id)] = r;
-        });
-
-        const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
-        const actividadesPorCurso = {};
-        actividades3T.forEach(a => {
-            if (!actividadesPorCurso[a.curso]) actividadesPorCurso[a.curso] = [];
-            actividadesPorCurso[a.curso].push(a);
-        });
-
-        // Calcular 3T y final para todos los estudiantes, sin necesidad de abrir un curso.
-        const estudiantesConNotas = est.map(e => {
-            const nota1 = convertirNumero(e.nota_1t);
-            const nota2 = convertirNumero(e.nota_2t);
-            const nota3 = calcularNota3TEstadisticas(e.id, actividadesPorCurso[e.curso] || [], mapaCalificaciones);
-            const final = nota1 !== null && nota2 !== null && nota3 !== null
-                ? Math.round((nota1 + nota2 + nota3) / 3)
-                : null;
-            return { ...e, nota3, final };
-        });
-
-        const promedio = arr => {
-            const validos = arr.map(Number).filter(Number.isFinite);
-            return validos.length
-                ? (validos.reduce((a, b) => a + b, 0) / validos.length).toFixed(1)
-                : "—";
-        };
-
-        const conteoEstado = registros => {
-            const r = { asistio: 0, atraso: 0, falta: 0, licencia: 0, permiso: 0 };
-            (registros || []).forEach(x => {
-                const estado = String(x.estado || "").toLowerCase();
-                if (estado === "asistio") r.asistio++;
-                else if (estado === "atraso") r.atraso++;
-                else if (estado === "falta") r.falta++;
-                else if (estado === "licencia") r.licencia++;
-                else if (estado === "permiso") r.permiso++;
-            });
-            return r;
-        };
-
-        const hoy = new Date();
-        const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
-        const visitasHoy = visitas.filter(v => obtenerFechaLocalVisita(v.fecha_hora) === hoyClave).length;
-        const estudiantesConIngreso = new Set(visitas.map(v => String(v.estudiante_id))).size;
-        const estados = conteoEstado(asistenciasTodas);
-        const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
-
-        if (general) general.innerHTML = `
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
-                <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
-                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
-            </div>
-            ${prepararGraficaEstadistica("Estudiantes por curso", cursos.map(c => ({ nombre:c, valor:estudiantesConNotas.filter(e=>e.curso===c).length })))}
-            ${prepararGraficaEstadistica("Ingresos registrados por curso", cursos.map(c => ({ nombre:c, valor:visitas.filter(v => mapaEstudiante.get(String(v.estudiante_id))?.curso === c).length })))}
-            ${prepararGraficaEstadistica("Estado de asistencia de todo el establecimiento", [
-                {nombre:"Asistencias",valor:estados.asistio},
-                {nombre:"Atrasos",valor:estados.atraso},
-                {nombre:"Faltas",valor:estados.falta},
-                {nombre:"Licencias",valor:estados.licencia},
-                {nombre:"Permisos",valor:estados.permiso}
-            ])}`;
-
-        if (cursosPanel) cursosPanel.innerHTML = `
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
-            </div>
-            ${prepararGraficaEstadistica("Cantidad de estudiantes por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c).length})))}
-            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c => {
-                const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
-                return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
-            }))}
-            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasTodas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
-            ${prepararGraficaEstadistica("Ingresos a la página por curso", cursos.map(c => ({nombre:c,valor:visitas.filter(v=>mapaEstudiante.get(String(v.estudiante_id))?.curso===c).length})))}`;
-
-        const finales = estudiantesConNotas.map(e=>e.final).filter(Number.isFinite);
-        if (rendimiento) rendimiento.innerHTML = `
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Promedio 1T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_1t))}</strong></div>
-                <div class="estadistica-tarjeta"><span>Promedio 2T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_2t))}</strong></div>
-                <div class="estadistica-tarjeta"><span>Promedio 3T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota3))}</strong></div>
-                <div class="estadistica-tarjeta"><span>Promedio final</span><strong>${promedio(finales)}</strong></div>
-                <div class="estadistica-tarjeta"><span>Con nota final</span><strong>${estudiantesConNotaFinal.length}</strong></div>
-            </div>
-            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c=>({nombre:c,valor:Number(promedio(estudiantesConNotas.filter(e=>e.curso===c).map(e=>e.final)))||0})))}
-            ${prepararGraficaEstadistica("Distribución de nota final", [
-                {nombre:"90–100",valor:finales.filter(n=>n>=90).length},
-                {nombre:"70–89",valor:finales.filter(n=>n>=70&&n<90).length},
-                {nombre:"51–69",valor:finales.filter(n=>n>=51&&n<70).length},
-                {nombre:"0–50",valor:finales.filter(n=>n<51).length}
-            ])}`;
-
-        const asistenciaPorCurso = cursos.map(c => {
-            const registros = asistenciasTodas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
-            const ce = conteoEstado(registros);
-            return { curso:c, ...ce };
-        });
-        if (asistenciaPanel) asistenciaPanel.innerHTML = `
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Asistencias</span><strong>${estados.asistio}</strong></div>
-                <div class="estadistica-tarjeta"><span>Atrasos</span><strong>${estados.atraso}</strong></div>
-                <div class="estadistica-tarjeta"><span>Faltas</span><strong>${estados.falta}</strong></div>
-                <div class="estadistica-tarjeta"><span>Licencias / permisos</span><strong>${estados.licencia + estados.permiso}</strong></div>
-            </div>
-            ${prepararGraficaEstadistica("Asistencia general", [
-                {nombre:"Asistencias",valor:estados.asistio},
-                {nombre:"Atrasos",valor:estados.atraso},
-                {nombre:"Faltas",valor:estados.falta},
-                {nombre:"Licencias",valor:estados.licencia},
-                {nombre:"Permisos",valor:estados.permiso}
-            ])}
-            ${prepararGraficaEstadistica("Registros de asistencia por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.asistio||0})))}
-            ${prepararGraficaEstadistica("Faltas por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.falta||0})))}
-            <div class="estadistica-vacio">Se muestran todos los registros guardados en la tabla de asistencia, sin depender del curso seleccionado.</div>`;
-
-        const categorias = ["SER", "SABER", "HACER", "AUTOEVALUACION"];
-        const conteoCategorias = categorias.map(k => ({nombre:k,valor:actividades3T.filter(a=>String(a.categoria||"").toUpperCase()===k).length}));
-        if (actividadesPanel) actividadesPanel.innerHTML = `
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
-                ${categorias.map(k=>`<div class="estadistica-tarjeta"><span>${escEstadistica(k)}</span><strong>${conteoCategorias.find(x=>x.nombre===k)?.valor||0}</strong></div>`).join("")}
-            </div>
-            ${prepararGraficaEstadistica("Actividades por categoría", conteoCategorias)}
-            ${prepararGraficaEstadistica("Actividades por curso", cursos.map(c=>({nombre:c,valor:(actividadesPorCurso[c]||[]).length})))}
-            ${prepararGraficaEstadistica("Calificaciones registradas por curso", cursos.map(c=>{
-                const ids=new Set(estudiantesConNotas.filter(e=>e.curso===c).map(e=>String(e.id)));
-                return {nombre:c,valor:calificacionesTodas.filter(r=>ids.has(String(r.estudiante_id))).length};
-            }))}`;
-
-        // Mantener también la lista de estudiantes y sus notas sincronizadas en memoria.
-        estudiantesConNotas.forEach(e => {
-            const original = estudiantes.find(x => String(x.id) === String(e.id));
-            if (original) {
-                original.nota_3t = e.nota3;
-                original.final = e.final;
-            }
-        });
-
-    } catch (error) {
-        console.error("Error al cargar todas las estadísticas:", error);
-        const mensaje = `<div class="estadistica-vacio">⚠️ No se pudieron cargar todas las estadísticas.<br><small>${escEstadistica(error.message || error)}</small></div>`;
-        [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => { if (el) el.innerHTML = mensaje; });
-    }
-}
-
-function mostrarEstadistica(tipo, boton) {
-    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
-    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.remove("activo"));
-    const mapa={ingresos:"estadisticaIngresos",general:"estadisticaGeneral",cursos:"estadisticaCursos",rendimiento:"estadisticaRendimiento",asistencia:"estadisticaAsistencia",actividades:"estadisticaActividades"};
-    const panelActivo = document.getElementById(mapa[tipo]);
-    panelActivo?.classList.add("visible"); if(boton) boton.classList.add("activo");
-    if(tipo==="ingresos") abrirModalVisitasEstudiantes();
-    else prepararEstadisticas().then(() => animarBarrasEstadistica(panelActivo));
-}
-
-function abrirModalEstadisticas() {
-    const modal=document.getElementById("modalEstadisticas"); if(!modal) return;
-    modal.classList.remove("oculto");
-    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
-    const panelGeneral = document.getElementById("estadisticaGeneral");
-    panelGeneral?.classList.add("visible");
-    prepararEstadisticas().then(() => animarBarrasEstadistica(panelGeneral));
-    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.toggle("activo",b.dataset.estadistica==="general"));
-}
-
-async function abrirModalVisitasEstudiantes() {
-    const modal = document.getElementById("modalVisitasEstudiantes");
-    if (!modal) return;
-
-    modal.classList.remove("oculto");
-    cargarCursosFiltroVisitas();
-    cargarEstudiantesFiltroVisitas();
-    document.getElementById("filtroVisitasFecha")?.addEventListener("change", renderizarVisitasEstudiantes);
-    document.getElementById("filtroVisitasCurso")?.addEventListener("change", function() {
-        cargarEstudiantesFiltroVisitas();
-        renderizarVisitasEstudiantes();
-    });
-    document.getElementById("filtroVisitasEstudiante")?.addEventListener("change", renderizarVisitasEstudiantes);
-    document.getElementById("seleccionarTodasVisitas")?.addEventListener("change", function() {
-        document.querySelectorAll(".check-visita-estudiante").forEach(check => check.checked = this.checked);
-        actualizarEstadoSeleccionVisitas();
-    });
-
-    // Siempre refrescar al abrir para mostrar los ingresos más recientes.
-    await cargarVisitasEstudiantes();
-}
-
-function cerrarModalVisitasEstudiantes(event) {
-    const modal = document.getElementById("modalVisitasEstudiantes");
-    if (!modal) return;
-    if (event && event.target !== modal) return;
-    modal.classList.add("oculto");
-}
-
-async function eliminarVisitasEstudiantesSeleccionadas() {
-    const ids = [...document.querySelectorAll(".check-visita-estudiante:checked")]
-        .map(check => check.value)
-        .filter(Boolean);
-
-    if (!ids.length) return;
-
-    const confirmar = confirm(
-        `¿Está seguro de eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"} de ingreso?\n\nEsta acción no se puede deshacer.`
-    );
-    if (!confirmar) return;
-
-    try {
-        const { data: eliminados, error } = await supabaseClient
-            .from("visitas_estudiantes")
-            .delete()
-            .in("id", ids)
-            .select("id");
-
-        if (error) throw error;
-
-        if (!eliminados || eliminados.length !== ids.length) {
-            throw new Error("La base de datos no eliminó todos los registros seleccionados. Verifique los permisos de eliminación de la tabla visitas_estudiantes en Supabase.");
-        }
-
-        const idsSet = new Set(ids.map(String));
-        registrosVisitasEstudiantes = registrosVisitasEstudiantes.filter(v => !idsSet.has(String(v.id)));
-        renderizarVisitasEstudiantes();
-    } catch (error) {
-        console.error("Error al eliminar ingresos de estudiantes:", error);
-        alert("No se pudieron eliminar los registros seleccionados.\n\n" + (error.message || error));
-    }
 }
 
 function mostrarVisitasInforme(estudianteId) {
@@ -17331,6 +16560,9 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
         asiento.appendChild(numeroEl);
     }
 
+    const contenido = document.createElement("div");
+    contenido.className = "contenido-asiento-aula";
+
     const nombreEl = document.createElement("span");
     nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
@@ -17343,7 +16575,16 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
         });
     }
 
-    asiento.appendChild(nombreEl);
+    contenido.appendChild(nombreEl);
+
+    if (configuracionAulaActual.mostrarNumeroAsiento === true) {
+        const numeroDebajo = document.createElement("span");
+        numeroDebajo.className = "numero-asiento-debajo-aula";
+        numeroDebajo.textContent = `Asiento ${numero}`;
+        contenido.appendChild(numeroDebajo);
+    }
+
+    asiento.appendChild(contenido);
 
     // Mostrar un icono cuando el estudiante tiene una observación en la asistencia del día seleccionado.
     if (estudiante && String(registro.observacion || '').trim()) {
