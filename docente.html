@@ -584,6 +584,26 @@ input, select {
     box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
 }
 
+/* Aviso visual cuando el QR se está usando para una fecha distinta a hoy.
+   Solo se activa en asistencia y actividades. */
+.modal-qr.qr-fecha-diferente .qr-marco {
+    animation: parpadearMarcoQRFecha 0.75s ease-in-out infinite;
+}
+
+.modal-qr.qr-fecha-diferente #videoQR {
+    animation: parpadearVideoQRFecha 0.75s ease-in-out infinite;
+}
+
+@keyframes parpadearMarcoQRFecha {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .25; }
+}
+
+@keyframes parpadearVideoQRFecha {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .72; }
+}
+
 .qr-mensaje {
     padding: 12px 16px;
     text-align: center;
@@ -12618,6 +12638,10 @@ let modoQRAsistencia = false;
 let modoQRConsultaEstudiante = false;
 let estudianteQRAsistencia = null;
 
+// Protección visual y confirmación cuando asistencia/actividad no corresponde a hoy.
+let qrFechaFueraDeHoy = false;
+let qrFechaFueraDeHoyConfirmada = false;
+
 /* Indica que se inició una toma de asistencia mediante QR.
    Permite guardar solo a los estudiantes que realmente tienen
    un estado registrado por el escáner, sin convertir los no
@@ -12677,11 +12701,23 @@ function crearDetectorQR() {
 }
 
 
+function obtenerFechaHoyClaveQR() {
+    const hoy = new Date();
+    return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+}
+
+function compararFechaConHoy(fecha) {
+    if (!fecha) return false;
+    return String(fecha) !== obtenerFechaHoyClaveQR();
+}
+
 async function abrirEscanerQR(actividad) {
 
     modoQRAsistencia = false;
     modoQRConsultaEstudiante = false;
     actividadQRSeleccionada = actividad;
+    qrFechaFueraDeHoy = compararFechaConHoy(actividad && actividad.fecha);
+    qrFechaFueraDeHoyConfirmada = false;
 
     const checkboxCamara =
     document.getElementById("mantenerCamaraQR");
@@ -12707,6 +12743,11 @@ async function abrirEscanerQR(actividad) {
     );
 
     modal.classList.remove("oculto");
+
+    const modalQR = modal.querySelector(".modal-qr");
+    if (modalQR) {
+        modalQR.classList.toggle("qr-fecha-diferente", qrFechaFueraDeHoy);
+    }
 
     mensaje.textContent =
     "Apunta la cámara al código QR del estudiante.";
@@ -12850,6 +12891,26 @@ async function solicitarLecturaQR() {
             ultimoCIPRProcesado = ci;
             tiempoUltimoQRProcesado = ahoraQR;
             escaneandoQR = false;
+
+            // Si la fecha elegida no coincide con hoy, pedir confirmación
+            // justo cuando se detecta el QR, antes de registrar o calificar.
+            if ((modoQRAsistencia || actividadQRSeleccionada) && qrFechaFueraDeHoy && !qrFechaFueraDeHoyConfirmada) {
+                const mensajeConfirmacion = modoQRAsistencia
+                    ? "¿Está seguro de usar asistencia en fecha distinta al de hoy?"
+                    : "Hoy no es la fecha de revisión. ¿Está seguro de continuar?";
+
+                const continuar = window.confirm(mensajeConfirmacion);
+
+                if (!continuar) {
+                    procesandoQR = false;
+                    cerrarEscanerQR();
+                    return;
+                }
+
+                qrFechaFueraDeHoyConfirmada = true;
+                const modalQR = document.getElementById("modalEscanerQR")?.querySelector(".modal-qr");
+                if (modalQR) modalQR.classList.remove("qr-fecha-diferente");
+            }
 
             if (modoQRAsistencia) {
                 await prepararAsistenciaQR(ci);
@@ -13028,6 +13089,8 @@ async function abrirEscanerAsistenciaQR() {
     modoQRAsistencia = true;
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
+    qrFechaFueraDeHoy = compararFechaConHoy(fecha);
+    qrFechaFueraDeHoyConfirmada = false;
 
     // Nueva toma QR: comenzar una cola temporal sin guardar todavía en BD.
     asistenciasQRPendientesGuardar = new Map();
@@ -13053,6 +13116,10 @@ async function abrirEscanerAsistenciaQR() {
     const mensaje = document.getElementById("mensajeQR");
 
     if (modal) modal.classList.remove("oculto");
+    const modalQR = modal ? modal.querySelector(".modal-qr") : null;
+    if (modalQR) {
+        modalQR.classList.toggle("qr-fecha-diferente", qrFechaFueraDeHoy);
+    }
     if (mensaje) {
         mensaje.textContent =
         "📷 Coloca el QR dentro del marco. Mantén el teléfono estable para registrar la asistencia.";
@@ -14884,7 +14951,13 @@ async function cerrarEscanerQR(
     modoQRAsistencia = false;
     modoQRConsultaEstudiante = false;
     estudianteQRAsistencia = null;
+    actividadQRSeleccionada = null;
+    qrFechaFueraDeHoy = false;
+    qrFechaFueraDeHoyConfirmada = false;
     procesandoQR = false;
+
+    const modalQR = document.getElementById("modalEscanerQR")?.querySelector(".modal-qr");
+    if (modalQR) modalQR.classList.remove("qr-fecha-diferente");
 
     const modalAsistencia = document.getElementById("modalAsistenciaQR");
     if (modalAsistencia) modalAsistencia.classList.add("oculto");
