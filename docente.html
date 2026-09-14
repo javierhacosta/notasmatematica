@@ -3630,6 +3630,24 @@ table tbody tr:nth-child(10n+10) td {
     width: 100%;
 }
 
+.configuracion-aula-nombre-completo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    font-weight: 600;
+    color: #37474f;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.configuracion-aula-nombre-completo input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
 .configuracion-aula-campos {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4922,6 +4940,10 @@ Cancelar
                                 onclick="vaciarAsientosAula()"
                                 title="Desocupar todos los asientos">🗑️ Desocupar todo</button>
                     </div>
+                    <label class="configuracion-aula-nombre-completo">
+                        <input id="mostrarNombreCompletoAula" type="checkbox">
+                        <span>Mostrar nombre completo</span>
+                    </label>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
                             <label for="cantidadColumnasAula">Columnas de mesas</label>
@@ -15358,9 +15380,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72 };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72 };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -15394,7 +15416,8 @@ function normalizarConfiguracionAula(datos = {}) {
     });
     const anchoMesa = Math.max(60, Math.min(500, Number(datos.anchoMesa ?? datos.ancho_mesa) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(datos.largoMesa ?? datos.largo_mesa) || 72));
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa };
+    const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -15422,7 +15445,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false) {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -15435,7 +15458,8 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         columnas: columnasNormalizadas,
         filasPorColumna: filasColumnas,
         anchoMesa,
-        largoMesa
+        largoMesa,
+        mostrarNombreCompleto: mostrarNombreCompleto === true
     };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
 }
@@ -15455,15 +15479,21 @@ async function cargarConfiguracionDistribucionAulaBD() {
             Array.isArray(data.distribucion.__filasPorColumna)
                 ? data.distribucion.__filasPorColumna
                 : null;
+        const metadataMostrarNombreCompleto = data.distribucion &&
+            data.distribucion.__mostrarNombreCompleto === true;
 
         const config = normalizarConfiguracionAula({
             ...data,
-            filasPorColumna: metadataFilas || undefined
+            filasPorColumna: metadataFilas || undefined,
+            mostrarNombreCompleto: metadataMostrarNombreCompleto
         });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
 
-        if (distribucion) delete distribucion.__filasPorColumna;
+        if (distribucion) {
+            delete distribucion.__filasPorColumna;
+            delete distribucion.__mostrarNombreCompleto;
+        }
 
         configuracionAulaActual = config;
         configuracionAulaGuardada = { ...config, filasPorColumna: [...config.filasPorColumna] };
@@ -15481,6 +15511,7 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     const config = normalizarConfiguracionAula(configuracionAulaActual);
     const distribucionParaGuardar = { ...(distribucion || {}) };
     distribucionParaGuardar.__filasPorColumna = [...config.filasPorColumna];
+    distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
 
     const datos = {
         curso: cursoSeleccionado,
@@ -15502,7 +15533,8 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.columnas,
         config.anchoMesa,
         config.largoMesa,
-        config.filasPorColumna
+        config.filasPorColumna,
+        config.mostrarNombreCompleto
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -15589,7 +15621,17 @@ function nombreEstudiantePorIdAula(id) {
 
 function construirNombreCortoAula(estudiante) {
     if (!estudiante) return "Asiento vacío";
-    return String(estudiante.nombre || "Sin nombre");
+
+    const nombre = String(estudiante.nombre || estudiante.nombre_completo || "Sin nombre").trim();
+    if (!configuracionAulaActual.mostrarNombreCompleto) {
+        const partes = nombre.split(/\s+/).filter(Boolean);
+        // Los nombres están registrados como: APELLIDO PATERNO APELLIDO MATERNO NOMBRES.
+        // En modo corto se muestran: NOMBRES APELLIDO PATERNO.
+        if (partes.length >= 3) {
+            return `${partes.slice(2).join(" ")} ${partes[0]}`;
+        }
+    }
+    return nombre;
 }
 
 async function abrirModalDistribucionAula() {
@@ -16016,19 +16058,27 @@ function mostrarConfiguracionAula() {
     const inputColumnas = document.getElementById("cantidadColumnasAula");
     const inputAnchoMesa = document.getElementById("anchoMesasAula");
     const inputLargoMesa = document.getElementById("largoMesasAula");
+    const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
 
     if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
     if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
     if (inputLargoMesa) inputLargoMesa.value = configuracionAulaActual.largoMesa || 72;
+    if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
             actualizarBotonAplicarConfiguracionAula();
         };
+        if (input === inputMostrarNombreCompleto) {
+            input.onchange = function() {
+                actualizarResumenConfiguracionAula();
+                actualizarBotonAplicarConfiguracionAula();
+            };
+        }
     });
 
     actualizarResumenConfiguracionAula();
@@ -16106,17 +16156,18 @@ function aplicarConfiguracionAula() {
     const filas = filasMaximas;
     const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
+    const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -16149,7 +16200,8 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
     return Number(a.columnas) === Number(b.columnas) &&
            JSON.stringify(filasA) === JSON.stringify(filasB) &&
            Number(a.anchoMesa) === Number(b.anchoMesa) &&
-           Number(a.largoMesa) === Number(b.largoMesa);
+           Number(a.largoMesa) === Number(b.largoMesa) &&
+           (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true);
 }
 
 function actualizarBotonAplicarConfiguracionAula() {
@@ -16161,7 +16213,8 @@ function actualizarBotonAplicarConfiguracionAula() {
         columnas: filasPorColumna.length,
         filasPorColumna,
         anchoMesa: Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130)),
-        largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72))
+        largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72)),
+        mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true
     };
     boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
 }
