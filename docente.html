@@ -5383,9 +5383,18 @@ Cancelar
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const _scriptsDiferidos = {};
+function cargarScriptDiferido(url, globalName) {
+ if (globalName && window[globalName]) return Promise.resolve(window[globalName]);
+ if (_scriptsDiferidos[url]) return _scriptsDiferidos[url];
+ _scriptsDiferidos[url] = new Promise((resolve,reject)=>{ const x=document.createElement("script"); x.src=url; x.async=true; x.onload=()=>resolve(globalName?window[globalName]:true); x.onerror=reject; document.head.appendChild(x); });
+ return _scriptsDiferidos[url];
+}
+function cargarJSQR(){return cargarScriptDiferido("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js","jsQR");}
+function cargarXLSX(){return cargarScriptDiferido("https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js","XLSX");}
+</script>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
 
 <script>
@@ -5649,7 +5658,11 @@ async function comprobarSesion() {
 
     establecerFechaActual();
 
-    await cargarEstudiantes();
+    if (!cargarCacheEstudiantesQR()) {
+        await cargarEstudiantes(false);
+    } else {
+        cargarEstudiantes(true);
+    }
 
 }
 
@@ -5776,7 +5789,7 @@ function buscarEstudianteQRLocal(ci) {
     return indiceEstudiantesQR.get(clave) || null;
 }
 
-async function cargarEstudiantes() {
+async function cargarEstudiantes(esSegundoPlano = false) {
 
     const {
         data,
@@ -5792,21 +5805,15 @@ async function cargarEstudiantes() {
 
 
     if (error) {
-
         console.error(error);
-
-        if (cargarCacheEstudiantesQR()) {
-            mostrarMensaje("📶 Sin conexión: usando la lista de estudiantes guardada en este dispositivo.");
-            return;
+        if (!esSegundoPlano) {
+            if (cargarCacheEstudiantesQR()) {
+                mostrarMensaje("📶 Sin conexión: usando la lista de estudiantes guardada en este dispositivo.");
+                return;
+            }
+            alert("Error al cargar estudiantes: " + error.message);
         }
-
-        alert(
-            "Error al cargar estudiantes: " +
-            error.message
-        );
-
         return;
-
     }
 
 
@@ -13133,9 +13140,13 @@ const INTERVALO_LECTURA_QR_MS = 120;
 let canvasQR = null;
 let contextoCanvasQR = null;
 
-function crearDetectorQR() {
+async function crearDetectorQR() {
     if ("BarcodeDetector" in window) {
         return new BarcodeDetector({ formats: ["qr_code"] });
+    }
+
+    if (typeof jsQR !== "function") {
+        try { await cargarJSQR(); } catch(e) { return null; }
     }
 
     if (typeof jsQR === "function") {
@@ -13235,7 +13246,7 @@ async function abrirEscanerQR(actividad) {
     try {
 
         detectorQR =
-        crearDetectorQR();
+        await crearDetectorQR();
 
         const esPC = !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
         streamQR =
@@ -13627,7 +13638,7 @@ async function iniciarCamaraQR() {
     }
 
     try {
-        detectorQR = crearDetectorQR();
+        detectorQR = await crearDetectorQR();
 
         const esPC = !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
         streamQR = await navigator.mediaDevices.getUserMedia({
@@ -14498,7 +14509,7 @@ async function abrirEscanerConsultaEstudianteQR() {
     }
 
     try {
-        detectorQR = crearDetectorQR();
+        detectorQR = await crearDetectorQR();
         const video = document.getElementById("videoQR");
 
         if (!streamQR) {
