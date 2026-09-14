@@ -4012,6 +4012,164 @@ table tbody tr:nth-child(10n+10) td {
         padding-right: 3px !important;
     }
 }
+
+/* =====================================================
+   REGISTRO DE INGRESOS DE ESTUDIANTES
+   (Añadido sin alterar los estilos existentes)
+===================================================== */
+.filtro-curso-linea {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.filtro-curso-linea select {
+    flex: 1;
+    min-width: 0;
+}
+
+.boton-visitas-estudiantes {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: white;
+    color: #1557a6;
+    font-size: 21px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boton-visitas-estudiantes:hover {
+    background: #f2f6fb;
+}
+
+.modal-visitas-estudiantes {
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: aparecerModal .18s ease-out;
+}
+
+.visitas-estudiantes-cuerpo {
+    padding: 15px;
+    overflow: auto;
+}
+
+.visitas-estudiantes-filtros {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.visitas-estudiantes-filtro {
+    flex: 1 1 200px;
+}
+
+.visitas-estudiantes-filtro label {
+    margin-bottom: 5px;
+}
+
+.visitas-estudiantes-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.visitas-estudiantes-seleccionados {
+    color: #666;
+    font-size: 14px;
+}
+
+.boton-eliminar-visitas {
+    background: #c62828;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.boton-eliminar-visitas:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.tabla-visitas-estudiantes-contenedor {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.tabla-visitas-estudiantes {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+.tabla-visitas-estudiantes th,
+.tabla-visitas-estudiantes td {
+    padding: 10px 9px;
+    border-bottom: 1px solid #e5e5e5;
+    text-align: left;
+}
+
+.tabla-visitas-estudiantes th {
+    background: #f1f4f7;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.tabla-visitas-estudiantes tbody tr:hover {
+    background: #f8fbff;
+}
+
+.tabla-visitas-estudiantes td:first-child,
+.tabla-visitas-estudiantes th:first-child {
+    width: 42px;
+    text-align: center;
+}
+
+.visitas-estudiantes-vacio {
+    padding: 25px 10px;
+    text-align: center;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .boton-visitas-estudiantes {
+        flex-basis: 42px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .modal-visitas-estudiantes {
+        max-height: 94vh;
+    }
+
+    .visitas-estudiantes-cuerpo {
+        padding: 10px;
+    }
+}
 </style>
 
 </head>
@@ -4041,6 +4199,16 @@ Usuario:
 
 <label>Curso</label>
 
+<div class="filtro-curso-linea">
+<button
+    type="button"
+    class="boton-visitas-estudiantes"
+    onclick="abrirModalVisitasEstudiantes()"
+    title="Estudiantes que ingresaron a la página"
+    aria-label="Estudiantes que ingresaron a la página">
+    👁️
+</button>
+
 <select id="buscarCurso">
 
 <option value="">
@@ -4048,6 +4216,7 @@ Selecciona un curso
 </option>
 
 </select>
+</div>
 
 </div>
 
@@ -5377,6 +5546,59 @@ Cancelar
         <div class="historial-cuerpo">
             <div id="contenidoHistorial" class="historial-vacio">
                 Cargando historial...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
+     MODAL INGRESOS DE ESTUDIANTES
+===================================================== -->
+<div id="modalVisitasEstudiantes" class="modal-fondo oculto"
+     onclick="cerrarModalVisitasEstudiantes(event)">
+    <div class="modal-visitas-estudiantes" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>👁️ Estudiantes que ingresaron</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarModalVisitasEstudiantes()">×</button>
+        </div>
+
+        <div class="visitas-estudiantes-cuerpo">
+            <div class="visitas-estudiantes-filtros">
+                <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasCurso">Curso</label>
+                    <select id="filtroVisitasCurso">
+                        <option value="">Todos los cursos</option>
+                    </select>
+                </div>
+                <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasFecha">Fecha</label>
+                    <input type="date" id="filtroVisitasFecha">
+                </div>
+            </div>
+
+            <div class="visitas-estudiantes-acciones">
+                <span id="visitasEstudiantesSeleccionadas" class="visitas-estudiantes-seleccionados">0 seleccionadas</span>
+                <button type="button" id="botonEliminarVisitasSeleccionadas"
+                        class="boton-eliminar-visitas"
+                        onclick="eliminarVisitasEstudiantesSeleccionadas()"
+                        disabled>🗑️ Eliminar selección</button>
+            </div>
+
+            <div class="tabla-visitas-estudiantes-contenedor">
+                <table class="tabla-visitas-estudiantes">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="seleccionarTodasVisitas" title="Seleccionar todas"></th>
+                            <th>Nombre</th>
+                            <th>Fecha</th>
+                            <th>Curso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaVisitasEstudiantesCuerpo">
+                        <tr><td colspan="4" class="visitas-estudiantes-vacio">Abriendo...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -10383,6 +10605,198 @@ function mostrarComentarioInforme(titulo, comentario) {
     caja.appendChild(cuerpoComentario);
     fondo.appendChild(caja);
     document.body.appendChild(fondo);
+}
+
+/* =====================================================
+   INGRESOS DE ESTUDIANTES
+===================================================== */
+let registrosVisitasEstudiantes = [];
+let visitasEstudiantesCargadas = false;
+
+function obtenerNombreEstudianteVisita(estudianteId) {
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    return estudiante ? (estudiante.nombre || estudiante.nombre_completo || "Estudiante") : "Estudiante";
+}
+
+function obtenerCursoEstudianteVisita(estudianteId) {
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    return estudiante ? String(estudiante.curso || "") : "";
+}
+
+function obtenerFechaLocalVisita(fechaHora) {
+    const fecha = new Date(fechaHora);
+    if (Number.isNaN(fecha.getTime())) return "";
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, "0");
+    const d = String(fecha.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+function formatearFechaHoraVisita(fechaHora) {
+    const fecha = new Date(fechaHora);
+    if (Number.isNaN(fecha.getTime())) return String(fechaHora || "");
+    return `${fecha.toLocaleDateString("es-BO", { day: "2-digit", month: "2-digit", year: "numeric" })} — ${fecha.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
+
+function cargarCursosFiltroVisitas() {
+    const select = document.getElementById("filtroVisitasCurso");
+    if (!select) return;
+    const valorAnterior = select.value;
+    const cursos = [...new Set((estudiantes || []).map(e => e.curso).filter(Boolean))].sort();
+    select.innerHTML = `<option value="">Todos los cursos</option>`;
+    cursos.forEach(curso => {
+        const opcion = document.createElement("option");
+        opcion.value = curso;
+        opcion.textContent = curso;
+        select.appendChild(opcion);
+    });
+    if (valorAnterior && cursos.includes(valorAnterior)) select.value = valorAnterior;
+}
+
+function obtenerVisitasEstudiantesFiltradas() {
+    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
+    const fecha = String(document.getElementById("filtroVisitasFecha")?.value || "");
+
+    return (registrosVisitasEstudiantes || [])
+        .map(visita => ({
+            ...visita,
+            nombre_estudiante: obtenerNombreEstudianteVisita(visita.estudiante_id),
+            curso_estudiante: obtenerCursoEstudianteVisita(visita.estudiante_id),
+            fecha_local: obtenerFechaLocalVisita(visita.fecha_hora)
+        }))
+        .filter(visita => !curso || visita.curso_estudiante === curso)
+        .filter(visita => !fecha || visita.fecha_local === fecha)
+        .sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
+}
+
+function actualizarEstadoSeleccionVisitas() {
+    const filas = [...document.querySelectorAll(".check-visita-estudiante")];
+    const seleccionadas = filas.filter(c => c.checked).length;
+    const texto = document.getElementById("visitasEstudiantesSeleccionadas");
+    const boton = document.getElementById("botonEliminarVisitasSeleccionadas");
+    const todas = document.getElementById("seleccionarTodasVisitas");
+
+    if (texto) texto.textContent = `${seleccionadas} seleccionada${seleccionadas === 1 ? "" : "s"}`;
+    if (boton) boton.disabled = seleccionadas === 0;
+    if (todas) {
+        todas.checked = filas.length > 0 && seleccionadas === filas.length;
+        todas.indeterminate = seleccionadas > 0 && seleccionadas < filas.length;
+    }
+}
+
+function renderizarVisitasEstudiantes() {
+    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
+    if (!cuerpo) return;
+
+    const visitas = obtenerVisitasEstudiantesFiltradas();
+    if (!visitas.length) {
+        cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No existen ingresos registrados con los filtros seleccionados.</td></tr>`;
+        actualizarEstadoSeleccionVisitas();
+        return;
+    }
+
+    cuerpo.innerHTML = visitas.map(visita => `
+        <tr>
+            <td><input type="checkbox" class="check-visita-estudiante" value="${String(visita.id).replace(/"/g, "&quot;")}" aria-label="Seleccionar ingreso"></td>
+            <td>${String(visita.nombre_estudiante || "Estudiante").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</td>
+            <td>${String(formatearFechaHoraVisita(visita.fecha_hora)).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+            <td>${String(visita.curso_estudiante || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+        </tr>
+    `).join("");
+
+    cuerpo.querySelectorAll(".check-visita-estudiante").forEach(check => {
+        check.addEventListener("change", actualizarEstadoSeleccionVisitas);
+    });
+    actualizarEstadoSeleccionVisitas();
+}
+
+async function cargarVisitasEstudiantes() {
+    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
+    if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">Cargando ingresos...</td></tr>`;
+
+    try {
+        const todas = [];
+        const tamanoPagina = 1000;
+        let desde = 0;
+
+        while (true) {
+            const { data, error } = await supabaseClient
+                .from("visitas_estudiantes")
+                .select("id,estudiante_id,fecha_hora")
+                .order("fecha_hora", { ascending: false })
+                .range(desde, desde + tamanoPagina - 1);
+
+            if (error) throw error;
+            const pagina = data || [];
+            todas.push(...pagina);
+            if (pagina.length < tamanoPagina) break;
+            desde += tamanoPagina;
+        }
+
+        registrosVisitasEstudiantes = todas;
+        visitasEstudiantesCargadas = true;
+        cargarCursosFiltroVisitas();
+        renderizarVisitasEstudiantes();
+    } catch (error) {
+        console.error("Error al cargar los ingresos de estudiantes:", error);
+        registrosVisitasEstudiantes = [];
+        if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No se pudieron cargar los ingresos de estudiantes.</td></tr>`;
+        const texto = document.getElementById("visitasEstudiantesSeleccionadas");
+        if (texto) texto.textContent = "0 seleccionadas";
+    }
+}
+
+async function abrirModalVisitasEstudiantes() {
+    const modal = document.getElementById("modalVisitasEstudiantes");
+    if (!modal) return;
+
+    modal.classList.remove("oculto");
+    cargarCursosFiltroVisitas();
+    document.getElementById("filtroVisitasFecha")?.addEventListener("change", renderizarVisitasEstudiantes);
+    document.getElementById("filtroVisitasCurso")?.addEventListener("change", renderizarVisitasEstudiantes);
+    document.getElementById("seleccionarTodasVisitas")?.addEventListener("change", function() {
+        document.querySelectorAll(".check-visita-estudiante").forEach(check => check.checked = this.checked);
+        actualizarEstadoSeleccionVisitas();
+    });
+
+    // Siempre refrescar al abrir para mostrar los ingresos más recientes.
+    await cargarVisitasEstudiantes();
+}
+
+function cerrarModalVisitasEstudiantes(event) {
+    const modal = document.getElementById("modalVisitasEstudiantes");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+async function eliminarVisitasEstudiantesSeleccionadas() {
+    const ids = [...document.querySelectorAll(".check-visita-estudiante:checked")]
+        .map(check => check.value)
+        .filter(Boolean);
+
+    if (!ids.length) return;
+
+    const confirmar = confirm(
+        `¿Está seguro de eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"} de ingreso?\n\nEsta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from("visitas_estudiantes")
+            .delete()
+            .in("id", ids);
+
+        if (error) throw error;
+
+        const idsSet = new Set(ids.map(String));
+        registrosVisitasEstudiantes = registrosVisitasEstudiantes.filter(v => !idsSet.has(String(v.id)));
+        renderizarVisitasEstudiantes();
+    } catch (error) {
+        console.error("Error al eliminar ingresos de estudiantes:", error);
+        alert("No se pudieron eliminar los registros seleccionados.\n\n" + (error.message || error));
+    }
 }
 
 function mostrarVisitasInforme(estudianteId) {
