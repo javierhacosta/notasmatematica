@@ -1585,8 +1585,66 @@ td:first-child {
     flex-shrink: 0;
 }
 
-.boton-bloquear-asistencia:hover {
+ .boton-bloquear-asistencia:hover {
     background: #d95f00;
+}
+
+/* BOTÓN MOSTRAR/OCULTAR HORA DE ASISTENCIA */
+.boton-hora-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #00838f;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: .35;
+    transition: opacity .2s ease, background .2s ease;
+}
+
+.boton-hora-asistencia.activo {
+    opacity: 1;
+}
+
+.boton-hora-asistencia:hover {
+    background: #006b73;
+}
+
+.columna-hora-asistencia {
+    display: none;
+    width: 92px;
+    min-width: 92px;
+}
+
+.tabla-asistencia.mostrar-hora .columna-hora-asistencia {
+    display: table-cell;
+}
+
+.hora-asistencia-input {
+    width: 100%;
+    min-width: 82px;
+    padding: 7px 4px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.hora-asistencia-input:disabled {
+    background: #eeeeee;
+    color: #555;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
+.hora-asistencia-input.editable {
+    background: #fffde7;
+    border: 2px solid #ef6c00;
 }
 
 
@@ -4160,6 +4218,17 @@ Selecciona un curso
 
 </button>
 
+<button
+    type="button"
+    id="botonHoraAsistencia"
+    class="boton-hora-asistencia"
+    onclick="alternarMostrarHoraAsistencia()"
+    title="Mostrar columna de hora">
+
+🕒
+
+</button>
+
 
 <span id="estadoGuardadoAsistencia" class="estado-guardado-pendiente">
     ⚠️ GUARDADO PENDIENTE
@@ -4217,6 +4286,7 @@ Selecciona un curso
 
 <th>Nº</th>
 <th>Nombre</th>
+<th class="columna-hora-asistencia">Hora</th>
 <th>🟢</th>
 <th>🟡</th>
 <th>🔵</th>
@@ -4237,7 +4307,7 @@ Selecciona un curso
 <tr>
 
 <td
-    colspan="7"
+    colspan="8"
     class="fila-guardar-tabla">
 
 <button
@@ -5349,6 +5419,7 @@ let registrosVisitasInformeGlobal = [];
 ===================================================== */
 
 let asistenciaDesbloqueada = false;
+let mostrarHoraAsistencia = false;
 
 
 /* =====================================================
@@ -5735,6 +5806,9 @@ document.getElementById(
         asistenciaDesbloqueada =
         false;
 
+        mostrarHoraAsistencia = false;
+        actualizarBotonHoraAsistencia();
+
         const botonBloquearAsistencia =
         document.getElementById(
             "botonBloquearAsistencia"
@@ -5836,9 +5910,10 @@ function aplicarRestriccionTipoDiaAsistencia() {
     const sinClases = esDiaSinClasesAsistencia();
 
     document.querySelectorAll(
-        '#tablaAsistencia input[type="radio"], #tablaAsistencia .observacion-asistencia'
+        '#tablaAsistencia input[type="radio"], #tablaAsistencia .observacion-asistencia, #tablaAsistencia .hora-asistencia-input'
     ).forEach(control => {
         control.disabled = sinClases || !asistenciaDesbloqueada;
+        control.classList.toggle("editable", !control.disabled);
     });
 
     const botonQR = document.querySelector(
@@ -5861,6 +5936,40 @@ function aplicarRestriccionTipoDiaAsistencia() {
             ? "No se puede registrar asistencia: este día no se pasó clases"
             : "Guardar asistencia";
     });
+}
+
+function actualizarBotonHoraAsistencia() {
+    const boton = document.getElementById("botonHoraAsistencia");
+    const tabla = document.querySelector(".tabla-asistencia");
+
+    if (tabla) {
+        tabla.classList.toggle("mostrar-hora", mostrarHoraAsistencia);
+    }
+
+    if (boton) {
+        boton.classList.toggle("activo", mostrarHoraAsistencia);
+        boton.title = mostrarHoraAsistencia
+            ? "Ocultar columna de hora"
+            : "Mostrar columna de hora";
+    }
+
+    aplicarRestriccionTipoDiaAsistencia();
+}
+
+function alternarMostrarHoraAsistencia() {
+    mostrarHoraAsistencia = !mostrarHoraAsistencia;
+    actualizarBotonHoraAsistencia();
+    actualizarCambiosPendientesAsistencia();
+}
+
+function normalizarHoraAsistencia(hora) {
+    const valor = String(hora || "").trim();
+    if (!valor) return "";
+    const partes = valor.split(":");
+    if (partes.length >= 2) {
+        return partes[0].padStart(2, "0") + ":" + partes[1].padStart(2, "0") + (partes[2] ? ":" + partes[2].padStart(2, "0") : "");
+    }
+    return valor;
 }
 
 function bloquearDesbloquearAsistencia() {
@@ -5942,6 +6051,8 @@ function bloquearDesbloquearAsistencia() {
 
 
     }
+
+    actualizarBotonHoraAsistencia();
 
 }
 
@@ -6846,6 +6957,18 @@ function mostrarTablaAsistencia() {
                 )}
             </td>
 
+            <td class="columna-hora-asistencia">
+                <input
+                    type="time"
+                    step="1"
+                    class="hora-asistencia-input"
+                    data-estudiante="${estudiante.id}"
+                    value="${escapeHTML(normalizarHoraAsistencia(registro.hora || ""))}"
+                    onchange="guardarHoraAsistenciaIndividual(this)"
+                    disabled
+                >
+            </td>
+
             <td>
 
                 <div class="estados-asistencia">
@@ -7283,6 +7406,12 @@ async function guardarObservacionAsistenciaIndividual(input) {
     actualizarCambiosPendientesAsistencia();
 }
 
+async function guardarHoraAsistenciaIndividual(input) {
+    /* La hora manual tampoco se guarda automáticamente. */
+    if (!input || !asistenciaDesbloqueada) return;
+    actualizarCambiosPendientesAsistencia();
+}
+
 
 /* =====================================================
    DETECTAR CAMBIOS MANUALES DE ASISTENCIA
@@ -7314,9 +7443,16 @@ function actualizarCambiosPendientesAsistencia() {
         const observacionActual = observacionInput
             ? observacionInput.value.trim()
             : "";
+        const horaInput = document.querySelector(
+            `.hora-asistencia-input[data-estudiante="${estudiante.id}"]`
+        );
+        const horaActual = horaInput
+            ? horaInput.value.trim()
+            : String(base.hora || "");
 
         return estadoActual !== String(base.estado || "") ||
-               observacionActual !== String(base.observacion || "");
+               observacionActual !== String(base.observacion || "") ||
+               (mostrarHoraAsistencia && horaActual !== normalizarHoraAsistencia(base.hora || ""));
     });
 
     cambiosPendientesAsistencia = hayCambios;
@@ -7456,9 +7592,9 @@ async function guardarAsistencia() {
                 estudiante_id: estudiante.id,
                 fecha: fecha,
                 estado: seleccionado ? seleccionado.value : null,
-                hora: escaneoAsistenciaQRRealizado
-                    ? (registroLocal.hora || null)
-                    : null,
+                hora: mostrarHoraAsistencia
+                    ? ((document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`)?.value || registroLocal.hora || "").trim() || null)
+                    : (registroLocal.hora || null),
                 observacion: observacion ? observacion.value.trim() : null
             });
         });
@@ -13341,6 +13477,13 @@ async function continuarEscaneoAsistenciaQR() {
         );
 
         if (radio) radio.checked = true;
+
+        const horaTablaQR = document.querySelector(
+            `.hora-asistencia-input[data-estudiante="${estudiante.id}"]`
+        );
+        if (horaTablaQR) {
+            horaTablaQR.value = normalizarHoraAsistencia(registro.hora || "");
+        }
 
         actualizarResumenAsistencia();
 
