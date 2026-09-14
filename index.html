@@ -718,73 +718,6 @@ button:hover {
 }
 
 
-/* =================================================
-   GATITO INTERACTIVO
-================================================= */
-#gatoInteractivo {
-    position: fixed;
-    left: 18px;
-    bottom: 18px;
-    width: 76px;
-    height: 76px;
-    z-index: 9999;
-    cursor: grab;
-    user-select: none;
-    touch-action: none;
-    transition: left .8s ease, top .8s ease, transform .25s ease;
-    font-family: system-ui, sans-serif;
-}
-#gatoInteractivo:active { cursor: grabbing; }
-#gatoCuerpo {
-    font-size: 54px;
-    line-height: 1;
-    text-align: center;
-    filter: drop-shadow(0 3px 3px rgba(0,0,0,.18));
-    transition: transform .2s ease;
-}
-#gatoInteractivo.mirando #gatoCuerpo { transform: rotate(-7deg) scale(1.08); }
-#gatoInteractivo.sorprendido #gatoCuerpo { transform: scale(1.18) rotate(5deg); }
-#gatoMensaje {
-    position: absolute;
-    left: 50%;
-    bottom: 68px;
-    transform: translateX(-50%);
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 14px;
-    padding: 6px 9px;
-    font-size: 11px;
-    color: #444;
-    white-space: nowrap;
-    box-shadow: 0 3px 12px rgba(0,0,0,.14);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .2s ease;
-}
-#gatoInteractivo.mensaje #gatoMensaje { opacity: 1; }
-#gatoCorazones {
-    position: absolute;
-    left: 50%;
-    top: -4px;
-    transform: translateX(-50%);
-    font-size: 20px;
-    opacity: 0;
-    pointer-events: none;
-}
-#gatoInteractivo.caricia #gatoCorazones {
-    opacity: 1;
-    animation: gatoCorazon 1s ease forwards;
-}
-@keyframes gatoCorazon {
-    from { transform: translate(-50%, 8px) scale(.7); opacity: 0; }
-    25% { opacity: 1; }
-    to { transform: translate(-50%, -32px) scale(1.2); opacity: 0; }
-}
-@media(max-width:500px) {
-    #gatoInteractivo { left: 8px; bottom: 10px; width: 64px; height: 64px; }
-    #gatoCuerpo { font-size: 46px; }
-    #gatoMensaje { bottom: 56px; font-size: 10px; }
-}
 </style>
 
 </head>
@@ -1021,41 +954,52 @@ async function consultarNota() {
 
     try {
 
-        const respuesta = await fetch(
-
-            `${SUPABASE_URL}/rest/v1/matematica?` +
-
+        const urlConsulta = `${SUPABASE_URL}/rest/v1/matematica?` +
             `ci=eq.${encodeURIComponent(ci)}` +
-
             `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
+            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t`;
 
-            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t`,
+        let respuesta = null;
+        let ultimoError = null;
 
-            {
-
-                headers: {
-
-                    "apikey":
-                        SUPABASE_KEY,
-
-                    "Authorization":
-                        `Bearer ${SUPABASE_KEY}`
-
-                }
-
+        // Reintenta fallos temporales y evita quedar esperando indefinidamente.
+        for (let intento = 1; intento <= 3; intento++) {
+            const controlador = new AbortController();
+            const temporizador = setTimeout(() => controlador.abort(), 12000);
+            try {
+                respuesta = await fetch(urlConsulta, {
+                    method: "GET",
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`,
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store",
+                    signal: controlador.signal
+                });
+                clearTimeout(temporizador);
+                if (respuesta.ok || [400, 401, 403, 404].includes(respuesta.status)) break;
+                ultimoError = new Error(`HTTP ${respuesta.status}`);
+            } catch (error) {
+                clearTimeout(temporizador);
+                ultimoError = error;
             }
-
-        );
-
-
-        if (!respuesta.ok) {
-
-            throw new Error(
-                "Error de conexión"
-            );
-
+            if (intento < 3) await new Promise(resolve => setTimeout(resolve, 700 * intento));
         }
 
+        if (!respuesta) {
+            if (ultimoError?.name === "AbortError") throw new Error("Tiempo de espera agotado. Intenta nuevamente.");
+            throw new Error("No fue posible conectar con el servidor. Verifica tu conexión a Internet.");
+        }
+
+        if (!respuesta.ok) {
+            let detalle = "";
+            try { detalle = await respuesta.text(); } catch (_) {}
+            console.error("Error consulta estudiante Supabase:", respuesta.status, detalle);
+            if (respuesta.status === 401 || respuesta.status === 403) throw new Error("No se pudo autorizar la consulta en el servidor.");
+            if (respuesta.status === 404) throw new Error("No se encontró el recurso solicitado en el servidor.");
+            throw new Error(`El servidor respondió con un error (${respuesta.status}). Intenta nuevamente.`);
+        }
 
         const datos =
             await respuesta.json();
@@ -1162,11 +1106,11 @@ async function consultarNota() {
 
     catch(error) {
 
-        console.error(error);
-
+        console.error("Error al consultar estudiante:", error);
+        const mensaje = error?.message || "No fue posible completar la consulta.";
         resultado.innerHTML =
             '<p class="error">' +
-            'No se pudo conectar con el servidor.' +
+            mensaje +
             '</p>';
 
     }
@@ -1299,8 +1243,11 @@ async function mostrarResultado(alumno) {
     // en este HTML a partir de las actividades y calificaciones.
     const nota3 = await calcularNota3T(alumno);
 
+    // La nota final solo se muestra cuando existe nota del 3er trimestre.
     const final =
-        calcularNotaAnual(nota1, nota2, nota3);
+        nota3 === null
+        ? null
+        : calcularNotaAnual(nota1, nota2, nota3);
 
     let claseFinal = "";
 
@@ -1505,7 +1452,7 @@ async function mostrarResultado(alumno) {
         </div>
 
         ${
-            String(alumno.curso || "").trim().toUpperCase() === "5A"
+            ["5A", "1B"].includes(String(alumno.curso || "").trim().toUpperCase())
             ? `
                 <button
                     type="button"
@@ -1532,7 +1479,7 @@ async function mostrarResultado(alumno) {
    CENTRALIZADOR DE NOTAS - SOLO 5A
 ================================================= */
 
-const MATERIAS_CENTRALIZADOR = [
+const MATERIAS_CENTRALIZADOR_5A = [
     ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
     ["LEX", "LENGUA EXTRANJERA"],
     ["SOC", "CIENCIAS SOCIALES"],
@@ -1546,6 +1493,20 @@ const MATERIAS_CENTRALIZADOR = [
     ["CFS", "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"],
     ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES"],
     ["TTE", "TÉCNICA TECNOLÓGICA ESPECIALIZADA"]
+];
+
+const MATERIAS_CENTRALIZADOR_1B = [
+    ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
+    ["LEX", "LENGUA EXTRANJERA"],
+    ["SOC", "CIENCIAS SOCIALES"],
+    ["EFD", "EDUCACIÓN FISICA Y DEPORTES"],
+    ["EMU", "EDUCACIÓN MUSICAL"],
+    ["APV", "ARTES PLÁSTICAS Y VISUALES"],
+    ["MAT", "MATEMÁTICA"],
+    ["TTE", "TÉCNICA TECNOLÓGICA GENERAL"],
+    ["BIO", "CIENCIAS NATURALES: BIOLOGÍA GEOGRAFÍA"],
+    ["CFS", "COSMOVISIONES FILOSOFÍA Y PSICOLOGÍA"],
+    ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES."]
 ];
 
 function mostrarValorCentralizador(valor) {
@@ -1565,7 +1526,9 @@ async function mostrarCentralizador() {
 
     if (!contenedor || !alumnoActual) return;
 
-    if (String(alumnoActual.curso || "").trim().toUpperCase() !== "5A") {
+    const cursoCentralizador = String(alumnoActual.curso || "").trim().toUpperCase();
+
+    if (cursoCentralizador !== "5A" && cursoCentralizador !== "1B") {
         return;
     }
 
@@ -1624,7 +1587,11 @@ async function mostrarCentralizador() {
             return centralizador[nombreColumna] ?? centralizador[nombreColumna.toLowerCase()];
         };
 
-        MATERIAS_CENTRALIZADOR.forEach(([codigo, nombre]) => {
+        const materiasCentralizador = cursoCentralizador === "1B"
+            ? MATERIAS_CENTRALIZADOR_1B
+            : MATERIAS_CENTRALIZADOR_5A;
+
+        materiasCentralizador.forEach(([codigo, nombre]) => {
 
             filas += `
                 <tr>
@@ -1645,7 +1612,7 @@ async function mostrarCentralizador() {
                 </div>
 
                 <div style="text-align:center;color:#666;font-size:13px;margin-bottom:12px;">
-                    Curso: 5A
+                    Curso: ${escapeHTML(cursoCentralizador)}
                 </div>
 
                 <div class="centralizador-tabla-contenedor">
@@ -3407,285 +3374,6 @@ if (fechaNacimiento) {
 
 
 
-<!-- Gatito interactivo: elemento independiente del sistema de notas -->
-<div id="gatoInteractivo" aria-label="Gatito interactivo" title="Acaríciame 🐾">
-    <div id="gatoMensaje"></div>
-    <div id="gatoCorazones">💗</div>
-    <div id="gatoCuerpo">🐱</div>
-</div>
-
-<script>
-/* =================================================
-   GATITO INTERACTIVO - NO INTERFIERE CON LAS NOTAS
-================================================= */
-(function () {
-    const gato = document.getElementById('gatoInteractivo');
-    const cuerpo = document.getElementById('gatoCuerpo');
-    const mensaje = document.getElementById('gatoMensaje');
-    if (!gato || !cuerpo) return;
-
-    let arrastrando = false, desplazado = false, inicioX = 0, inicioY = 0, baseX = 0, baseY = 0;
-    let mensajeTimer = null;
-
-    /* =================================================
-       SONIDOS DEL GATITO - SIN ARCHIVOS EXTERNOS
-       Se generan con Web Audio para que la página siga
-       funcionando sin conexión. El sonido se activa con
-       la primera interacción del estudiante.
-    ================================================= */
-    let audioCtx = null;
-    let sonidoActivado = false;
-
-    function activarSonido() {
-        try {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            sonidoActivado = true;
-        } catch (e) {}
-    }
-
-    function tono(frecuencia, duracion, tipo = 'sine', volumen = 0.035, inicio = 0) {
-        if (!sonidoActivado || !audioCtx) return;
-        try {
-            const ahora = audioCtx.currentTime + inicio;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = tipo;
-            osc.frequency.setValueAtTime(frecuencia, ahora);
-            gain.gain.setValueAtTime(0.0001, ahora);
-            gain.gain.exponentialRampToValueAtTime(volumen, ahora + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + duracion);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(ahora);
-            osc.stop(ahora + duracion + 0.02);
-        } catch (e) {}
-    }
-
-    function sonidoMiau() {
-        tono(620, 0.18, 'sine', 0.045);
-        tono(820, 0.22, 'sine', 0.035, 0.10);
-    }
-
-    function sonidoFeliz() {
-        tono(660, 0.12, 'sine', 0.035);
-        tono(830, 0.12, 'sine', 0.035, 0.10);
-        tono(1040, 0.20, 'sine', 0.04, 0.20);
-    }
-
-    function sonidoSorpresa() {
-        tono(900, 0.10, 'triangle', 0.04);
-        tono(1250, 0.20, 'triangle', 0.045, 0.08);
-    }
-
-    function sonidoRonroneo() {
-        if (!sonidoActivado || !audioCtx) return;
-        tono(105, 0.16, 'sine', 0.018);
-        tono(125, 0.16, 'sine', 0.014, 0.18);
-        tono(105, 0.16, 'sine', 0.018, 0.36);
-    }
-
-    function decir(texto, tiempo = 1800) {
-        mensaje.textContent = texto;
-        gato.classList.add('mensaje');
-        clearTimeout(mensajeTimer);
-        mensajeTimer = setTimeout(() => gato.classList.remove('mensaje'), tiempo);
-    }
-
-    function acariciar() {
-        activarSonido();
-        sonidoMiau();
-        sonidoRonroneo();
-        gato.classList.remove('caricia');
-        void gato.offsetWidth;
-        gato.classList.add('caricia');
-        gato.classList.add('mirando');
-        decir('¡Miau! 🐾');
-        setTimeout(() => gato.classList.remove('caricia'), 1000);
-    }
-
-    gato.addEventListener('pointerdown', e => {
-        activarSonido();
-        arrastrando = true;
-        desplazado = false;
-        inicioX = e.clientX; inicioY = e.clientY;
-        const r = gato.getBoundingClientRect();
-        baseX = r.left; baseY = r.top;
-        gato.setPointerCapture?.(e.pointerId);
-    });
-
-    gato.addEventListener('pointermove', e => {
-        if (!arrastrando) return;
-        const dx = e.clientX - inicioX, dy = e.clientY - inicioY;
-        if (Math.abs(dx) + Math.abs(dy) > 6) desplazado = true;
-        gato.style.left = Math.max(4, Math.min(window.innerWidth - gato.offsetWidth - 4, baseX + dx)) + 'px';
-        gato.style.top = Math.max(4, Math.min(window.innerHeight - gato.offsetHeight - 4, baseY + dy)) + 'px';
-        gato.style.bottom = 'auto';
-    });
-
-    gato.addEventListener('pointerup', e => {
-        arrastrando = false;
-        if (!desplazado) acariciar();
-        gato.releasePointerCapture?.(e.pointerId);
-    });
-
-    gato.addEventListener('dblclick', () => {
-        activarSonido();
-        sonidoSorpresa();
-        decir('¡Qué lindo! 😻');
-        gato.classList.add('sorprendido');
-        setTimeout(() => gato.classList.remove('sorprendido'), 700);
-    });
-
-    /* Detecta qué hay debajo del gatito cuando el estudiante lo coloca encima. */
-    let ultimoObjetivo = '';
-    let ultimaReaccionObjetivo = 0;
-
-    function elementoDebajoDelGato() {
-        const r = gato.getBoundingClientRect();
-        const x = r.left + r.width / 2;
-        const y = r.top + r.height / 2;
-        const elementos = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
-        return elementos.find(el => el !== gato && !gato.contains(el) && el !== document.body && el !== document.documentElement);
-    }
-
-    function reaccionarSobre(texto) {
-        const t = (texto || '').replace(/\s+/g, ' ').trim();
-        if (!t) return;
-        const clave = t.toLowerCase().slice(0, 180);
-        const ahora = Date.now();
-        if (clave === ultimoObjetivo && ahora - ultimaReaccionObjetivo < 7000) return;
-        ultimoObjetivo = clave;
-        ultimaReaccionObjetivo = ahora;
-
-        let respuesta = '';
-        let emoji = '🐱';
-        if (/asistencia|faltas|inasistencia|presen(te|cia)/i.test(t)) {
-            const opciones = [
-                '¡A cuidar la asistencia! 🐾',
-                'Cada día cuenta. ¡Tú puedes! 💪',
-                '¡Presente y con ganas de aprender! 😺',
-                'Pocas faltas, muchas oportunidades. 🌟'
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            emoji = '👀';
-        } else if (/nota|calificaci[oó]n|promedio|trimestre|anual|puntos|ser|saber|hacer|autoevaluaci[oó]n/i.test(t)) {
-            const opciones = [
-                '¡Tú puedes mejorar cada nota! 🌟',
-                '¡Un pequeño esfuerzo puede hacer una gran diferencia! 💪',
-                'No mires sólo el número: ¡mira cuánto has aprendido! 🧠',
-                '¡Vamos por esa próxima nota! 🚀',
-                '¡Estoy vigilando el progreso! 👀🐾'
-            ];
-            respuesta = opciones[Math.floor(Math.random() * opciones.length)];
-            emoji = /7[0-9]|8[0-9]|9[0-9]|100/.test(t) ? '😻' : '🤔';
-        } else if (/estudiante|nombre|curso|materia|matem[aá]tica/i.test(t)) {
-            respuesta = '¡Aquí está tu información! 😺';
-            emoji = '😺';
-        }
-
-        if (respuesta) {
-            cuerpo.textContent = emoji;
-            gato.classList.add('mirando');
-            decir(respuesta, 2600);
-            if (emoji === '😻') sonidoFeliz();
-            else if (Math.random() < .35) sonidoMiau();
-            setTimeout(() => { if (!arrastrando) cuerpo.textContent = '🐱'; }, 2600);
-        }
-    }
-
-    function revisarDebajoDelGato() {
-        if (arrastrando) return;
-        const el = elementoDebajoDelGato();
-        if (!el) return;
-        const texto = el.innerText || el.textContent || '';
-        reaccionarSobre(texto);
-    }
-
-    function hacerBroma() {
-        if (arrastrando || document.hidden) return;
-        const bromas = [
-            ['😹', '¡Ups! Creo que estaba estudiando al revés 😂'],
-            ['🙈', '¡No me mires! Yo también necesito estudiar 😅'],
-            ['😴', 'Zzz… ¡Era una mini siesta académica! 💤'],
-            ['🤓', '¡Momento de ponerse las gafas de estudiante! 🤓'],
-            ['😼', 'Estoy vigilando… pero con estilo 😎🐾'],
-            ['🙀', '¡Esa nota me hizo saltar! 😲'],
-            ['😺', '¡Sigue así! Cada esfuerzo cuenta. 🌟']
-        ];
-        const b = bromas[Math.floor(Math.random() * bromas.length)];
-        cuerpo.textContent = b[0];
-        gato.classList.add(Math.random() < .5 ? 'gracioso' : 'saltando');
-        decir(b[1], 2300);
-        if (b[0] === '🙀') sonidoSorpresa();
-        else if (b[0] === '😺') sonidoFeliz();
-        else sonidoMiau();
-        setTimeout(() => {
-            gato.classList.remove('gracioso', 'saltando', 'asustado');
-            if (!arrastrando) cuerpo.textContent = '🐱';
-        }, 900);
-    }
-
-    function observarResultado() {
-        const resultado = document.getElementById('resultado');
-        if (!resultado) return;
-        const texto = resultado.innerText || '';
-        if (/Buscando|Cargando/i.test(texto)) {
-            cuerpo.textContent = '🐱';
-            gato.classList.add('mirando');
-            decir('Estoy mirando las notas… 👀', 1600);
-            return;
-        }
-        if (/error|incorrectos|Error de conexión/i.test(texto)) {
-            cuerpo.textContent = '🙀';
-            sonidoSorpresa();
-            gato.classList.add('sorprendido');
-            decir('¡Ups! 😿', 1800);
-            return;
-        }
-        if (texto.trim()) {
-            gato.classList.add('mirando');
-            const notas = [...texto.matchAll(/(?:nota|calificación|promedio|final)[^0-9]{0,25}(\d{1,2})/gi)].map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
-            if (notas.length && Math.max(...notas) >= 70) {
-                cuerpo.textContent = '😺';
-                sonidoFeliz();
-                decir('¡Muy bien! 🎉', 2200);
-            } else {
-                cuerpo.textContent = '🐱';
-                decir('Estoy mirando tus notas 👀', 2200);
-            }
-        }
-    }
-
-    const resultado = document.getElementById('resultado');
-    if (resultado) new MutationObserver(observarResultado).observe(resultado, {childList:true, subtree:true, characterData:true});
-
-    setInterval(() => {
-        revisarDebajoDelGato();
-        const r = document.getElementById('resultado');
-        const t = r ? (r.innerText || '') : '';
-        if (/asistencia/i.test(t)) {
-            gato.classList.add('mirando');
-            if (Math.random() < .25) decir('También miro la asistencia 👀', 1800);
-        }
-    }, 1200);
-
-    /* De vez en cuando hace alguna travesura por su cuenta. */
-    let proximaBroma = Date.now() + 12000 + Math.random() * 18000;
-    setInterval(() => {
-        if (Date.now() >= proximaBroma) {
-            hacerBroma();
-            proximaBroma = Date.now() + 18000 + Math.random() * 30000;
-        }
-    }, 2000);
-
-    setTimeout(() => decir('¡Hola! 🐾', 1800), 900);
-})();
-</script>
 </body>
 
 </html>
