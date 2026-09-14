@@ -5619,6 +5619,12 @@ Cancelar
                     </select>
                 </div>
                 <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasEstudiante">Estudiante</label>
+                    <select id="filtroVisitasEstudiante">
+                        <option value="">Todos los estudiantes</option>
+                    </select>
+                </div>
+                <div class="visitas-estudiantes-filtro">
                     <label for="filtroVisitasFecha">Fecha</label>
                     <input type="date" id="filtroVisitasFecha">
                 </div>
@@ -10700,10 +10706,27 @@ function cargarCursosFiltroVisitas() {
     if (valorAnterior && cursos.includes(valorAnterior)) select.value = valorAnterior;
 }
 
+function cargarEstudiantesFiltroVisitas() {
+    const select = document.getElementById("filtroVisitasEstudiante");
+    if (!select) return;
+    const valorAnterior = select.value;
+    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
+    const estudiantesCurso = (estudiantes || []).filter(e => !curso || String(e.curso || "") === curso).slice().sort((a,b) => String(a.nombre || a.nombre_completo || "").localeCompare(String(b.nombre || b.nombre_completo || ""), "es"));
+    const conteoVisitas = {};
+    (registrosVisitasEstudiantes || []).forEach(v => { const id=String(v.estudiante_id); conteoVisitas[id]=(conteoVisitas[id]||0)+1; });
+    select.innerHTML = `<option value="">Todos los estudiantes</option>`;
+    estudiantesCurso.forEach(e => {
+        const o=document.createElement("option"); o.value=e.id;
+        o.textContent=`${e.nombre || e.nombre_completo || "Estudiante"} — ${conteoVisitas[String(e.id)] || 0} vistas`;
+        select.appendChild(o);
+    });
+    if (valorAnterior && estudiantesCurso.some(e => String(e.id) === String(valorAnterior))) select.value=valorAnterior;
+}
+
 function obtenerVisitasEstudiantesFiltradas() {
     const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
+    const estudianteId = String(document.getElementById("filtroVisitasEstudiante")?.value || "");
     const fecha = String(document.getElementById("filtroVisitasFecha")?.value || "");
-
     return (registrosVisitasEstudiantes || [])
         .map(visita => ({
             ...visita,
@@ -10712,8 +10735,9 @@ function obtenerVisitasEstudiantesFiltradas() {
             fecha_local: obtenerFechaLocalVisita(visita.fecha_hora)
         }))
         .filter(visita => !curso || visita.curso_estudiante === curso)
+        .filter(visita => !estudianteId || String(visita.estudiante_id) === estudianteId)
         .filter(visita => !fecha || visita.fecha_local === fecha)
-        .sort((a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
+        .sort((a,b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
 }
 
 function actualizarEstadoSeleccionVisitas() {
@@ -10783,6 +10807,7 @@ async function cargarVisitasEstudiantes() {
         registrosVisitasEstudiantes = todas;
         visitasEstudiantesCargadas = true;
         cargarCursosFiltroVisitas();
+        cargarEstudiantesFiltroVisitas();
         renderizarVisitasEstudiantes();
     } catch (error) {
         console.error("Error al cargar los ingresos de estudiantes:", error);
@@ -10799,8 +10824,13 @@ async function abrirModalVisitasEstudiantes() {
 
     modal.classList.remove("oculto");
     cargarCursosFiltroVisitas();
+    cargarEstudiantesFiltroVisitas();
     document.getElementById("filtroVisitasFecha")?.addEventListener("change", renderizarVisitasEstudiantes);
-    document.getElementById("filtroVisitasCurso")?.addEventListener("change", renderizarVisitasEstudiantes);
+    document.getElementById("filtroVisitasCurso")?.addEventListener("change", function() {
+        cargarEstudiantesFiltroVisitas();
+        renderizarVisitasEstudiantes();
+    });
+    document.getElementById("filtroVisitasEstudiante")?.addEventListener("change", renderizarVisitasEstudiantes);
     document.getElementById("seleccionarTodasVisitas")?.addEventListener("change", function() {
         document.querySelectorAll(".check-visita-estudiante").forEach(check => check.checked = this.checked);
         actualizarEstadoSeleccionVisitas();
