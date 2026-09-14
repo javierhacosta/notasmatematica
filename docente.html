@@ -4874,7 +4874,7 @@ Cancelar
                     <p class="configuracion-aula-tamano-ayuda">El tamaño se aplica a todas las mesas de esta distribución y se guarda por curso.</p>
                     <div id="resumenConfiguracionAula" class="configuracion-aula-resumen"></div>
                     <div class="distribucion-acciones">
-                        <button type="button" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()">✓ Aplicar configuración</button>
+                        <button type="button" id="botonAplicarConfiguracionAula" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()" style="display:none;">✓ Aplicar configuración</button>
                     </div>
                 </div>
             </div>
@@ -4887,8 +4887,8 @@ Cancelar
             <div class="distribucion-acciones">
                 <button type="button" class="boton-distribucion-cancelar"
                         onclick="cerrarModalDistribucionAula()">Cancelar</button>
-                <button type="button" class="boton-distribucion-guardar"
-                        onclick="guardarDistribucionAula()">💾 Guardar</button>
+                <button type="button" id="botonGuardarDistribucionAula" class="boton-distribucion-guardar"
+                        onclick="guardarDistribucionAula()" style="display:none;">💾 Guardar</button>
             </div>
         </div>
     </div>
@@ -15288,6 +15288,8 @@ const DISTRIBUCION_1B_PDF = {
 
 let distribucionAulaActual = {};
 let configuracionAulaActual = { filas: 6, columnas: 3, anchoMesa: 130, largoMesa: 72 };
+let distribucionAulaGuardada = {};
+let configuracionAulaGuardada = { filas: 6, columnas: 3, anchoMesa: 130, largoMesa: 72 };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -15346,7 +15348,9 @@ async function cargarConfiguracionDistribucionAulaBD() {
             ? { ...data.distribucion } : null;
 
         configuracionAulaActual = config;
+        configuracionAulaGuardada = { ...config };
         if (distribucion) distribucionAulaActual = distribucion;
+        if (distribucion) distribucionAulaGuardada = { ...distribucion };
         return { ...config, distribucion };
     } catch (error) {
         console.warn("No se pudo cargar la distribución del aula desde la BD. Se usará la configuración local.", error);
@@ -15477,6 +15481,8 @@ async function abrirModalDistribucionAula() {
     configuracionAulaActual = obtenerConfiguracionAulaCurso();
     distribucionAulaActual = obtenerDistribucionAulaCurso();
     await cargarConfiguracionDistribucionAulaBD();
+    distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+    configuracionAulaGuardada = { ...configuracionAulaActual };
     if (!distribucionAulaActual || typeof distribucionAulaActual !== "object" || Object.keys(distribucionAulaActual).length === 0) {
         distribucionAulaActual = obtenerDistribucionAulaCurso();
     }
@@ -15681,6 +15687,7 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         select.addEventListener("change", function() {
             distribucionAulaActual[String(numero)] = this.value || null;
             actualizarSelectsDistribucionAula();
+            actualizarBotonGuardarDistribucionAula();
         });
 
         tdNombre.appendChild(select);
@@ -15693,6 +15700,7 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         botonBorrar.addEventListener("click", function() {
             distribucionAulaActual[String(numero)] = null;
             mostrarListaAsientos(numero);
+            actualizarBotonGuardarDistribucionAula();
         });
         tdNombre.appendChild(botonBorrar);
 
@@ -15892,9 +15900,13 @@ function mostrarConfiguracionAula() {
     if (inputLargoMesa) inputLargoMesa.value = configuracionAulaActual.largoMesa || 72;
 
     actualizarResumenConfiguracionAula();
+    actualizarBotonAplicarConfiguracionAula();
 
     [inputFilas, inputColumnas, inputAnchoMesa, inputLargoMesa].forEach(input => {
-        if (input) input.oninput = actualizarResumenConfiguracionAula;
+        if (input) input.oninput = function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        };
     });
 }
 
@@ -15921,6 +15933,7 @@ function aplicarConfiguracionAula() {
     const totalAnterior = obtenerCantidadAsientosAula();
 
     configuracionAulaActual = { filas, columnas, anchoMesa, largoMesa };
+    configuracionAulaGuardada = { ...configuracionAulaActual };
 
     /* Se conservan las asignaciones existentes dentro del nuevo rango. */
     Object.keys(distribucionAulaActual).forEach(numero => {
@@ -15933,9 +15946,44 @@ function aplicarConfiguracionAula() {
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
         distribucionAulaActual = crearDistribucionAulaInicial();
     }
+    distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
 
     mostrarMensaje(`✓ Aula configurada: ${filas} filas × ${columnas} columnas = ${totalNuevo} asientos.`);
     mostrarVistaDistribucionAula();
+}
+
+function distribucionesAulaSonIguales(a = {}, b = {}) {
+    const normalizar = objeto => Object.fromEntries(
+        Object.entries(objeto || {})
+            .map(([k, v]) => [String(k), v ? String(v) : null])
+            .sort(([ka], [kb]) => ka.localeCompare(kb, undefined, { numeric: true }))
+    );
+    return JSON.stringify(normalizar(a)) === JSON.stringify(normalizar(b));
+}
+
+function actualizarBotonGuardarDistribucionAula() {
+    const boton = document.getElementById("botonGuardarDistribucionAula");
+    if (!boton) return;
+    boton.style.display = distribucionesAulaSonIguales(distribucionAulaActual, distribucionAulaGuardada) ? "none" : "inline-flex";
+}
+
+function configuracionesAulaSonIguales(a = {}, b = {}) {
+    return Number(a.filas) === Number(b.filas) &&
+           Number(a.columnas) === Number(b.columnas) &&
+           Number(a.anchoMesa) === Number(b.anchoMesa) &&
+           Number(a.largoMesa) === Number(b.largoMesa);
+}
+
+function actualizarBotonAplicarConfiguracionAula() {
+    const boton = document.getElementById("botonAplicarConfiguracionAula");
+    if (!boton) return;
+    const actual = {
+        filas: Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1)),
+        columnas: Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1)),
+        anchoMesa: Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130)),
+        largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72))
+    };
+    boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
 }
 
 function actualizarSelectsDistribucionAula() {
@@ -15999,6 +16047,8 @@ async function vaciarAsientosAula() {
 
     try {
         await guardarDistribucionAulaBD();
+        distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+        actualizarBotonGuardarDistribucionAula();
         mostrarMensaje("✓ Se vaciaron todos los asientos de la distribución actual.");
         mostrarVistaDistribucionAula();
     } catch (error) {
@@ -16033,6 +16083,8 @@ async function guardarDistribucionAula() {
 
     try {
         await guardarDistribucionAulaBD();
+        distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+        actualizarBotonGuardarDistribucionAula();
         mostrarMensaje("✓ Distribución de asientos guardada correctamente.");
         mostrarVistaDistribucionAula();
     } catch (error) {
