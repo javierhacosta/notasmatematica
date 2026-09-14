@@ -3319,6 +3319,23 @@ table tbody tr:nth-child(10n+10) td {
     color: #9aa0a6;
 }
 
+.asiento-aula.estado-asiento-asistio {
+    background: #e8f5e9;
+}
+
+.asiento-aula.estado-asiento-atraso {
+    background: #fff8e1;
+}
+
+.asiento-aula.estado-asiento-licencia,
+.asiento-aula.estado-asiento-permiso {
+    background: #e3f2fd;
+}
+
+.asiento-aula.estado-asiento-falta {
+    background: #ffebee;
+}
+
 .numero-asiento-aula {
     position: absolute;
     left: 5px;
@@ -15766,7 +15783,9 @@ function obtenerIconoEstadoAsistenciaAula(estado) {
 function crearAsientoVisualAula(numero) {
     const estudiante = nombreEstudiantePorIdAula(distribucionAulaActual[String(numero)]);
     const asiento = document.createElement("div");
-    asiento.className = "asiento-aula" + (estudiante ? "" : " vacio") + (configuracionAulaActual.mostrarNumeroAsiento === true ? "" : " sin-numero-asiento");
+    const registro = estudiante ? (registrosAsistencia[estudiante.id] || {}) : {};
+    const estadoInfo = obtenerIconoEstadoAsistenciaAula(registro.estado);
+    asiento.className = "asiento-aula" + (estudiante ? "" : " vacio") + (configuracionAulaActual.mostrarNumeroAsiento === true ? "" : " sin-numero-asiento") + (estudiante && estadoInfo[1] ? ` estado-asiento-${estadoInfo[1]}` : "");
 
     const silla = document.createElement("span");
     silla.className = "silla-aula";
@@ -15785,27 +15804,6 @@ function crearAsientoVisualAula(numero) {
     nombreEl.textContent = construirNombreCortoAula(estudiante);
 
     if (estudiante) {
-        const registro = registrosAsistencia[estudiante.id] || {};
-        const estadoInfo = obtenerIconoEstadoAsistenciaAula(registro.estado);
-
-        const iconos = document.createElement("span");
-        iconos.className = "iconos-asistencia-asiento";
-
-        const iconoEstado = document.createElement("span");
-        iconoEstado.className = "icono-estado-asiento" + (estadoInfo[1] ? ` ${estadoInfo[1]}` : "");
-        iconoEstado.textContent = estadoInfo[0];
-        iconoEstado.title = estadoInfo[2];
-        iconos.appendChild(iconoEstado);
-
-        if (String(registro.observacion || "").trim()) {
-            const iconoObservacion = document.createElement("span");
-            iconoObservacion.className = "icono-observacion-asiento";
-            iconoObservacion.textContent = "📝";
-            iconoObservacion.title = "Tiene observación de asistencia";
-            iconos.appendChild(iconoObservacion);
-        }
-
-        nombreEl.appendChild(iconos);
         nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
         nombreEl.addEventListener("click", function(event) {
             event.stopPropagation();
@@ -16019,11 +16017,7 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     const estado = String(registro.estado || "");
 
     modal.dataset.estudianteId = String(estudiante.id);
-    const numeroListaAsistencia = String(estudiante.num_lista ?? estudiante.numero_lista ?? "").trim();
-    const nombreCompletoAsistencia = String(estudiante.nombre || estudiante.nombre_completo || "Sin nombre").trim();
-    const nombreAsistencia = numeroListaAsistencia
-        ? `${numeroListaAsistencia} ${nombreCompletoAsistencia}`
-        : nombreCompletoAsistencia;
+    const nombreAsistencia = construirNombreCortoAula(estudiante);
     if (titulo) titulo.textContent = `👤 ${nombreAsistencia}`;
     if (subtitulo) subtitulo.textContent = fecha
         ? `Asistencia del ${formatearFechaGuardadaAsistencia(fecha)}`
