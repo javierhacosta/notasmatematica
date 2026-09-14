@@ -10830,12 +10830,17 @@ async function eliminarVisitasEstudiantesSeleccionadas() {
     if (!confirmar) return;
 
     try {
-        const { error } = await supabaseClient
+        const { data: eliminados, error } = await supabaseClient
             .from("visitas_estudiantes")
             .delete()
-            .in("id", ids);
+            .in("id", ids)
+            .select("id");
 
         if (error) throw error;
+
+        if (!eliminados || eliminados.length !== ids.length) {
+            throw new Error("La base de datos no eliminó todos los registros seleccionados. Verifique los permisos de eliminación de la tabla visitas_estudiantes en Supabase.");
+        }
 
         const idsSet = new Set(ids.map(String));
         registrosVisitasEstudiantes = registrosVisitasEstudiantes.filter(v => !idsSet.has(String(v.id)));
