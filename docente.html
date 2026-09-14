@@ -5382,6 +5382,10 @@ Cancelar
     </div>
 </div>
 
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://tecphbbkkmlgahjddcep.supabase.co" crossorigin>
+<link rel="dns-prefetch" href="https://tecphbbkkmlgahjddcep.supabase.co">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const _scriptsDiferidos = {};
@@ -5658,10 +5662,24 @@ async function comprobarSesion() {
 
     establecerFechaActual();
 
+    // Arranque rápido: si existe la lista local, la interfaz queda utilizable
+    // inmediatamente. La sincronización con Supabase se hace después de que el
+    // navegador tenga tiempo de pintar la pantalla, evitando competir con el
+    // primer render.
     if (!cargarCacheEstudiantesQR()) {
         await cargarEstudiantes(false);
     } else {
-        cargarEstudiantes(true);
+        const sincronizarEstudiantes = () => {
+            cargarEstudiantes(true).catch(error =>
+                console.warn("Sincronización de estudiantes en segundo plano:", error)
+            );
+        };
+
+        if ("requestIdleCallback" in window) {
+            requestIdleCallback(sincronizarEstudiantes, { timeout: 2500 });
+        } else {
+            setTimeout(sincronizarEstudiantes, 1200);
+        }
     }
 
 }
@@ -11998,17 +12016,21 @@ async function exportarExcel() {
             "Preparando archivo Excel de todos los cursos..."
         );
 
+        // Cargar Excel únicamente al solicitar la exportación.
+        // Así no se ralentiza la apertura de la página.
+        if (typeof XLSX === "undefined") {
+            try {
+                await cargarXLSX();
+            } catch (errorXLSX) {
+                console.error("Error al cargar XLSX:", errorXLSX);
+                alert("No se pudo cargar la herramienta de Excel. Verifica tu conexión a Internet e inténtalo nuevamente.");
+                return;
+            }
+        }
 
-        if (
-            typeof XLSX === "undefined"
-        ) {
-
-            alert(
-                "No se pudo cargar la herramienta de Excel."
-            );
-
+        if (typeof XLSX === "undefined") {
+            alert("No se pudo cargar la herramienta de Excel.");
             return;
-
         }
 
         if (!Array.isArray(estudiantes) || estudiantes.length === 0) {
