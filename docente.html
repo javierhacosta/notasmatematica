@@ -11010,9 +11010,17 @@ function prepararGraficaEstadistica(titulo, items, unidad = "") {
         ${lista.length ? lista.map(x => {
             const porcentaje = total > 0 ? (x.valor / total) * 100 : 0;
             const ancho = maximo > 0 ? (x.valor / maximo) * 100 : 0;
-            // Color compatible con navegadores antiguos: rojo → amarillo → verde según porcentaje.
-            const hue = Math.max(0, Math.min(120, porcentaje * 1.2));
-            const color = `hsl(${Math.round(hue)}, 70%, 45%)`;
+            const coloresCursos = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#ca8a04","#db2777","#4f46e5","#65a30d","#0f766e","#c2410c","#7c3aed","#be123c","#0369a1"];
+            let color;
+            if (/curso/i.test(titulo)) {
+                const clave = x.nombre.trim().toUpperCase();
+                let hash = 0;
+                for (let i = 0; i < clave.length; i++) hash = ((hash * 31) + clave.charCodeAt(i)) >>> 0;
+                color = coloresCursos[hash % coloresCursos.length];
+            } else {
+                const hue = Math.max(0, Math.min(120, porcentaje * 1.2));
+                color = `hsl(${Math.round(hue)}, 70%, 45%)`;
+            }
             return `<div class="estadistica-barra">
                 <span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span>
                 <span class="pista"><span class="relleno" data-ancho="${Math.max(0, Math.min(100, ancho)).toFixed(2)}" style="background-color:${color};width:0"></span></span>
