@@ -153,6 +153,7 @@ input, select {
 }
 
 .modal-cabecera {
+    position: relative;
     background: #1557a6;
     color: white;
     padding: 15px 18px;
@@ -3799,6 +3800,36 @@ table tbody tr:nth-child(10n+10) td {
     background: rgba(198,40,40,.85);
 }
 
+
+
+/* Línea delgada de carga de asistencias dentro de la distribución del aula. */
+.barra-carga-fecha-asistencia-aula {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.barra-carga-fecha-asistencia-aula.activa {
+    display: block;
+}
+
+.barra-carga-fecha-asistencia-aula > div {
+    width: 35%;
+    height: 100%;
+    background: currentColor;
+    animation: cargarFechaAsistenciaAula 1s ease-in-out infinite;
+}
+
+@keyframes cargarFechaAsistenciaAula {
+    0% { transform: translateX(-120%); }
+    100% { transform: translateX(320%); }
+}
+
 </style>
 
 </head>
@@ -4882,6 +4913,7 @@ Cancelar
     <div class="modal-distribucion-aula" onclick="event.stopPropagation()">
         <div class="modal-cabecera">
             <h3 id="tituloDistribucionAula">🪑 Distribución del aula</h3>
+            <div id="barraCargaFechaAsistenciaAula" class="barra-carga-fecha-asistencia-aula" aria-label="Cargando asistencias del día seleccionado"><div></div></div>
             <div class="distribucion-cabecera-acciones">
                 <select id="selectorDiasAsistenciaAula"
                         class="selector-dias-asistencia-aula"
@@ -6294,6 +6326,9 @@ async function cargarFechasAsistencia() {
 
 async function seleccionarFechaAsistencia(fechaSeleccionada = "") {
 
+    const barraCargaAula = document.getElementById("barraCargaFechaAsistenciaAula");
+    if (barraCargaAula) barraCargaAula.classList.add("activa");
+
     const fecha =
     document.getElementById(
         "fechaAsistencia"
@@ -6319,6 +6354,7 @@ async function seleccionarFechaAsistencia(fechaSeleccionada = "") {
     // volver a pintar la distribución, para evitar mostrar temporalmente las
     // asistencias del día anterior.
     await cargarAsistencia();
+    if (barraCargaAula) barraCargaAula.classList.remove("activa");
     actualizarSelectorDiasAsistenciaAula();
 
     const modalDistribucion = document.getElementById("modalDistribucionAula");
@@ -15674,7 +15710,7 @@ async function abrirModalDistribucionAula() {
     distribucionAulaGirado = true;
 
     const titulo = document.getElementById("tituloDistribucionAula");
-    if (titulo) titulo.textContent = `🪑 Distribución del aula — ${cursoSeleccionado}`;
+    if (titulo) titulo.textContent = cursoSeleccionado;
 
     actualizarSelectorDiasAsistenciaAula();
     mostrarVistaDistribucionAula();
