@@ -6320,6 +6320,17 @@ function bloquearDesbloquearAsistencia() {
 
     else {
 
+        const fechaSeleccionada = document.getElementById("fechaAsistencia")?.value || "";
+        const hoy = new Date();
+        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+
+        if (fechaSeleccionada && fechaSeleccionada !== fechaHoy) {
+            const confirmarDesbloqueo = confirm("La fecha que desbloqueará no es hoy. ¿Está seguro?");
+            if (!confirmarDesbloqueo) {
+                return;
+            }
+        }
+
         const tablaAsistencia = document.querySelector(".tabla-asistencia");
         if (tablaAsistencia) {
             tablaAsistencia.classList.remove("asistencia-bloqueada");
