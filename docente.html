@@ -1615,6 +1615,75 @@ td:first-child {
     background: #006b73;
 }
 
+.controles-hora-asistencia {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.controles-hora-asistencia.oculto {
+    display: none !important;
+}
+
+.boton-asignar-hora-asistencia,
+.boton-borrar-horas-asistencia {
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    padding: 0 11px;
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.boton-asignar-hora-asistencia {
+    background: #1565c0;
+}
+
+.boton-asignar-hora-asistencia:hover {
+    background: #0d47a1;
+}
+
+.boton-borrar-horas-asistencia {
+    background: #c62828;
+}
+
+.boton-borrar-horas-asistencia:hover {
+    background: #8e0000;
+}
+
+.modal-hora-asistencia {
+    width: 100%;
+    max-width: 390px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    animation: aparecerModal .18s ease-out;
+}
+
+.modal-hora-asistencia .hora-asistencia-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: 18px;
+    text-align: center;
+}
+
+.modal-hora-asistencia .modal-acciones {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.modal-hora-asistencia .modal-acciones button {
+    width: 100%;
+}
+
 .columna-hora-asistencia {
     display: none;
     width: 92px;
@@ -4229,6 +4298,26 @@ Selecciona un curso
 
 </button>
 
+<div id="controlesHoraAsistencia" class="controles-hora-asistencia oculto">
+
+<button
+    type="button"
+    class="boton-asignar-hora-asistencia"
+    onclick="abrirModalAsignarHoraAsistencia()"
+    title="Asignar una hora">
+⏱️ Asignar una hora
+</button>
+
+<button
+    type="button"
+    class="boton-borrar-horas-asistencia"
+    onclick="borrarHorasAsistencia()"
+    title="Borrar las horas">
+🗑️ Borrar las horas
+</button>
+
+</div>
+
 
 <span id="estadoGuardadoAsistencia" class="estado-guardado-pendiente">
     ⚠️ GUARDADO PENDIENTE
@@ -4501,6 +4590,80 @@ Selecciona un curso
 </button>
 
 </div>
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL ASIGNAR HORA DE ASISTENCIA
+===================================================== -->
+
+<div
+    id="modalAsignarHoraAsistencia"
+    class="modal-fondo oculto"
+    onclick="cerrarModalAsignarHoraAsistenciaDesdeFondo(event)">
+
+<div
+    class="modal-hora-asistencia"
+    onclick="event.stopPropagation()">
+
+<div class="modal-cabecera">
+
+<h3>
+⏱️ Asignar una hora
+</h3>
+
+<button
+    type="button"
+    class="boton-cerrar-modal"
+    onclick="cerrarModalAsignarHoraAsistencia()">
+×
+</button>
+
+</div>
+
+<div class="modal-cuerpo">
+
+<div class="campo">
+
+<label for="horaAsignarAsistencia">Hora</label>
+
+<input
+    type="time"
+    id="horaAsignarAsistencia"
+    class="hora-asistencia-modal-input"
+    step="1">
+
+</div>
+
+<div class="modal-acciones">
+
+<button
+    type="button"
+    class="boton-crear-modal"
+    onclick="asignarHoraAsistencia('todos')">
+Asignar a todos con asistencia
+</button>
+
+<button
+    type="button"
+    class="boton-crear-modal"
+    onclick="asignarHoraAsistencia('sinHora')">
+Asignar sólo a los que no tienen hora
+</button>
+
+<button
+    type="button"
+    class="boton-cancelar"
+    onclick="cerrarModalAsignarHoraAsistencia()">
+Cancelar
+</button>
+
+</div>
+
+</div>
+
 </div>
 
 </div>
@@ -5941,6 +6104,7 @@ function aplicarRestriccionTipoDiaAsistencia() {
 function actualizarBotonHoraAsistencia() {
     const boton = document.getElementById("botonHoraAsistencia");
     const tabla = document.querySelector(".tabla-asistencia");
+    const controlesHora = document.getElementById("controlesHoraAsistencia");
 
     if (tabla) {
         tabla.classList.toggle("mostrar-hora", mostrarHoraAsistencia);
@@ -5953,6 +6117,10 @@ function actualizarBotonHoraAsistencia() {
             : "Mostrar columna de hora";
     }
 
+    if (controlesHora) {
+        controlesHora.classList.toggle("oculto", !mostrarHoraAsistencia);
+    }
+
     aplicarRestriccionTipoDiaAsistencia();
 }
 
@@ -5960,6 +6128,123 @@ function alternarMostrarHoraAsistencia() {
     mostrarHoraAsistencia = !mostrarHoraAsistencia;
     actualizarBotonHoraAsistencia();
     actualizarCambiosPendientesAsistencia();
+}
+
+function abrirModalAsignarHoraAsistencia() {
+    if (!mostrarHoraAsistencia) return;
+
+    if (esDiaSinClasesAsistencia()) {
+        mostrarMensaje("ℹ️ No se puede registrar asistencia porque este día no se pasó clases.");
+        return;
+    }
+
+    if (!asistenciaDesbloqueada) {
+        mostrarMensaje("🔒 Primero desbloquea la tabla de asistencia para poder asignar horas.");
+        return;
+    }
+
+    const modal = document.getElementById("modalAsignarHoraAsistencia");
+    const input = document.getElementById("horaAsignarAsistencia");
+    if (!modal || !input) return;
+
+    input.value = new Date().toLocaleTimeString("es-BO", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+
+    modal.classList.remove("oculto");
+    setTimeout(() => input.focus(), 50);
+}
+
+function cerrarModalAsignarHoraAsistencia() {
+    const modal = document.getElementById("modalAsignarHoraAsistencia");
+    if (modal) modal.classList.add("oculto");
+}
+
+function cerrarModalAsignarHoraAsistenciaDesdeFondo(event) {
+    if (event && event.target === event.currentTarget) {
+        cerrarModalAsignarHoraAsistencia();
+    }
+}
+
+function asignarHoraAsistencia(modo) {
+    if (!asistenciaDesbloqueada) {
+        cerrarModalAsignarHoraAsistencia();
+        mostrarMensaje("🔒 Primero desbloquea la tabla de asistencia para poder asignar horas.");
+        return;
+    }
+
+    const inputHora = document.getElementById("horaAsignarAsistencia");
+    const hora = inputHora ? inputHora.value.trim() : "";
+
+    if (!hora) {
+        alert("Selecciona una hora.");
+        if (inputHora) inputHora.focus();
+        return;
+    }
+
+    const estudiantesCurso = obtenerEstudiantesCursoActual();
+    let cantidad = 0;
+
+    estudiantesCurso.forEach(estudiante => {
+        const estado = document.querySelector(
+            `input[name="asistencia-${estudiante.id}"]:checked`
+        )?.value || "";
+
+        const horaInput = document.querySelector(
+            `.hora-asistencia-input[data-estudiante="${estudiante.id}"]`
+        );
+
+        if (!horaInput) return;
+
+        if (estado !== "asistio") return;
+        if (modo === "sinHora" && horaInput.value.trim()) return;
+
+        horaInput.value = hora;
+        cantidad++;
+    });
+
+    cerrarModalAsignarHoraAsistencia();
+    actualizarCambiosPendientesAsistencia();
+
+    mostrarMensaje(
+        cantidad > 0
+            ? `✓ Hora ${hora} asignada a ${cantidad} estudiante${cantidad === 1 ? "" : "s"}.`
+            : "ℹ️ No se encontraron estudiantes que cumplan la opción seleccionada."
+    );
+}
+
+function borrarHorasAsistencia() {
+    if (!mostrarHoraAsistencia) return;
+
+    if (esDiaSinClasesAsistencia()) {
+        mostrarMensaje("ℹ️ No se puede modificar la asistencia porque este día no se pasó clases.");
+        return;
+    }
+
+    if (!asistenciaDesbloqueada) {
+        mostrarMensaje("🔒 Primero desbloquea la tabla de asistencia para poder borrar horas.");
+        return;
+    }
+
+    const horas = document.querySelectorAll(".hora-asistencia-input");
+    let cantidad = 0;
+
+    horas.forEach(input => {
+        if (input.value.trim()) {
+            input.value = "";
+            cantidad++;
+        }
+    });
+
+    actualizarCambiosPendientesAsistencia();
+
+    mostrarMensaje(
+        cantidad > 0
+            ? `✓ Se borraron ${cantidad} hora${cantidad === 1 ? "" : "s"}. Recuerda guardar los cambios.`
+            : "ℹ️ No había horas para borrar."
+    );
 }
 
 function normalizarHoraAsistencia(hora) {
