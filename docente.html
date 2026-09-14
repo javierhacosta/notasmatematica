@@ -4944,6 +4944,10 @@ Cancelar
                         <input id="mostrarNombreCompletoAula" type="checkbox">
                         <span>Mostrar nombre completo</span>
                     </label>
+                    <label class="configuracion-aula-nombre-completo">
+                        <input id="mostrarNumeroListaAula" type="checkbox" checked>
+                        <span>Mostrar número de lista</span>
+                    </label>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
                             <label for="cantidadColumnasAula">Columnas de mesas</label>
@@ -15380,9 +15384,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -15417,7 +15421,8 @@ function normalizarConfiguracionAula(datos = {}) {
     const anchoMesa = Math.max(60, Math.min(500, Number(datos.anchoMesa ?? datos.ancho_mesa) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(datos.largoMesa ?? datos.largo_mesa) || 72));
     const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto };
+    const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -15445,7 +15450,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true) {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -15459,7 +15464,8 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         filasPorColumna: filasColumnas,
         anchoMesa,
         largoMesa,
-        mostrarNombreCompleto: mostrarNombreCompleto === true
+        mostrarNombreCompleto: mostrarNombreCompleto === true,
+        mostrarNumeroLista: mostrarNumeroLista !== false
     };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
 }
@@ -15481,11 +15487,14 @@ async function cargarConfiguracionDistribucionAulaBD() {
                 : null;
         const metadataMostrarNombreCompleto = data.distribucion &&
             data.distribucion.__mostrarNombreCompleto === true;
+        const metadataMostrarNumeroLista = !(data.distribucion &&
+            data.distribucion.__mostrarNumeroLista === false);
 
         const config = normalizarConfiguracionAula({
             ...data,
             filasPorColumna: metadataFilas || undefined,
-            mostrarNombreCompleto: metadataMostrarNombreCompleto
+            mostrarNombreCompleto: metadataMostrarNombreCompleto,
+            mostrarNumeroLista: metadataMostrarNumeroLista
         });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
@@ -15493,6 +15502,7 @@ async function cargarConfiguracionDistribucionAulaBD() {
         if (distribucion) {
             delete distribucion.__filasPorColumna;
             delete distribucion.__mostrarNombreCompleto;
+            delete distribucion.__mostrarNumeroLista;
         }
 
         configuracionAulaActual = config;
@@ -15512,6 +15522,7 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     const distribucionParaGuardar = { ...(distribucion || {}) };
     distribucionParaGuardar.__filasPorColumna = [...config.filasPorColumna];
     distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
+    distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
 
     const datos = {
         curso: cursoSeleccionado,
@@ -15534,7 +15545,8 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.anchoMesa,
         config.largoMesa,
         config.filasPorColumna,
-        config.mostrarNombreCompleto
+        config.mostrarNombreCompleto,
+        config.mostrarNumeroLista
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -15623,15 +15635,23 @@ function construirNombreCortoAula(estudiante) {
     if (!estudiante) return "Asiento vacío";
 
     const nombre = String(estudiante.nombre || estudiante.nombre_completo || "Sin nombre").trim();
+    let nombreMostrar = nombre;
+
     if (!configuracionAulaActual.mostrarNombreCompleto) {
         const partes = nombre.split(/\s+/).filter(Boolean);
         // Los nombres están registrados como: APELLIDO PATERNO APELLIDO MATERNO NOMBRES.
         // En modo corto se muestran: NOMBRES APELLIDO PATERNO.
         if (partes.length >= 3) {
-            return `${partes.slice(2).join(" ")} ${partes[0]}`;
+            nombreMostrar = `${partes.slice(2).join(" ")} ${partes[0]}`;
         }
     }
-    return nombre;
+
+    if (configuracionAulaActual.mostrarNumeroLista !== false) {
+        const numeroLista = String(estudiante.num_lista ?? estudiante.numero_lista ?? "").trim();
+        if (numeroLista) return `${numeroLista} ${nombreMostrar}`;
+    }
+
+    return nombreMostrar;
 }
 
 async function abrirModalDistribucionAula() {
@@ -15933,7 +15953,8 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     const estado = String(registro.estado || "");
 
     modal.dataset.estudianteId = String(estudiante.id);
-    if (titulo) titulo.textContent = `👤 ${estudiante.nombre}`;
+    const nombreAsistencia = construirNombreCortoAula(estudiante);
+    if (titulo) titulo.textContent = `👤 ${nombreAsistencia}`;
     if (subtitulo) subtitulo.textContent = fecha
         ? `Asistencia del ${formatearFechaGuardadaAsistencia(fecha)}`
         : "Selecciona un día de asistencia.";
@@ -16059,15 +16080,17 @@ function mostrarConfiguracionAula() {
     const inputAnchoMesa = document.getElementById("anchoMesasAula");
     const inputLargoMesa = document.getElementById("largoMesasAula");
     const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
+    const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
 
     if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
     if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
     if (inputLargoMesa) inputLargoMesa.value = configuracionAulaActual.largoMesa || 72;
     if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
+    if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
@@ -16157,17 +16180,18 @@ function aplicarConfiguracionAula() {
     const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
     const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
+    const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -16201,7 +16225,8 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
            JSON.stringify(filasA) === JSON.stringify(filasB) &&
            Number(a.anchoMesa) === Number(b.anchoMesa) &&
            Number(a.largoMesa) === Number(b.largoMesa) &&
-           (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true);
+           (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
+           (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false);
 }
 
 function actualizarBotonAplicarConfiguracionAula() {
@@ -16214,7 +16239,8 @@ function actualizarBotonAplicarConfiguracionAula() {
         filasPorColumna,
         anchoMesa: Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130)),
         largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72)),
-        mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true
+        mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true,
+        mostrarNumeroLista: document.getElementById("mostrarNumeroListaAula")?.checked !== false
     };
     boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
 }
