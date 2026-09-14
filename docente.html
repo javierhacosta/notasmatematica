@@ -3564,18 +3564,34 @@ table tbody tr:nth-child(10n+10) td {
     margin: 0 0 12px;
 }
 
-.configuracion-aula-acciones-extra .boton-lista-asientos {
-    background: #1557a6;
+.configuracion-aula-filas-columnas {
+    margin-top: 14px;
 }
 
-.configuracion-aula-acciones-extra .boton-vaciar-asientos-aula {
-    width: auto;
-    min-width: 34px;
-    padding: 0 10px;
-    background: #c62828;
-    font-size: 14px;
-    font-weight: bold;
-    white-space: nowrap;
+.configuracion-aula-filas-columnas > label {
+    margin-bottom: 8px;
+}
+
+.filas-por-columna-aula {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.fila-columna-aula {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f7f9fb;
+}
+
+.fila-columna-aula label {
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.fila-columna-aula input {
+    width: 100%;
 }
 
 .configuracion-aula-campos {
@@ -4872,13 +4888,13 @@ Cancelar
                     </div>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
-                            <label for="cantidadFilasAula">Filas de mesas</label>
-                            <input id="cantidadFilasAula" type="number" min="1" max="20" step="1">
-                        </div>
-                        <div class="configuracion-aula-campo">
                             <label for="cantidadColumnasAula">Columnas de mesas</label>
                             <input id="cantidadColumnasAula" type="number" min="1" max="10" step="1">
                         </div>
+                    </div>
+                    <div class="configuracion-aula-filas-columnas">
+                        <label>Filas por cada columna</label>
+                        <div id="filasPorColumnaAula" class="filas-por-columna-aula"></div>
                     </div>
                     <div class="configuracion-aula-tamanos">
                         <div class="configuracion-aula-campo">
@@ -15306,9 +15322,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, anchoMesa: 130, largoMesa: 72 };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72 };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, anchoMesa: 130, largoMesa: 72 };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72 };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -15332,11 +15348,36 @@ function cargarConfiguracionesAulaGuardadas() {
 }
 
 function normalizarConfiguracionAula(datos = {}) {
-    const filas = Math.max(1, Math.min(20, Number(datos.filas) || 6));
     const columnas = Math.max(1, Math.min(10, Number(datos.columnas) || 3));
+    const filasBase = Math.max(1, Math.min(20, Number(datos.filas) || 6));
+    const filasPorColumna = Array.from({ length: columnas }, (_, indice) => {
+        const valor = Array.isArray(datos.filasPorColumna)
+            ? datos.filasPorColumna[indice]
+            : filasBase;
+        return Math.max(1, Math.min(20, Number(valor) || filasBase));
+    });
     const anchoMesa = Math.max(60, Math.min(500, Number(datos.anchoMesa ?? datos.ancho_mesa) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(datos.largoMesa ?? datos.largo_mesa) || 72));
-    return { filas, columnas, anchoMesa, largoMesa };
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa };
+}
+
+function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
+    const columnas = Math.max(1, Math.min(10, Number(config.columnas) || 1));
+    const filasBase = Math.max(1, Math.min(20, Number(config.filas) || 1));
+    return Array.from({ length: columnas }, (_, indice) => {
+        const valor = Array.isArray(config.filasPorColumna)
+            ? config.filasPorColumna[indice]
+            : filasBase;
+        return Math.max(1, Math.min(20, Number(valor) || filasBase));
+    });
+}
+
+function obtenerFilasMaximasAula(config = configuracionAulaActual) {
+    return Math.max(...obtenerFilasPorColumnaAula(config), 1);
+}
+
+function obtenerCantidadMesasAula(config = configuracionAulaActual) {
+    return obtenerFilasPorColumnaAula(config).reduce((total, filas) => total + filas, 0);
 }
 
 function obtenerConfiguracionAulaCurso() {
@@ -15345,9 +15386,21 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null) {
     const todas = cargarConfiguracionesAulaGuardadas();
-    todas[claveDistribucionAula(cursoSeleccionado)] = { filas, columnas, anchoMesa, largoMesa };
+    const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
+    const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
+    const filasColumnas = Array.from({ length: columnasNormalizadas }, (_, indice) => {
+        const valor = Array.isArray(filasPorColumna) ? filasPorColumna[indice] : filasNormalizadas;
+        return Math.max(1, Math.min(20, Number(valor) || filasNormalizadas));
+    });
+    todas[claveDistribucionAula(cursoSeleccionado)] = {
+        filas: filasNormalizadas,
+        columnas: columnasNormalizadas,
+        filasPorColumna: filasColumnas,
+        anchoMesa,
+        largoMesa
+    };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
 }
 
@@ -15362,12 +15415,22 @@ async function cargarConfiguracionDistribucionAulaBD() {
         if (error) throw error;
         if (!data) return null;
 
-        const config = normalizarConfiguracionAula(data);
+        const metadataFilas = data.distribucion &&
+            Array.isArray(data.distribucion.__filasPorColumna)
+                ? data.distribucion.__filasPorColumna
+                : null;
+
+        const config = normalizarConfiguracionAula({
+            ...data,
+            filasPorColumna: metadataFilas || undefined
+        });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
 
+        if (distribucion) delete distribucion.__filasPorColumna;
+
         configuracionAulaActual = config;
-        configuracionAulaGuardada = { ...config };
+        configuracionAulaGuardada = { ...config, filasPorColumna: [...config.filasPorColumna] };
         if (distribucion) distribucionAulaActual = distribucion;
         if (distribucion) distribucionAulaGuardada = { ...distribucion };
         return { ...config, distribucion };
@@ -15380,13 +15443,16 @@ async function cargarConfiguracionDistribucionAulaBD() {
 async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) {
     if (!cursoSeleccionado) return false;
     const config = normalizarConfiguracionAula(configuracionAulaActual);
+    const distribucionParaGuardar = { ...(distribucion || {}) };
+    distribucionParaGuardar.__filasPorColumna = [...config.filasPorColumna];
+
     const datos = {
         curso: cursoSeleccionado,
-        filas: config.filas,
+        filas: obtenerFilasMaximasAula(config),
         columnas: config.columnas,
         ancho_mesa: config.anchoMesa,
         largo_mesa: config.largoMesa,
-        distribucion: { ...(distribucion || {}) },
+        distribucion: distribucionParaGuardar,
         updated_at: new Date().toISOString()
     };
 
@@ -15395,8 +15461,13 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         .upsert(datos, { onConflict: "curso" });
     if (error) throw error;
 
-    // Se conserva también la copia local como respaldo, sin cambiar el comportamiento existente.
-    guardarConfiguracionAulaCurso(config.filas, config.columnas, config.anchoMesa, config.largoMesa);
+    guardarConfiguracionAulaCurso(
+        datos.filas,
+        config.columnas,
+        config.anchoMesa,
+        config.largoMesa,
+        config.filasPorColumna
+    );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
     localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
@@ -15404,27 +15475,22 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
 }
 
 function obtenerCantidadAsientosAula() {
-    return Number(configuracionAulaActual.filas || 1) * Number(configuracionAulaActual.columnas || 1) * 2;
+    return obtenerCantidadMesasAula(configuracionAulaActual) * 2;
 }
 
-/* Genera la numeración según las mesas configuradas: cada mesa = 2 asientos. */
+/* Genera la numeración por columna: cada columna puede tener una cantidad distinta de filas. */
 function obtenerAsientosConfiguradosAula() {
-    const filas = Number(configuracionAulaActual.filas || 1);
-    const columnas = Number(configuracionAulaActual.columnas || 1);
+    const filasPorColumna = obtenerFilasPorColumnaAula(configuracionAulaActual);
     const resultado = [];
 
-    /*
-       La numeración avanza hacia abajo por una columna completa y
-       recién después continúa en la siguiente columna.
-       Cada mesa conserva sus 2 asientos consecutivos.
-    */
-    for (let fila = 0; fila < filas; fila++) {
-        const filaMesas = [];
-        for (let columna = 0; columna < columnas; columna++) {
-            const inicio = (columna * filas * 2) + (fila * 2) + 1;
-            filaMesas.push([inicio, inicio + 1]);
+    let numero = 1;
+    for (let columna = 0; columna < filasPorColumna.length; columna++) {
+        const mesasColumna = [];
+        for (let fila = 0; fila < filasPorColumna[columna]; fila++) {
+            mesasColumna.push([numero, numero + 1]);
+            numero += 2;
         }
-        resultado.push(filaMesas);
+        resultado.push(mesasColumna);
     }
 
     return resultado;
@@ -15470,7 +15536,9 @@ function obtenerDistribucionAulaCurso() {
     const clave = claveDistribucionAula(cursoSeleccionado);
 
     if (todas[clave] && typeof todas[clave] === "object") {
-        return { ...todas[clave] };
+        const distribucion = { ...todas[clave] };
+        delete distribucion.__filasPorColumna;
+        return distribucion;
     }
 
     return crearDistribucionAulaInicial();
@@ -15501,7 +15569,7 @@ async function abrirModalDistribucionAula() {
     distribucionAulaActual = obtenerDistribucionAulaCurso();
     await cargarConfiguracionDistribucionAulaBD();
     distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
-    configuracionAulaGuardada = { ...configuracionAulaActual };
+    configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...obtenerFilasPorColumnaAula(configuracionAulaActual)] };
     if (!distribucionAulaActual || typeof distribucionAulaActual !== "object" || Object.keys(distribucionAulaActual).length === 0) {
         distribucionAulaActual = obtenerDistribucionAulaCurso();
     }
@@ -15604,8 +15672,8 @@ function mostrarVistaDistribucionAula() {
     if (!tablero) return;
     tablero.innerHTML = "";
 
-    const mesas = obtenerAsientosConfiguradosAula();
-    const columnas = Number(configuracionAulaActual.columnas || 1);
+    const mesasPorColumna = obtenerAsientosConfiguradosAula();
+    const columnas = mesasPorColumna.length;
 
     tablero.style.gridTemplateColumns = `repeat(${columnas}, minmax(95px, 1fr))`;
     tablero.style.minWidth = `${Math.max(300, columnas * 105)}px`;
@@ -15614,15 +15682,15 @@ function mostrarVistaDistribucionAula() {
         const contenedor = document.createElement("div");
         contenedor.className = "columna-mesas-aula";
 
-        /* La numeración baja por toda la columna antes de continuar en la siguiente. */
-        for (let fila = 0; fila < mesas.length; fila++) {
+        /* Cada columna usa su propia cantidad de filas configurada. */
+        for (let fila = 0; fila < mesasPorColumna[columna].length; fila++) {
             const mesa = document.createElement("div");
             mesa.className = "mesa-aula";
             mesa.style.width = `${Number(configuracionAulaActual.anchoMesa || 130)}px`;
             mesa.style.height = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
             mesa.style.minHeight = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
-            mesa.appendChild(crearAsientoVisualAula(mesas[fila][columna][0]));
-            mesa.appendChild(crearAsientoVisualAula(mesas[fila][columna][1]));
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][0]));
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][1]));
             contenedor.appendChild(mesa);
         }
 
@@ -15909,23 +15977,75 @@ function mostrarConfiguracionAula() {
         botonLista.title = "Ver distribución de mesas";
     }
 
-    const inputFilas = document.getElementById("cantidadFilasAula");
     const inputColumnas = document.getElementById("cantidadColumnasAula");
     const inputAnchoMesa = document.getElementById("anchoMesasAula");
     const inputLargoMesa = document.getElementById("largoMesasAula");
-    if (inputFilas) inputFilas.value = configuracionAulaActual.filas;
+
     if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
     if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
     if (inputLargoMesa) inputLargoMesa.value = configuracionAulaActual.largoMesa || 72;
 
-    actualizarResumenConfiguracionAula();
-    actualizarBotonAplicarConfiguracionAula();
+    renderizarFilasPorColumnaAula();
 
-    [inputFilas, inputColumnas, inputAnchoMesa, inputLargoMesa].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa].forEach(input => {
         if (input) input.oninput = function() {
+            if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
             actualizarBotonAplicarConfiguracionAula();
         };
+    });
+
+    actualizarResumenConfiguracionAula();
+    actualizarBotonAplicarConfiguracionAula();
+}
+
+function renderizarFilasPorColumnaAula() {
+    const contenedor = document.getElementById("filasPorColumnaAula");
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    if (!contenedor || !inputColumnas) return;
+
+    const columnas = Math.max(1, Math.min(10, Number(inputColumnas.value) || 1));
+    const actuales = obtenerFilasPorColumnaAula(configuracionAulaActual);
+
+    contenedor.innerHTML = "";
+
+    for (let columna = 0; columna < columnas; columna++) {
+        const campo = document.createElement("div");
+        campo.className = "fila-columna-aula";
+
+        const label = document.createElement("label");
+        label.textContent = `Columna ${columna + 1}`;
+        label.htmlFor = `filasColumnaAula_${columna}`;
+        campo.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = `filasColumnaAula_${columna}`;
+        input.min = "1";
+        input.max = "20";
+        input.step = "1";
+        input.value = Math.max(1, Math.min(20, Number(actuales[columna] || configuracionAulaActual.filas || 1)));
+        input.dataset.columna = String(columna);
+        input.addEventListener("input", function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        });
+        campo.appendChild(input);
+        contenedor.appendChild(campo);
+    }
+
+    actualizarResumenConfiguracionAula();
+    actualizarBotonAplicarConfiguracionAula();
+}
+
+function obtenerFilasConfiguradasDesdeFormularioAula() {
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    const columnas = Math.max(1, Math.min(10, Number(inputColumnas?.value) || 1));
+    const base = obtenerFilasPorColumnaAula(configuracionAulaActual);
+    return Array.from({ length: columnas }, (_, indice) => {
+        const input = document.getElementById(`filasColumnaAula_${indice}`);
+        const valor = input ? input.value : base[indice];
+        return Math.max(1, Math.min(20, Number(valor) || 1));
     });
 }
 
@@ -15933,33 +16053,34 @@ function actualizarResumenConfiguracionAula() {
     const resumen = document.getElementById("resumenConfiguracionAula");
     if (!resumen) return;
 
-    const filas = Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1));
-    const columnas = Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1));
-    const mesas = filas * columnas;
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
+    const columnas = filasPorColumna.length;
+    const mesas = filasPorColumna.reduce((total, filas) => total + filas, 0);
     const asientos = mesas * 2;
     const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
 
-    resumen.innerHTML = `<strong>${mesas}</strong> mesas · <strong>${asientos}</strong> asientos · tamaño: <strong>${anchoMesa} × ${largoMesa} px</strong>`;
+    resumen.innerHTML = `<strong>${mesas}</strong> mesas · <strong>${asientos}</strong> asientos · <strong>${columnas}</strong> columnas · filas: <strong>${filasPorColumna.join(" / ")}</strong> · tamaño: <strong>${anchoMesa} × ${largoMesa} px</strong>`;
 }
 
 function aplicarConfiguracionAula() {
-    const filas = Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1));
-    const columnas = Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1));
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
+    const columnas = filasPorColumna.length;
+    const filasMaximas = Math.max(...filasPorColumna, 1);
+    const filas = filasMaximas;
     const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
     const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
-    const totalNuevo = filas * columnas * 2;
+    const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, anchoMesa, largoMesa };
-    configuracionAulaGuardada = { ...configuracionAulaActual };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa };
+    configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
-    /* Se conservan las asignaciones existentes dentro del nuevo rango. */
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -15967,7 +16088,7 @@ function aplicarConfiguracionAula() {
     }
     distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
 
-    mostrarMensaje(`✓ Aula configurada: ${filas} filas × ${columnas} columnas = ${totalNuevo} asientos.`);
+    mostrarMensaje(`✓ Aula configurada: ${columnas} columnas con ${filasPorColumna.join(", ")} filas = ${totalNuevo} asientos.`);
     mostrarVistaDistribucionAula();
 }
 
@@ -15987,8 +16108,10 @@ function actualizarBotonGuardarDistribucionAula() {
 }
 
 function configuracionesAulaSonIguales(a = {}, b = {}) {
-    return Number(a.filas) === Number(b.filas) &&
-           Number(a.columnas) === Number(b.columnas) &&
+    const filasA = obtenerFilasPorColumnaAula(a);
+    const filasB = obtenerFilasPorColumnaAula(b);
+    return Number(a.columnas) === Number(b.columnas) &&
+           JSON.stringify(filasA) === JSON.stringify(filasB) &&
            Number(a.anchoMesa) === Number(b.anchoMesa) &&
            Number(a.largoMesa) === Number(b.largoMesa);
 }
@@ -15996,9 +16119,11 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
 function actualizarBotonAplicarConfiguracionAula() {
     const boton = document.getElementById("botonAplicarConfiguracionAula");
     if (!boton) return;
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
     const actual = {
-        filas: Math.max(1, Math.min(20, Number(document.getElementById("cantidadFilasAula")?.value) || 1)),
-        columnas: Math.max(1, Math.min(10, Number(document.getElementById("cantidadColumnasAula")?.value) || 1)),
+        filas: Math.max(...filasPorColumna, 1),
+        columnas: filasPorColumna.length,
+        filasPorColumna,
         anchoMesa: Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130)),
         largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72))
     };
