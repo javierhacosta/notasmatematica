@@ -6004,12 +6004,16 @@ document.getElementById(
 
         mostrarPanelAsistencia();
 
-        await cargarFechasAsistencia();
-
-        await cargarAsistencia();
+        // Fechas y asistencia de la fecha seleccionada son independientes:
+        // se cargan en paralelo para reducir el tiempo de espera al cambiar de curso.
+        await Promise.all([
+            cargarFechasAsistencia(),
+            cargarAsistencia()
+        ]);
 
         aplicarBusqueda();
 
+        // Solo mostrar el panel. El informe pesado se carga cuando el usuario lo abre.
         mostrarPanelInforme();
 
     }
@@ -6742,11 +6746,22 @@ async function cargarFechasAsistencia() {
         return;
     }
 
-    const { data: dataAsistencia, error: errorAsistencia } = await supabaseClient
-        .from("asistencia")
-        .select("fecha")
-        .in("estudiante_id", ids)
-        .order("fecha", { ascending: false });
+    // Las dos consultas no dependen entre sí. Ejecutarlas juntas reduce la latencia total.
+    const [resultadoAsistencia, resultadoTipos] = await Promise.all([
+        supabaseClient
+            .from("asistencia")
+            .select("fecha")
+            .in("estudiante_id", ids)
+            .order("fecha", { ascending: false }),
+        supabaseClient
+            .from("asistencia_tipos_dia")
+            .select("fecha,tipo")
+            .eq("curso", cursoSeleccionado)
+            .order("fecha", { ascending: false })
+    ]);
+
+    const { data: dataAsistencia, error: errorAsistencia } = resultadoAsistencia;
+    const { data: dataTipos, error: errorTipos } = resultadoTipos;
 
     if (errorAsistencia) {
         console.error(errorAsistencia);
@@ -6754,12 +6769,6 @@ async function cargarFechasAsistencia() {
         renderizarCalendarioFechasAsistencia();
         return;
     }
-
-    const { data: dataTipos, error: errorTipos } = await supabaseClient
-        .from("asistencia_tipos_dia")
-        .select("fecha,tipo")
-        .eq("curso", cursoSeleccionado)
-        .order("fecha", { ascending: false });
 
     if (errorTipos) {
         console.error(errorTipos);
@@ -6978,11 +6987,23 @@ async function cargarAsistencia() {
         return;
     }
 
-    const { data, error } = await supabaseClient
-        .from("asistencia")
-        .select("id,estudiante_id,fecha,estado,hora,observacion")
-        .eq("fecha", fecha)
-        .in("estudiante_id", ids);
+    // La asistencia y el tipo de día son independientes: consultar ambos en paralelo.
+    const [resultadoAsistencia, resultadoTipo] = await Promise.all([
+        supabaseClient
+            .from("asistencia")
+            .select("id,estudiante_id,fecha,estado,hora,observacion")
+            .eq("fecha", fecha)
+            .in("estudiante_id", ids),
+        supabaseClient
+            .from("asistencia_tipos_dia")
+            .select("tipo,motivo")
+            .eq("curso", cursoSeleccionado)
+            .eq("fecha", fecha)
+            .maybeSingle()
+    ]);
+
+    const { data, error } = resultadoAsistencia;
+    const { data: tipoData, error: tipoError } = resultadoTipo;
 
     if (error) {
         console.error(error);
@@ -6999,14 +7020,6 @@ async function cargarAsistencia() {
             observacion: registro.observacion || ""
         };
     });
-
-    // El tipo especial se consulta en su propia tabla.
-    const { data: tipoData, error: tipoError } = await supabaseClient
-        .from("asistencia_tipos_dia")
-        .select("tipo,motivo")
-        .eq("curso", cursoSeleccionado)
-        .eq("fecha", fecha)
-        .maybeSingle();
 
     if (tipoError) {
         console.error("Error al cargar el tipo de día:", tipoError);
@@ -8231,8 +8244,11 @@ async function cargarActividades() {
     reconstruirIndiceActividades();
 
 
-    await cargarCalificaciones();
-    await cargarAsistenciaActividades();
+    // Calificaciones y asistencia de actividades son consultas independientes.
+    await Promise.all([
+        cargarCalificaciones(),
+        cargarAsistenciaActividades()
+    ]);
 
     mostrarActividades();
 
@@ -10208,7 +10224,8 @@ function mostrarPanelInforme() {
 
     panel.classList.remove("oculto");
 
-    cargarInformeGeneral();
+    // El informe realiza varias consultas y construye una tabla grande.
+    // Se carga únicamente cuando el usuario lo abre.
 
 }
 
@@ -13109,6 +13126,8 @@ let tiempoUltimoQRProcesado = 0;
 const TIEMPO_ANTI_DUPLICADO_QR = 1800;
 
 let guardandoCalificacionQR = false;
+let ultimoIntentoLecturaQR = 0;
+const INTERVALO_LECTURA_QR_MS = 120;
 
 // Detector QR compatible con celular y PC. En PC usa la cámara web sin exigir facingMode.
 let canvasQR = null;
@@ -13276,6 +13295,15 @@ async function solicitarLecturaQR() {
         return;
 
     }
+
+    // No es necesario decodificar todos los fotogramas. Limitamos el análisis
+    // a unas 8 lecturas por segundo y dejamos que la cámara siga fluida.
+    const ahoraLecturaQR = performance.now();
+    if (ahoraLecturaQR - ultimoIntentoLecturaQR < INTERVALO_LECTURA_QR_MS) {
+        requestAnimationFrame(solicitarLecturaQR);
+        return;
+    }
+    ultimoIntentoLecturaQR = ahoraLecturaQR;
 
     try {
 
@@ -16228,8 +16256,9 @@ function obtenerDistribucionAulaCurso() {
     return crearDistribucionAulaInicial();
 }
 
-function nombreEstudiantePorIdAula(id) {
+function nombreEstudiantePorIdAula(id, mapaEstudiantes = null) {
     if (id == null || id === "") return null;
+    if (mapaEstudiantes) return mapaEstudiantes.get(String(id)) || null;
     return obtenerEstudiantesCursoActual().find(
         estudiante => String(estudiante.id) === String(id)
     ) || null;
@@ -16303,8 +16332,8 @@ function obtenerIconoEstadoAsistenciaAula(estado) {
     return mapa[e] || ["⚪", "", "Sin marcar"];
 }
 
-function crearAsientoVisualAula(numero) {
-    const estudiante = nombreEstudiantePorIdAula(distribucionAulaActual[String(numero)]);
+function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
+    const estudiante = nombreEstudiantePorIdAula(distribucionAulaActual[String(numero)], mapaEstudiantes);
     const asiento = document.createElement("div");
     const registro = estudiante ? (registrosAsistencia[estudiante.id] || {}) : {};
     const estadoInfo = obtenerIconoEstadoAsistenciaAula(registro.estado);
@@ -16359,6 +16388,9 @@ function mostrarVistaDistribucionAula() {
 
     const mesasPorColumna = obtenerAsientosConfiguradosAula();
     const columnas = mesasPorColumna.length;
+    const mapaEstudiantes = new Map(
+        obtenerEstudiantesCursoActual().map(estudiante => [String(estudiante.id), estudiante])
+    );
 
     tablero.style.gridTemplateColumns = `repeat(${columnas}, minmax(95px, 1fr))`;
     tablero.style.minWidth = `${Math.max(300, columnas * 105)}px`;
@@ -16374,8 +16406,8 @@ function mostrarVistaDistribucionAula() {
             mesa.style.width = `${Number(configuracionAulaActual.anchoMesa || 130)}px`;
             mesa.style.height = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
             mesa.style.minHeight = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
-            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][0]));
-            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][1]));
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][0], mapaEstudiantes));
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][1], mapaEstudiantes));
             contenedor.appendChild(mesa);
         }
 
@@ -16423,6 +16455,11 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
 
     const totalAsientos = obtenerCantidadAsientosAula();
+    const estudiantesAsignados = new Set(
+        Object.values(distribucionAulaActual || {})
+            .filter(Boolean)
+            .map(id => String(id))
+    );
 
     for (let numero = 1; numero <= totalAsientos; numero++) {
         const fila = document.createElement("tr");
@@ -16443,10 +16480,8 @@ function mostrarListaAsientos(asientoEnfocado = null) {
         const estudianteAsignado = String(distribucionAulaActual[String(numero)] || "");
         estudiantesCurso.forEach(estudiante => {
             const idEstudiante = String(estudiante.id);
-            const yaAsignadoEnOtroAsiento = Object.keys(distribucionAulaActual || {}).some(asiento =>
-                String(asiento) !== String(numero) &&
-                String(distribucionAulaActual[asiento] || "") === idEstudiante
-            );
+            const yaAsignadoEnOtroAsiento =
+                estudiantesAsignados.has(idEstudiante) && idEstudiante !== estudianteAsignado;
             if (yaAsignadoEnOtroAsiento) return;
 
             const opcion = document.createElement("option");
@@ -16632,8 +16667,21 @@ async function guardarAsistenciaEstudianteDesdeAula() {
             });
         }
 
-        await cargarFechasAsistencia();
-        await cargarAsistencia();
+        // Ya conocemos el nuevo registro; actualizar la memoria local evita
+        // dos consultas completas y hace que la distribución responda al instante.
+        if (!estado && !observacion) {
+            delete registrosAsistencia[estudiante.id];
+        } else {
+            registrosAsistencia[estudiante.id] = {
+                estado: estado || null,
+                hora: nuevo.hora || "",
+                observacion: observacion || ""
+            };
+        }
+        if (!fechasAsistenciaGuardadas.includes(fecha)) {
+            fechasAsistenciaGuardadas.push(fecha);
+            fechasAsistenciaGuardadas.sort((a, b) => String(b).localeCompare(String(a)));
+        }
         actualizarSelectorDiasAsistenciaAula();
         cerrarModalAsistenciaEstudianteAula();
         mostrarVistaDistribucionAula();
