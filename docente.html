@@ -16019,7 +16019,11 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     const estado = String(registro.estado || "");
 
     modal.dataset.estudianteId = String(estudiante.id);
-    const nombreAsistencia = construirNombreCortoAula(estudiante);
+    const numeroListaAsistencia = String(estudiante.num_lista ?? estudiante.numero_lista ?? "").trim();
+    const nombreCompletoAsistencia = String(estudiante.nombre || estudiante.nombre_completo || "Sin nombre").trim();
+    const nombreAsistencia = numeroListaAsistencia
+        ? `${numeroListaAsistencia} ${nombreCompletoAsistencia}`
+        : nombreCompletoAsistencia;
     if (titulo) titulo.textContent = `👤 ${nombreAsistencia}`;
     if (subtitulo) subtitulo.textContent = fecha
         ? `Asistencia del ${formatearFechaGuardadaAsistencia(fecha)}`
