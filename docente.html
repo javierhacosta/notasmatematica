@@ -4099,12 +4099,13 @@ table tbody tr:nth-child(10n+10) td {
 .estadistica-barra .pista { flex:1; height:18px; background:#edf1f5; border-radius:9px; overflow:hidden; }
 .estadistica-barra .relleno { height:100%; border-radius:9px; background:linear-gradient(90deg,#4b83c4,#74a7d8); }
 .estadistica-barra .valor { width:48px; text-align:right; font-size:12px; font-weight:bold; }
+.estadistica-barra-porcentaje { margin:-4px 48px 4px 152px; font-size:10px; color:#777; text-align:right; }
 .estadistica-vacio { padding:20px; text-align:center; color:#777; }
 @media(max-width:768px){
  .modal-estadisticas{max-height:94vh;} .estadisticas-cuerpo{padding:10px;}
  .estadisticas-menu{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
  .boton-estadistica{padding:10px 6px;font-size:12px;}
- .estadistica-barra .etiqueta{width:95px;min-width:95px;font-size:10px;}
+ .estadistica-barra .etiqueta{width:95px;min-width:95px;font-size:10px;} .estadistica-barra-porcentaje{margin:-4px 48px 4px 102px;font-size:9px;}
 }
 
 .modal-visitas-estudiantes {
@@ -10937,25 +10938,282 @@ function barrasEstadistica(items, max=0) {
     return items.map(x=>{ const val=Number(x.valor)||0; const pct=Math.max(0,Math.min(100,(val/limite)*100)); return `<div class="estadistica-barra"><span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span><span class="pista"><span class="relleno" style="width:${pct}%"></span></span><span class="valor">${escEstadistica(x.texto ?? val)}</span></div>`; }).join("");
 }
 
-function prepararEstadisticas() {
-    const visitas=registrosVisitasEstudiantes||[]; const est=estudiantes||[];
-    const cursos=[...new Set(est.map(e=>e.curso).filter(Boolean))].sort();
-    const totalVisitas=visitas.length; const conVisitas=new Set(visitas.map(v=>String(v.estudiante_id))).size;
-    const hoy=new Date().toISOString().slice(0,10);
-    const visitasHoy=visitas.filter(v=>obtenerFechaLocalVisita(v.fecha_hora)===hoy).length;
-    const g=document.getElementById("estadisticaGeneral");
-    if(g) g.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${est.length}</strong></div><div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div><div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${totalVisitas}</strong></div><div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${conVisitas}</strong></div><div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div></div><div class="estadistica-grafica"><h4>Ingresos por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:visitas.filter(v=>obtenerCursoEstudianteVisita(v.estudiante_id)===c).length})).sort((a,b)=>b.valor-a.valor))}</div>`;
-    const c=document.getElementById("estadisticaCursos");
-    if(c) c.innerHTML=`<div class="estadistica-grafica"><h4>Estudiantes por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:est.filter(e=>e.curso===c).length})).sort((a,b)=>b.valor-a.valor))}</div><div class="estadistica-grafica"><h4>Ingresos registrados por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:visitas.filter(v=>obtenerCursoEstudianteVisita(v.estudiante_id)===c).length})).sort((a,b)=>b.valor-a.valor))}</div>`;
-    const r=document.getElementById("estadisticaRendimiento");
-    const notas=est.map(e=>Number(e.nota_3t)).filter(Number.isFinite); const finals=est.map(e=>Number(e.final)).filter(Number.isFinite);
-    const promedio=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";
-    if(r) r.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Promedio 1T</span><strong>${promedio(est.map(e=>Number(e.nota_1t)).filter(Number.isFinite))}</strong></div><div class="estadistica-tarjeta"><span>Promedio 2T</span><strong>${promedio(est.map(e=>Number(e.nota_2t)).filter(Number.isFinite))}</strong></div><div class="estadistica-tarjeta"><span>Promedio 3T</span><strong>${promedio(notas)}</strong></div><div class="estadistica-tarjeta"><span>Promedio final</span><strong>${promedio(finals)}</strong></div></div><div class="estadistica-grafica"><h4>Distribución de nota final</h4>${barrasEstadistica([{nombre:"90–100",valor:finals.filter(n=>n>=90).length},{nombre:"70–89",valor:finals.filter(n=>n>=70&&n<90).length},{nombre:"51–69",valor:finals.filter(n=>n>=51&&n<70).length},{nombre:"0–50",valor:finals.filter(n=>n<51).length}])}</div>`;
-    const a=document.getElementById("estadisticaAsistencia");
-    const ra=Object.values(registrosAsistencia||{}); const conteo={asistio:0,atraso:0,falta:0,licencia:0}; ra.forEach(x=>{const k=String(x.estado||"").toLowerCase(); if(k.includes("asist"))conteo.asistio++; else if(k.includes("atras"))conteo.atraso++; else if(k.includes("licen"))conteo.licencia++; else if(k.includes("falta"))conteo.falta++;});
-    if(a) a.innerHTML=`<div class="estadistica-grafica"><h4>Estado de asistencia cargado</h4>${barrasEstadistica([{nombre:"Asistencias",valor:conteo.asistio},{nombre:"Atrasos",valor:conteo.atraso},{nombre:"Faltas",valor:conteo.falta},{nombre:"Licencias",valor:conteo.licencia}])}</div><div class="estadistica-vacio">Esta vista utiliza los registros de asistencia que ya están cargados en la página.</div>`;
-    const act=document.getElementById("estadisticaActividades"); const acts=actividades||[];
-    if(act) act.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Actividades del curso abierto</span><strong>${acts.length}</strong></div><div class="estadistica-tarjeta"><span>SER</span><strong>${acts.filter(x=>x.categoria==="SER").length}</strong></div><div class="estadistica-tarjeta"><span>SABER</span><strong>${acts.filter(x=>x.categoria==="SABER").length}</strong></div><div class="estadistica-tarjeta"><span>HACER</span><strong>${acts.filter(x=>x.categoria==="HACER").length}</strong></div></div><div class="estadistica-grafica"><h4>Actividades por categoría</h4>${barrasEstadistica(["SER","SABER","HACER","AUTOEVALUACION"].map(k=>({nombre:k,valor:acts.filter(x=>x.categoria===k).length})))}</div><div class="estadistica-vacio">Las actividades dependen del curso seleccionado y se muestran cuando sus datos ya fueron cargados.</div>`;
+async function cargarTodosLosRegistrosEstadisticas(tabla, campos, orden = "id") {
+    const todos = [];
+    const tamanoPagina = 1000;
+    let desde = 0;
+
+    while (true) {
+        const { data, error } = await supabaseClient
+            .from(tabla)
+            .select(campos)
+            .order(orden, { ascending: true })
+            .range(desde, desde + tamanoPagina - 1);
+
+        if (error) throw error;
+        const pagina = data || [];
+        todos.push(...pagina);
+        if (pagina.length < tamanoPagina) break;
+        desde += tamanoPagina;
+    }
+
+    return todos;
+}
+
+function calcularNota3TEstadisticas(estudianteId, actividades3T, mapaCalificaciones) {
+    let total = 0;
+    let hayNotas = false;
+
+    ["SER", "SABER", "HACER", "AUTOEVALUACION"].forEach(categoria => {
+        const lista = actividades3T.filter(a => String(a.categoria || "").toUpperCase() === categoria);
+        if (!lista.length) return;
+
+        let sumaNotas = 0;
+        let sumaMaximos = 0;
+
+        lista.forEach(a => {
+            const r = mapaCalificaciones[String(estudianteId) + "_" + String(a.id)];
+            if (!r || r.nota === null || r.nota === undefined || String(r.nota).trim() === "") return;
+
+            const nota = Number(r.nota);
+            const maximo = Number(a.puntaje_maximo || LIMITES[categoria] || 0);
+            if (!Number.isFinite(nota) || !Number.isFinite(maximo) || maximo <= 0) return;
+
+            sumaNotas += nota;
+            sumaMaximos += maximo;
+            hayNotas = true;
+        });
+
+        if (sumaMaximos > 0) {
+            total += (sumaNotas / sumaMaximos) * LIMITES[categoria];
+        }
+    });
+
+    return hayNotas ? Math.round(total) : null;
+}
+
+function prepararGraficaEstadistica(titulo, items, unidad = "") {
+    const lista = (items || [])
+        .map(x => ({ nombre: String(x.nombre ?? ""), valor: Number(x.valor) || 0 }))
+        .sort((a, b) => b.valor - a.valor);
+
+    const total = lista.reduce((s, x) => s + x.valor, 0);
+    const maximo = Math.max(...lista.map(x => x.valor), 1);
+
+    return `<div class="estadistica-grafica">
+        <h4>${escEstadistica(titulo)}</h4>
+        ${lista.length ? lista.map(x => {
+            const porcentaje = total > 0 ? (x.valor / total) * 100 : 0;
+            const ancho = maximo > 0 ? (x.valor / maximo) * 100 : 0;
+            return `<div class="estadistica-barra">
+                <span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span>
+                <span class="pista"><span class="relleno" style="width:${Math.max(0, Math.min(100, ancho))}%"></span></span>
+                <span class="valor">${escEstadistica(String(x.valor))}${unidad}</span>
+            </div>
+            <div class="estadistica-barra-porcentaje">${porcentaje.toFixed(1)}% del total</div>`;
+        }).join("") : '<div class="estadistica-vacio">No hay datos para mostrar.</div>'}
+    </div>`;
+}
+
+async function prepararEstadisticas() {
+    const general = document.getElementById("estadisticaGeneral");
+    const cursosPanel = document.getElementById("estadisticaCursos");
+    const rendimiento = document.getElementById("estadisticaRendimiento");
+    const asistenciaPanel = document.getElementById("estadisticaAsistencia");
+    const actividadesPanel = document.getElementById("estadisticaActividades");
+
+    [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => {
+        if (el) el.innerHTML = '<div class="estadistica-vacio">⏳ Cargando todas las estadísticas...</div>';
+    });
+
+    try {
+        // Las estadísticas se cargan independientemente del curso seleccionado.
+        // Se obtienen todas las páginas para no quedar limitados a los primeros 1000 registros.
+        const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
+            cargarTodosLosRegistrosEstadisticas(
+                "matematica",
+                "id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t",
+                "id"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "asistencia",
+                "id,estudiante_id,fecha,estado,hora,observacion",
+                "fecha"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "actividades",
+                "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo",
+                "id"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "calificaciones",
+                "id,actividad_id,estudiante_id,nota,observacion",
+                "id"
+            )
+        ]);
+
+        // Los ingresos de estudiantes ya tienen carga completa y paginada.
+        if (!visitasEstudiantesCargadas) {
+            try {
+                await cargarVisitasEstudiantes();
+            } catch (_) {}
+        }
+
+        const visitas = registrosVisitasEstudiantes || [];
+        const cursos = [...new Set(est.map(e => e.curso).filter(Boolean))].sort();
+        const mapaEstudiante = new Map(est.map(e => [String(e.id), e]));
+        const mapaCalificaciones = {};
+        calificacionesTodas.forEach(r => {
+            mapaCalificaciones[String(r.estudiante_id) + "_" + String(r.actividad_id)] = r;
+        });
+
+        const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
+        const actividadesPorCurso = {};
+        actividades3T.forEach(a => {
+            if (!actividadesPorCurso[a.curso]) actividadesPorCurso[a.curso] = [];
+            actividadesPorCurso[a.curso].push(a);
+        });
+
+        // Calcular 3T y final para todos los estudiantes, sin necesidad de abrir un curso.
+        const estudiantesConNotas = est.map(e => {
+            const nota1 = convertirNumero(e.nota_1t);
+            const nota2 = convertirNumero(e.nota_2t);
+            const nota3 = calcularNota3TEstadisticas(e.id, actividadesPorCurso[e.curso] || [], mapaCalificaciones);
+            const final = nota1 !== null && nota2 !== null && nota3 !== null
+                ? Math.round((nota1 + nota2 + nota3) / 3)
+                : null;
+            return { ...e, nota3, final };
+        });
+
+        const promedio = arr => {
+            const validos = arr.map(Number).filter(Number.isFinite);
+            return validos.length
+                ? (validos.reduce((a, b) => a + b, 0) / validos.length).toFixed(1)
+                : "—";
+        };
+
+        const conteoEstado = registros => {
+            const r = { asistio: 0, atraso: 0, falta: 0, licencia: 0, permiso: 0 };
+            (registros || []).forEach(x => {
+                const estado = String(x.estado || "").toLowerCase();
+                if (estado === "asistio") r.asistio++;
+                else if (estado === "atraso") r.atraso++;
+                else if (estado === "falta") r.falta++;
+                else if (estado === "licencia") r.licencia++;
+                else if (estado === "permiso") r.permiso++;
+            });
+            return r;
+        };
+
+        const hoy = new Date();
+        const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
+        const visitasHoy = visitas.filter(v => obtenerFechaLocalVisita(v.fecha_hora) === hoyClave).length;
+        const estudiantesConIngreso = new Set(visitas.map(v => String(v.estudiante_id))).size;
+        const estados = conteoEstado(asistenciasTodas);
+        const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
+
+        if (general) general.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
+                <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
+                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Estudiantes por curso", cursos.map(c => ({ nombre:c, valor:estudiantesConNotas.filter(e=>e.curso===c).length })))}
+            ${prepararGraficaEstadistica("Ingresos registrados por curso", cursos.map(c => ({ nombre:c, valor:visitas.filter(v => mapaEstudiante.get(String(v.estudiante_id))?.curso === c).length })))}
+            ${prepararGraficaEstadistica("Estado de asistencia de todo el establecimiento", [
+                {nombre:"Asistencias",valor:estados.asistio},
+                {nombre:"Atrasos",valor:estados.atraso},
+                {nombre:"Faltas",valor:estados.falta},
+                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Permisos",valor:estados.permiso}
+            ])}`;
+
+        if (cursosPanel) cursosPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Cantidad de estudiantes por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c).length})))}
+            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c => {
+                const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
+                return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
+            }))}
+            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasTodas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
+            ${prepararGraficaEstadistica("Ingresos a la página por curso", cursos.map(c => ({nombre:c,valor:visitas.filter(v=>mapaEstudiante.get(String(v.estudiante_id))?.curso===c).length})))}`;
+
+        const finales = estudiantesConNotas.map(e=>e.final).filter(Number.isFinite);
+        if (rendimiento) rendimiento.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Promedio 1T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_1t))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio 2T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_2t))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio 3T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota3))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio final</span><strong>${promedio(finales)}</strong></div>
+                <div class="estadistica-tarjeta"><span>Con nota final</span><strong>${estudiantesConNotaFinal.length}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c=>({nombre:c,valor:Number(promedio(estudiantesConNotas.filter(e=>e.curso===c).map(e=>e.final)))||0})))}
+            ${prepararGraficaEstadistica("Distribución de nota final", [
+                {nombre:"90–100",valor:finales.filter(n=>n>=90).length},
+                {nombre:"70–89",valor:finales.filter(n=>n>=70&&n<90).length},
+                {nombre:"51–69",valor:finales.filter(n=>n>=51&&n<70).length},
+                {nombre:"0–50",valor:finales.filter(n=>n<51).length}
+            ])}`;
+
+        const asistenciaPorCurso = cursos.map(c => {
+            const registros = asistenciasTodas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
+            const ce = conteoEstado(registros);
+            return { curso:c, ...ce };
+        });
+        if (asistenciaPanel) asistenciaPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Asistencias</span><strong>${estados.asistio}</strong></div>
+                <div class="estadistica-tarjeta"><span>Atrasos</span><strong>${estados.atraso}</strong></div>
+                <div class="estadistica-tarjeta"><span>Faltas</span><strong>${estados.falta}</strong></div>
+                <div class="estadistica-tarjeta"><span>Licencias / permisos</span><strong>${estados.licencia + estados.permiso}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Asistencia general", [
+                {nombre:"Asistencias",valor:estados.asistio},
+                {nombre:"Atrasos",valor:estados.atraso},
+                {nombre:"Faltas",valor:estados.falta},
+                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Permisos",valor:estados.permiso}
+            ])}
+            ${prepararGraficaEstadistica("Registros de asistencia por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.asistio||0})))}
+            ${prepararGraficaEstadistica("Faltas por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.falta||0})))}
+            <div class="estadistica-vacio">Se muestran todos los registros guardados en la tabla de asistencia, sin depender del curso seleccionado.</div>`;
+
+        const categorias = ["SER", "SABER", "HACER", "AUTOEVALUACION"];
+        const conteoCategorias = categorias.map(k => ({nombre:k,valor:actividades3T.filter(a=>String(a.categoria||"").toUpperCase()===k).length}));
+        if (actividadesPanel) actividadesPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
+                ${categorias.map(k=>`<div class="estadistica-tarjeta"><span>${escEstadistica(k)}</span><strong>${conteoCategorias.find(x=>x.nombre===k)?.valor||0}</strong></div>`).join("")}
+            </div>
+            ${prepararGraficaEstadistica("Actividades por categoría", conteoCategorias)}
+            ${prepararGraficaEstadistica("Actividades por curso", cursos.map(c=>({nombre:c,valor:(actividadesPorCurso[c]||[]).length})))}
+            ${prepararGraficaEstadistica("Calificaciones registradas por curso", cursos.map(c=>{
+                const ids=new Set(estudiantesConNotas.filter(e=>e.curso===c).map(e=>String(e.id)));
+                return {nombre:c,valor:calificacionesTodas.filter(r=>ids.has(String(r.estudiante_id))).length};
+            }))}`;
+
+        // Mantener también la lista de estudiantes y sus notas sincronizadas en memoria.
+        estudiantesConNotas.forEach(e => {
+            const original = estudiantes.find(x => String(x.id) === String(e.id));
+            if (original) {
+                original.nota_3t = e.nota3;
+                original.final = e.final;
+            }
+        });
+
+    } catch (error) {
+        console.error("Error al cargar todas las estadísticas:", error);
+        const mensaje = `<div class="estadistica-vacio">⚠️ No se pudieron cargar todas las estadísticas.<br><small>${escEstadistica(error.message || error)}</small></div>`;
+        [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => { if (el) el.innerHTML = mensaje; });
+    }
 }
 
 function mostrarEstadistica(tipo, boton) {
