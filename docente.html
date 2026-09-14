@@ -3300,12 +3300,11 @@ table tbody tr:nth-child(10n+10) td {
     position: relative;
     min-width: 0;
     min-height: 72px;
-    padding: 6px 8px;
+    padding: 12px 8px 7px 27px;
     border-right: 1px solid #90a4ae;
     background: white;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     justify-content: center;
     text-align: center;
     cursor: default;
@@ -3321,9 +3320,9 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 .numero-asiento-aula {
-    position: static;
-    width: 100%;
-    margin-top: 3px;
+    position: absolute;
+    left: 5px;
+    top: 5px;
     color: #c62828;
     font-size: 12px;
     font-weight: bold;
@@ -3331,14 +3330,9 @@ table tbody tr:nth-child(10n+10) td {
 
 .nombre-asiento-aula {
     width: 100%;
-    flex: 1 1 auto;
-    min-height: 0;
     font-size: 11px;
     line-height: 1.2;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     overflow-wrap: anywhere;
 }
 
@@ -15497,7 +15491,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false) {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -15537,15 +15531,13 @@ async function cargarConfiguracionDistribucionAulaBD() {
             data.distribucion.__mostrarNombreCompleto === true;
         const metadataMostrarNumeroLista = !(data.distribucion &&
             data.distribucion.__mostrarNumeroLista === false);
-        const metadataMostrarNumeroAsiento = data.distribucion &&
-            data.distribucion.__mostrarNumeroAsiento === true;
 
         const config = normalizarConfiguracionAula({
             ...data,
             filasPorColumna: metadataFilas || undefined,
             mostrarNombreCompleto: metadataMostrarNombreCompleto,
             mostrarNumeroLista: metadataMostrarNumeroLista,
-            mostrarNumeroAsiento: metadataMostrarNumeroAsiento
+            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true
         });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
@@ -15763,6 +15755,13 @@ function crearAsientoVisualAula(numero) {
     silla.setAttribute("aria-hidden", "true");
     asiento.appendChild(silla);
 
+    if (configuracionAulaActual.mostrarNumeroAsiento === true) {
+        const numeroEl = document.createElement("span");
+        numeroEl.className = "numero-asiento-aula";
+        numeroEl.textContent = numero;
+        asiento.appendChild(numeroEl);
+    }
+
     const nombreEl = document.createElement("span");
     nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
@@ -15797,14 +15796,6 @@ function crearAsientoVisualAula(numero) {
     }
 
     asiento.appendChild(nombreEl);
-
-    if (configuracionAulaActual.mostrarNumeroAsiento === true) {
-        const numeroEl = document.createElement("span");
-        numeroEl.className = "numero-asiento-aula";
-        numeroEl.textContent = numero;
-        asiento.appendChild(numeroEl);
-    }
-
     return asiento;
 }
 
@@ -16251,7 +16242,7 @@ function aplicarConfiguracionAula() {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
