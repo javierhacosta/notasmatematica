@@ -3556,6 +3556,14 @@ table tbody tr:nth-child(10n+10) td {
     line-height: 1.45;
 }
 
+.configuracion-aula-acciones-extra {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin: 0 0 12px;
+}
+
 .configuracion-aula-campos {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4791,11 +4799,6 @@ Cancelar
         <div class="modal-cabecera">
             <h3 id="tituloDistribucionAula">🪑 Distribución del aula</h3>
             <div class="distribucion-cabecera-acciones">
-                <button type="button"
-                        id="botonListaAsientos"
-                        class="boton-lista-asientos"
-                        onclick="mostrarListaAsientos()"
-                        title="Ver lista de estudiantes y asientos">☷</button>
                 <select id="selectorDiasAsistenciaAula"
                         class="selector-dias-asistencia-aula"
                         onchange="seleccionarDiaAsistenciaDesdeAula(this.value)"
@@ -4812,12 +4815,6 @@ Cancelar
                         class="boton-girar-distribucion-aula"
                         onclick="alternarGiroDistribucionAula()"
                         title="Girar distribución 180°">🔄</button>
-
-                <button type="button"
-                        id="botonVaciarAsientosAula"
-                        class="boton-vaciar-asientos-aula"
-                        onclick="vaciarAsientosAula()"
-                        title="Vaciar todos los asientos">🗑️</button>
 
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalDistribucionAula()">×</button>
@@ -4851,6 +4848,14 @@ Cancelar
                     <p class="configuracion-aula-ayuda">
                         Define cuántas filas y columnas de mesas tendrá este curso. Cada mesa tiene 2 asientos, por lo que el total de sillas se calcula automáticamente.
                     </p>
+                    <div class="configuracion-aula-acciones-extra">
+                        <button type="button" id="botonListaAsientosConfig" class="boton-lista-asientos"
+                                onclick="mostrarListaAsientos()"
+                                title="Ver lista de estudiantes y asientos">☷</button>
+                        <button type="button" id="botonVaciarAsientosConfig" class="boton-vaciar-asientos-aula"
+                                onclick="vaciarAsientosAula()"
+                                title="Borrar todas las designaciones">🗑️</button>
+                    </div>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
                             <label for="cantidadFilasAula">Filas de mesas</label>
@@ -15679,7 +15684,7 @@ function mostrarListaAsientos(asientoEnfocado = null) {
 
             const opcion = document.createElement("option");
             opcion.value = idEstudiante;
-            opcion.textContent = `${estudiante.nombre} — lista ${estudiante.num_lista ?? ""}`;
+            opcion.textContent = `${estudiante.num_lista ?? ""} ${estudiante.nombre}`;
             if (estudianteAsignado === idEstudiante) opcion.selected = true;
             select.appendChild(opcion);
         });
