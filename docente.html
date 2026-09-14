@@ -4048,6 +4048,65 @@ table tbody tr:nth-child(10n+10) td {
     background: #f2f6fb;
 }
 
+#botonEstadisticas {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 110px;
+    padding: 0 10px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+
+/* =====================================================
+   PANEL DE ESTADÍSTICAS
+===================================================== */
+.modal-estadisticas {
+    width: 100%;
+    max-width: 1050px;
+    max-height: 92vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: aparecerModal .18s ease-out;
+}
+.estadisticas-cuerpo { padding: 15px; overflow: auto; }
+.estadisticas-menu {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px; margin-bottom:15px;
+}
+.boton-estadistica {
+    border:1px solid #d4dce7; background:#f7f9fc; color:#174a7e;
+    border-radius:10px; padding:12px 10px; cursor:pointer; font-weight:700;
+    transition:.15s;
+}
+.boton-estadistica:hover,.boton-estadistica.activo { background:#eaf2fb; border-color:#8fb2d5; transform:translateY(-1px); }
+.estadistica-panel { display:none; }
+.estadistica-panel.visible { display:block; }
+.estadistica-resumen {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:15px;
+}
+.estadistica-tarjeta { background:#f8fafc; border:1px solid #e1e6ed; border-radius:10px; padding:12px; text-align:center; }
+.estadistica-tarjeta strong { display:block; font-size:22px; color:#1557a6; margin-top:4px; }
+.estadistica-tarjeta span { font-size:12px; color:#666; }
+.estadistica-grafica { background:white; border:1px solid #e1e6ed; border-radius:10px; padding:12px; margin-bottom:12px; }
+.estadistica-grafica h4 { margin:0 0 10px; color:#333; }
+.estadistica-barra { height:28px; display:flex; align-items:center; gap:7px; margin:7px 0; }
+.estadistica-barra .etiqueta { width:145px; min-width:145px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+.estadistica-barra .pista { flex:1; height:18px; background:#edf1f5; border-radius:9px; overflow:hidden; }
+.estadistica-barra .relleno { height:100%; border-radius:9px; background:linear-gradient(90deg,#4b83c4,#74a7d8); }
+.estadistica-barra .valor { width:48px; text-align:right; font-size:12px; font-weight:bold; }
+.estadistica-vacio { padding:20px; text-align:center; color:#777; }
+@media(max-width:768px){
+ .modal-estadisticas{max-height:94vh;} .estadisticas-cuerpo{padding:10px;}
+ .estadisticas-menu{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+ .boton-estadistica{padding:10px 6px;font-size:12px;}
+ .estadistica-barra .etiqueta{width:95px;min-width:95px;font-size:10px;}
+}
+
 .modal-visitas-estudiantes {
     width: 100%;
     max-width: 900px;
@@ -4259,11 +4318,12 @@ Usuario:
 <div class="filtro-curso-linea">
 <button
     type="button"
+    id="botonEstadisticas"
     class="boton-visitas-estudiantes"
-    onclick="abrirModalVisitasEstudiantes()"
-    title="Estudiantes que ingresaron a la página"
-    aria-label="Estudiantes que ingresaron a la página">
-    📊
+    onclick="abrirModalEstadisticas()"
+    title="Estadísticas"
+    aria-label="Estadísticas">
+    📊 Estadísticas
 </button>
 
 <select id="buscarCurso">
@@ -5609,6 +5669,34 @@ Cancelar
 </div>
 
 <!-- =====================================================
+     MODAL ESTADÍSTICAS
+===================================================== -->
+<div id="modalEstadisticas" class="modal-fondo oculto" onclick="cerrarModalEstadisticas(event)">
+  <div class="modal-estadisticas" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <h3>📊 Estadísticas</h3>
+      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalEstadisticas()">×</button>
+    </div>
+    <div class="estadisticas-cuerpo">
+      <div class="estadisticas-menu">
+        <button type="button" class="boton-estadistica activo" data-estadistica="ingresos" onclick="mostrarEstadistica('ingresos',this)">👁️ Estudiantes que ingresaron</button>
+        <button type="button" class="boton-estadistica" data-estadistica="general" onclick="mostrarEstadistica('general',this)">📊 Resumen general</button>
+        <button type="button" class="boton-estadistica" data-estadistica="cursos" onclick="mostrarEstadistica('cursos',this)">🏫 Por curso</button>
+        <button type="button" class="boton-estadistica" data-estadistica="rendimiento" onclick="mostrarEstadistica('rendimiento',this)">🎓 Rendimiento académico</button>
+        <button type="button" class="boton-estadistica" data-estadistica="asistencia" onclick="mostrarEstadistica('asistencia',this)">🕒 Asistencia</button>
+        <button type="button" class="boton-estadistica" data-estadistica="actividades" onclick="mostrarEstadistica('actividades',this)">📝 Actividades</button>
+      </div>
+      <div id="estadisticaIngresos" class="estadistica-panel visible"></div>
+      <div id="estadisticaGeneral" class="estadistica-panel"></div>
+      <div id="estadisticaCursos" class="estadistica-panel"></div>
+      <div id="estadisticaRendimiento" class="estadistica-panel"></div>
+      <div id="estadisticaAsistencia" class="estadistica-panel"></div>
+      <div id="estadisticaActividades" class="estadistica-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
      MODAL INGRESOS DE ESTUDIANTES
 ===================================================== -->
 <div id="modalVisitasEstudiantes" class="modal-fondo oculto"
@@ -6218,15 +6306,8 @@ document.getElementById(
         cursoSeleccionado =
         this.value;
 
-        // Ocultar el botón de vistas al ingresar a un curso y mostrarlo nuevamente al volver a "Selecciona un curso".
-        const botonVisitasEstudiantes =
-            document.querySelector(".boton-visitas-estudiantes");
-        if (botonVisitasEstudiantes) {
-            botonVisitasEstudiantes.classList.toggle(
-                "oculto",
-                !!cursoSeleccionado
-            );
-        }
+        const botonEstadisticas = document.getElementById("botonEstadisticas");
+        if (botonEstadisticas) botonEstadisticas.classList.toggle("oculto", !!cursoSeleccionado);
 
         const filtroBuscarEstudiante =
             document.getElementById("filtroBuscarEstudiante");
@@ -10836,6 +10917,61 @@ async function cargarVisitasEstudiantes() {
         const texto = document.getElementById("visitasEstudiantesSeleccionadas");
         if (texto) texto.textContent = "0 seleccionadas";
     }
+}
+
+
+function cerrarModalEstadisticas(event) {
+    const modal = document.getElementById("modalEstadisticas");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+function escEstadistica(v) {
+    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function barrasEstadistica(items, max=0) {
+    if (!items.length) return '<div class="estadistica-vacio">No hay datos suficientes para mostrar esta estadística.</div>';
+    const limite=max || Math.max(...items.map(x=>Number(x.valor)||0),1);
+    return items.map(x=>{ const val=Number(x.valor)||0; const pct=Math.max(0,Math.min(100,(val/limite)*100)); return `<div class="estadistica-barra"><span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span><span class="pista"><span class="relleno" style="width:${pct}%"></span></span><span class="valor">${escEstadistica(x.texto ?? val)}</span></div>`; }).join("");
+}
+
+function prepararEstadisticas() {
+    const visitas=registrosVisitasEstudiantes||[]; const est=estudiantes||[];
+    const cursos=[...new Set(est.map(e=>e.curso).filter(Boolean))].sort();
+    const totalVisitas=visitas.length; const conVisitas=new Set(visitas.map(v=>String(v.estudiante_id))).size;
+    const hoy=new Date().toISOString().slice(0,10);
+    const visitasHoy=visitas.filter(v=>obtenerFechaLocalVisita(v.fecha_hora)===hoy).length;
+    const g=document.getElementById("estadisticaGeneral");
+    if(g) g.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${est.length}</strong></div><div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div><div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${totalVisitas}</strong></div><div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${conVisitas}</strong></div><div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div></div><div class="estadistica-grafica"><h4>Ingresos por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:visitas.filter(v=>obtenerCursoEstudianteVisita(v.estudiante_id)===c).length})).sort((a,b)=>b.valor-a.valor))}</div>`;
+    const c=document.getElementById("estadisticaCursos");
+    if(c) c.innerHTML=`<div class="estadistica-grafica"><h4>Estudiantes por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:est.filter(e=>e.curso===c).length})).sort((a,b)=>b.valor-a.valor))}</div><div class="estadistica-grafica"><h4>Ingresos registrados por curso</h4>${barrasEstadistica(cursos.map(c=>({nombre:c,valor:visitas.filter(v=>obtenerCursoEstudianteVisita(v.estudiante_id)===c).length})).sort((a,b)=>b.valor-a.valor))}</div>`;
+    const r=document.getElementById("estadisticaRendimiento");
+    const notas=est.map(e=>Number(e.nota_3t)).filter(Number.isFinite); const finals=est.map(e=>Number(e.final)).filter(Number.isFinite);
+    const promedio=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):"—";
+    if(r) r.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Promedio 1T</span><strong>${promedio(est.map(e=>Number(e.nota_1t)).filter(Number.isFinite))}</strong></div><div class="estadistica-tarjeta"><span>Promedio 2T</span><strong>${promedio(est.map(e=>Number(e.nota_2t)).filter(Number.isFinite))}</strong></div><div class="estadistica-tarjeta"><span>Promedio 3T</span><strong>${promedio(notas)}</strong></div><div class="estadistica-tarjeta"><span>Promedio final</span><strong>${promedio(finals)}</strong></div></div><div class="estadistica-grafica"><h4>Distribución de nota final</h4>${barrasEstadistica([{nombre:"90–100",valor:finals.filter(n=>n>=90).length},{nombre:"70–89",valor:finals.filter(n=>n>=70&&n<90).length},{nombre:"51–69",valor:finals.filter(n=>n>=51&&n<70).length},{nombre:"0–50",valor:finals.filter(n=>n<51).length}])}</div>`;
+    const a=document.getElementById("estadisticaAsistencia");
+    const ra=Object.values(registrosAsistencia||{}); const conteo={asistio:0,atraso:0,falta:0,licencia:0}; ra.forEach(x=>{const k=String(x.estado||"").toLowerCase(); if(k.includes("asist"))conteo.asistio++; else if(k.includes("atras"))conteo.atraso++; else if(k.includes("licen"))conteo.licencia++; else if(k.includes("falta"))conteo.falta++;});
+    if(a) a.innerHTML=`<div class="estadistica-grafica"><h4>Estado de asistencia cargado</h4>${barrasEstadistica([{nombre:"Asistencias",valor:conteo.asistio},{nombre:"Atrasos",valor:conteo.atraso},{nombre:"Faltas",valor:conteo.falta},{nombre:"Licencias",valor:conteo.licencia}])}</div><div class="estadistica-vacio">Esta vista utiliza los registros de asistencia que ya están cargados en la página.</div>`;
+    const act=document.getElementById("estadisticaActividades"); const acts=actividades||[];
+    if(act) act.innerHTML=`<div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Actividades del curso abierto</span><strong>${acts.length}</strong></div><div class="estadistica-tarjeta"><span>SER</span><strong>${acts.filter(x=>x.categoria==="SER").length}</strong></div><div class="estadistica-tarjeta"><span>SABER</span><strong>${acts.filter(x=>x.categoria==="SABER").length}</strong></div><div class="estadistica-tarjeta"><span>HACER</span><strong>${acts.filter(x=>x.categoria==="HACER").length}</strong></div></div><div class="estadistica-grafica"><h4>Actividades por categoría</h4>${barrasEstadistica(["SER","SABER","HACER","AUTOEVALUACION"].map(k=>({nombre:k,valor:acts.filter(x=>x.categoria===k).length})))}</div><div class="estadistica-vacio">Las actividades dependen del curso seleccionado y se muestran cuando sus datos ya fueron cargados.</div>`;
+}
+
+function mostrarEstadistica(tipo, boton) {
+    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
+    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.remove("activo"));
+    const mapa={ingresos:"estadisticaIngresos",general:"estadisticaGeneral",cursos:"estadisticaCursos",rendimiento:"estadisticaRendimiento",asistencia:"estadisticaAsistencia",actividades:"estadisticaActividades"};
+    document.getElementById(mapa[tipo])?.classList.add("visible"); if(boton) boton.classList.add("activo");
+    if(tipo==="ingresos") abrirModalVisitasEstudiantes(); else prepararEstadisticas();
+}
+
+function abrirModalEstadisticas() {
+    const modal=document.getElementById("modalEstadisticas"); if(!modal) return;
+    modal.classList.remove("oculto"); prepararEstadisticas();
+    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
+    document.getElementById("estadisticaGeneral")?.classList.add("visible");
+    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.toggle("activo",b.dataset.estadistica==="general"));
 }
 
 async function abrirModalVisitasEstudiantes() {
