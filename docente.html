@@ -4655,6 +4655,13 @@ Asignar sólo a los que no tienen hora
 
 <button
     type="button"
+    class="boton-crear-modal"
+    onclick="asignarHoraAsistencia('atrasados')">
+Asignar sólo a los atrasados
+</button>
+
+<button
+    type="button"
     class="boton-cancelar"
     onclick="cerrarModalAsignarHoraAsistencia()">
 Cancelar
@@ -6198,8 +6205,12 @@ function asignarHoraAsistencia(modo) {
 
         if (!horaInput) return;
 
-        if (estado !== "asistio") return;
-        if (modo === "sinHora" && horaInput.value.trim()) return;
+        if (modo === "atrasados") {
+            if (estado !== "atraso") return;
+        } else {
+            if (estado !== "asistio") return;
+            if (modo === "sinHora" && horaInput.value.trim()) return;
+        }
 
         horaInput.value = hora;
         cantidad++;
