@@ -18430,6 +18430,7 @@ function abrirModalAzarAsistencia() {
 
     if (numeroEl) {
         numeroEl.textContent = "—";
+        numeroEl.style.color = "#1557a6";
         numeroEl.classList.remove("animando");
     }
 
@@ -18504,7 +18505,17 @@ function elegirEstudianteAzarAsistencia() {
 
     const mostrarNumeroRapido = () => {
         const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
-        if (numeroEl) numeroEl.textContent = String(candidato.num_lista);
+        if (numeroEl) {
+            numeroEl.textContent = String(candidato.num_lista);
+            const generoCandidato = obtenerGeneroEstadistica(candidato.gen);
+            if (generoCandidato === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoCandidato === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
+        }
     };
 
     mostrarNumeroRapido();
@@ -18525,6 +18536,14 @@ function elegirEstudianteAzarAsistencia() {
 
         if (numeroEl) {
             numeroEl.textContent = String(elegido.num_lista);
+            const generoElegido = obtenerGeneroEstadistica(elegido.gen);
+            if (generoElegido === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoElegido === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
             numeroEl.classList.remove("animando");
         }
 
