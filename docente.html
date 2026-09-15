@@ -8774,7 +8774,8 @@ function obtenerEstudiantesSinEstadoAsistencia() {
     if (!cursoSeleccionado) return [];
 
     const estudiantesCurso = estudiantes.filter(
-        e => e.curso === cursoSeleccionado
+        e => e.curso === cursoSeleccionado &&
+             String(e.estado || "").trim().toUpperCase() === "EFECTIVO"
     );
 
     return estudiantesCurso.filter(estudiante => {
@@ -9083,6 +9084,7 @@ async function guardarAsistencia() {
        En lugar de asignar automáticamente "presente", se muestra una
        lista con N°, nombre y las opciones que debe elegir. */
     const estudiantesSinEstado = estudiantesCurso.filter(estudiante =>
+        String(estudiante.estado || "").trim().toUpperCase() === "EFECTIVO" &&
         !document.querySelector(
             `input[name="asistencia-${estudiante.id}"]:checked`
         )
@@ -9115,6 +9117,8 @@ async function guardarAsistencia() {
         const registros = [];
 
         estudiantesCurso.forEach(estudiante => {
+            if (String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO") return;
+
             const seleccionado = document.querySelector(
                 `input[name="asistencia-${estudiante.id}"]:checked`
             );
