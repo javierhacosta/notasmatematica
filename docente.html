@@ -5612,7 +5612,7 @@ Cancelar
                     <p class="configuracion-aula-tamano-ayuda">El tamaño se aplica a todas las mesas de esta distribución y se guarda por curso.</p>
                     <div id="resumenConfiguracionAula" class="configuracion-aula-resumen"></div>
                     <div class="distribucion-acciones">
-                        <button type="button" id="botonAplicarConfiguracionAula" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()" style="display:none;">✓ Aplicar configuración</button>
+                        <button type="button" id="botonAplicarConfiguracionAula" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()" style="display:none;">💾 Guardar configuración</button>
                     </div>
                 </div>
             </div>
@@ -11074,9 +11074,21 @@ function animarBarrasEstadistica(panel) {
 function obtenerGeneroEstadistica(valor) {
     const g = String(valor ?? "").trim().toUpperCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (["F", "FEMENINO", "MUJER", "MUJERES", "FEM", "FEMALE"].includes(g)) return "mujer";
-    if (["M", "MASCULINO", "VARON", "VARONES", "HOMBRE", "HOMBRES", "V", "MALE"].includes(g)) return "varon";
+    if (!g) return "";
+    if (["F", "FEMENINO", "MUJER", "MUJERES", "FEM", "FEMALE"].includes(g) || /FEM|MUJ/.test(g)) return "mujer";
+    if (["M", "MASCULINO", "VARON", "VARONES", "HOMBRE", "HOMBRES", "V", "MALE"].includes(g) || /MASC|VARON|VARONES|HOMBR|MALE/.test(g)) return "varon";
     return "";
+}
+
+function calcularEdadEstadistica(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+    const fecha = new Date(String(fechaNacimiento).length === 10 ? `${fechaNacimiento}T00:00:00` : fechaNacimiento);
+    if (Number.isNaN(fecha.getTime())) return null;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const mes = hoy.getMonth() - fecha.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) edad--;
+    return edad >= 0 && edad <= 100 ? edad : null;
 }
 
 async function prepararEstadisticas() {
@@ -11177,6 +11189,34 @@ async function prepararEstadisticas() {
         const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
         const cantidadVarones = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
         const cantidadMujeres = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
+        const estudiantesSinGenero = estudiantesConNotas.filter(e => !obtenerGeneroEstadistica(e.gen)).length;
+
+        const estadisticaGenero = (genero) => {
+            const grupo = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === genero);
+            const ids = new Set(grupo.map(e => String(e.id)));
+            const asistenciasGrupo = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const estadosGrupo = conteoEstado(asistenciasGrupo);
+            const observacionesAsistencia = asistenciasGrupo.filter(r => String(r.observacion || '').trim()).length;
+            const calificacionesGrupo = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const observacionesActividades = calificacionesGrupo.filter(r => String(r.observacion || '').trim()).length;
+            const visitasGrupo = visitas.filter(v => ids.has(String(v.estudiante_id))).length;
+            return {
+                estudiantes: grupo.length,
+                promedio1: promedio(grupo.map(e => e.nota_1t)),
+                promedio2: promedio(grupo.map(e => e.nota_2t)),
+                promedio3: promedio(grupo.map(e => e.nota3)),
+                promedioFinal: promedio(grupo.map(e => e.final)),
+                asistencias: estadosGrupo.asistio,
+                atrasos: estadosGrupo.atraso,
+                faltas: estadosGrupo.falta,
+                licencias: estadosGrupo.licencia,
+                permisos: estadosGrupo.permiso,
+                observaciones: observacionesAsistencia + observacionesActividades,
+                visitas: visitasGrupo
+            };
+        };
+        const estadisticaVarones = estadisticaGenero("varon");
+        const estadisticaMujeres = estadisticaGenero("mujer");
 
         if (general) general.innerHTML = `
             <div class="estadistica-resumen">
@@ -11188,6 +11228,29 @@ async function prepararEstadisticas() {
                 <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
                 <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
+            </div>
+            <div class="estadistica-tabla-genero-comparacion">
+                <h4>⚖️ Comparación entre varones y mujeres</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Indicador</th><th>👦 Varones</th><th>👧 Mujeres</th></tr></thead>
+                        <tbody>
+                            <tr><td>Estudiantes</td><td>${estadisticaVarones.estudiantes}</td><td>${estadisticaMujeres.estudiantes}</td></tr>
+                            <tr><td>Promedio 1T</td><td>${estadisticaVarones.promedio1}</td><td>${estadisticaMujeres.promedio1}</td></tr>
+                            <tr><td>Promedio 2T</td><td>${estadisticaVarones.promedio2}</td><td>${estadisticaMujeres.promedio2}</td></tr>
+                            <tr><td>Promedio 3T</td><td>${estadisticaVarones.promedio3}</td><td>${estadisticaMujeres.promedio3}</td></tr>
+                            <tr><td>Promedio final</td><td>${estadisticaVarones.promedioFinal}</td><td>${estadisticaMujeres.promedioFinal}</td></tr>
+                            <tr><td>Asistencias</td><td>${estadisticaVarones.asistencias}</td><td>${estadisticaMujeres.asistencias}</td></tr>
+                            <tr><td>Atrasos</td><td>${estadisticaVarones.atrasos}</td><td>${estadisticaMujeres.atrasos}</td></tr>
+                            <tr><td>Faltas</td><td>${estadisticaVarones.faltas}</td><td>${estadisticaMujeres.faltas}</td></tr>
+                            <tr><td>Licencias</td><td>${estadisticaVarones.licencias}</td><td>${estadisticaMujeres.licencias}</td></tr>
+                            <tr><td>Permisos</td><td>${estadisticaVarones.permisos}</td><td>${estadisticaMujeres.permisos}</td></tr>
+                            <tr><td>Observaciones</td><td>${estadisticaVarones.observaciones}</td><td>${estadisticaMujeres.observaciones}</td></tr>
+                            <tr><td>Ingresos a la página</td><td>${estadisticaVarones.visitas}</td><td>${estadisticaMujeres.visitas}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                ${estudiantesSinGenero ? `<div class="estadistica-vacio">ℹ️ ${estudiantesSinGenero} estudiante(s) tienen un valor de <strong>gen</strong> que no fue reconocido.</div>` : ''}
             </div>
             ${prepararGraficaEstadistica("Estudiantes por curso", cursos.map(c => ({ nombre:c, valor:estudiantesConNotas.filter(e=>e.curso===c).length })))}
             ${prepararGraficaEstadistica("Distribución por género", [
@@ -11222,6 +11285,41 @@ async function prepararEstadisticas() {
                             const varones = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
                             const mujeres = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
                             return `<tr><td>${escEstadistica(c)}</td><td>${varones}</td><td>${mujeres}</td><td>${grupo.length}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>📊 Comparación por curso: género, notas, asistencia y observaciones</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>👦 Var.</th><th>👧 Muj.</th><th>Prom. var.</th><th>Prom. muj.</th><th>Asist. var.</th><th>Asist. muj.</th><th>Faltas var.</th><th>Faltas muj.</th><th>Obs. var.</th><th>Obs. muj.</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const grupo = estudiantesConNotas.filter(e => e.curso === c);
+                            const idsVar = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").map(e => String(e.id)));
+                            const idsMuj = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").map(e => String(e.id)));
+                            const datosGrupo = ids => {
+                                const es = grupo.filter(e => ids.has(String(e.id)));
+                                const as = conteoEstado(asistenciasTodas.filter(r => ids.has(String(r.estudiante_id))));
+                                const obsA = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const obsC = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                return { n:es.length, prom:promedio(es.map(e => e.final)), asist:as.asistio, falta:as.falta, obs:obsA + obsC };
+                            };
+                            const v = datosGrupo(idsVar), m = datosGrupo(idsMuj);
+                            return `<tr><td>${escEstadistica(c)}</td><td>${v.n}</td><td>${m.n}</td><td>${v.prom}</td><td>${m.prom}</td><td>${v.asist}</td><td>${m.asist}</td><td>${v.falta}</td><td>${m.falta}</td><td>${v.obs}</td><td>${m.obs}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>🎂 Edad por curso</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>Promedio de edad</th><th>Edad mínima</th><th>Edad máxima</th><th>Estudiantes con edad</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const edades = estudiantesConNotas.filter(e => e.curso === c).map(e => calcularEdadEstadistica(e.fecha_nacimiento)).filter(Number.isFinite);
+                            const promEdad = edades.length ? (edades.reduce((a,b)=>a+b,0)/edades.length).toFixed(1) : "—";
+                            return `<tr><td>${escEstadistica(c)}</td><td>${promEdad}</td><td>${edades.length ? Math.min(...edades) : "—"}</td><td>${edades.length ? Math.max(...edades) : "—"}</td><td>${edades.length}</td></tr>`;
                         }).join("")}</tbody>
                     </table>
                 </div>
@@ -17807,12 +17905,10 @@ function mostrarConfiguracionAula() {
             actualizarResumenConfiguracionAula();
             actualizarBotonAplicarConfiguracionAula();
         };
-        if (input === inputMostrarNombreCompleto) {
-            input.onchange = function() {
-                actualizarResumenConfiguracionAula();
-                actualizarBotonAplicarConfiguracionAula();
-            };
-        }
+        input.onchange = function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        };
     });
 
     actualizarResumenConfiguracionAula();
