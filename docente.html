@@ -1619,6 +1619,32 @@ td:first-child {
     text-align: left;
 }
 
+.azar-asistencia-nombre-elegido {
+    border: none;
+    background: transparent;
+    color: #1557a6;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 6px;
+    text-align: left;
+}
+
+.boton-eliminar-elegido-azar {
+    border: none;
+    background: transparent;
+    color: #c62828;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 7px;
+    line-height: 1;
+}
+
+.boton-eliminar-elegido-azar:hover {
+    transform: scale(1.12);
+}
+
 @media (max-width: 600px) {
     .modal-azar-asistencia {
         max-width: 100%;
@@ -17995,11 +18021,7 @@ function elegirEstudianteAzarAsistencia() {
             botonNombre.textContent = construirNombreCortoAula(elegido);
             botonNombre.title = "Añadir una observación de asistencia";
             botonNombre.addEventListener("click", function() {
-                abrirAsistenciaEstudianteDesdeAula(elegido.id);
-                setTimeout(() => {
-                    const campo = document.getElementById("observacionAsistenciaAulaIndividual");
-                    if (campo) campo.focus();
-                }, 80);
+                abrirAsistenciaDesdeAzar(elegido.id);
             });
             nombreEl.appendChild(botonNombre);
         }
@@ -18007,6 +18029,24 @@ function elegirEstudianteAzarAsistencia() {
         actualizarEstadoBotonElegirAzarAsistencia();
     }, 2000);
 }
+
+function abrirAsistenciaDesdeAzar(estudianteId) {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona primero una fecha de asistencia.");
+        return;
+    }
+
+    abrirAsistenciaEstudianteDesdeAula(estudianteId);
+
+    // Mantiene abierta la ventana de asistencia existente y deja lista
+    // la observación para anotar o modificar si el docente lo desea.
+    setTimeout(() => {
+        const campo = document.getElementById("observacionAsistenciaAulaIndividual");
+        if (campo) campo.focus();
+    }, 80);
+}
+
 
 function mostrarElegidosAzarAsistencia() {
     const listaEl = document.getElementById("azarAsistenciaLista");
@@ -18028,13 +18068,32 @@ function mostrarElegidosAzarAsistencia() {
         return;
     }
 
-    const filas = elegidos.map((estudiante, indice) => `
+    const filas = elegidos.map((estudiante, indice) => {
+        const idSeguro = JSON.stringify(String(estudiante.id));
+        return `
         <tr>
             <td>${indice + 1}</td>
-            <td>${escapeHTML(String(estudiante.nombre || ""))}</td>
+            <td>
+                <button type="button"
+                        class="azar-asistencia-nombre-elegido"
+                        onclick='abrirAsistenciaDesdeAzar(${idSeguro})'
+                        title="Ver y modificar la asistencia y observación de este día">
+                    ${escapeHTML(String(estudiante.nombre || ""))}
+                </button>
+            </td>
             <td><strong>${escapeHTML(String(estudiante.num_lista ?? ""))}</strong></td>
+            <td>
+                <button type="button"
+                        class="boton-eliminar-elegido-azar"
+                        onclick='eliminarElegidoAzarAsistencia(${idSeguro}, event)'
+                        title="Quitar de ya elegidos"
+                        aria-label="Quitar de ya elegidos">
+                    🗑️
+                </button>
+            </td>
         </tr>
-    `).join("");
+        `;
+    }).join("");
 
     listaEl.innerHTML = `
         <table>
@@ -18043,12 +18102,35 @@ function mostrarElegidosAzarAsistencia() {
                     <th>#</th>
                     <th>Nombre</th>
                     <th>N.º lista</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>${filas}</tbody>
         </table>
     `;
     listaEl.classList.remove("oculto");
+}
+
+
+function eliminarElegidoAzarAsistencia(estudianteId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const actuales = obtenerElegidosAzarAsistencia();
+    const id = String(estudianteId);
+    const nuevas = actuales.filter(item => String(item) !== id);
+
+    if (nuevas.length === actuales.length) return;
+
+    guardarElegidosAzarAsistencia(nuevas);
+    if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id) {
+        azarAsistenciaEstudianteActual = null;
+    }
+
+    mostrarElegidosAzarAsistencia();
+    actualizarEstadoBotonElegirAzarAsistencia();
 }
 
 
