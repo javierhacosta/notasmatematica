@@ -18037,10 +18037,11 @@ function abrirAsistenciaDesdeAzar(estudianteId) {
         return;
     }
 
-    // Cerrar temporalmente la ventana de azar para que la ventana
+    // Ocultar temporalmente la ventana de azar para que la ventana
     // de asistencia/observación quede completamente por delante.
     const modalAzar = document.getElementById("modalAzarAsistencia");
     if (modalAzar) {
+        modalAzar.dataset.azarlOcultoTemporalmente = "true";
         modalAzar.style.display = "none";
     }
 
@@ -18055,6 +18056,34 @@ function abrirAsistenciaDesdeAzar(estudianteId) {
 
         const campo = document.getElementById("observacionAsistenciaAulaIndividual");
         if (campo) campo.focus();
+
+        // Al guardar o cancelar desde la ventana existente de asistencia,
+        // volver a mostrar la ventana de azar por delante.
+        if (modalAsistencia && !modalAsistencia.dataset.azarlRetornoPreparado) {
+            modalAsistencia.dataset.azarlRetornoPreparado = "true";
+
+            const restaurarAzar = () => {
+                const azar = document.getElementById("modalAzarAsistencia");
+                if (azar && azar.dataset.azarlOcultoTemporalmente === "true") {
+                    azar.style.display = "flex";
+                    azar.style.zIndex = "10100";
+                    delete azar.dataset.azarlOcultoTemporalmente;
+                }
+            };
+
+            modalAsistencia.addEventListener("click", (ev) => {
+                const boton = ev.target.closest("button");
+                if (!boton) return;
+
+                const texto = (boton.textContent || "").trim().toLowerCase();
+                const esGuardar = /guardar|guarda/.test(texto);
+                const esCancelar = /cancelar|cerrar/.test(texto);
+
+                if (esGuardar || esCancelar) {
+                    setTimeout(restaurarAzar, 120);
+                }
+            });
+        }
     }, 80);
 }
 
