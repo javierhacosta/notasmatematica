@@ -6833,23 +6833,15 @@ async function abrirModalListaEstadoAsistencia() {
     tbody.innerHTML = `<tr><td colspan="3">Cargando lista...</td></tr>`;
     modal.classList.remove("oculto");
 
-    // Actualizar desde Supabase para leer el estado actual de la BD.
+    // Usar los estudiantes ya cargados (incluyen el campo estado).
+    // Así el botón 📋 no realiza una consulta adicional que pueda fallar.
     try {
-        const { data, error } = await supabaseClient
-            .from("matematica")
-            .select("id,num_lista,nombre,curso,estado")
-            .eq("curso", cursoSeleccionado)
-            .order("num_lista");
+        const estudiantesLista = obtenerEstudiantesCursoActual().map(e => ({ ...e }));
 
-        if (error) throw error;
-
-        const estudiantesLista = data || [];
-
-        // Mantener la lista principal actualizada sin modificar otras funciones.
-        estudiantesLista.forEach(e => {
-            const local = estudiantes.find(x => String(x.id) === String(e.id));
-            if (local) local.estado = e.estado;
-        });
+        if (!estudiantesLista.length) {
+            tbody.innerHTML = `<tr><td colspan="3">No hay estudiantes para este curso.</td></tr>`;
+            return;
+        }
 
         renderizarListaEstadoAsistencia(estudiantesLista);
     } catch (error) {
