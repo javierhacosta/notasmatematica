@@ -8300,11 +8300,29 @@ function actualizarResumenAsistencia() {
         asistio: 0,
         atraso: 0,
         licencia: 0,
-        falta: 0
+        falta: 0,
+        noEfectivo: 0
     };
 
-    Object.values(registrosAsistencia || {}).forEach(registro => {
-        const estado = String(registro.estado || "").toLowerCase();
+    /*
+     * El resumen cuenta únicamente a los estudiantes EFECTIVO
+     * del curso seleccionado. Los demás estados no participan en
+     * asistentes, atrasos, licencias ni faltas.
+     */
+    const estudiantesCurso = cursoSeleccionado
+        ? estudiantes.filter(estudiante => estudiante.curso === cursoSeleccionado)
+        : [];
+
+    estudiantesCurso.forEach(estudiante => {
+        const estadoEstudiante = String(estudiante.estado || "").trim().toUpperCase();
+
+        if (estadoEstudiante !== "EFECTIVO") {
+            totales.noEfectivo++;
+            return;
+        }
+
+        const registro = registrosAsistencia[estudiante.id];
+        const estado = String(registro && registro.estado || "").toLowerCase();
 
         if (totales[estado] !== undefined) {
             totales[estado]++;
@@ -8316,6 +8334,7 @@ function actualizarResumenAsistencia() {
         <span>⏰ ${totales.atraso}</span>
         <span>📄 ${totales.licencia}</span>
         <span>✕ ${totales.falta}</span>
+        ${totales.noEfectivo > 0 ? `<span title="Estudiantes con estado diferente de EFECTIVO">🔒 ${totales.noEfectivo}</span>` : ""}
     `;
 
     /*
@@ -8759,6 +8778,12 @@ function obtenerEstudiantesSinEstadoAsistencia() {
     );
 
     return estudiantesCurso.filter(estudiante => {
+        /* Los estudiantes con estado diferente de EFECTIVO
+           no se consideran pendientes de registrar. */
+        if (String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO") {
+            return false;
+        }
+
         const seleccionado = document.querySelector(
             `input[name="asistencia-${estudiante.id}"]:checked`
         );
