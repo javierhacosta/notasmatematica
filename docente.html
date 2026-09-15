@@ -124,17 +124,7 @@ input, select {
     z-index: 9999;
 }
 
-.modal-fondo.icono-genero-asiento {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 19px;
-    line-height: 1;
-    flex-shrink: 0;
-    margin-left: 3px;
-}
-
-.oculto {
+.modal-fondo.oculto {
     display: none !important;
 }
 
@@ -3307,6 +3297,15 @@ table tbody tr:nth-child(10n+10) td {
 .icono-estado-asiento.permiso { background: #1565c0; color: white; }
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
+
+.nombre-asiento-aula.genero-mujer { color: #e91e63; }
+.nombre-asiento-aula.genero-varon { color: #1976d2; }
+
+.tabla-estadistica-scroll { overflow-x: auto; }
+.tabla-estadistica-genero { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
+.tabla-estadistica-genero th, .tabla-estadistica-genero td { padding: 9px 10px; border-bottom: 1px solid #ddd; text-align: center; }
+.tabla-estadistica-genero th:first-child, .tabla-estadistica-genero td:first-child { text-align: left; }
+.tabla-estadistica-tabla-genero h4, .estadistica-tabla-genero-curso h4 { margin: 8px 0; }
 
 .nombre-asiento-aula.clicable {
     cursor: pointer;
@@ -11061,16 +11060,9 @@ function animarBarrasEstadistica(panel) {
 function obtenerGeneroEstadistica(valor) {
     const g = String(valor ?? "").trim().toUpperCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (["F","FEMENINO","MUJER","MUJERES","FEM"].includes(g)) return "mujer";
-    if (["M","MASCULINO","VARON","VARONES","HOMBRE","HOMBRES","V","V"].includes(g)) return "varon";
+    if (["F", "FEMENINO", "MUJER", "MUJERES", "FEM", "FEMALE"].includes(g)) return "mujer";
+    if (["M", "MASCULINO", "VARON", "VARONES", "HOMBRE", "HOMBRES", "V", "MALE"].includes(g)) return "varon";
     return "";
-}
-
-function obtenerIconoGeneroAula(estudiante) {
-    const genero = obtenerGeneroEstadistica(estudiante?.gen);
-    if (genero === "mujer") return ["👧", "Mujer"];
-    if (genero === "varon") return ["👦", "Varón"];
-    return ["", ""];
 }
 
 async function prepararEstadisticas() {
@@ -11175,18 +11167,18 @@ async function prepararEstadisticas() {
         if (general) general.innerHTML = `
             <div class="estadistica-resumen">
                 <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
-                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
                 <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
                 <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
+                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
             </div>
             ${prepararGraficaEstadistica("Estudiantes por curso", cursos.map(c => ({ nombre:c, valor:estudiantesConNotas.filter(e=>e.curso===c).length })))}
             ${prepararGraficaEstadistica("Distribución por género", [
-                {nombre:"👦 Varones",valor:cantidadVarones},
-                {nombre:"👧 Mujeres",valor:cantidadMujeres}
+                {nombre:"Varones",valor:cantidadVarones},
+                {nombre:"Mujeres",valor:cantidadMujeres}
             ])}
             ${prepararGraficaEstadistica("Ingresos registrados por curso", cursos.map(c => ({ nombre:c, valor:visitas.filter(v => mapaEstudiante.get(String(v.estudiante_id))?.curso === c).length })))}
             ${prepararGraficaEstadistica("Estado de asistencia de todo el establecimiento", [
@@ -11201,14 +11193,28 @@ async function prepararEstadisticas() {
             <div class="estadistica-resumen">
                 <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
-                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
                 <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
+                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>👥 Varones y mujeres por curso</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>👦 Varones</th><th>👧 Mujeres</th><th>Total</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const grupo = estudiantesConNotas.filter(e => e.curso === c);
+                            const varones = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
+                            const mujeres = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
+                            return `<tr><td>${escEstadistica(c)}</td><td>${varones}</td><td>${mujeres}</td><td>${grupo.length}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
             </div>
             ${prepararGraficaEstadistica("Cantidad de estudiantes por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c).length})))}
-            ${prepararGraficaEstadistica("Varones por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen)==="varon").length})))}
-            ${prepararGraficaEstadistica("Mujeres por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen)==="mujer").length})))}
+            ${prepararGraficaEstadistica("Varones por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen) === "varon").length})))}
+            ${prepararGraficaEstadistica("Mujeres por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen) === "mujer").length})))}
             ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c => {
                 const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
                 return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
@@ -17369,7 +17375,8 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     }
 
     const nombreEl = document.createElement("span");
-    nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio");
+    const generoAula = estudiante ? obtenerGeneroEstadistica(estudiante.gen) : "";
+    nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio") + (generoAula ? ` genero-${generoAula}` : "");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
 
     if (estudiante) {
@@ -17381,19 +17388,6 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     }
 
     asiento.appendChild(nombreEl);
-
-    // Mostrar icono de género según la columna "gen" de la tabla matematica.
-    if (estudiante) {
-        const generoInfo = obtenerIconoGeneroAula(estudiante);
-        if (generoInfo[0]) {
-            const iconoGenero = document.createElement("span");
-            iconoGenero.className = "icono-genero-asiento";
-            iconoGenero.textContent = generoInfo[0];
-            iconoGenero.title = generoInfo[1];
-            iconoGenero.setAttribute("aria-label", generoInfo[1]);
-            asiento.appendChild(iconoGenero);
-        }
-    }
 
     // Mostrar un icono cuando el estudiante tiene una observación en la asistencia del día seleccionado.
     if (estudiante && String(registro.observacion || '').trim()) {
