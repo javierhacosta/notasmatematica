@@ -230,6 +230,35 @@ input, select {
     font-weight: bold;
     color: #1557a6;
 }
+.config-azar-tipo-eleccion {
+    margin-top: 18px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.config-azar-tipo-eleccion > label:first-child {
+    margin-bottom: 9px;
+}
+
+.config-azar-opcion {
+    display: flex !important;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    margin-bottom: 6px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: normal !important;
+}
+
+.config-azar-opcion input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
 .config-azar-acciones {
     display: flex;
     justify-content: flex-end;
@@ -6215,6 +6244,30 @@ Cancelar
                    min="80" max="320" step="5" value="200"
                    oninput="actualizarVistaTamanoAzarAsistencia(this.value)">
             <div id="valorTamanoNumeroAzarAsistencia" class="config-azar-valor">200 px</div>
+
+            <div class="config-azar-tipo-eleccion">
+                <label>Forma de elección</label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="tipoEleccionAzarAsistencia"
+                           value="numero" checked>
+                    <span>Número de lista</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="tipoEleccionAzarAsistencia"
+                           value="inicial">
+                    <span>Inicial</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="tipoEleccionAzarAsistencia"
+                           value="varones">
+                    <span>Sólo Varones</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="tipoEleccionAzarAsistencia"
+                           value="mujeres">
+                    <span>Sólo Mujeres</span>
+                </label>
+            </div>
         </div>
         <div class="config-azar-acciones">
             <button type="button" class="boton-cancelar-config-azar"
@@ -18576,23 +18629,65 @@ function esHoyAzarAsistencia(fecha) {
 }
 
 function obtenerCandidatosAzarAsistencia() {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+
     const estudiantesCurso = obtenerEstudiantesCursoActual()
         .filter(estudiante => estudiante && estudiante.id != null)
         .filter(estudiante => {
+            if (tipo === "inicial") return String(estudiante.nombre || "").trim().length > 0;
             const numero = Number(estudiante.num_lista);
             return Number.isFinite(numero) && numero > 0;
         });
 
     const elegidos = new Set(obtenerElegidosAzarAsistencia());
 
-    return estudiantesCurso.filter(estudiante =>
-        estudianteEsEfectivo(estudiante) &&
-        !elegidos.has(String(estudiante.id))
-    );
+    return estudiantesCurso.filter(estudiante => {
+        if (!estudianteEsEfectivo(estudiante)) return false;
+        if (elegidos.has(String(estudiante.id))) return false;
+
+        const genero = obtenerGeneroEstadistica(estudiante.gen);
+        if (tipo === "varones") return genero === "varon";
+        if (tipo === "mujeres") return genero === "mujer";
+        return true;
+    });
 }
 
 const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
+const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
+let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
+
+function obtenerTipoEleccionAzarAsistencia() {
+    const tiposValidos = ["numero", "inicial", "varones", "mujeres"];
+    return tiposValidos.includes(tipoEleccionAzarAsistencia)
+        ? tipoEleccionAzarAsistencia
+        : "numero";
+}
+
+function inicialEstudianteAzarAsistencia(estudiante) {
+    const nombre = String(estudiante?.nombre || "").trim();
+    if (!nombre) return "—";
+    return nombre.charAt(0).toUpperCase();
+}
+
+function textoVisibleAzarAsistencia(estudiante) {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+    return tipo === "inicial"
+        ? inicialEstudianteAzarAsistencia(estudiante)
+        : String(estudiante?.num_lista ?? "—");
+}
+
+function aplicarTipoEleccionAzarAsistencia() {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+    document.querySelectorAll('input[name="tipoEleccionAzarAsistencia"]').forEach(input => {
+        input.checked = input.value === tipo;
+    });
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl && azarAsistenciaEstudianteActual) {
+        numeroEl.textContent = textoVisibleAzarAsistencia(azarAsistenciaEstudianteActual);
+    }
+}
 
 function aplicarTamanoNumeroAzarAsistencia() {
     const numeroEl = document.getElementById("azarAsistenciaNumero");
@@ -18608,6 +18703,7 @@ function abrirConfigTamanoAzarAsistencia() {
 
     control.value = String(tamanoNumeroAzarAsistencia);
     actualizarVistaTamanoAzarAsistencia(control.value);
+    aplicarTipoEleccionAzarAsistencia();
     modal.classList.remove("oculto");
 }
 
@@ -18625,8 +18721,19 @@ function guardarTamanoAzarAsistencia() {
     const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
 
     tamanoNumeroAzarAsistencia = numero;
+
+    const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
+    const tipoSeleccionado = radioSeleccionado?.value || "numero";
+    tipoEleccionAzarAsistencia = ["numero", "inicial", "varones", "mujeres"].includes(tipoSeleccionado)
+        ? tipoSeleccionado
+        : "numero";
+
     localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
+    localStorage.setItem(CLAVE_TIPO_AZAR_ASISTENCIA, tipoEleccionAzarAsistencia);
+
     aplicarTamanoNumeroAzarAsistencia();
+    aplicarTipoEleccionAzarAsistencia();
+    actualizarEstadoBotonElegirAzarAsistencia();
     cerrarConfigTamanoAzarAsistencia();
 }
 
@@ -18682,6 +18789,7 @@ function abrirModalAzarAsistencia() {
         numeroEl.style.color = "#1557a6";
         numeroEl.classList.remove("animando");
         aplicarTamanoNumeroAzarAsistencia();
+        aplicarTipoEleccionAzarAsistencia();
     }
 
     if (nombreEl) {
@@ -18759,7 +18867,7 @@ function elegirEstudianteAzarAsistencia() {
     const mostrarNumeroRapido = () => {
         const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
         if (numeroEl) {
-            numeroEl.textContent = String(candidato.num_lista);
+            numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
             const generoCandidato = obtenerGeneroEstadistica(candidato.gen);
             if (generoCandidato === "mujer") {
                 numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
@@ -18788,7 +18896,7 @@ function elegirEstudianteAzarAsistencia() {
         guardarElegidosAzarAsistencia(elegidos);
 
         if (numeroEl) {
-            numeroEl.textContent = String(elegido.num_lista);
+            numeroEl.textContent = textoVisibleAzarAsistencia(elegido);
             const generoElegido = obtenerGeneroEstadistica(elegido.gen);
             if (generoElegido === "mujer") {
                 numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
@@ -18901,7 +19009,7 @@ function mostrarElegidosAzarAsistencia() {
                     ${escapeHTML(String(estudiante.nombre || ""))}
                 </button>
             </td>
-            <td><strong>${escapeHTML(String(estudiante.num_lista ?? ""))}</strong></td>
+            <td><strong>${escapeHTML(textoVisibleAzarAsistencia(estudiante))}</strong></td>
             <td>
                 <button type="button"
                         class="boton-eliminar-elegido-azar"
@@ -18921,7 +19029,11 @@ function mostrarElegidosAzarAsistencia() {
                 <tr>
                     <th>#</th>
                     <th>Nombre</th>
-                    <th>N.º lista</th>
+                    <th>${escapeHTML(
+                        obtenerTipoEleccionAzarAsistencia() === "inicial"
+                            ? "Inicial"
+                            : "N.º lista"
+                    )}</th>
                     <th></th>
                 </tr>
             </thead>
