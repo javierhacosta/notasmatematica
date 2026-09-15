@@ -186,6 +186,77 @@ input, select {
     background: rgba(255,255,255,.30);
 }
 
+/* CONFIGURACIÓN DEL TAMAÑO DEL NÚMERO EN ESTUDIANTE AL AZAR */
+.boton-config-azar {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.boton-config-azar:hover {
+    background: rgba(255,255,255,.30);
+}
+.modal-config-azar {
+    width: 100%;
+    max-width: 390px;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+}
+.config-azar-cuerpo {
+    padding: 20px;
+}
+.config-azar-cuerpo label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+.config-azar-control {
+    width: 100%;
+}
+.config-azar-valor {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #1557a6;
+}
+.config-azar-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 0 20px 20px;
+}
+.config-azar-acciones button {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.boton-cancelar-config-azar {
+    background: #777;
+    color: white;
+}
+.boton-guardar-config-azar {
+    background: #16803c;
+    color: white;
+}
+@media (max-width: 600px) {
+    .modal-config-azar {
+        max-width: 100%;
+    }
+}
+
 .modal-cuerpo {
     padding: 20px;
 }
@@ -4685,78 +4756,6 @@ table tbody tr:nth-child(10n+10) td {
     font-weight: 600;
 }
 
-
-/* =====================================================
-   DINÁMICAS DE CLASE — estilos añadidos
-   ===================================================== */
-#modalDinamicasClase .dinamicas-contenedor {
-    max-width: 760px;
-    width: min(94vw, 760px);
-}
-.dinamicas-botones {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 14px 0;
-}
-.dinamicas-botones button {
-    min-height: 48px;
-    font-size: 1rem;
-    font-weight: 700;
-}
-.dinamica-pantalla {
-    min-height: 190px;
-    border-radius: 18px;
-    border: 2px dashed rgba(0,0,0,.14);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 18px;
-    text-align: center;
-    margin: 14px 0;
-    overflow: hidden;
-}
-.dinamica-numero {
-    font-weight: 900;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-}
-.dinamica-letra {
-    font-weight: 800;
-    line-height: 1.1;
-}
-.dinamica-subtexto {
-    margin-top: 12px;
-    font-size: 1rem;
-    opacity: .78;
-}
-.dinamicas-configuracion {
-    border-top: 1px solid rgba(0,0,0,.12);
-    margin-top: 12px;
-    padding-top: 14px;
-}
-.dinamicas-configuracion-campos {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0,1fr));
-    gap: 10px;
-}
-.dinamicas-configuracion-campos label {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-weight: 600;
-}
-.dinamicas-configuracion-campos input {
-    width: 100%;
-    box-sizing: border-box;
-}
-@media (max-width: 560px) {
-    .dinamicas-botones,
-    .dinamicas-configuracion-campos {
-        grid-template-columns: 1fr;
-    }
-}
 </style>
 
 </head>
@@ -6151,17 +6150,19 @@ Cancelar
 <!-- =====================================================
      NUEVO: MODAL ELECCIÓN ALEATORIA DE ESTUDIANTE
 ===================================================== -->
-
-<!-- Acceso a Dinámicas de clase -->
-<button type="button" id="botonDinamicasClase" class="boton-icono" title="Dinámicas de clase"
-        onclick="abrirModalDinamicasClase()" aria-label="Dinámicas de clase">🎯</button>
 <div id="modalAzarAsistencia" class="modal-fondo oculto"
      onclick="cerrarModalAzarAsistencia(event)">
     <div class="modal-azar-asistencia" onclick="event.stopPropagation()">
         <div class="modal-cabecera">
             <h3 id="tituloAzarAsistencia">🎲 Estudiante al azar</h3>
-            <button type="button" class="boton-cerrar-modal"
-                    onclick="cerrarModalAzarAsistencia()">×</button>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <button type="button" class="boton-config-azar"
+                        onclick="abrirConfigTamanoAzarAsistencia()"
+                        title="Configurar tamaño del número"
+                        aria-label="Configurar tamaño del número">⚙️</button>
+                <button type="button" class="boton-cerrar-modal"
+                        onclick="cerrarModalAzarAsistencia()">×</button>
+            </div>
         </div>
 
         <div class="azar-asistencia-cuerpo">
@@ -6191,6 +6192,35 @@ Cancelar
                     onclick="mostrarElegidosAzarAsistencia()">
                 👥 Ver elegidos
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
+     MODAL CONFIGURACIÓN DEL TAMAÑO DEL NÚMERO ALEATORIO
+===================================================== -->
+<div id="modalConfigTamanoAzarAsistencia" class="modal-fondo oculto"
+     onclick="cerrarConfigTamanoAzarAsistencia(event)">
+    <div class="modal-config-azar" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>⚙️ Tamaño del número</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarConfigTamanoAzarAsistencia()">×</button>
+        </div>
+        <div class="config-azar-cuerpo">
+            <label for="tamanoNumeroAzarAsistencia">Tamaño del número</label>
+            <input id="tamanoNumeroAzarAsistencia"
+                   class="config-azar-control"
+                   type="range"
+                   min="80" max="320" step="5" value="200"
+                   oninput="actualizarVistaTamanoAzarAsistencia(this.value)">
+            <div id="valorTamanoNumeroAzarAsistencia" class="config-azar-valor">200 px</div>
+        </div>
+        <div class="config-azar-acciones">
+            <button type="button" class="boton-cancelar-config-azar"
+                    onclick="cerrarConfigTamanoAzarAsistencia()">Cancelar</button>
+            <button type="button" class="boton-guardar-config-azar"
+                    onclick="guardarTamanoAzarAsistencia()">Guardar</button>
         </div>
     </div>
 </div>
@@ -18468,6 +18498,56 @@ function obtenerCandidatosAzarAsistencia() {
     );
 }
 
+const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
+let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
+
+function aplicarTamanoNumeroAzarAsistencia() {
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl) {
+        numeroEl.style.fontSize = `${tamanoNumeroAzarAsistencia}px`;
+    }
+}
+
+function abrirConfigTamanoAzarAsistencia() {
+    const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    if (!modal || !control) return;
+
+    control.value = String(tamanoNumeroAzarAsistencia);
+    actualizarVistaTamanoAzarAsistencia(control.value);
+    modal.classList.remove("oculto");
+}
+
+function actualizarVistaTamanoAzarAsistencia(valor) {
+    const numero = Math.max(80, Math.min(320, Number(valor) || 200));
+    const valorEl = document.getElementById("valorTamanoNumeroAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${numero} px`;
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl) numeroEl.style.fontSize = `${numero}px`;
+}
+
+function guardarTamanoAzarAsistencia() {
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
+
+    tamanoNumeroAzarAsistencia = numero;
+    localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
+    aplicarTamanoNumeroAzarAsistencia();
+    cerrarConfigTamanoAzarAsistencia();
+}
+
+function cerrarConfigTamanoAzarAsistencia(event) {
+    const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    if (control) control.value = String(tamanoNumeroAzarAsistencia);
+    actualizarVistaTamanoAzarAsistencia(tamanoNumeroAzarAsistencia);
+    modal.classList.add("oculto");
+}
+
 function abrirModalAzarAsistencia() {
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
@@ -18506,7 +18586,9 @@ function abrirModalAzarAsistencia() {
 
     if (numeroEl) {
         numeroEl.textContent = "—";
+        numeroEl.style.color = "#1557a6";
         numeroEl.classList.remove("animando");
+        aplicarTamanoNumeroAzarAsistencia();
     }
 
     if (nombreEl) {
@@ -18580,7 +18662,17 @@ function elegirEstudianteAzarAsistencia() {
 
     const mostrarNumeroRapido = () => {
         const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
-        if (numeroEl) numeroEl.textContent = String(candidato.num_lista);
+        if (numeroEl) {
+            numeroEl.textContent = String(candidato.num_lista);
+            const generoCandidato = obtenerGeneroEstadistica(candidato.gen);
+            if (generoCandidato === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoCandidato === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
+        }
     };
 
     mostrarNumeroRapido();
@@ -18601,6 +18693,14 @@ function elegirEstudianteAzarAsistencia() {
 
         if (numeroEl) {
             numeroEl.textContent = String(elegido.num_lista);
+            const generoElegido = obtenerGeneroEstadistica(elegido.gen);
+            if (generoElegido === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoElegido === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
             numeroEl.classList.remove("animando");
         }
 
@@ -18808,28 +18908,6 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-/* =====================================================
-   DINÁMICAS DE CLASE — configuración visual
-   ===================================================== */
-const CLAVE_DINAMICAS_CLASE = "dinamicas_clase_config";
-let configuracionDinamicasClase = (() => {
-    try {
-        const guardada = JSON.parse(localStorage.getItem(CLAVE_DINAMICAS_CLASE) || "{}");
-        return {
-            tamanoNumero: Math.max(36, Math.min(220, Number(guardada.tamanoNumero) || 96)),
-            tamanoLetra: Math.max(20, Math.min(120, Number(guardada.tamanoLetra) || 42))
-        };
-    } catch (_) {
-        return { tamanoNumero: 96, tamanoLetra: 42 };
-    }
-})();
-
-function guardarConfiguracionDinamicasClase() {
-    try {
-        localStorage.setItem(CLAVE_DINAMICAS_CLASE, JSON.stringify(configuracionDinamicasClase));
-    } catch (_) {}
-}
-
 let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGuardada = {};
 let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
@@ -19997,151 +20075,6 @@ async function recuperarCopiaBaseDatos(event) {
     }
 }
 
-
-/* =====================================================
-   DINÁMICAS DE CLASE — funciones
-   ===================================================== */
-function aplicarTamanoDinamicasClase() {
-    const numero = document.getElementById("dinamicaNumero");
-    const letra = document.getElementById("dinamicaLetra");
-    if (numero) numero.style.fontSize = `${configuracionDinamicasClase.tamanoNumero}px`;
-    if (letra) letra.style.fontSize = `${configuracionDinamicasClase.tamanoLetra}px`;
-}
-
-function abrirModalDinamicasClase() {
-    const modal = document.getElementById("modalDinamicasClase");
-    if (!modal) return;
-    const n = document.getElementById("tamanoNumeroDinamicas");
-    const l = document.getElementById("tamanoLetraDinamicas");
-    if (n) n.value = configuracionDinamicasClase.tamanoNumero;
-    if (l) l.value = configuracionDinamicasClase.tamanoLetra;
-    aplicarTamanoDinamicasClase();
-    modal.classList.remove("oculto");
-    modal.style.display = "";
-}
-
-function cerrarModalDinamicasClase(event) {
-    if (event && event.target !== event.currentTarget) return;
-    const modal = document.getElementById("modalDinamicasClase");
-    if (!modal) return;
-    modal.classList.add("oculto");
-}
-
-function guardarTamanoDinamicasClase() {
-    const n = document.getElementById("tamanoNumeroDinamicas");
-    const l = document.getElementById("tamanoLetraDinamicas");
-    configuracionDinamicasClase.tamanoNumero = Math.max(36, Math.min(220, Number(n?.value) || 96));
-    configuracionDinamicasClase.tamanoLetra = Math.max(20, Math.min(120, Number(l?.value) || 42));
-    guardarConfiguracionDinamicasClase();
-    aplicarTamanoDinamicasClase();
-    mostrarMensaje?.("✓ Tamaño de dinámicas guardado.");
-}
-
-function mostrarDinamicaClase(numero = "", texto = "", color = "", usarLetra = false) {
-    const n = document.getElementById("dinamicaNumero");
-    const l = document.getElementById("dinamicaLetra");
-    const s = document.getElementById("dinamicaSubtexto");
-    if (!n || !l || !s) return;
-    if (usarLetra) {
-        n.style.display = "none";
-        l.style.display = "";
-        l.textContent = texto || "";
-        if (color) l.style.color = color;
-    } else {
-        l.style.display = "none";
-        n.style.display = "";
-        n.textContent = numero === "" ? "—" : String(numero);
-        if (color) n.style.color = color;
-    }
-    s.textContent = texto && !usarLetra ? texto : (usarLetra ? "Selección aleatoria" : "Resultado");
-    aplicarTamanoDinamicasClase();
-}
-
-function obtenerColorGeneroDinamica(estudiante) {
-    const genero = typeof obtenerGeneroEstadistica === "function"
-        ? obtenerGeneroEstadistica(estudiante?.gen)
-        : "";
-    if (genero === "mujer") return configuracionAulaActual?.colorMujer || "#e91e63";
-    if (genero === "varon") return configuracionAulaActual?.colorVaron || "#1976d2";
-    return "#1557a6";
-}
-
-function obtenerCandidatosDinamicasClase() {
-    if (typeof obtenerCandidatosAzarAsistencia === "function") {
-        const lista = obtenerCandidatosAzarAsistencia();
-        if (Array.isArray(lista) && lista.length) return lista;
-    }
-    if (typeof obtenerEstudiantesCursoActual === "function") {
-        return obtenerEstudiantesCursoActual().filter(e => e && e.num_lista != null);
-    }
-    return [];
-}
-
-function seleccionarEstudiantesDinamica(cantidad) {
-    const candidatos = obtenerCandidatosDinamicasClase().slice();
-    for (let i = candidatos.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]];
-    }
-    return candidatos.slice(0, Math.max(1, Math.min(cantidad, candidatos.length)));
-}
-
-function dinamicaEstudianteClase() {
-    const candidatos = obtenerCandidatosDinamicasClase();
-    if (!candidatos.length) {
-        mostrarDinamicaClase("", "No hay estudiantes disponibles");
-        return;
-    }
-    const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
-    mostrarDinamicaClase(elegido.num_lista, elegido.nombre || "Estudiante", obtenerColorGeneroDinamica(elegido));
-}
-
-function dinamicaParejasClase() {
-    const candidatos = seleccionarEstudiantesDinamica(2);
-    if (candidatos.length < 2) {
-        mostrarDinamicaClase("", "No hay suficientes estudiantes");
-        return;
-    }
-    const nombres = candidatos.map(e => `${e.num_lista} · ${e.nombre || "Estudiante"}`);
-    mostrarDinamicaClase("", nombres.join("  +  "), "", true);
-}
-
-function dinamicaGruposClase() {
-    const candidatos = obtenerCandidatosDinamicasClase();
-    if (!candidatos.length) {
-        mostrarDinamicaClase("", "No hay estudiantes disponibles");
-        return;
-    }
-    const cantidad = Math.max(2, Math.min(6, Number(prompt("¿Cuántos estudiantes tendrá el grupo?", "4")) || 4));
-    const grupo = seleccionarEstudiantesDinamica(cantidad);
-    const nombres = grupo.map(e => `${e.num_lista} · ${e.nombre || "Estudiante"}`);
-    mostrarDinamicaClase("", nombres.join("  •  "), "", true);
-}
-
-function dinamicaOrdenClase() {
-    const candidatos = obtenerCandidatosDinamicasClase().slice();
-    for (let i = candidatos.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [candidatos[i], candidatos[j]] = [candidatos[j], candidatos[i]];
-    }
-    const nombres = candidatos.map((e, i) => `${i + 1}. ${e.nombre || "Estudiante"}`).join("  •  ");
-    mostrarDinamicaClase("", nombres || "No hay estudiantes disponibles", "", true);
-}
-
-function dinamicaParticipacionClase() {
-    dinamicaEstudianteClase();
-    const s = document.getElementById("dinamicaSubtexto");
-    if (s) s.textContent = "🎤 Le toca participar";
-}
-
-function dinamicaEjercicioClase() {
-    const valor = prompt("¿Hasta qué número de ejercicio?", "20");
-    const max = Math.max(1, Math.min(999, Number(valor) || 20));
-    const ejercicio = Math.floor(Math.random() * max) + 1;
-    mostrarDinamicaClase(ejercicio, `Ejercicio al azar (1–${max})`);
-}
-
-aplicarTamanoDinamicasClase();
 </script>
 
 
@@ -20195,55 +20128,6 @@ aplicarTamanoDinamicasClase();
     </div>
 </div>
 
-
-<!-- =====================================================
-     MODAL DINÁMICAS DE CLASE
-     ===================================================== -->
-<div id="modalDinamicasClase" class="modal-fondo oculto"
-     onclick="cerrarModalDinamicasClase(event)">
-    <div class="modal dinamicas-contenedor" onclick="event.stopPropagation()">
-        <div class="modal-cabecera">
-            <h3>🎯 Dinámicas de clase</h3>
-            <button type="button" class="boton-cerrar-modal" onclick="cerrarModalDinamicasClase()">✕</button>
-        </div>
-
-        <div class="dinamica-pantalla" id="pantallaDinamicaClase">
-            <div id="dinamicaNumero" class="dinamica-numero">—</div>
-            <div id="dinamicaLetra" class="dinamica-letra" style="display:none;"></div>
-            <div id="dinamicaSubtexto" class="dinamica-subtexto">Elige una dinámica</div>
-        </div>
-
-        <div class="dinamicas-botones">
-            <button type="button" onclick="dinamicaEstudianteClase()">🎲 Estudiante</button>
-            <button type="button" onclick="dinamicaParejasClase()">🤝 Parejas</button>
-            <button type="button" onclick="dinamicaGruposClase()">👥 Grupos</button>
-            <button type="button" onclick="dinamicaOrdenClase()">🔄 Orden de participación</button>
-            <button type="button" onclick="dinamicaEjercicioClase()">🔢 Ejercicio al azar</button>
-            <button type="button" onclick="dinamicaParticipacionClase()">🎤 Participación</button>
-        </div>
-
-        <div class="dinamicas-configuracion">
-            <strong>⚙️ Tamaño de lo que aparece en pantalla</strong>
-            <div class="dinamicas-configuracion-campos" style="margin-top:10px;">
-                <label>
-                    Tamaño del número
-                    <input id="tamanoNumeroDinamicas" type="number" min="36" max="220" step="1">
-                </label>
-                <label>
-                    Tamaño de la letra
-                    <input id="tamanoLetraDinamicas" type="number" min="20" max="120" step="1">
-                </label>
-            </div>
-            <div class="distribucion-acciones" style="margin-top:10px;">
-                <button type="button" class="boton-distribucion-guardar" onclick="guardarTamanoDinamicasClase()">💾 Guardar tamaño</button>
-            </div>
-        </div>
-
-        <div class="distribucion-acciones">
-            <button type="button" class="boton-distribucion-cancelar" onclick="cerrarModalDinamicasClase()">Cerrar</button>
-        </div>
-    </div>
-</div>
 </body>
 
 </html>
