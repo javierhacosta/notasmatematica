@@ -4300,6 +4300,29 @@ table tbody tr:nth-child(10n+10) td {
         width: calc(27% - 34px);
     }
 }
+
+/* =====================================================
+   COPIA DE SEGURIDAD DE DATOS
+===================================================== */
+.modal-copia-seguridad {
+    width: min(480px, 92vw);
+    max-width: 480px;
+}
+.acciones-copia-seguridad {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.boton-copia-seguridad {
+    width: 100%;
+    padding: 13px 16px;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+}
+
 </style>
 
 </head>
@@ -4877,6 +4900,16 @@ Selecciona un curso
     onclick="exportarExcel()">
 
 📊 Exportar Excel
+
+</button>
+
+<button
+    type="button"
+    class="exportar"
+    onclick="abrirModalCopiaSeguridad()"
+    title="Copia de seguridad y recuperación de datos">
+
+💾
 
 </button>
 
@@ -18172,8 +18205,181 @@ async function guardarDistribucionAula() {
 
 comprobarSesion();
 
+
+/* =====================================================
+   COPIA DE SEGURIDAD DE DATOS
+===================================================== */
+
+const TABLAS_COPIA_SEGURIDAD = [
+    "matematica",
+    "actividades",
+    "calificaciones",
+    "asistencia",
+    "asistencia_tipos_dia",
+    "visitas_estudiantes"
+];
+
+function abrirModalCopiaSeguridad() {
+    const modal = document.getElementById("modalCopiaSeguridad");
+    if (modal) modal.classList.remove("oculto");
+}
+
+function cerrarModalCopiaSeguridad() {
+    const modal = document.getElementById("modalCopiaSeguridad");
+    if (modal) modal.classList.add("oculto");
+}
+
+function cerrarModalCopiaSeguridadDesdeFondo(event) {
+    if (event.target && event.target.id === "modalCopiaSeguridad") {
+        cerrarModalCopiaSeguridad();
+    }
+}
+
+function seleccionarCopiaBaseDatos() {
+    const input = document.getElementById("archivoCopiaBaseDatos");
+    if (input) input.click();
+}
+
+async function guardarCopiaBaseDatos() {
+    try {
+        mostrarMensaje("Creando copia de seguridad...");
+
+        const copia = {
+            version: 1,
+            fecha: new Date().toISOString(),
+            tablas: {}
+        };
+
+        for (const nombreTabla of TABLAS_COPIA_SEGURIDAD) {
+            const { data, error } = await supabase
+                .from(nombreTabla)
+                .select("*");
+
+            if (error) throw new Error("No se pudo copiar la tabla " + nombreTabla + ": " + error.message);
+            copia.tablas[nombreTabla] = data || [];
+        }
+
+        const contenido = JSON.stringify(copia, null, 2);
+        const blob = new Blob([contenido], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement("a");
+        const fecha = new Date().toISOString().slice(0, 10);
+        enlace.href = url;
+        enlace.download = "copia_base_datos_matematica_" + fecha + ".json";
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        URL.revokeObjectURL(url);
+
+        mostrarMensaje("Copia de seguridad guardada correctamente.");
+    } catch (error) {
+        console.error("Error al crear copia de seguridad:", error);
+        alert("No se pudo crear la copia de seguridad: " + (error.message || error));
+    }
+}
+
+async function recuperarCopiaBaseDatos(event) {
+    const input = event.target;
+    const archivo = input.files && input.files[0];
+    if (!archivo) return;
+
+    try {
+        const texto = await archivo.text();
+        const copia = JSON.parse(texto);
+
+        if (!copia || !copia.tablas || typeof copia.tablas !== "object") {
+            throw new Error("El archivo no tiene un formato de copia de seguridad válido.");
+        }
+
+        const confirmar = confirm(
+            "Se recuperarán los datos de las tablas incluidas en esta copia. ¿Deseas continuar?"
+        );
+        if (!confirmar) {
+            input.value = "";
+            return;
+        }
+
+        mostrarMensaje("Recuperando copia de seguridad...");
+
+        for (const nombreTabla of TABLAS_COPIA_SEGURIDAD) {
+            const filas = Array.isArray(copia.tablas[nombreTabla]) ? copia.tablas[nombreTabla] : [];
+
+            if (!filas.length) continue;
+
+            for (let i = 0; i < filas.length; i += 500) {
+                const lote = filas.slice(i, i + 500);
+                const { error } = await supabase
+                    .from(nombreTabla)
+                    .upsert(lote);
+
+                if (error) {
+                    throw new Error("No se pudo recuperar la tabla " + nombreTabla + ": " + error.message);
+                }
+            }
+        }
+
+        mostrarMensaje("Copia de seguridad recuperada correctamente.");
+        alert("La recuperación terminó correctamente. Se actualizaron los datos incluidos en la copia.");
+        input.value = "";
+    } catch (error) {
+        console.error("Error al recuperar copia de seguridad:", error);
+        alert("No se pudo recuperar la copia: " + (error.message || error));
+        input.value = "";
+    }
+}
+
 </script>
 
+
+
+<!-- =====================================================
+     MODAL COPIA DE SEGURIDAD
+===================================================== -->
+<div
+    id="modalCopiaSeguridad"
+    class="modal-fondo oculto"
+    onclick="cerrarModalCopiaSeguridadDesdeFondo(event)">
+
+    <div
+        class="modal-copia-seguridad modal-hora-asistencia"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+            <h3>💾 Copia de seguridad</h3>
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarModalCopiaSeguridad()">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-cuerpo">
+            <div class="acciones-copia-seguridad">
+                <button
+                    type="button"
+                    class="boton-copia-seguridad boton-crear-modal"
+                    onclick="guardarCopiaBaseDatos()">
+                    💾 Guardar una copia de toda la base de datos
+                </button>
+
+                <button
+                    type="button"
+                    class="boton-copia-seguridad boton-crear-modal"
+                    onclick="seleccionarCopiaBaseDatos()">
+                    ♻️ Recuperar desde una copia
+                </button>
+
+                <input
+                    type="file"
+                    id="archivoCopiaBaseDatos"
+                    accept=".json,application/json"
+                    style="display:none"
+                    onchange="recuperarCopiaBaseDatos(event)">
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 
