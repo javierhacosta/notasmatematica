@@ -1426,6 +1426,135 @@ td:first-child {
     color: #222;
 }
 
+
+/* =====================================================
+   LISTA DEL CURSO / EDICIÓN DEL ESTADO DEL ESTUDIANTE
+   Se abre únicamente manteniendo pulsado 2 segundos.
+===================================================== */
+.boton-lista-estado-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #6a1b9a;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+.boton-lista-estado-asistencia:hover {
+    background: #4a148c;
+}
+.modal-lista-estado-asistencia {
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.lista-estado-cuerpo {
+    padding: 15px;
+    overflow: auto;
+}
+.tabla-lista-estado {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.tabla-lista-estado th,
+.tabla-lista-estado td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+.tabla-lista-estado th {
+    background: #f0f2f3;
+}
+.tabla-lista-estado td:nth-child(2) {
+    text-align: left;
+}
+.estado-lista-select {
+    width: 100%;
+    min-width: 175px;
+    padding: 7px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+}
+.estado-lista-select:disabled {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #f5f5f5;
+    color: #333;
+    cursor: default;
+    border-color: transparent;
+}
+.estado-lista-select.editable {
+    background: #fffde7;
+    border: 2px solid #ef6c00;
+    cursor: pointer;
+}
+.lista-estado-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 12px 15px 15px;
+    border-top: 1px solid #eee;
+}
+.lista-estado-acciones button {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.boton-editar-estado-lista {
+    background: #1565c0;
+    color: white;
+}
+.boton-guardar-estado-lista {
+    display: none;
+    background: #16803c;
+    color: white;
+}
+.boton-guardar-estado-lista.visible {
+    display: inline-flex;
+}
+.boton-cerrar-lista-estado {
+    background: #777;
+    color: white;
+}
+@media (max-width: 600px) {
+    .modal-lista-estado-asistencia {
+        max-width: 100%;
+        max-height: 94vh;
+        border-radius: 12px;
+    }
+    .tabla-lista-estado {
+        font-size: 12px;
+    }
+    .tabla-lista-estado th,
+    .tabla-lista-estado td {
+        padding: 6px 4px;
+    }
+    .estado-lista-select {
+        min-width: 145px;
+        font-size: 12px;
+    }
+}
+
 .boton-eliminar-fecha-asistencia {
     width: 34px;
     height: 34px;
@@ -4759,6 +4888,14 @@ Selecciona un curso
 🗑️
 
 </button>
+<button
+    type="button"
+    id="botonListaEstadoAsistencia"
+    class="boton-lista-estado-asistencia"
+    title="Mantén pulsado 2 segundos para ver la lista del curso"
+    aria-label="Lista del curso">
+    📋
+</button>
 
 <button
     type="button"
@@ -6099,6 +6236,55 @@ Cancelar
 <link rel="preconnect" href="https://tecphbbkkmlgahjddcep.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://tecphbbkkmlgahjddcep.supabase.co">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- =====================================================
+     LISTA DEL CURSO / ESTADO DE ESTUDIANTES
+===================================================== -->
+<div id="modalListaEstadoAsistencia" class="modal-fondo oculto">
+    <div class="modal-lista-estado-asistencia">
+        <div class="modal-cabecera">
+            <h3 id="tituloListaEstadoAsistencia">Lista del curso</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarModalListaEstadoAsistencia()">×</button>
+        </div>
+
+        <div class="lista-estado-cuerpo">
+            <div class="tabla-contenedor">
+                <table class="tabla-lista-estado">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaListaEstadoAsistencia"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="lista-estado-acciones">
+            <button type="button"
+                    id="botonEditarEstadoLista"
+                    class="boton-editar-estado-lista"
+                    onclick="habilitarEdicionEstadoLista()">
+                ✏️ Editar estado
+            </button>
+            <button type="button"
+                    id="botonGuardarEstadoLista"
+                    class="boton-guardar-estado-lista"
+                    onclick="guardarEstadosListaCurso()">
+                💾 Guardar
+            </button>
+            <button type="button"
+                    class="boton-cerrar-lista-estado"
+                    onclick="cerrarModalListaEstadoAsistencia()">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 const _scriptsDiferidos = {};
 function cargarScriptDiferido(url, globalName) {
@@ -6535,7 +6721,7 @@ async function cargarEstudiantes(esSegundoPlano = false) {
     await supabaseClient
     .from("matematica")
     .select(
-        "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,nota_1t,nota_2t"
+        "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,estado,nota_1t,nota_2t"
     )
     .order("curso")
     .order("num_lista");
@@ -6572,6 +6758,239 @@ async function cargarEstudiantes(esSegundoPlano = false) {
 
 }
 
+
+
+/* =====================================================
+   LISTA DEL CURSO / EDICIÓN DE ESTADO
+===================================================== */
+const ESTADOS_LISTA_CURSO = [
+    "EFECTIVO",
+    "NO INCORPORADO",
+    "RETIRADO ABANDONO",
+    "RETIRADO TRASLADO"
+];
+
+let editandoEstadosListaCurso = false;
+let cambiosEstadosListaCurso = new Map();
+let temporizadorListaEstadoAsistencia = null;
+let listaEstadoAsistenciaAbierta = false;
+
+function configurarBotonListaEstadoAsistencia() {
+    const boton = document.getElementById("botonListaEstadoAsistencia");
+    if (!boton || boton.dataset.longPressConfigurado === "1") return;
+
+    boton.dataset.longPressConfigurado = "1";
+
+    const iniciar = (event) => {
+        if (event.type === "touchstart") event.preventDefault();
+        clearTimeout(temporizadorListaEstadoAsistencia);
+        temporizadorListaEstadoAsistencia = setTimeout(() => {
+            temporizadorListaEstadoAsistencia = null;
+            abrirModalListaEstadoAsistencia();
+        }, 2000);
+    };
+
+    const cancelar = () => {
+        clearTimeout(temporizadorListaEstadoAsistencia);
+        temporizadorListaEstadoAsistencia = null;
+    };
+
+    boton.addEventListener("mousedown", iniciar);
+    boton.addEventListener("mouseup", cancelar);
+    boton.addEventListener("mouseleave", cancelar);
+    boton.addEventListener("touchstart", iniciar, { passive: false });
+    boton.addEventListener("touchend", cancelar);
+    boton.addEventListener("touchcancel", cancelar);
+}
+
+async function abrirModalListaEstadoAsistencia() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const modal = document.getElementById("modalListaEstadoAsistencia");
+    const tbody = document.getElementById("tablaListaEstadoAsistencia");
+    const titulo = document.getElementById("tituloListaEstadoAsistencia");
+
+    if (!modal || !tbody) return;
+
+    editandoEstadosListaCurso = false;
+    cambiosEstadosListaCurso = new Map();
+
+    if (titulo) titulo.textContent = `Lista ${cursoSeleccionado}`;
+
+    const botonEditar = document.getElementById("botonEditarEstadoLista");
+    const botonGuardar = document.getElementById("botonGuardarEstadoLista");
+    if (botonEditar) botonEditar.style.display = "";
+    if (botonGuardar) botonGuardar.classList.remove("visible");
+
+    tbody.innerHTML = `<tr><td colspan="3">Cargando lista...</td></tr>`;
+    modal.classList.remove("oculto");
+
+    // Actualizar desde Supabase para leer el estado actual de la BD.
+    try {
+        const { data, error } = await supabaseClient
+            .from("matematica")
+            .select("id,num_lista,nombre,curso,estado")
+            .eq("curso", cursoSeleccionado)
+            .order("num_lista");
+
+        if (error) throw error;
+
+        const estudiantesLista = data || [];
+
+        // Mantener la lista principal actualizada sin modificar otras funciones.
+        estudiantesLista.forEach(e => {
+            const local = estudiantes.find(x => String(x.id) === String(e.id));
+            if (local) local.estado = e.estado;
+        });
+
+        renderizarListaEstadoAsistencia(estudiantesLista);
+    } catch (error) {
+        console.error("Error al cargar lista y estados:", error);
+        tbody.innerHTML = `<tr><td colspan="3">No se pudo cargar la lista.</td></tr>`;
+        alert("No se pudo cargar el estado de los estudiantes: " + (error.message || error));
+    }
+}
+
+function renderizarListaEstadoAsistencia(lista) {
+    const tbody = document.getElementById("tablaListaEstadoAsistencia");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    (lista || []).forEach(estudiante => {
+        const fila = document.createElement("tr");
+        const estadoActual = String(estudiante.estado || "").trim();
+
+        const opciones = ESTADOS_LISTA_CURSO.map(estado => `
+            <option value="${escapeHTML(estado)}"
+                ${estadoActual.toUpperCase() === estado ? "selected" : ""}>
+                ${escapeHTML(estado)}
+            </option>
+        `).join("");
+
+        fila.innerHTML = `
+            <td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td>
+            <td>${escapeHTML(estudiante.nombre || "")}</td>
+            <td>
+                <select
+                    class="estado-lista-select"
+                    data-estudiante="${escapeHTML(String(estudiante.id))}"
+                    data-original="${escapeHTML(estadoActual)}"
+                    onchange="detectarCambioEstadoLista(this)"
+                    disabled>
+                    ${opciones}
+                </select>
+            </td>
+        `;
+
+        tbody.appendChild(fila);
+    });
+}
+
+function habilitarEdicionEstadoLista() {
+    const modal = document.getElementById("modalListaEstadoAsistencia");
+    if (!modal) return;
+
+    editandoEstadosListaCurso = true;
+    cambiosEstadosListaCurso = new Map();
+
+    modal.querySelectorAll(".estado-lista-select").forEach(select => {
+        select.disabled = false;
+        select.classList.add("editable");
+    });
+
+    const botonEditar = document.getElementById("botonEditarEstadoLista");
+    if (botonEditar) botonEditar.style.display = "none";
+
+    const botonGuardar = document.getElementById("botonGuardarEstadoLista");
+    if (botonGuardar) botonGuardar.classList.remove("visible");
+}
+
+function detectarCambioEstadoLista(select) {
+    if (!editandoEstadosListaCurso || !select) return;
+
+    const id = String(select.dataset.estudiante || "");
+    const original = String(select.dataset.original || "");
+    const nuevo = String(select.value || "");
+
+    if (!id) return;
+
+    if (nuevo === original) {
+        cambiosEstadosListaCurso.delete(id);
+    } else {
+        cambiosEstadosListaCurso.set(id, nuevo);
+    }
+
+    const botonGuardar = document.getElementById("botonGuardarEstadoLista");
+    if (botonGuardar) {
+        botonGuardar.classList.toggle("visible", cambiosEstadosListaCurso.size > 0);
+    }
+}
+
+async function guardarEstadosListaCurso() {
+    if (!cursoSeleccionado || cambiosEstadosListaCurso.size === 0) return;
+
+    const botonGuardar = document.getElementById("botonGuardarEstadoLista");
+    if (botonGuardar) botonGuardar.disabled = true;
+
+    try {
+        const cambios = [...cambiosEstadosListaCurso.entries()];
+
+        for (const [id, estado] of cambios) {
+            const { error } = await supabaseClient
+                .from("matematica")
+                .update({ estado })
+                .eq("id", id)
+                .eq("curso", cursoSeleccionado);
+
+            if (error) throw error;
+        }
+
+        // Sincronizar memoria local.
+        cambios.forEach(([id, estado]) => {
+            const estudiante = estudiantes.find(e => String(e.id) === String(id));
+            if (estudiante) estudiante.estado = estado;
+        });
+
+        mostrarMensaje("✓ Estado de los estudiantes guardado correctamente.");
+
+        // Volver a modo consulta y ocultar Guardar hasta que exista otro cambio.
+        cambiosEstadosListaCurso = new Map();
+        editandoEstadosListaCurso = false;
+
+        document.querySelectorAll("#tablaListaEstadoAsistencia .estado-lista-select").forEach(select => {
+            select.dataset.original = select.value;
+            select.disabled = true;
+            select.classList.remove("editable");
+        });
+
+        const botonEditar = document.getElementById("botonEditarEstadoLista");
+        if (botonEditar) botonEditar.style.display = "";
+
+        if (botonGuardar) {
+            botonGuardar.classList.remove("visible");
+            botonGuardar.disabled = false;
+        }
+
+    } catch (error) {
+        console.error("Error al guardar estados de estudiantes:", error);
+        alert("No se pudieron guardar los estados: " + (error.message || error));
+        if (botonGuardar) botonGuardar.disabled = false;
+    }
+}
+
+function cerrarModalListaEstadoAsistencia() {
+    const modal = document.getElementById("modalListaEstadoAsistencia");
+    if (modal) modal.classList.add("oculto");
+    editandoEstadosListaCurso = false;
+    cambiosEstadosListaCurso = new Map();
+}
+
+/* Configurar después de que exista el botón en el DOM. */
+document.addEventListener("DOMContentLoaded", configurarBotonListaEstadoAsistencia);
 
 /* =====================================================
    CURSOS
