@@ -18444,6 +18444,8 @@ function claveAzarAsistencia() {
     return `${String(cursoSeleccionado || "").trim()}__${fecha}`;
 }
 
+const TABLA_AZAR_ASISTENCIA_BD = "azar_estudiantes_elegidos";
+
 function obtenerElegidosAzarAsistencia() {
     const clave = claveAzarAsistencia();
     if (!clave || clave === "__") return [];
@@ -18462,12 +18464,103 @@ function guardarElegidosAzarAsistencia(lista) {
     const clave = claveAzarAsistencia();
     if (!clave || clave === "__") return;
 
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
     try {
         const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
-        datos[clave] = [...new Set((lista || []).map(String))];
+        datos[clave] = listaNormalizada;
         localStorage.setItem("azarAsistenciaElegidos", JSON.stringify(datos));
     } catch (error) {
         console.warn("No se pudo guardar la lista de estudiantes elegidos al azar:", error);
+    }
+
+    sincronizarElegidosAzarAsistenciaBD(listaNormalizada).catch(error => {
+        console.warn("No se pudo guardar en BD la lista de estudiantes elegidos al azar:", error);
+    });
+}
+
+async function cargarElegidosAzarAsistenciaBD() {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .select("estudiante_id,orden")
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .order("orden", { ascending: true });
+
+        if (error) throw error;
+
+        const listaBD = (data || []).map(r => String(r.estudiante_id));
+        const listaLocal = obtenerElegidosAzarAsistencia();
+
+        // Si existen elecciones antiguas guardadas localmente, se conservan y
+        // se migran a la BD la primera vez que se abre esta fecha.
+        if (listaBD.length === 0 && listaLocal.length > 0) {
+            await sincronizarElegidosAzarAsistenciaBD(listaLocal);
+            return;
+        }
+
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        datos[`${curso}__${fecha}`] = listaBD;
+        localStorage.setItem("azarAsistenciaElegidos", JSON.stringify(datos));
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+        const listaEl = document.getElementById("azarAsistenciaLista");
+        if (listaEl && !listaEl.classList.contains("oculto")) {
+            mostrarElegidosAzarAsistencia();
+        }
+    } catch (error) {
+        console.warn("No se pudo cargar desde BD la lista de estudiantes elegidos al azar:", error);
+    }
+}
+
+async function sincronizarElegidosAzarAsistenciaBD(lista) {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
+    const { data: existentes, error: errorExistentes } = await supabaseClient
+        .from(TABLA_AZAR_ASISTENCIA_BD)
+        .select("estudiante_id")
+        .eq("curso", curso)
+        .eq("fecha", fecha);
+
+    if (errorExistentes) throw errorExistentes;
+
+    const idsNuevos = new Set(listaNormalizada);
+    const idsEliminar = (existentes || [])
+        .map(r => String(r.estudiante_id))
+        .filter(id => !idsNuevos.has(id));
+
+    if (idsEliminar.length > 0) {
+        const { error: errorEliminar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .delete()
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .in("estudiante_id", idsEliminar);
+        if (errorEliminar) throw errorEliminar;
+    }
+
+    if (listaNormalizada.length > 0) {
+        const registros = listaNormalizada.map((estudianteId, indice) => ({
+            curso,
+            fecha,
+            estudiante_id: estudianteId,
+            orden: indice + 1
+        }));
+
+        const { error: errorGuardar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .upsert(registros, { onConflict: "curso,fecha,estudiante_id" });
+
+        if (errorGuardar) throw errorGuardar;
     }
 }
 
@@ -18607,6 +18700,9 @@ function abrirModalAzarAsistencia() {
     }
 
     actualizarEstadoBotonElegirAzarAsistencia();
+    cargarElegidosAzarAsistenciaBD().catch(error => {
+        console.warn("No se pudo sincronizar la lista de elegidos al abrir el azar:", error);
+    });
 }
 
 function cerrarModalAzarAsistencia(event) {
@@ -18836,7 +18932,7 @@ function mostrarElegidosAzarAsistencia() {
 }
 
 
-function eliminarElegidoAzarAsistencia(estudianteId, event) {
+async function eliminarElegidoAzarAsistencia(estudianteId, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
