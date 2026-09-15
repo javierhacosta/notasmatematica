@@ -7513,10 +7513,9 @@ function bloquearDesbloquearAsistencia() {
 
         controles.forEach(
         control => {
-
-            control.disabled =
-            false;
-
+            const fila = control.closest("tr");
+            const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
+            control.disabled = !estudiante || String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO";
         });
 
 
@@ -8431,6 +8430,8 @@ function mostrarTablaAsistencia() {
             "tr"
         );
         fila.dataset.estudiante = String(estudiante.id);
+        const estudianteBloqueadoPorEstado = String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO";
+        if (estudianteBloqueadoPorEstado) fila.classList.add("estudiante-estado-bloqueado");
 
 
         fila.innerHTML = `
