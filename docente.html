@@ -1447,6 +1447,208 @@ td:first-child {
 
 
 /* =====================================================
+   NUEVO: SELECCIÓN ALEATORIA DE NÚMERO DE LISTA
+   Solo añade la función de azar a asistencia.
+===================================================== */
+.boton-azar-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #7b1fa2;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.boton-azar-asistencia:hover {
+    background: #5e1680;
+}
+
+.modal-azar-asistencia {
+    width: 100%;
+    max-width: 620px;
+    height: min(92vh, 760px);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.35);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.azar-asistencia-cuerpo {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    text-align: center;
+}
+
+.azar-asistencia-fecha {
+    margin-bottom: 8px;
+    color: #666;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.azar-asistencia-aviso-fecha {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 1px solid #ffe082;
+    background: #fff8e1;
+    color: #6d5200;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.azar-asistencia-numero {
+    font-size: clamp(150px, 38vh, 300px);
+    line-height: .82;
+    font-weight: 900;
+    color: #1557a6;
+    min-height: .82em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.azar-asistencia-numero.animando {
+    animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
+}
+
+@keyframes pulsoNumeroAzar {
+    from { transform: scale(.98); opacity: .78; }
+    to { transform: scale(1.02); opacity: 1; }
+}
+
+.azar-asistencia-nombre {
+    margin-top: 18px;
+    font-size: 17px;
+    color: #444;
+    min-height: 24px;
+}
+
+.azar-asistencia-nombre button {
+    border: none;
+    background: transparent;
+    color: #1557a6;
+    font-size: 17px;
+    font-weight: bold;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+.azar-asistencia-ayuda {
+    margin-top: 5px;
+    color: #888;
+    font-size: 11px;
+}
+
+.azar-asistencia-acciones {
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 12px 15px 15px;
+    border-top: 1px solid #eee;
+}
+
+.azar-asistencia-acciones button {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.boton-elegir-azar {
+    background: #7b1fa2;
+    color: white;
+}
+
+.boton-ver-elegidos {
+    background: #1565c0;
+    color: white;
+}
+
+.boton-elegir-azar:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+.azar-asistencia-lista {
+    width: 100%;
+    max-height: 38vh;
+    overflow: auto;
+    margin-top: 12px;
+    border: 1px solid #ddd;
+    border-radius: 9px;
+}
+
+.azar-asistencia-lista table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.azar-asistencia-lista th,
+.azar-asistencia-lista td {
+    border-bottom: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.azar-asistencia-lista th {
+    background: #f0f2f3;
+}
+
+.azar-asistencia-lista td:nth-child(2) {
+    text-align: left;
+}
+
+@media (max-width: 600px) {
+    .modal-azar-asistencia {
+        max-width: 100%;
+        width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .azar-asistencia-cuerpo {
+        padding: 12px;
+    }
+
+    .azar-asistencia-numero {
+        font-size: clamp(150px, 48vw, 270px);
+    }
+
+    .azar-asistencia-nombre,
+    .azar-asistencia-nombre button {
+        font-size: 16px;
+    }
+
+    .azar-asistencia-acciones button {
+        flex: 1 1 0;
+        min-width: 130px;
+    }
+}
+
+
+/* =====================================================
    TIPO DE CLASE / DÍA DE ASISTENCIA
 ===================================================== */
 
@@ -3298,6 +3500,19 @@ table tbody tr:nth-child(10n+10) td {
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
 
+.nombre-asiento-aula.genero-mujer { color: var(--color-mujer-aula, #e91e63); }
+.nombre-asiento-aula.genero-varon { color: var(--color-varon-aula, #1976d2); }
+.configuracion-aula-colores-genero { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.configuracion-aula-color { display:flex; align-items:center; gap:8px; }
+.configuracion-aula-color label { font-weight:600; }
+.configuracion-aula-color input[type="color"] { width:44px; height:34px; padding:2px; border:1px solid #bbb; border-radius:7px; cursor:pointer; background:#fff; }
+
+.tabla-estadistica-scroll { overflow-x: auto; }
+.tabla-estadistica-genero { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
+.tabla-estadistica-genero th, .tabla-estadistica-genero td { padding: 9px 10px; border-bottom: 1px solid #ddd; text-align: center; }
+.tabla-estadistica-genero th:first-child, .tabla-estadistica-genero td:first-child { text-align: left; }
+.tabla-estadistica-tabla-genero h4, .estadistica-tabla-genero-curso h4 { margin: 8px 0; }
+
 .nombre-asiento-aula.clicable {
     cursor: pointer;
     text-decoration: underline dotted;
@@ -4013,150 +4228,301 @@ table tbody tr:nth-child(10n+10) td {
     }
 }
 
-
 /* =====================================================
-   SORTEO ALEATORIO DE ESTUDIANTES - ASISTENCIA
-   Añadido sin alterar los estilos/funciones existentes.
+   REGISTRO DE INGRESOS DE ESTUDIANTES
+   (Añadido sin alterar los estilos existentes)
 ===================================================== */
-.boton-sorteo-asistencia {
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 7px;
-    background: #6a1b9a;
-    color: white;
-    font-size: 18px;
+.filtro-curso-linea {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.filtro-curso-linea select {
+    flex: 1;
+    min-width: 0;
+}
+
+.boton-visitas-estudiantes {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: white;
+    color: #1557a6;
+    font-size: 21px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
 }
-.boton-sorteo-asistencia:hover { background: #4a126b; }
 
-.modal-sorteo-asistencia {
-    width: 100%;
-    max-width: 520px;
-    max-height: 94vh;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0,0,0,.35);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+.boton-visitas-estudiantes:hover {
+    background: #f2f6fb;
 }
-.sorteo-contenido {
-    padding: 18px;
-    text-align: center;
-    overflow: auto;
-}
-.sorteo-curso-fecha {
+
+#botonEstadisticas {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 110px;
+    padding: 0 10px;
     font-size: 14px;
-    color: #666;
-    margin-bottom: 8px;
+    white-space: nowrap;
 }
-.sorteo-numero {
-    font-size: clamp(110px, 38vw, 250px);
-    line-height: .9;
-    font-weight: 900;
-    color: #1557a6;
-    min-height: 1em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    user-select: none;
-    letter-spacing: -5px;
-}
-.sorteo-numero.animando {
-    animation: pulsoNumeroSorteo .12s linear infinite;
-}
-@keyframes pulsoNumeroSorteo {
-    0%,100% { transform: scale(1); opacity: .72; }
-    50% { transform: scale(1.04); opacity: 1; }
-}
-.sorteo-nombre {
-    margin: 12px auto 18px;
-    min-height: 44px;
-    font-size: 18px;
-    font-weight: 700;
-    color: #222;
-    cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 9px;
-}
-.sorteo-nombre:not(:empty):hover { background: #f1f4f7; }
-.sorteo-ayuda { font-size: 12px; color: #777; margin-top: -10px; margin-bottom: 15px; }
-.sorteo-acciones {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-.sorteo-acciones button {
-    border: none;
-    border-radius: 9px;
-    padding: 12px 16px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 15px;
-}
-.boton-sortear { background: #6a1b9a; color: white; min-width: 170px; }
-.boton-sortear:disabled { opacity: .55; cursor: wait; }
-.boton-ver-elegidos { background: #1565c0; color: white; }
-.boton-cerrar-sorteo { background: #777; color: white; }
 
-.modal-elegidos-sorteo .sorteo-lista-elegidos {
-    padding: 14px 18px 18px;
-    overflow: auto;
-    max-height: 65vh;
-}
-.item-elegido-sorteo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 4px;
-    border-bottom: 1px solid #eee;
-}
-.item-elegido-sorteo-numero {
-    min-width: 42px;
-    font-size: 24px;
-    font-weight: 900;
-    color: #1557a6;
-    text-align: center;
-}
-.item-elegido-sorteo-nombre { font-weight: 600; text-align: left; }
-.sorteo-vacio { color: #777; padding: 20px 5px; }
 
-.modal-observacion-sorteo {
+/* =====================================================
+   PANEL DE ESTADÍSTICAS
+===================================================== */
+.modal-estadisticas {
     width: 100%;
-    max-width: 460px;
+    max-width: 1050px;
+    max-height: 92vh;
     background: white;
     border-radius: 14px;
     box-shadow: 0 10px 35px rgba(0,0,0,.30);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: aparecerModal .18s ease-out;
 }
-.observacion-sorteo-cuerpo { padding: 18px; }
-.observacion-sorteo-cuerpo textarea {
-    width: 100%;
-    min-height: 120px;
-    resize: vertical;
-    padding: 11px;
-    border: 1px solid #ccc;
-    border-radius: 9px;
-    font: inherit;
-    font-size: 16px;
+.estadisticas-cuerpo { padding: 15px; overflow: auto; }
+.estadisticas-menu {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px; margin-bottom:15px;
 }
-.observacion-sorteo-acciones { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-.observacion-sorteo-acciones button { border:none; border-radius:8px; padding:10px 14px; cursor:pointer; font-weight:700; }
-.observacion-sorteo-guardar { background:#16803c; color:white; }
-.observacion-sorteo-cancelar { background:#777; color:white; }
+.boton-estadistica {
+    border:1px solid #d4dce7; background:#f7f9fc; color:#174a7e;
+    border-radius:10px; padding:12px 10px; cursor:pointer; font-weight:700;
+    transition:.15s;
+}
+.boton-estadistica:hover,.boton-estadistica.activo { background:#eaf2fb; border-color:#8fb2d5; transform:translateY(-1px); }
+.estadistica-panel { display:none; }
+.estadistica-panel.visible { display:block; }
+.estadistica-resumen {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:15px;
+}
+.estadistica-tarjeta { background:#f8fafc; border:1px solid #e1e6ed; border-radius:10px; padding:12px; text-align:center; }
+.estadistica-tarjeta strong { display:block; font-size:22px; color:#1557a6; margin-top:4px; }
+.estadistica-tarjeta span { font-size:12px; color:#666; }
+.estadistica-grafica { background:white; border:1px solid #e1e6ed; border-radius:10px; padding:12px; margin-bottom:12px; }
+.estadistica-grafica h4 { margin:0 0 10px; color:#333; }
+.estadistica-barra { height:28px; display:flex; align-items:center; gap:7px; margin:7px 0; }
+.estadistica-barra .etiqueta { width:145px; min-width:145px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+.estadistica-barra .pista { flex:1; height:18px; background:#edf1f5; border-radius:9px; overflow:hidden; }
+.estadistica-barra .relleno { height:100%; width:0; display:block; border-radius:9px; background-color:#4b83c4; transition:width 1s cubic-bezier(.22,1,.36,1); }
+.estadistica-barra .valor { width:48px; text-align:right; font-size:12px; font-weight:bold; }
+.estadistica-barra-porcentaje { margin:-4px 48px 4px 152px; font-size:10px; color:#777; text-align:right; }
+.estadistica-vacio { padding:20px; text-align:center; color:#777; }
+@media(max-width:768px){
+ .modal-estadisticas{max-height:94vh;} .estadisticas-cuerpo{padding:10px;}
+ .estadisticas-menu{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+ .boton-estadistica{padding:10px 6px;font-size:12px;}
+ .estadistica-barra .etiqueta{width:95px;min-width:95px;font-size:10px;} .estadistica-barra-porcentaje{margin:-4px 48px 4px 102px;font-size:9px;}
+}
 
-@media (max-width: 600px) {
-    .modal-sorteo-asistencia { max-width: 100%; max-height: 100vh; border-radius: 12px; }
-    .sorteo-contenido { padding: 12px 10px 16px; }
-    .sorteo-numero { font-size: min(58vw, 260px); min-height: 45vh; }
-    .sorteo-nombre { font-size: 19px; }
-    .sorteo-acciones button { flex: 1 1 42%; }
+.modal-visitas-estudiantes {
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,.30);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: aparecerModal .18s ease-out;
+}
+
+.visitas-estudiantes-cuerpo {
+    padding: 15px;
+    overflow: auto;
+}
+
+.visitas-estudiantes-filtros {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.visitas-estudiantes-filtro {
+    flex: 1 1 200px;
+}
+
+.visitas-estudiantes-filtro label {
+    margin-bottom: 5px;
+}
+
+.visitas-estudiantes-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.visitas-estudiantes-seleccionados {
+    color: #666;
+    font-size: 14px;
+}
+
+.boton-eliminar-visitas {
+    background: #c62828;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.boton-eliminar-visitas:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.tabla-visitas-estudiantes-contenedor {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.tabla-visitas-estudiantes {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.tabla-visitas-estudiantes th,
+.tabla-visitas-estudiantes td {
+    padding: 10px 9px;
+    border-bottom: 1px solid #e5e5e5;
+    text-align: left;
+}
+
+.tabla-visitas-estudiantes th {
+    background: #f1f4f7;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.tabla-visitas-estudiantes tbody tr:hover {
+    background: #f8fbff;
+}
+
+.tabla-visitas-estudiantes td:first-child,
+.tabla-visitas-estudiantes th:first-child {
+    width: 42px;
+    text-align: center;
+}
+
+.tabla-visitas-estudiantes td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.visitas-estudiantes-vacio {
+    padding: 25px 10px;
+    text-align: center;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .visitas-estudiantes-filtro select {
+        font-size: 11px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    #filtroVisitasEstudiante {
+        font-size: 10px;
+    }
+
+    .boton-visitas-estudiantes {
+        flex-basis: 42px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .modal-visitas-estudiantes {
+        max-height: 94vh;
+    }
+
+    .visitas-estudiantes-cuerpo {
+        padding: 10px;
+        overflow-x: hidden;
+    }
+
+    .tabla-visitas-estudiantes-contenedor {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .tabla-visitas-estudiantes {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+        font-size: 12px;
+    }
+
+    .tabla-visitas-estudiantes th,
+    .tabla-visitas-estudiantes td {
+        padding: 7px 4px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .tabla-visitas-estudiantes th:nth-child(1),
+    .tabla-visitas-estudiantes td:nth-child(1) {
+        width: 34px;
+    }
+
+    .tabla-visitas-estudiantes th:nth-child(2),
+    .tabla-visitas-estudiantes td:nth-child(2) {
+        width: 43%;
+    }
+
+    .tabla-visitas-estudiantes th:nth-child(3),
+    .tabla-visitas-estudiantes td:nth-child(3) {
+        width: 30%;
+    }
+
+    .tabla-visitas-estudiantes th:nth-child(4),
+    .tabla-visitas-estudiantes td:nth-child(4) {
+        width: calc(27% - 34px);
+    }
+}
+
+/* =====================================================
+   COPIA DE SEGURIDAD DE DATOS
+===================================================== */
+.modal-copia-seguridad {
+    width: min(480px, 92vw);
+    max-width: 480px;
+}
+.acciones-copia-seguridad {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.boton-copia-seguridad {
+    width: 100%;
+    padding: 13px 16px;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
 }
 
 </style>
@@ -4188,6 +4554,17 @@ Usuario:
 
 <label>Curso</label>
 
+<div class="filtro-curso-linea">
+<button
+    type="button"
+    id="botonEstadisticas"
+    class="boton-visitas-estudiantes"
+    onclick="abrirModalEstadisticas()"
+    title="Estadísticas"
+    aria-label="Estadísticas">
+    📊 Estadísticas
+</button>
+
 <select id="buscarCurso">
 
 <option value="">
@@ -4195,6 +4572,7 @@ Selecciona un curso
 </option>
 
 </select>
+</div>
 
 </div>
 
@@ -4358,11 +4736,13 @@ Selecciona un curso
 
 <button
     type="button"
-    id="botonSorteoAsistencia"
-    class="boton-sorteo-asistencia"
-    onclick="abrirModalSorteoAsistencia()"
+    id="botonAzarAsistencia"
+    class="boton-azar-asistencia"
+    onclick="abrirModalAzarAsistencia()"
     title="Elegir un estudiante al azar">
+
 🎲
+
 </button>
 
 <button
@@ -4733,6 +5113,16 @@ Selecciona un curso
     onclick="exportarExcel()">
 
 📊 Exportar Excel
+
+</button>
+
+<button
+    type="button"
+    class="exportar"
+    onclick="abrirModalCopiaSeguridad()"
+    title="Copia de seguridad y recuperación de datos">
+
+💾
 
 </button>
 
@@ -5125,58 +5515,6 @@ Cancelar
     </div>
 </div>
 
-
-
-<!-- =====================================================
-     MODAL SORTEO ALEATORIO DE ASISTENCIA
-===================================================== -->
-<div id="modalSorteoAsistencia" class="modal-fondo oculto" onclick="cerrarModalSorteoAsistencia(event)">
-  <div class="modal-sorteo-asistencia" onclick="event.stopPropagation()">
-    <div class="modal-cabecera">
-      <h3>🎲 Sorteo de asistencia</h3>
-      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalSorteoAsistencia()">×</button>
-    </div>
-    <div class="sorteo-contenido">
-      <div id="sorteoCursoFecha" class="sorteo-curso-fecha"></div>
-      <div id="sorteoNumero" class="sorteo-numero">—</div>
-      <div id="sorteoNombre" class="sorteo-nombre" title="Toca el nombre para añadir una observación"></div>
-      <div class="sorteo-ayuda">Toca el nombre para añadir o modificar la observación de asistencia.</div>
-      <div class="sorteo-acciones">
-        <button type="button" id="botonSortearAsistencia" class="boton-sortear" onclick="sortearEstudianteAsistencia()">🎲 Elegir al azar</button>
-        <button type="button" class="boton-ver-elegidos" onclick="mostrarElegidosSorteoAsistencia()">👥 Ya elegidos</button>
-        <button type="button" class="boton-cerrar-sorteo" onclick="cerrarModalSorteoAsistencia()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="modalElegidosSorteoAsistencia" class="modal-fondo oculto" onclick="cerrarModalElegidosSorteoAsistencia(event)">
-  <div class="modal-sorteo-asistencia modal-elegidos-sorteo" onclick="event.stopPropagation()">
-    <div class="modal-cabecera">
-      <h3>👥 Estudiantes ya elegidos</h3>
-      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalElegidosSorteoAsistencia()">×</button>
-    </div>
-    <div id="listaElegidosSorteoAsistencia" class="sorteo-lista-elegidos"></div>
-  </div>
-</div>
-
-<div id="modalObservacionSorteoAsistencia" class="modal-fondo oculto" onclick="cerrarModalObservacionSorteo(event)">
-  <div class="modal-observacion-sorteo" onclick="event.stopPropagation()">
-    <div class="modal-cabecera">
-      <h3>📝 Observación de asistencia</h3>
-      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalObservacionSorteo()">×</button>
-    </div>
-    <div class="observacion-sorteo-cuerpo">
-      <div id="observacionSorteoEstudiante" style="font-weight:700;margin-bottom:10px;"></div>
-      <textarea id="textoObservacionSorteo" placeholder="Escribe una observación..."></textarea>
-      <div class="observacion-sorteo-acciones">
-        <button type="button" class="observacion-sorteo-cancelar" onclick="cerrarModalObservacionSorteo()">Cancelar</button>
-        <button type="button" class="observacion-sorteo-guardar" onclick="guardarObservacionDesdeSorteo()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- =====================================================
      MODAL ESTUDIANTES PENDIENTES DE ASISTENCIA
 ===================================================== -->
@@ -5487,6 +5825,16 @@ Cancelar
                         <input id="mostrarNumeroAsientoAula" type="checkbox">
                         <span>Mostrar número de asiento</span>
                     </label>
+                    <div class="configuracion-aula-colores-genero">
+                        <div class="configuracion-aula-color">
+                            <label for="colorMujerAula">Color de letras de mujeres</label>
+                            <input id="colorMujerAula" type="color" value="#e91e63" title="Elegir color para las letras de las mujeres">
+                        </div>
+                        <div class="configuracion-aula-color">
+                            <label for="colorVaronAula">Color de letras de varones</label>
+                            <input id="colorVaronAula" type="color" value="#1976d2" title="Elegir color para las letras de los varones">
+                        </div>
+                    </div>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
                             <label for="cantidadColumnasAula">Columnas de mesas</label>
@@ -5510,7 +5858,7 @@ Cancelar
                     <p class="configuracion-aula-tamano-ayuda">El tamaño se aplica a todas las mesas de esta distribución y se guarda por curso.</p>
                     <div id="resumenConfiguracionAula" class="configuracion-aula-resumen"></div>
                     <div class="distribucion-acciones">
-                        <button type="button" id="botonAplicarConfiguracionAula" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()" style="display:none;">✓ Aplicar configuración</button>
+                        <button type="button" id="botonAplicarConfiguracionAula" class="boton-distribucion-guardar" onclick="aplicarConfiguracionAula()" style="display:none;">💾 Guardar configuración</button>
                     </div>
                 </div>
             </div>
@@ -5561,6 +5909,49 @@ Cancelar
 </div>
 
 <!-- =====================================================
+     NUEVO: MODAL ELECCIÓN ALEATORIA DE ESTUDIANTE
+===================================================== -->
+<div id="modalAzarAsistencia" class="modal-fondo oculto"
+     onclick="cerrarModalAzarAsistencia(event)">
+    <div class="modal-azar-asistencia" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3 id="tituloAzarAsistencia">🎲 Estudiante al azar</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarModalAzarAsistencia()">×</button>
+        </div>
+
+        <div class="azar-asistencia-cuerpo">
+            <div id="azarAsistenciaFecha" class="azar-asistencia-fecha"></div>
+            <div id="azarAsistenciaAvisoFecha" class="azar-asistencia-aviso-fecha oculto"></div>
+
+            <div id="azarAsistenciaNumero" class="azar-asistencia-numero">—</div>
+
+            <div id="azarAsistenciaNombre" class="azar-asistencia-nombre">
+                Presiona «Elegir al azar»
+            </div>
+            <div class="azar-asistencia-ayuda">
+                Presiona el nombre para añadir una observación de asistencia.
+            </div>
+
+            <div id="azarAsistenciaLista" class="azar-asistencia-lista oculto"></div>
+        </div>
+
+        <div class="azar-asistencia-acciones">
+            <button type="button" class="boton-elegir-azar"
+                    id="botonElegirAzarAsistencia"
+                    onclick="elegirEstudianteAzarAsistencia()">
+                🎲 Elegir al azar
+            </button>
+            <button type="button" class="boton-ver-elegidos"
+                    id="botonVerElegidosAzarAsistencia"
+                    onclick="mostrarElegidosAzarAsistencia()">
+                👥 Ver elegidos
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
      MODAL HISTORIAL DE CAMBIOS
 ===================================================== -->
 <div
@@ -5585,6 +5976,93 @@ Cancelar
         <div class="historial-cuerpo">
             <div id="contenidoHistorial" class="historial-vacio">
                 Cargando historial...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =====================================================
+     MODAL ESTADÍSTICAS
+===================================================== -->
+<div id="modalEstadisticas" class="modal-fondo oculto" onclick="cerrarModalEstadisticas(event)">
+  <div class="modal-estadisticas" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <h3>📊 Estadísticas</h3>
+      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalEstadisticas()">×</button>
+    </div>
+    <div class="estadisticas-cuerpo">
+      <div class="estadisticas-menu">
+        <button type="button" class="boton-estadistica activo" data-estadistica="ingresos" onclick="mostrarEstadistica('ingresos',this)">👁️ Estudiantes que ingresaron</button>
+        <button type="button" class="boton-estadistica" data-estadistica="general" onclick="mostrarEstadistica('general',this)">📊 Resumen general</button>
+        <button type="button" class="boton-estadistica" data-estadistica="cursos" onclick="mostrarEstadistica('cursos',this)">🏫 Por curso</button>
+        <button type="button" class="boton-estadistica" data-estadistica="rendimiento" onclick="mostrarEstadistica('rendimiento',this)">🎓 Rendimiento académico</button>
+        <button type="button" class="boton-estadistica" data-estadistica="asistencia" onclick="mostrarEstadistica('asistencia',this)">🕒 Asistencia</button>
+        <button type="button" class="boton-estadistica" data-estadistica="actividades" onclick="mostrarEstadistica('actividades',this)">📝 Actividades</button>
+      </div>
+      <div id="estadisticaIngresos" class="estadistica-panel visible"></div>
+      <div id="estadisticaGeneral" class="estadistica-panel"></div>
+      <div id="estadisticaCursos" class="estadistica-panel"></div>
+      <div id="estadisticaRendimiento" class="estadistica-panel"></div>
+      <div id="estadisticaAsistencia" class="estadistica-panel"></div>
+      <div id="estadisticaActividades" class="estadistica-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     MODAL INGRESOS DE ESTUDIANTES
+===================================================== -->
+<div id="modalVisitasEstudiantes" class="modal-fondo oculto"
+     onclick="cerrarModalVisitasEstudiantes(event)">
+    <div class="modal-visitas-estudiantes" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>👁️ Estudiantes que ingresaron</h3>
+            <button type="button" class="boton-cerrar-modal"
+                    onclick="cerrarModalVisitasEstudiantes()">×</button>
+        </div>
+
+        <div class="visitas-estudiantes-cuerpo">
+            <div class="visitas-estudiantes-filtros">
+                <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasCurso">Curso</label>
+                    <select id="filtroVisitasCurso">
+                        <option value="">Todos los cursos</option>
+                    </select>
+                </div>
+                <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasEstudiante">Estudiante</label>
+                    <select id="filtroVisitasEstudiante">
+                        <option value="">Todos los estudiantes</option>
+                    </select>
+                </div>
+                <div class="visitas-estudiantes-filtro">
+                    <label for="filtroVisitasFecha">Fecha</label>
+                    <input type="date" id="filtroVisitasFecha">
+                </div>
+            </div>
+
+            <div class="visitas-estudiantes-acciones">
+                <span id="visitasEstudiantesSeleccionadas" class="visitas-estudiantes-seleccionados">0 seleccionadas</span>
+                <button type="button" id="botonEliminarVisitasSeleccionadas"
+                        class="boton-eliminar-visitas"
+                        onclick="eliminarVisitasEstudiantesSeleccionadas()"
+                        disabled>🗑️ Eliminar selección</button>
+            </div>
+
+            <div class="tabla-visitas-estudiantes-contenedor">
+                <table class="tabla-visitas-estudiantes">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="seleccionarTodasVisitas" title="Seleccionar todas"></th>
+                            <th>Nombre</th>
+                            <th>Fecha</th>
+                            <th>Curso</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaVisitasEstudiantesCuerpo">
+                        <tr><td colspan="4" class="visitas-estudiantes-vacio">Abriendo...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -5812,6 +6290,13 @@ let registrosVisitasInformeGlobal = [];
 let asistenciaDesbloqueada = false;
 let mostrarHoraAsistencia = false;
 
+/* =====================================================
+   NUEVO ESTADO: ELECCIÓN ALEATORIA POR CURSO Y FECHA
+===================================================== */
+let azarAsistenciaCursoFecha = "";
+let azarAsistenciaEstudianteActual = null;
+let azarAsistenciaAnimacion = null;
+
 
 /* =====================================================
    LIMITES
@@ -6024,7 +6509,7 @@ async function cargarEstudiantes(esSegundoPlano = false) {
     await supabaseClient
     .from("matematica")
     .select(
-        "id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t"
+        "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,nota_1t,nota_2t"
     )
     .order("curso")
     .order("num_lista");
@@ -6140,6 +6625,9 @@ document.getElementById(
 
         cursoSeleccionado =
         this.value;
+
+        const botonEstadisticas = document.getElementById("botonEstadisticas");
+        if (botonEstadisticas) botonEstadisticas.classList.toggle("oculto", !!cursoSeleccionado);
 
         const filtroBuscarEstudiante =
             document.getElementById("filtroBuscarEstudiante");
@@ -10593,6 +11081,708 @@ function mostrarComentarioInforme(titulo, comentario) {
     document.body.appendChild(fondo);
 }
 
+/* =====================================================
+   INGRESOS DE ESTUDIANTES
+===================================================== */
+let registrosVisitasEstudiantes = [];
+let visitasEstudiantesCargadas = false;
+
+function obtenerNombreEstudianteVisita(estudianteId) {
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    return estudiante ? (estudiante.nombre || estudiante.nombre_completo || "Estudiante") : "Estudiante";
+}
+
+function obtenerCursoEstudianteVisita(estudianteId) {
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    return estudiante ? String(estudiante.curso || "") : "";
+}
+
+function obtenerFechaLocalVisita(fechaHora) {
+    const fecha = new Date(fechaHora);
+    if (Number.isNaN(fecha.getTime())) return "";
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, "0");
+    const d = String(fecha.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+function formatearFechaHoraVisita(fechaHora) {
+    const fecha = new Date(fechaHora);
+    if (Number.isNaN(fecha.getTime())) return String(fechaHora || "");
+    return `${fecha.toLocaleDateString("es-BO", { day: "2-digit", month: "2-digit", year: "numeric" })} — ${fecha.toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
+
+function cargarCursosFiltroVisitas() {
+    const select = document.getElementById("filtroVisitasCurso");
+    if (!select) return;
+    const valorAnterior = select.value;
+    const cursos = [...new Set((estudiantes || []).map(e => e.curso).filter(Boolean))].sort();
+    select.innerHTML = `<option value="">Todos los cursos</option>`;
+    cursos.forEach(curso => {
+        const opcion = document.createElement("option");
+        opcion.value = curso;
+        opcion.textContent = curso;
+        select.appendChild(opcion);
+    });
+    if (valorAnterior && cursos.includes(valorAnterior)) select.value = valorAnterior;
+}
+
+function cargarEstudiantesFiltroVisitas() {
+    const select = document.getElementById("filtroVisitasEstudiante");
+    if (!select) return;
+    const valorAnterior = select.value;
+    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
+    const estudiantesCurso = (estudiantes || []).filter(e => !curso || String(e.curso || "") === curso).slice().sort((a,b) => String(a.nombre || a.nombre_completo || "").localeCompare(String(b.nombre || b.nombre_completo || ""), "es"));
+    const conteoVisitas = {};
+    (registrosVisitasEstudiantes || []).forEach(v => { const id=String(v.estudiante_id); conteoVisitas[id]=(conteoVisitas[id]||0)+1; });
+    select.innerHTML = `<option value="">Todos los estudiantes</option>`;
+    estudiantesCurso.forEach(e => {
+        const o=document.createElement("option"); o.value=e.id;
+        o.textContent=`${e.nombre || e.nombre_completo || "Estudiante"} — ${conteoVisitas[String(e.id)] || 0} vistas`;
+        select.appendChild(o);
+    });
+    if (valorAnterior && estudiantesCurso.some(e => String(e.id) === String(valorAnterior))) select.value=valorAnterior;
+}
+
+function obtenerVisitasEstudiantesFiltradas() {
+    const curso = String(document.getElementById("filtroVisitasCurso")?.value || "");
+    const estudianteId = String(document.getElementById("filtroVisitasEstudiante")?.value || "");
+    const fecha = String(document.getElementById("filtroVisitasFecha")?.value || "");
+    return (registrosVisitasEstudiantes || [])
+        .map(visita => ({
+            ...visita,
+            nombre_estudiante: obtenerNombreEstudianteVisita(visita.estudiante_id),
+            curso_estudiante: obtenerCursoEstudianteVisita(visita.estudiante_id),
+            fecha_local: obtenerFechaLocalVisita(visita.fecha_hora)
+        }))
+        .filter(visita => !curso || visita.curso_estudiante === curso)
+        .filter(visita => !estudianteId || String(visita.estudiante_id) === estudianteId)
+        .filter(visita => !fecha || visita.fecha_local === fecha)
+        .sort((a,b) => new Date(b.fecha_hora) - new Date(a.fecha_hora));
+}
+
+function actualizarEstadoSeleccionVisitas() {
+    const filas = [...document.querySelectorAll(".check-visita-estudiante")];
+    const seleccionadas = filas.filter(c => c.checked).length;
+    const texto = document.getElementById("visitasEstudiantesSeleccionadas");
+    const boton = document.getElementById("botonEliminarVisitasSeleccionadas");
+    const todas = document.getElementById("seleccionarTodasVisitas");
+
+    if (texto) texto.textContent = `${seleccionadas} seleccionada${seleccionadas === 1 ? "" : "s"}`;
+    if (boton) boton.disabled = seleccionadas === 0;
+    if (todas) {
+        todas.checked = filas.length > 0 && seleccionadas === filas.length;
+        todas.indeterminate = seleccionadas > 0 && seleccionadas < filas.length;
+    }
+}
+
+function renderizarVisitasEstudiantes() {
+    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
+    if (!cuerpo) return;
+
+    const visitas = obtenerVisitasEstudiantesFiltradas();
+    if (!visitas.length) {
+        cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No existen ingresos registrados con los filtros seleccionados.</td></tr>`;
+        actualizarEstadoSeleccionVisitas();
+        return;
+    }
+
+    cuerpo.innerHTML = visitas.map(visita => `
+        <tr>
+            <td><input type="checkbox" class="check-visita-estudiante" value="${String(visita.id).replace(/"/g, "&quot;")}" aria-label="Seleccionar ingreso"></td>
+            <td>${String(visita.nombre_estudiante || "Estudiante").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</td>
+            <td>${String(formatearFechaHoraVisita(visita.fecha_hora)).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+            <td>${String(visita.curso_estudiante || "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>
+        </tr>
+    `).join("");
+
+    cuerpo.querySelectorAll(".check-visita-estudiante").forEach(check => {
+        check.addEventListener("change", actualizarEstadoSeleccionVisitas);
+    });
+    actualizarEstadoSeleccionVisitas();
+}
+
+async function cargarVisitasEstudiantes() {
+    const cuerpo = document.getElementById("tablaVisitasEstudiantesCuerpo");
+    if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">Cargando ingresos...</td></tr>`;
+
+    try {
+        const todas = [];
+        const tamanoPagina = 1000;
+        let desde = 0;
+
+        while (true) {
+            const { data, error } = await supabaseClient
+                .from("visitas_estudiantes")
+                .select("id,estudiante_id,fecha_hora")
+                .order("fecha_hora", { ascending: false })
+                .range(desde, desde + tamanoPagina - 1);
+
+            if (error) throw error;
+            const pagina = data || [];
+            todas.push(...pagina);
+            if (pagina.length < tamanoPagina) break;
+            desde += tamanoPagina;
+        }
+
+        registrosVisitasEstudiantes = todas;
+        visitasEstudiantesCargadas = true;
+        cargarCursosFiltroVisitas();
+        cargarEstudiantesFiltroVisitas();
+        renderizarVisitasEstudiantes();
+    } catch (error) {
+        console.error("Error al cargar los ingresos de estudiantes:", error);
+        registrosVisitasEstudiantes = [];
+        if (cuerpo) cuerpo.innerHTML = `<tr><td colspan="4" class="visitas-estudiantes-vacio">No se pudieron cargar los ingresos de estudiantes.</td></tr>`;
+        const texto = document.getElementById("visitasEstudiantesSeleccionadas");
+        if (texto) texto.textContent = "0 seleccionadas";
+    }
+}
+
+
+function cerrarModalEstadisticas(event) {
+    const modal = document.getElementById("modalEstadisticas");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+function escEstadistica(v) {
+    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function barrasEstadistica(items, max=0) {
+    if (!items.length) return '<div class="estadistica-vacio">No hay datos suficientes para mostrar esta estadística.</div>';
+    const limite=max || Math.max(...items.map(x=>Number(x.valor)||0),1);
+    return items.map(x=>{ const val=Number(x.valor)||0; const pct=Math.max(0,Math.min(100,(val/limite)*100)); return `<div class="estadistica-barra"><span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span><span class="pista"><span class="relleno" style="width:${pct}%"></span></span><span class="valor">${escEstadistica(x.texto ?? val)}</span></div>`; }).join("");
+}
+
+async function cargarTodosLosRegistrosEstadisticas(tabla, campos, orden = "id") {
+    const todos = [];
+    const tamanoPagina = 1000;
+    let desde = 0;
+
+    while (true) {
+        const { data, error } = await supabaseClient
+            .from(tabla)
+            .select(campos)
+            .order(orden, { ascending: true })
+            .range(desde, desde + tamanoPagina - 1);
+
+        if (error) throw error;
+        const pagina = data || [];
+        todos.push(...pagina);
+        if (pagina.length < tamanoPagina) break;
+        desde += tamanoPagina;
+    }
+
+    return todos;
+}
+
+function calcularNota3TEstadisticas(estudianteId, actividades3T, mapaCalificaciones) {
+    let total = 0;
+    let hayNotas = false;
+
+    ["SER", "SABER", "HACER", "AUTOEVALUACION"].forEach(categoria => {
+        const lista = actividades3T.filter(a => String(a.categoria || "").toUpperCase() === categoria);
+        if (!lista.length) return;
+
+        let sumaNotas = 0;
+        let sumaMaximos = 0;
+
+        lista.forEach(a => {
+            const r = mapaCalificaciones[String(estudianteId) + "_" + String(a.id)];
+            if (!r || r.nota === null || r.nota === undefined || String(r.nota).trim() === "") return;
+
+            const nota = Number(r.nota);
+            const maximo = Number(a.puntaje_maximo || LIMITES[categoria] || 0);
+            if (!Number.isFinite(nota) || !Number.isFinite(maximo) || maximo <= 0) return;
+
+            sumaNotas += nota;
+            sumaMaximos += maximo;
+            hayNotas = true;
+        });
+
+        if (sumaMaximos > 0) {
+            total += (sumaNotas / sumaMaximos) * LIMITES[categoria];
+        }
+    });
+
+    return hayNotas ? Math.round(total) : null;
+}
+
+let xOrdenCursosEstadistica = false;
+
+function prepararGraficaEstadistica(titulo, items, unidad = "") {
+    const lista = (items || [])
+        .map((x, indice) => ({ nombre: String(x.nombre ?? ""), valor: Number(x.valor) || 0, indice }))
+        .sort((a, b) => {
+            if (/curso/i.test(titulo) && a.nombre !== b.nombre) return a.nombre.localeCompare(b.nombre, undefined, { numeric:true, sensitivity:"base" });
+            return b.valor - a.valor;
+        });
+
+    const total = lista.reduce((s, x) => s + x.valor, 0);
+    const maximo = Math.max(...lista.map(x => x.valor), 1);
+
+    return `<div class="estadistica-grafica">
+        <h4>${escEstadistica(titulo)}</h4>
+        ${lista.length ? lista.map(x => {
+            const porcentaje = total > 0 ? (x.valor / total) * 100 : 0;
+            const ancho = maximo > 0 ? (x.valor / maximo) * 100 : 0;
+            const coloresCursos = ["#2563eb","#16a34a","#dc2626","#9333ea","#ea580c","#0891b2","#ca8a04","#db2777","#4f46e5","#65a30d","#0f766e","#c2410c","#7c3aed","#be123c","#0369a1"];
+            let color;
+            if (/curso/i.test(titulo)) {
+                const clave = x.nombre.trim().toUpperCase();
+                let hash = 0;
+                for (let i = 0; i < clave.length; i++) hash = ((hash * 31) + clave.charCodeAt(i)) >>> 0;
+                color = coloresCursos[hash % coloresCursos.length];
+            } else {
+                const hue = Math.max(0, Math.min(120, porcentaje * 1.2));
+                color = `hsl(${Math.round(hue)}, 70%, 45%)`;
+            }
+            return `<div class="estadistica-barra">
+                <span class="etiqueta" title="${escEstadistica(x.nombre)}">${escEstadistica(x.nombre)}</span>
+                <span class="pista"><span class="relleno" data-ancho="${Math.max(0, Math.min(100, ancho)).toFixed(2)}" style="background-color:${color};width:0"></span></span>
+                <span class="valor">${escEstadistica(String(x.valor))}${unidad}</span>
+            </div>
+            <div class="estadistica-barra-porcentaje"><strong>${porcentaje.toFixed(1)}%</strong> del total</div>`;
+        }).join("") : '<div class="estadistica-vacio">No hay datos para mostrar.</div>'}
+    </div>`;
+}
+
+function animarBarrasEstadistica(panel) {
+    if (!panel) return;
+    const barras = panel.querySelectorAll('.estadistica-barra .relleno[data-ancho]');
+    barras.forEach((barra, indice) => {
+        barra.style.transition = 'none';
+        barra.style.width = '0%';
+        // Fuerza un frame en 0% para que el navegador no salte directamente al valor final.
+        void barra.offsetWidth;
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                barra.style.transition = `width 1s cubic-bezier(.22,1,.36,1) ${Math.min(indice * 45, 900)}ms`;
+                barra.style.width = `${barra.dataset.ancho}%`;
+            }, 30);
+        });
+    });
+}
+
+function obtenerGeneroEstadistica(valor) {
+    const g = String(valor ?? "").trim().toUpperCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!g) return "";
+    if (["F", "FEMENINO", "MUJER", "MUJERES", "FEM", "FEMALE"].includes(g) || /FEM|MUJ/.test(g)) return "mujer";
+    if (["M", "MASCULINO", "VARON", "VARONES", "HOMBRE", "HOMBRES", "V", "MALE"].includes(g) || /MASC|VARON|VARONES|HOMBR|MALE/.test(g)) return "varon";
+    return "";
+}
+
+function calcularEdadEstadistica(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+    const fecha = new Date(String(fechaNacimiento).length === 10 ? `${fechaNacimiento}T00:00:00` : fechaNacimiento);
+    if (Number.isNaN(fecha.getTime())) return null;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const mes = hoy.getMonth() - fecha.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) edad--;
+    return edad >= 0 && edad <= 100 ? edad : null;
+}
+
+async function prepararEstadisticas() {
+    const general = document.getElementById("estadisticaGeneral");
+    const cursosPanel = document.getElementById("estadisticaCursos");
+    const rendimiento = document.getElementById("estadisticaRendimiento");
+    const asistenciaPanel = document.getElementById("estadisticaAsistencia");
+    const actividadesPanel = document.getElementById("estadisticaActividades");
+
+    [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => {
+        if (el) el.innerHTML = '<div class="estadistica-vacio">⏳ Cargando todas las estadísticas...</div>';
+    });
+
+    try {
+        // Las estadísticas se cargan independientemente del curso seleccionado.
+        // Se obtienen todas las páginas para no quedar limitados a los primeros 1000 registros.
+        const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
+            cargarTodosLosRegistrosEstadisticas(
+                "matematica",
+                "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,nota_1t,nota_2t",
+                "id"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "asistencia",
+                "id,estudiante_id,fecha,estado,hora,observacion",
+                "fecha"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "actividades",
+                "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo",
+                "id"
+            ),
+            cargarTodosLosRegistrosEstadisticas(
+                "calificaciones",
+                "id,actividad_id,estudiante_id,nota,observacion",
+                "id"
+            )
+        ]);
+
+        // Los ingresos de estudiantes ya tienen carga completa y paginada.
+        if (!visitasEstudiantesCargadas) {
+            try {
+                await cargarVisitasEstudiantes();
+            } catch (_) {}
+        }
+
+        const visitas = registrosVisitasEstudiantes || [];
+        const cursos = [...new Set(est.map(e => e.curso).filter(Boolean))].sort();
+        const mapaEstudiante = new Map(est.map(e => [String(e.id), e]));
+        const mapaCalificaciones = {};
+        calificacionesTodas.forEach(r => {
+            mapaCalificaciones[String(r.estudiante_id) + "_" + String(r.actividad_id)] = r;
+        });
+
+        const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
+        const actividadesPorCurso = {};
+        actividades3T.forEach(a => {
+            if (!actividadesPorCurso[a.curso]) actividadesPorCurso[a.curso] = [];
+            actividadesPorCurso[a.curso].push(a);
+        });
+
+        // Calcular 3T y final para todos los estudiantes, sin necesidad de abrir un curso.
+        const estudiantesConNotas = est.map(e => {
+            const nota1 = convertirNumero(e.nota_1t);
+            const nota2 = convertirNumero(e.nota_2t);
+            const nota3 = calcularNota3TEstadisticas(e.id, actividadesPorCurso[e.curso] || [], mapaCalificaciones);
+            const final = nota1 !== null && nota2 !== null && nota3 !== null
+                ? Math.round((nota1 + nota2 + nota3) / 3)
+                : null;
+            return { ...e, nota3, final };
+        });
+
+        const promedio = arr => {
+            const validos = arr.map(Number).filter(Number.isFinite);
+            return validos.length
+                ? (validos.reduce((a, b) => a + b, 0) / validos.length).toFixed(1)
+                : "—";
+        };
+
+        const conteoEstado = registros => {
+            const r = { asistio: 0, atraso: 0, falta: 0, licencia: 0, permiso: 0 };
+            (registros || []).forEach(x => {
+                const estado = String(x.estado || "").toLowerCase();
+                if (estado === "asistio") r.asistio++;
+                else if (estado === "atraso") r.atraso++;
+                else if (estado === "falta") r.falta++;
+                else if (estado === "licencia") r.licencia++;
+                else if (estado === "permiso") r.permiso++;
+            });
+            return r;
+        };
+
+        const hoy = new Date();
+        const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
+        const visitasHoy = visitas.filter(v => obtenerFechaLocalVisita(v.fecha_hora) === hoyClave).length;
+        const estudiantesConIngreso = new Set(visitas.map(v => String(v.estudiante_id))).size;
+        const estados = conteoEstado(asistenciasTodas);
+        const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
+        const cantidadVarones = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
+        const cantidadMujeres = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
+        const estudiantesSinGenero = estudiantesConNotas.filter(e => !obtenerGeneroEstadistica(e.gen)).length;
+
+        const estadisticaGenero = (genero) => {
+            const grupo = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === genero);
+            const ids = new Set(grupo.map(e => String(e.id)));
+            const asistenciasGrupo = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const estadosGrupo = conteoEstado(asistenciasGrupo);
+            const observacionesAsistencia = asistenciasGrupo.filter(r => String(r.observacion || '').trim()).length;
+            const calificacionesGrupo = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const observacionesActividades = calificacionesGrupo.filter(r => String(r.observacion || '').trim()).length;
+            const visitasGrupo = visitas.filter(v => ids.has(String(v.estudiante_id))).length;
+            return {
+                estudiantes: grupo.length,
+                promedio1: promedio(grupo.map(e => e.nota_1t)),
+                promedio2: promedio(grupo.map(e => e.nota_2t)),
+                promedio3: promedio(grupo.map(e => e.nota3)),
+                promedioFinal: promedio(grupo.map(e => e.final)),
+                asistencias: estadosGrupo.asistio,
+                atrasos: estadosGrupo.atraso,
+                faltas: estadosGrupo.falta,
+                licencias: estadosGrupo.licencia,
+                permisos: estadosGrupo.permiso,
+                observaciones: observacionesAsistencia + observacionesActividades,
+                visitas: visitasGrupo
+            };
+        };
+        const estadisticaVarones = estadisticaGenero("varon");
+        const estadisticaMujeres = estadisticaGenero("mujer");
+
+        if (general) general.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
+                <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
+                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
+                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
+            </div>
+            <div class="estadistica-tabla-genero-comparacion">
+                <h4>⚖️ Comparación entre varones y mujeres</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Indicador</th><th>👦 Varones</th><th>👧 Mujeres</th></tr></thead>
+                        <tbody>
+                            <tr><td>Estudiantes</td><td>${estadisticaVarones.estudiantes}</td><td>${estadisticaMujeres.estudiantes}</td></tr>
+                            <tr><td>Promedio 1T</td><td>${estadisticaVarones.promedio1}</td><td>${estadisticaMujeres.promedio1}</td></tr>
+                            <tr><td>Promedio 2T</td><td>${estadisticaVarones.promedio2}</td><td>${estadisticaMujeres.promedio2}</td></tr>
+                            <tr><td>Promedio 3T</td><td>${estadisticaVarones.promedio3}</td><td>${estadisticaMujeres.promedio3}</td></tr>
+                            <tr><td>Promedio final</td><td>${estadisticaVarones.promedioFinal}</td><td>${estadisticaMujeres.promedioFinal}</td></tr>
+                            <tr><td>Asistencias</td><td>${estadisticaVarones.asistencias}</td><td>${estadisticaMujeres.asistencias}</td></tr>
+                            <tr><td>Atrasos</td><td>${estadisticaVarones.atrasos}</td><td>${estadisticaMujeres.atrasos}</td></tr>
+                            <tr><td>Faltas</td><td>${estadisticaVarones.faltas}</td><td>${estadisticaMujeres.faltas}</td></tr>
+                            <tr><td>Licencias</td><td>${estadisticaVarones.licencias}</td><td>${estadisticaMujeres.licencias}</td></tr>
+                            <tr><td>Permisos</td><td>${estadisticaVarones.permisos}</td><td>${estadisticaMujeres.permisos}</td></tr>
+                            <tr><td>Observaciones</td><td>${estadisticaVarones.observaciones}</td><td>${estadisticaMujeres.observaciones}</td></tr>
+                            <tr><td>Ingresos a la página</td><td>${estadisticaVarones.visitas}</td><td>${estadisticaMujeres.visitas}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                ${estudiantesSinGenero ? `<div class="estadistica-vacio">ℹ️ ${estudiantesSinGenero} estudiante(s) tienen un valor de <strong>gen</strong> que no fue reconocido.</div>` : ''}
+            </div>
+            ${prepararGraficaEstadistica("Estudiantes por curso", cursos.map(c => ({ nombre:c, valor:estudiantesConNotas.filter(e=>e.curso===c).length })))}
+            ${prepararGraficaEstadistica("Distribución por género", [
+                {nombre:"Varones",valor:cantidadVarones},
+                {nombre:"Mujeres",valor:cantidadMujeres}
+            ])}
+            ${prepararGraficaEstadistica("Ingresos registrados por curso", cursos.map(c => ({ nombre:c, valor:visitas.filter(v => mapaEstudiante.get(String(v.estudiante_id))?.curso === c).length })))}
+            ${prepararGraficaEstadistica("Estado de asistencia de todo el establecimiento", [
+                {nombre:"Asistencias",valor:estados.asistio},
+                {nombre:"Atrasos",valor:estados.atraso},
+                {nombre:"Faltas",valor:estados.falta},
+                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Permisos",valor:estados.permiso}
+            ])}`;
+
+        if (cursosPanel) cursosPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
+                <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>👥 Varones y mujeres por curso</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>👦 Varones</th><th>👧 Mujeres</th><th>Total</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const grupo = estudiantesConNotas.filter(e => e.curso === c);
+                            const varones = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
+                            const mujeres = grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
+                            return `<tr><td>${escEstadistica(c)}</td><td>${varones}</td><td>${mujeres}</td><td>${grupo.length}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>📊 Comparación por curso: género, notas, asistencia y observaciones</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>👦 Var.</th><th>👧 Muj.</th><th>Prom. var.</th><th>Prom. muj.</th><th>Asist. var.</th><th>Asist. muj.</th><th>Faltas var.</th><th>Faltas muj.</th><th>Obs. var.</th><th>Obs. muj.</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const grupo = estudiantesConNotas.filter(e => e.curso === c);
+                            const idsVar = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").map(e => String(e.id)));
+                            const idsMuj = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").map(e => String(e.id)));
+                            const datosGrupo = ids => {
+                                const es = grupo.filter(e => ids.has(String(e.id)));
+                                const as = conteoEstado(asistenciasTodas.filter(r => ids.has(String(r.estudiante_id))));
+                                const obsA = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const obsC = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                return { n:es.length, prom:promedio(es.map(e => e.final)), asist:as.asistio, falta:as.falta, obs:obsA + obsC };
+                            };
+                            const v = datosGrupo(idsVar), m = datosGrupo(idsMuj);
+                            return `<tr><td>${escEstadistica(c)}</td><td>${v.n}</td><td>${m.n}</td><td>${v.prom}</td><td>${m.prom}</td><td>${v.asist}</td><td>${m.asist}</td><td>${v.falta}</td><td>${m.falta}</td><td>${v.obs}</td><td>${m.obs}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>🎂 Edad por curso</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>Promedio de edad</th><th>Edad mínima</th><th>Edad máxima</th><th>Estudiantes con edad</th></tr></thead>
+                        <tbody>${cursos.map(c => {
+                            const edades = estudiantesConNotas.filter(e => e.curso === c).map(e => calcularEdadEstadistica(e.fecha_nacimiento)).filter(Number.isFinite);
+                            const promEdad = edades.length ? (edades.reduce((a,b)=>a+b,0)/edades.length).toFixed(1) : "—";
+                            return `<tr><td>${escEstadistica(c)}</td><td>${promEdad}</td><td>${edades.length ? Math.min(...edades) : "—"}</td><td>${edades.length ? Math.max(...edades) : "—"}</td><td>${edades.length}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
+            </div>
+            ${prepararGraficaEstadistica("Cantidad de estudiantes por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c).length})))}
+            ${prepararGraficaEstadistica("Varones por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen) === "varon").length})))}
+            ${prepararGraficaEstadistica("Mujeres por curso", cursos.map(c => ({nombre:c,valor:estudiantesConNotas.filter(e=>e.curso===c && obtenerGeneroEstadistica(e.gen) === "mujer").length})))}
+            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c => {
+                const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
+                return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
+            }))}
+            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasTodas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
+            ${prepararGraficaEstadistica("Ingresos a la página por curso", cursos.map(c => ({nombre:c,valor:visitas.filter(v=>mapaEstudiante.get(String(v.estudiante_id))?.curso===c).length})))}`;
+
+        const finales = estudiantesConNotas.map(e=>e.final).filter(Number.isFinite);
+        if (rendimiento) rendimiento.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Promedio 1T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_1t))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio 2T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota_2t))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio 3T</span><strong>${promedio(estudiantesConNotas.map(e=>e.nota3))}</strong></div>
+                <div class="estadistica-tarjeta"><span>Promedio final</span><strong>${promedio(finales)}</strong></div>
+                <div class="estadistica-tarjeta"><span>Con nota final</span><strong>${estudiantesConNotaFinal.length}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Promedio final por curso", cursos.map(c=>({nombre:c,valor:Number(promedio(estudiantesConNotas.filter(e=>e.curso===c).map(e=>e.final)))||0})))}
+            ${prepararGraficaEstadistica("Distribución de nota final", [
+                {nombre:"90–100",valor:finales.filter(n=>n>=90).length},
+                {nombre:"70–89",valor:finales.filter(n=>n>=70&&n<90).length},
+                {nombre:"51–69",valor:finales.filter(n=>n>=51&&n<70).length},
+                {nombre:"0–50",valor:finales.filter(n=>n<51).length}
+            ])}`;
+
+        const asistenciaPorCurso = cursos.map(c => {
+            const registros = asistenciasTodas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
+            const ce = conteoEstado(registros);
+            return { curso:c, ...ce };
+        });
+        if (asistenciaPanel) asistenciaPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Asistencias</span><strong>${estados.asistio}</strong></div>
+                <div class="estadistica-tarjeta"><span>Atrasos</span><strong>${estados.atraso}</strong></div>
+                <div class="estadistica-tarjeta"><span>Faltas</span><strong>${estados.falta}</strong></div>
+                <div class="estadistica-tarjeta"><span>Licencias / permisos</span><strong>${estados.licencia + estados.permiso}</strong></div>
+            </div>
+            ${prepararGraficaEstadistica("Asistencia general", [
+                {nombre:"Asistencias",valor:estados.asistio},
+                {nombre:"Atrasos",valor:estados.atraso},
+                {nombre:"Faltas",valor:estados.falta},
+                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Permisos",valor:estados.permiso}
+            ])}
+            ${prepararGraficaEstadistica("Registros de asistencia por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.asistio||0})))}
+            ${prepararGraficaEstadistica("Faltas por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.falta||0})))}
+            <div class="estadistica-vacio">Se muestran todos los registros guardados en la tabla de asistencia, sin depender del curso seleccionado.</div>`;
+
+        const categorias = ["SER", "SABER", "HACER", "AUTOEVALUACION"];
+        const conteoCategorias = categorias.map(k => ({nombre:k,valor:actividades3T.filter(a=>String(a.categoria||"").toUpperCase()===k).length}));
+        if (actividadesPanel) actividadesPanel.innerHTML = `
+            <div class="estadistica-resumen">
+                <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
+                ${categorias.map(k=>`<div class="estadistica-tarjeta"><span>${escEstadistica(k)}</span><strong>${conteoCategorias.find(x=>x.nombre===k)?.valor||0}</strong></div>`).join("")}
+            </div>
+            ${prepararGraficaEstadistica("Actividades por categoría", conteoCategorias)}
+            ${prepararGraficaEstadistica("Actividades por curso", cursos.map(c=>({nombre:c,valor:(actividadesPorCurso[c]||[]).length})))}
+            ${prepararGraficaEstadistica("Calificaciones registradas por curso", cursos.map(c=>{
+                const ids=new Set(estudiantesConNotas.filter(e=>e.curso===c).map(e=>String(e.id)));
+                return {nombre:c,valor:calificacionesTodas.filter(r=>ids.has(String(r.estudiante_id))).length};
+            }))}`;
+
+        // Mantener también la lista de estudiantes y sus notas sincronizadas en memoria.
+        estudiantesConNotas.forEach(e => {
+            const original = estudiantes.find(x => String(x.id) === String(e.id));
+            if (original) {
+                original.nota_3t = e.nota3;
+                original.final = e.final;
+            }
+        });
+
+    } catch (error) {
+        console.error("Error al cargar todas las estadísticas:", error);
+        const mensaje = `<div class="estadistica-vacio">⚠️ No se pudieron cargar todas las estadísticas.<br><small>${escEstadistica(error.message || error)}</small></div>`;
+        [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => { if (el) el.innerHTML = mensaje; });
+    }
+}
+
+function mostrarEstadistica(tipo, boton) {
+    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
+    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.remove("activo"));
+    const mapa={ingresos:"estadisticaIngresos",general:"estadisticaGeneral",cursos:"estadisticaCursos",rendimiento:"estadisticaRendimiento",asistencia:"estadisticaAsistencia",actividades:"estadisticaActividades"};
+    const panelActivo = document.getElementById(mapa[tipo]);
+    panelActivo?.classList.add("visible"); if(boton) boton.classList.add("activo");
+    if(tipo==="ingresos") abrirModalVisitasEstudiantes();
+    else prepararEstadisticas().then(() => animarBarrasEstadistica(panelActivo));
+}
+
+function abrirModalEstadisticas() {
+    const modal=document.getElementById("modalEstadisticas"); if(!modal) return;
+    modal.classList.remove("oculto");
+    document.querySelectorAll(".estadistica-panel").forEach(p=>p.classList.remove("visible"));
+    const panelGeneral = document.getElementById("estadisticaGeneral");
+    panelGeneral?.classList.add("visible");
+    prepararEstadisticas().then(() => animarBarrasEstadistica(panelGeneral));
+    document.querySelectorAll(".boton-estadistica").forEach(b=>b.classList.toggle("activo",b.dataset.estadistica==="general"));
+}
+
+async function abrirModalVisitasEstudiantes() {
+    const modal = document.getElementById("modalVisitasEstudiantes");
+    if (!modal) return;
+
+    modal.classList.remove("oculto");
+    cargarCursosFiltroVisitas();
+    cargarEstudiantesFiltroVisitas();
+    document.getElementById("filtroVisitasFecha")?.addEventListener("change", renderizarVisitasEstudiantes);
+    document.getElementById("filtroVisitasCurso")?.addEventListener("change", function() {
+        cargarEstudiantesFiltroVisitas();
+        renderizarVisitasEstudiantes();
+    });
+    document.getElementById("filtroVisitasEstudiante")?.addEventListener("change", renderizarVisitasEstudiantes);
+    document.getElementById("seleccionarTodasVisitas")?.addEventListener("change", function() {
+        document.querySelectorAll(".check-visita-estudiante").forEach(check => check.checked = this.checked);
+        actualizarEstadoSeleccionVisitas();
+    });
+
+    // Siempre refrescar al abrir para mostrar los ingresos más recientes.
+    await cargarVisitasEstudiantes();
+}
+
+function cerrarModalVisitasEstudiantes(event) {
+    const modal = document.getElementById("modalVisitasEstudiantes");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+async function eliminarVisitasEstudiantesSeleccionadas() {
+    const ids = [...document.querySelectorAll(".check-visita-estudiante:checked")]
+        .map(check => check.value)
+        .filter(Boolean);
+
+    if (!ids.length) return;
+
+    const confirmar = confirm(
+        `¿Está seguro de eliminar ${ids.length} registro${ids.length === 1 ? "" : "s"} de ingreso?\n\nEsta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    try {
+        const { data: eliminados, error } = await supabaseClient
+            .from("visitas_estudiantes")
+            .delete()
+            .in("id", ids)
+            .select("id");
+
+        if (error) throw error;
+
+        if (!eliminados || eliminados.length !== ids.length) {
+            throw new Error("La base de datos no eliminó todos los registros seleccionados. Verifique los permisos de eliminación de la tabla visitas_estudiantes en Supabase.");
+        }
+
+        const idsSet = new Set(ids.map(String));
+        registrosVisitasEstudiantes = registrosVisitasEstudiantes.filter(v => !idsSet.has(String(v.id)));
+        renderizarVisitasEstudiantes();
+    } catch (error) {
+        console.error("Error al eliminar ingresos de estudiantes:", error);
+        alert("No se pudieron eliminar los registros seleccionados.\n\n" + (error.message || error));
+    }
+}
+
 function mostrarVisitasInforme(estudianteId) {
 
     const estudiante = estudiantes.find(
@@ -12355,7 +13545,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("asistencia")
             .select(
-                "estudiante_id,fecha,estado"
+                "estudiante_id,fecha,estado,hora,observacion"
             )
             .in(
                 "estudiante_id",
@@ -12995,6 +14185,405 @@ async function exportarExcel() {
                 libro,
                 hoja,
                 nombreHoja
+            );
+
+
+            /* =================================================
+               HOJA ADICIONAL DE OBSERVACIONES
+               No modifica la hoja normal del curso.
+               Ejemplo: 2A -> 2AObs
+               Cada asistencia queda como:
+               FECHA | HORA | OBSERVACIÓN
+               Cada actividad queda como:
+               NOTA | OBSERVACIÓN
+            ================================================= */
+            const columnasObs = [
+                "Nº LISTA",
+                "NOMBRE",
+                ...fechasCurso.flatMap(fecha => [
+                    formatearFechaExcel(fecha),
+                    "HORA " + formatearFechaExcel(fecha),
+                    "OBS " + formatearFechaExcel(fecha)
+                ]),
+                "TOTAL A",
+                "TOTAL R",
+                "TOTAL L",
+                "TOTAL F",
+                ...ser.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO SER",
+                ...saber.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO SABER",
+                ...hacer.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO HACER",
+                ...auto.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO AUTOEVALUACIÓN",
+                "NOTA 3T",
+                "NOTA FINAL"
+            ];
+
+            const datosObs = [];
+            datosObs.push(columnasObs);
+
+            estudiantesCurso.forEach(estudiante => {
+                const filaObs = [];
+
+                filaObs.push(estudiante.num_lista ?? "");
+                filaObs.push(estudiante.nombre ?? "");
+
+                const totalesObs = {
+                    A: 0,
+                    R: 0,
+                    L: 0,
+                    F: 0
+                };
+
+                fechasCurso.forEach(fecha => {
+                    const clave =
+                        estudiante.id +
+                        "_" +
+                        fecha;
+
+                    const registroAsistencia =
+                        todaAsistencia.find(
+                            r =>
+                                String(r.estudiante_id) === String(estudiante.id) &&
+                                String(r.fecha) === String(fecha)
+                        );
+
+                    const codigo =
+                        mapaAsistencia[clave] || "";
+
+                    const hora =
+                        registroAsistencia?.hora || "";
+
+                    const observacion =
+                        registroAsistencia?.observacion || "";
+
+                    filaObs.push(codigo);
+                    filaObs.push(hora);
+                    filaObs.push(observacion);
+
+                    if (
+                        codigo &&
+                        totalesObs[codigo] !== undefined
+                    ) {
+                        totalesObs[codigo]++;
+                    }
+                });
+
+                filaObs.push(totalesObs.A);
+                filaObs.push(totalesObs.R);
+                filaObs.push(totalesObs.L);
+                filaObs.push(totalesObs.F);
+
+                const agregarActividadesConObservacion = lista => {
+                    lista.forEach(actividad => {
+                        const registro =
+                            mapaCalificaciones[
+                                estudiante.id + "_" + actividad.id
+                            ];
+
+                        const nota =
+                            obtenerNotaExcel(
+                                estudiante.id,
+                                actividad.id,
+                                mapaCalificaciones
+                            );
+
+                        const observacion =
+                            registro?.observacion || "";
+
+                        filaObs.push(nota);
+                        filaObs.push(observacion);
+                    });
+                };
+
+                const notasSerObs = ser.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(ser);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasSerObs,
+                        ser
+                    )
+                );
+
+                const notasSaberObs = saber.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(saber);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasSaberObs,
+                        saber
+                    )
+                );
+
+                const notasHacerObs = hacer.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(hacer);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasHacerObs,
+                        hacer
+                    )
+                );
+
+                const notasAutoObs = auto.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(auto);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasAutoObs,
+                        auto
+                    )
+                );
+
+                const nota1TObs = convertirNumero(estudiante.nota_1t);
+                const nota2TObs = convertirNumero(estudiante.nota_2t);
+
+                /* Se mantienen exactamente los mismos cálculos
+                   de NOTA 3T y NOTA FINAL de la hoja normal. */
+                const calcularPuntosCategoriaObs = (lista, limite) => {
+                    if (!lista || lista.length === 0) return 0;
+
+                    let sumaNotas = 0;
+                    let sumaMaximos = 0;
+
+                    lista.forEach(actividad => {
+                        const registro =
+                            mapaCalificaciones[
+                                estudiante.id + "_" + actividad.id
+                            ];
+
+                        if (
+                            !registro ||
+                            registro.nota === null ||
+                            registro.nota === undefined ||
+                            String(registro.nota).trim() === ""
+                        ) {
+                            return;
+                        }
+
+                        const nota = Number(registro.nota);
+                        const maximo = Number(
+                            actividad.puntaje_maximo ||
+                            LIMITES[actividad.categoria]
+                        );
+
+                        if (
+                            isNaN(nota) ||
+                            isNaN(maximo) ||
+                            maximo <= 0
+                        ) {
+                            return;
+                        }
+
+                        sumaNotas += nota;
+                        sumaMaximos += maximo;
+                    });
+
+                    if (sumaMaximos === 0) return 0;
+
+                    return (sumaNotas / sumaMaximos) * limite;
+                };
+
+                const puntosSERObs =
+                    calcularPuntosCategoriaObs(
+                        ser,
+                        LIMITES.SER
+                    );
+
+                const puntosSABERObs =
+                    calcularPuntosCategoriaObs(
+                        saber,
+                        LIMITES.SABER
+                    );
+
+                const puntosHACERObs =
+                    calcularPuntosCategoriaObs(
+                        hacer,
+                        LIMITES.HACER
+                    );
+
+                const puntosAUTOObs =
+                    calcularPuntosCategoriaObs(
+                        auto,
+                        LIMITES.AUTOEVALUACION
+                    );
+
+                const hayNotas3TObs =
+                    [ser, saber, hacer, auto].some(
+                        lista =>
+                            lista.some(actividad => {
+                                const registro =
+                                    mapaCalificaciones[
+                                        estudiante.id + "_" + actividad.id
+                                    ];
+
+                                return (
+                                    registro &&
+                                    registro.nota !== null &&
+                                    registro.nota !== undefined &&
+                                    String(registro.nota).trim() !== ""
+                                );
+                            })
+                    );
+
+                const nota3TObs = hayNotas3TObs
+                    ? redondear(
+                        puntosSERObs +
+                        puntosSABERObs +
+                        puntosHACERObs +
+                        puntosAUTOObs
+                    )
+                    : null;
+
+                const notaFinalObs =
+                    nota1TObs !== null &&
+                    nota2TObs !== null &&
+                    nota3TObs !== null
+                        ? redondear(
+                            (
+                                nota1TObs +
+                                nota2TObs +
+                                nota3TObs
+                            ) / 3
+                        )
+                        : null;
+
+                filaObs.push(
+                    nota3TObs === null
+                        ? ""
+                        : nota3TObs
+                );
+
+                filaObs.push(
+                    notaFinalObs === null
+                        ? ""
+                        : notaFinalObs
+                );
+
+                datosObs.push(filaObs);
+            });
+
+            const hojaObs =
+                XLSX.utils.aoa_to_sheet(
+                    datosObs
+                );
+
+            hojaObs["!freeze"] = {
+                xSplit: 2,
+                ySplit: 1
+            };
+
+            hojaObs["!cols"] =
+                columnasObs.map(
+                    (nombre, indice) => {
+                        if (indice === 0) {
+                            return { wch: 10 };
+                        }
+
+                        if (indice === 1) {
+                            return { wch: 32 };
+                        }
+
+                        if (
+                            indice >= 2 &&
+                            indice < 2 + (fechasCurso.length * 3)
+                        ) {
+                            const posicion = (indice - 2) % 3;
+
+                            if (posicion === 0) {
+                                return { wch: 13 };
+                            }
+
+                            if (posicion === 1) {
+                                return { wch: 12 };
+                            }
+
+                            return { wch: 25 };
+                        }
+
+                        return { wch: 20 };
+                    }
+                );
+
+            for (
+                let columna = 0;
+                columna < columnasObs.length;
+                columna++
+            ) {
+                const celda =
+                    XLSX.utils.encode_cell({
+                        r: 0,
+                        c: columna
+                    });
+
+                if (hojaObs[celda]) {
+                    hojaObs[celda].s = {
+                        alignment: {
+                            textRotation: 90,
+                            vertical: "center",
+                            horizontal: "center",
+                            wrapText: true
+                        }
+                    };
+                }
+            }
+
+            let nombreHojaObs =
+                String(curso)
+                .replace(
+                    /[\\/?*:]/g,
+                    ""
+                )
+                .substring(
+                    0,
+                    27
+                );
+
+            if (!nombreHojaObs) {
+                nombreHojaObs = "Curso";
+            }
+
+            nombreHojaObs += "Obs";
+
+            XLSX.utils.book_append_sheet(
+                libro,
+                hojaObs,
+                nombreHojaObs
             );
 
         });
@@ -16202,6 +17791,268 @@ async function restaurarCambioHistorial(historialId) {
 
 
 /* =====================================================
+   NUEVO: ELECCIÓN ALEATORIA DE ESTUDIANTE EN ASISTENCIA
+===================================================== */
+
+function claveAzarAsistencia() {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    return `${String(cursoSeleccionado || "").trim()}__${fecha}`;
+}
+
+function obtenerElegidosAzarAsistencia() {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return [];
+
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        const lista = datos[clave];
+        return Array.isArray(lista) ? lista.map(String) : [];
+    } catch (error) {
+        console.warn("No se pudo leer la lista de estudiantes elegidos al azar:", error);
+        return [];
+    }
+}
+
+function guardarElegidosAzarAsistencia(lista) {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return;
+
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        datos[clave] = [...new Set((lista || []).map(String))];
+        localStorage.setItem("azarAsistenciaElegidos", JSON.stringify(datos));
+    } catch (error) {
+        console.warn("No se pudo guardar la lista de estudiantes elegidos al azar:", error);
+    }
+}
+
+function esHoyAzarAsistencia(fecha) {
+    if (!fecha) return false;
+    const hoy = new Date();
+    const hoyLocal = [
+        hoy.getFullYear(),
+        String(hoy.getMonth() + 1).padStart(2, "0"),
+        String(hoy.getDate()).padStart(2, "0")
+    ].join("-");
+    return fecha === hoyLocal;
+}
+
+function obtenerCandidatosAzarAsistencia() {
+    const estudiantesCurso = obtenerEstudiantesCursoActual()
+        .filter(estudiante => estudiante && estudiante.id != null)
+        .filter(estudiante => {
+            const numero = Number(estudiante.num_lista);
+            return Number.isFinite(numero) && numero > 0;
+        });
+
+    const elegidos = new Set(obtenerElegidosAzarAsistencia());
+
+    return estudiantesCurso.filter(estudiante =>
+        !elegidos.has(String(estudiante.id))
+    );
+}
+
+function abrirModalAzarAsistencia() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona primero una fecha de asistencia.");
+        return;
+    }
+
+    const modal = document.getElementById("modalAzarAsistencia");
+    if (!modal) return;
+
+    azarAsistenciaCursoFecha = claveAzarAsistencia();
+    azarAsistenciaEstudianteActual = null;
+
+    const fechaEl = document.getElementById("azarAsistenciaFecha");
+    const avisoFecha = document.getElementById("azarAsistenciaAvisoFecha");
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const listaEl = document.getElementById("azarAsistenciaLista");
+
+    if (fechaEl) {
+        fechaEl.textContent = `Curso: ${cursoSeleccionado} · ${formatearFechaGuardadaAsistencia(fecha)}`;
+    }
+
+    if (avisoFecha) {
+        const esHoy = esHoyAzarAsistencia(fecha);
+        avisoFecha.classList.toggle("oculto", esHoy);
+        avisoFecha.textContent = esHoy
+            ? ""
+            : "⚠️ La fecha seleccionada no corresponde al día de hoy. El azar se guardará igualmente para la fecha seleccionada.";
+    }
+
+    if (numeroEl) {
+        numeroEl.textContent = "—";
+        numeroEl.classList.remove("animando");
+    }
+
+    if (nombreEl) {
+        nombreEl.innerHTML = "Presiona «Elegir al azar»";
+    }
+
+    if (listaEl) {
+        listaEl.innerHTML = "";
+        listaEl.classList.add("oculto");
+    }
+
+    modal.classList.remove("oculto");
+
+    if (!esHoyAzarAsistencia(fecha)) {
+        alert("⚠️ Atención: la fecha de asistencia seleccionada no corresponde al día de hoy.");
+    }
+
+    actualizarEstadoBotonElegirAzarAsistencia();
+}
+
+function cerrarModalAzarAsistencia(event) {
+    const modal = document.getElementById("modalAzarAsistencia");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+
+    if (azarAsistenciaAnimacion) {
+        clearInterval(azarAsistenciaAnimacion);
+        azarAsistenciaAnimacion = null;
+    }
+
+    modal.classList.add("oculto");
+}
+
+function actualizarEstadoBotonElegirAzarAsistencia() {
+    const boton = document.getElementById("botonElegirAzarAsistencia");
+    if (!boton) return;
+
+    const candidatos = obtenerCandidatosAzarAsistencia();
+    boton.disabled = candidatos.length === 0;
+
+    if (candidatos.length === 0) {
+        boton.textContent = "✓ Todos elegidos";
+    } else {
+        boton.textContent = "🎲 Elegir al azar";
+    }
+}
+
+function elegirEstudianteAzarAsistencia() {
+    if (azarAsistenciaAnimacion) return;
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const boton = document.getElementById("botonElegirAzarAsistencia");
+    const listaEl = document.getElementById("azarAsistenciaLista");
+
+    const candidatos = obtenerCandidatosAzarAsistencia();
+
+    if (!candidatos.length) {
+        alert("✓ Ya fueron elegidos todos los estudiantes del curso para esta fecha.");
+        actualizarEstadoBotonElegirAzarAsistencia();
+        return;
+    }
+
+    if (listaEl) listaEl.classList.add("oculto");
+    if (nombreEl) nombreEl.innerHTML = "🎲 Eligiendo...";
+    if (numeroEl) numeroEl.classList.add("animando");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "🎲 Eligiendo...";
+    }
+
+    const mostrarNumeroRapido = () => {
+        const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
+        if (numeroEl) numeroEl.textContent = String(candidato.num_lista);
+    };
+
+    mostrarNumeroRapido();
+    azarAsistenciaAnimacion = setInterval(mostrarNumeroRapido, 65);
+
+    setTimeout(() => {
+        if (azarAsistenciaAnimacion) {
+            clearInterval(azarAsistenciaAnimacion);
+            azarAsistenciaAnimacion = null;
+        }
+
+        const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+        azarAsistenciaEstudianteActual = elegido;
+
+        const elegidos = obtenerElegidosAzarAsistencia();
+        elegidos.push(String(elegido.id));
+        guardarElegidosAzarAsistencia(elegidos);
+
+        if (numeroEl) {
+            numeroEl.textContent = String(elegido.num_lista);
+            numeroEl.classList.remove("animando");
+        }
+
+        if (nombreEl) {
+            nombreEl.innerHTML = "";
+            const botonNombre = document.createElement("button");
+            botonNombre.type = "button";
+            botonNombre.textContent = construirNombreCortoAula(elegido);
+            botonNombre.title = "Añadir una observación de asistencia";
+            botonNombre.addEventListener("click", function() {
+                abrirAsistenciaEstudianteDesdeAula(elegido.id);
+                setTimeout(() => {
+                    const campo = document.getElementById("observacionAsistenciaAulaIndividual");
+                    if (campo) campo.focus();
+                }, 80);
+            });
+            nombreEl.appendChild(botonNombre);
+        }
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+    }, 2000);
+}
+
+function mostrarElegidosAzarAsistencia() {
+    const listaEl = document.getElementById("azarAsistenciaLista");
+    if (!listaEl) return;
+
+    const elegidosIds = obtenerElegidosAzarAsistencia();
+    const mapa = new Map(
+        obtenerEstudiantesCursoActual().map(estudiante => [String(estudiante.id), estudiante])
+    );
+
+    const elegidos = elegidosIds
+        .map(id => mapa.get(String(id)))
+        .filter(Boolean)
+        .sort((a, b) => Number(a.num_lista) - Number(b.num_lista));
+
+    if (!elegidos.length) {
+        listaEl.innerHTML = `<div style="padding:12px;text-align:center;color:#666;">Todavía no se eligió ningún estudiante para esta fecha.</div>`;
+        listaEl.classList.remove("oculto");
+        return;
+    }
+
+    const filas = elegidos.map((estudiante, indice) => `
+        <tr>
+            <td>${indice + 1}</td>
+            <td>${escapeHTML(String(estudiante.nombre || ""))}</td>
+            <td><strong>${escapeHTML(String(estudiante.num_lista ?? ""))}</strong></td>
+        </tr>
+    `).join("");
+
+    listaEl.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>N.º lista</th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+        </table>
+    `;
+    listaEl.classList.remove("oculto");
+}
+
+
+/* =====================================================
    NUEVO: DISTRIBUCIÓN DEL AULA / ASIENTOS
    No interviene en la lógica existente de asistencia.
 ===================================================== */
@@ -16251,9 +18102,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -16290,7 +18141,9 @@ function normalizarConfiguracionAula(datos = {}) {
     const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
     const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
     const mostrarNumeroAsiento = datos.mostrarNumeroAsiento === true;
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento };
+    const colorMujer = /^#[0-9A-F]{6}$/i.test(String(datos.colorMujer || "")) ? String(datos.colorMujer) : "#e91e63";
+    const colorVaron = /^#[0-9A-F]{6}$/i.test(String(datos.colorVaron || "")) ? String(datos.colorVaron) : "#1976d2";
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -16318,7 +18171,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2") {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -16334,7 +18187,9 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         largoMesa,
         mostrarNombreCompleto: mostrarNombreCompleto === true,
         mostrarNumeroLista: mostrarNumeroLista !== false,
-        mostrarNumeroAsiento: mostrarNumeroAsiento === true
+        mostrarNumeroAsiento: mostrarNumeroAsiento === true,
+        colorMujer: /^#[0-9A-F]{6}$/i.test(String(colorMujer || "")) ? String(colorMujer) : "#e91e63",
+        colorVaron: /^#[0-9A-F]{6}$/i.test(String(colorVaron || "")) ? String(colorVaron) : "#1976d2"
     };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
 }
@@ -16358,13 +18213,17 @@ async function cargarConfiguracionDistribucionAulaBD() {
             data.distribucion.__mostrarNombreCompleto === true;
         const metadataMostrarNumeroLista = !(data.distribucion &&
             data.distribucion.__mostrarNumeroLista === false);
+        const metadataColorMujer = data.distribucion && data.distribucion.__colorMujer;
+        const metadataColorVaron = data.distribucion && data.distribucion.__colorVaron;
 
         const config = normalizarConfiguracionAula({
             ...data,
             filasPorColumna: metadataFilas || undefined,
             mostrarNombreCompleto: metadataMostrarNombreCompleto,
             mostrarNumeroLista: metadataMostrarNumeroLista,
-            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true
+            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true,
+            colorMujer: metadataColorMujer,
+            colorVaron: metadataColorVaron
         });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
@@ -16374,6 +18233,8 @@ async function cargarConfiguracionDistribucionAulaBD() {
             delete distribucion.__mostrarNombreCompleto;
             delete distribucion.__mostrarNumeroLista;
             delete distribucion.__mostrarNumeroAsiento;
+            delete distribucion.__colorMujer;
+            delete distribucion.__colorVaron;
         }
 
         configuracionAulaActual = config;
@@ -16395,6 +18256,8 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
     distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
     distribucionParaGuardar.__mostrarNumeroAsiento = config.mostrarNumeroAsiento === true;
+    distribucionParaGuardar.__colorMujer = config.colorMujer;
+    distribucionParaGuardar.__colorVaron = config.colorVaron;
 
     const datos = {
         curso: cursoSeleccionado,
@@ -16419,7 +18282,9 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.filasPorColumna,
         config.mostrarNombreCompleto,
         config.mostrarNumeroLista,
-        config.mostrarNumeroAsiento
+        config.mostrarNumeroAsiento,
+        config.colorMujer,
+        config.colorVaron
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -16593,8 +18458,11 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     }
 
     const nombreEl = document.createElement("span");
-    nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio");
+    const generoAula = estudiante ? obtenerGeneroEstadistica(estudiante.gen) : "";
+    nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio") + (generoAula ? ` genero-${generoAula}` : "");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
+    if (generoAula === "mujer") nombreEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+    if (generoAula === "varon") nombreEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
 
     if (estudiante) {
         nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
@@ -16974,6 +18842,8 @@ function mostrarConfiguracionAula() {
     const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
     const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
     const inputMostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    const inputColorMujer = document.getElementById("colorMujerAula");
+    const inputColorVaron = document.getElementById("colorVaronAula");
 
     if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
     if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
@@ -16981,21 +18851,21 @@ function mostrarConfiguracionAula() {
     if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
     if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
     if (inputMostrarNumeroAsiento) inputMostrarNumeroAsiento.checked = configuracionAulaActual.mostrarNumeroAsiento === true;
+    if (inputColorMujer) inputColorMujer.value = configuracionAulaActual.colorMujer || "#e91e63";
+    if (inputColorVaron) inputColorVaron.value = configuracionAulaActual.colorVaron || "#1976d2";
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputColorMujer, inputColorVaron].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
             actualizarBotonAplicarConfiguracionAula();
         };
-        if (input === inputMostrarNombreCompleto) {
-            input.onchange = function() {
-                actualizarResumenConfiguracionAula();
-                actualizarBotonAplicarConfiguracionAula();
-            };
-        }
+        input.onchange = function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        };
     });
 
     actualizarResumenConfiguracionAula();
@@ -17076,17 +18946,19 @@ function aplicarConfiguracionAula() {
     const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
     const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
     const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula")?.checked === true;
+    const colorMujer = document.getElementById("colorMujerAula")?.value || "#e91e63";
+    const colorVaron = document.getElementById("colorVaronAula")?.value || "#1976d2";
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -17122,7 +18994,9 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
            Number(a.largoMesa) === Number(b.largoMesa) &&
            (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
            (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false) &&
-           (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true);
+           (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true) &&
+           String(a.colorMujer || "#e91e63").toLowerCase() === String(b.colorMujer || "#e91e63").toLowerCase() &&
+           String(a.colorVaron || "#1976d2").toLowerCase() === String(b.colorVaron || "#1976d2").toLowerCase();
 }
 
 function actualizarBotonAplicarConfiguracionAula() {
@@ -17256,262 +19130,180 @@ async function guardarDistribucionAula() {
 comprobarSesion();
 
 
-
 /* =====================================================
-   SORTEO ALEATORIO DE ASISTENCIA
-   Función independiente: no modifica la asistencia existente salvo
-   cuando el docente guarda una observación desde el nombre sorteado.
+   COPIA DE SEGURIDAD DE DATOS
 ===================================================== */
-let estudianteSorteadoAsistenciaActual = null;
-let temporizadorSorteoAsistencia = null;
-let sorteoAsistenciaEnCurso = false;
 
-function claveSorteoAsistenciaActual() {
-    const fecha = String(document.getElementById("fechaAsistencia")?.value || "").trim();
-    const curso = String(cursoSeleccionado || "").trim();
-    return `sorteo_asistencia_${curso}_${fecha}`;
+const TABLAS_COPIA_SEGURIDAD = [
+    "matematica",
+    "actividades",
+    "calificaciones",
+    "asistencia",
+    "asistencia_tipos_dia",
+    "visitas_estudiantes"
+];
+
+function abrirModalCopiaSeguridad() {
+    const modal = document.getElementById("modalCopiaSeguridad");
+    if (modal) modal.classList.remove("oculto");
 }
 
-function obtenerElegidosSorteoAsistencia() {
-    try {
-        const raw = localStorage.getItem(claveSorteoAsistenciaActual());
-        const arr = raw ? JSON.parse(raw) : [];
-        return Array.isArray(arr) ? arr.map(String) : [];
-    } catch (e) {
-        console.warn("No se pudo leer el sorteo local:", e);
-        return [];
-    }
-}
-
-function guardarElegidosSorteoAsistencia(elegidos) {
-    try {
-        localStorage.setItem(claveSorteoAsistenciaActual(), JSON.stringify([...new Set(elegidos.map(String))]));
-    } catch (e) {
-        console.warn("No se pudo guardar el sorteo local:", e);
-    }
-}
-
-function hoyClaveSorteoAsistencia() {
-    const ahora = new Date();
-    return `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
-}
-
-function abrirModalSorteoAsistencia() {
-    if (!cursoSeleccionado) {
-        alert("Primero selecciona un curso.");
-        return;
-    }
-    const fecha = String(document.getElementById("fechaAsistencia")?.value || "").trim();
-    if (!fecha) {
-        alert("Selecciona una fecha de asistencia.");
-        return;
-    }
-
-    estudianteSorteadoAsistenciaActual = null;
-    const modal = document.getElementById("modalSorteoAsistencia");
-    const numero = document.getElementById("sorteoNumero");
-    const nombre = document.getElementById("sorteoNombre");
-    const cursoFecha = document.getElementById("sorteoCursoFecha");
-    if (!modal) return;
-
-    cursoFecha.textContent = `${cursoSeleccionado} · ${formatearFechaActividad(fecha)}`;
-    numero.textContent = "—";
-    nombre.textContent = "";
-    modal.classList.remove("oculto");
-}
-
-function cerrarModalSorteoAsistencia(event) {
-    if (event && event.target !== document.getElementById("modalSorteoAsistencia")) return;
-    if (temporizadorSorteoAsistencia) {
-        clearInterval(temporizadorSorteoAsistencia);
-        temporizadorSorteoAsistencia = null;
-    }
-    sorteoAsistenciaEnCurso = false;
-    const modal = document.getElementById("modalSorteoAsistencia");
+function cerrarModalCopiaSeguridad() {
+    const modal = document.getElementById("modalCopiaSeguridad");
     if (modal) modal.classList.add("oculto");
 }
 
-function sortearEstudianteAsistencia() {
-    if (sorteoAsistenciaEnCurso) return;
-    if (!cursoSeleccionado) return;
-
-    const estudiantesCurso = obtenerEstudiantesCursoActual();
-    if (!estudiantesCurso.length) {
-        alert("No existen estudiantes en este curso.");
-        return;
+function cerrarModalCopiaSeguridadDesdeFondo(event) {
+    if (event.target && event.target.id === "modalCopiaSeguridad") {
+        cerrarModalCopiaSeguridad();
     }
+}
 
-    const elegidos = obtenerElegidosSorteoAsistencia();
-    const disponibles = estudiantesCurso.filter(e => !elegidos.includes(String(e.id)));
+function seleccionarCopiaBaseDatos() {
+    const input = document.getElementById("archivoCopiaBaseDatos");
+    if (input) input.click();
+}
 
-    if (!disponibles.length) {
-        alert("Todos los estudiantes de este curso ya fueron elegidos para la fecha seleccionada.");
-        return;
-    }
+async function guardarCopiaBaseDatos() {
+    try {
+        mostrarMensaje("Creando copia de seguridad...");
 
-    sorteoAsistenciaEnCurso = true;
-    const boton = document.getElementById("botonSortearAsistencia");
-    const numeroEl = document.getElementById("sorteoNumero");
-    const nombreEl = document.getElementById("sorteoNombre");
-    if (boton) boton.disabled = true;
-    if (numeroEl) numeroEl.classList.add("animando");
-    if (nombreEl) nombreEl.textContent = "";
+        const copia = {
+            version: 1,
+            fecha: new Date().toISOString(),
+            tablas: {}
+        };
 
-    const inicio = Date.now();
-    temporizadorSorteoAsistencia = setInterval(() => {
-        const candidato = disponibles[Math.floor(Math.random() * disponibles.length)];
-        if (numeroEl) numeroEl.textContent = String(candidato.num_lista ?? "");
+        for (const nombreTabla of TABLAS_COPIA_SEGURIDAD) {
+            const { data, error } = await supabaseClient
+                .from(nombreTabla)
+                .select("*");
 
-        if (Date.now() - inicio >= 2000) {
-            clearInterval(temporizadorSorteoAsistencia);
-            temporizadorSorteoAsistencia = null;
-
-            const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
-            estudianteSorteadoAsistenciaActual = elegido;
-            if (numeroEl) numeroEl.textContent = String(elegido.num_lista ?? "");
-            if (nombreEl) nombreEl.textContent = String(elegido.nombre || elegido.nombre_completo || "");
-            if (numeroEl) numeroEl.classList.remove("animando");
-
-            guardarElegidosSorteoAsistencia([...elegidos, String(elegido.id)]);
-            sorteoAsistenciaEnCurso = false;
-            if (boton) boton.disabled = false;
+            if (error) throw new Error("No se pudo copiar la tabla " + nombreTabla + ": " + error.message);
+            copia.tablas[nombreTabla] = data || [];
         }
-    }, 65);
+
+        const contenido = JSON.stringify(copia, null, 2);
+        const blob = new Blob([contenido], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const enlace = document.createElement("a");
+        const fecha = new Date().toISOString().slice(0, 10);
+        enlace.href = url;
+        enlace.download = "copia_base_datos_matematica_" + fecha + ".json";
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        URL.revokeObjectURL(url);
+
+        mostrarMensaje("Copia de seguridad guardada correctamente.");
+    } catch (error) {
+        console.error("Error al crear copia de seguridad:", error);
+        alert("No se pudo crear la copia de seguridad: " + (error.message || error));
+    }
 }
 
-function mostrarElegidosSorteoAsistencia() {
-    const modal = document.getElementById("modalElegidosSorteoAsistencia");
-    const lista = document.getElementById("listaElegidosSorteoAsistencia");
-    if (!modal || !lista) return;
-
-    const elegidos = obtenerElegidosSorteoAsistencia();
-    const mapa = new Map(obtenerEstudiantesCursoActual().map(e => [String(e.id), e]));
-    const estudiantesElegidos = elegidos.map(id => mapa.get(String(id))).filter(Boolean);
-
-    if (!estudiantesElegidos.length) {
-        lista.innerHTML = '<div class="sorteo-vacio">Todavía no se ha elegido ningún estudiante para esta fecha.</div>';
-    } else {
-        lista.innerHTML = estudiantesElegidos.map(e => `
-            <div class="item-elegido-sorteo">
-                <div class="item-elegido-sorteo-numero">${escapeHTML(String(e.num_lista ?? ""))}</div>
-                <div class="item-elegido-sorteo-nombre">${escapeHTML(String(e.nombre || e.nombre_completo || ""))}</div>
-            </div>
-        `).join("");
-    }
-    modal.classList.remove("oculto");
-}
-
-function cerrarModalElegidosSorteoAsistencia(event) {
-    if (event && event.target !== document.getElementById("modalElegidosSorteoAsistencia")) return;
-    const modal = document.getElementById("modalElegidosSorteoAsistencia");
-    if (modal) modal.classList.add("oculto");
-}
-
-function abrirModalObservacionDesdeSorteo() {
-    const estudiante = estudianteSorteadoAsistenciaActual;
-    if (!estudiante) return;
-
-    const fecha = String(document.getElementById("fechaAsistencia")?.value || "").trim();
-    if (!fecha) return;
-
-    if (fecha !== hoyClaveSorteoAsistencia()) {
-        const continuar = confirm(
-            `La fecha seleccionada (${formatearFechaActividad(fecha)}) no corresponde al día de hoy.\n\n¿Está seguro de anotar una observación en esa fecha?`
-        );
-        if (!continuar) return;
-    }
-
-    const modal = document.getElementById("modalObservacionSorteoAsistencia");
-    const nombre = document.getElementById("observacionSorteoEstudiante");
-    const texto = document.getElementById("textoObservacionSorteo");
-    const registro = registrosAsistencia[estudiante.id] || {};
-    if (!modal || !texto) return;
-
-    nombre.textContent = `${estudiante.num_lista ?? ""} · ${estudiante.nombre || estudiante.nombre_completo || ""}`;
-    texto.value = registro.observacion || "";
-    modal.dataset.estudianteId = String(estudiante.id);
-    modal.dataset.fecha = fecha;
-    modal.classList.remove("oculto");
-    setTimeout(() => texto.focus(), 50);
-}
-
-async function guardarObservacionDesdeSorteo() {
-    const modal = document.getElementById("modalObservacionSorteoAsistencia");
-    const texto = document.getElementById("textoObservacionSorteo");
-    if (!modal || !texto) return;
-
-    const estudianteId = String(modal.dataset.estudianteId || "");
-    const fecha = String(modal.dataset.fecha || "");
-    if (!estudianteId || !fecha) return;
-
-    if (fecha !== hoyClaveSorteoAsistencia()) {
-        const continuar = confirm(
-            `La fecha seleccionada (${formatearFechaActividad(fecha)}) no corresponde al día de hoy.\n\n¿Está seguro de guardar esta observación?`
-        );
-        if (!continuar) return;
-    }
-
-    const estudiante = estudiantes.find(e => String(e.id) === estudianteId);
-    if (!estudiante) {
-        alert("No se encontró el estudiante.");
-        return;
-    }
-
-    const observacion = String(texto.value || "").trim() || null;
-    const registroActual = registrosAsistencia[estudiante.id] || {};
-    const boton = modal.querySelector(".observacion-sorteo-guardar");
-    if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
+async function recuperarCopiaBaseDatos(event) {
+    const input = event.target;
+    const archivo = input.files && input.files[0];
+    if (!archivo) return;
 
     try {
-        const datos = {
-            estudiante_id: estudiante.id,
-            fecha,
-            estado: registroActual.estado || null,
-            hora: registroActual.hora || null,
-            observacion
-        };
+        const texto = await archivo.text();
+        const copia = JSON.parse(texto);
 
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(datos, { onConflict: "estudiante_id,fecha" });
-        if (error) throw error;
+        if (!copia || !copia.tablas || typeof copia.tablas !== "object") {
+            throw new Error("El archivo no tiene un formato de copia de seguridad válido.");
+        }
 
-        registrosAsistencia[estudiante.id] = {
-            ...registroActual,
-            estado: registroActual.estado || "",
-            hora: registroActual.hora || "",
-            observacion: observacion || ""
-        };
+        const confirmar = confirm(
+            "Se recuperarán los datos de las tablas incluidas en esta copia. ¿Deseas continuar?"
+        );
+        if (!confirmar) {
+            input.value = "";
+            return;
+        }
 
-        const input = document.querySelector(`.observacion-asistencia[data-estudiante="${estudiante.id}"]`);
-        if (input) input.value = observacion || "";
+        mostrarMensaje("Recuperando copia de seguridad...");
 
-        cerrarModalObservacionSorteo();
-        mostrarMensaje("✓ Observación de asistencia guardada.");
+        for (const nombreTabla of TABLAS_COPIA_SEGURIDAD) {
+            const filas = Array.isArray(copia.tablas[nombreTabla]) ? copia.tablas[nombreTabla] : [];
+
+            if (!filas.length) continue;
+
+            for (let i = 0; i < filas.length; i += 500) {
+                const lote = filas.slice(i, i + 500);
+                const { error } = await supabaseClient
+                    .from(nombreTabla)
+                    .upsert(lote);
+
+                if (error) {
+                    throw new Error("No se pudo recuperar la tabla " + nombreTabla + ": " + error.message);
+                }
+            }
+        }
+
+        mostrarMensaje("Copia de seguridad recuperada correctamente.");
+        alert("La recuperación terminó correctamente. Se actualizaron los datos incluidos en la copia.");
+        input.value = "";
     } catch (error) {
-        console.error("Error al guardar observación del sorteo:", error);
-        alert("No se pudo guardar la observación: " + (error.message || error));
-    } finally {
-        if (boton) { boton.disabled = false; boton.textContent = "Guardar"; }
+        console.error("Error al recuperar copia de seguridad:", error);
+        alert("No se pudo recuperar la copia: " + (error.message || error));
+        input.value = "";
     }
 }
-
-function cerrarModalObservacionSorteo(event) {
-    if (event && event.target !== document.getElementById("modalObservacionSorteoAsistencia")) return;
-    const modal = document.getElementById("modalObservacionSorteoAsistencia");
-    if (modal) modal.classList.add("oculto");
-}
-
-// El nombre del estudiante sorteado abre el cuadro de observación.
-document.addEventListener("click", function(event) {
-    const nombre = event.target.closest && event.target.closest("#sorteoNombre");
-    if (nombre && estudianteSorteadoAsistenciaActual && nombre.textContent.trim()) {
-        abrirModalObservacionDesdeSorteo();
-    }
-});
 
 </script>
 
+
+
+<!-- =====================================================
+     MODAL COPIA DE SEGURIDAD
+===================================================== -->
+<div
+    id="modalCopiaSeguridad"
+    class="modal-fondo oculto"
+    onclick="cerrarModalCopiaSeguridadDesdeFondo(event)">
+
+    <div
+        class="modal-copia-seguridad modal-hora-asistencia"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-cabecera">
+            <h3>💾 Copia de seguridad</h3>
+            <button
+                type="button"
+                class="boton-cerrar-modal"
+                onclick="cerrarModalCopiaSeguridad()">
+                ×
+            </button>
+        </div>
+
+        <div class="modal-cuerpo">
+            <div class="acciones-copia-seguridad">
+                <button
+                    type="button"
+                    class="boton-copia-seguridad boton-crear-modal"
+                    onclick="guardarCopiaBaseDatos()">
+                    💾 Guardar una copia de toda la base de datos
+                </button>
+
+                <button
+                    type="button"
+                    class="boton-copia-seguridad boton-crear-modal"
+                    onclick="seleccionarCopiaBaseDatos()">
+                    ♻️ Recuperar desde una copia
+                </button>
+
+                <input
+                    type="file"
+                    id="archivoCopiaBaseDatos"
+                    accept=".json,application/json"
+                    style="display:none"
+                    onchange="recuperarCopiaBaseDatos(event)">
+            </div>
+        </div>
+    </div>
+</div>
 
 </body>
 
