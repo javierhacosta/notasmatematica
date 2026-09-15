@@ -18037,11 +18037,22 @@ function abrirAsistenciaDesdeAzar(estudianteId) {
         return;
     }
 
+    // Cerrar temporalmente la ventana de azar para que la ventana
+    // de asistencia/observación quede completamente por delante.
+    const modalAzar = document.getElementById("modalAzarAsistencia");
+    if (modalAzar) {
+        modalAzar.style.display = "none";
+    }
+
     abrirAsistenciaEstudianteDesdeAula(estudianteId);
 
-    // Mantiene abierta la ventana de asistencia existente y deja lista
-    // la observación para anotar o modificar si el docente lo desea.
+    // Mantiene la ventana de asistencia/observación al frente.
     setTimeout(() => {
+        const modalAsistencia = document.getElementById("modalAsistenciaEstudianteAula");
+        if (modalAsistencia) {
+            modalAsistencia.style.zIndex = "10050";
+        }
+
         const campo = document.getElementById("observacionAsistenciaAulaIndividual");
         if (campo) campo.focus();
     }, 80);
