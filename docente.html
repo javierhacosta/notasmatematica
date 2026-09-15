@@ -1532,6 +1532,11 @@ td:first-child {
 .boton-guardar-estado-lista.visible {
     display: inline-flex;
 }
+/* ESTUDIANTES NO EFECTIVOS */
+.estudiante-no-efectivo { opacity:.48 !important; background:#f1f1f1 !important; cursor:not-allowed !important; }
+.estudiante-no-efectivo input, .estudiante-no-efectivo select, .estudiante-no-efectivo button, .estudiante-no-efectivo a { pointer-events:none !important; cursor:not-allowed !important; }
+.opcion-estudiante-no-efectivo { color:#888 !important; background:#f1f1f1 !important; }
+
 .boton-cerrar-lista-estado {
     background: #777;
     color: white;
@@ -8425,6 +8430,7 @@ function mostrarTablaAsistencia() {
         document.createElement(
             "tr"
         );
+        fila.dataset.estudiante = String(estudiante.id);
 
 
         fila.innerHTML = `
@@ -8747,6 +8753,7 @@ function obtenerEstudiantesSinEstadoAsistencia() {
         );
         return !seleccionado;
     });
+    aplicarBloqueoEstadoEnLista(document.getElementById("tablaAsistencia"));
 }
 
 function mostrarPendientesAsistencia() {
@@ -8766,6 +8773,7 @@ function mostrarPendientesAsistencia() {
 
     pendientes.forEach(estudiante => {
         const fila = document.createElement("tr");
+        fila.dataset.estudiante = String(estudiante.id);
         const estadoActual = (registrosAsistencia[estudiante.id] || {}).estado || "";
 
         fila.innerHTML = `
@@ -8805,6 +8813,7 @@ function mostrarPendientesAsistencia() {
         tbody.appendChild(fila);
     });
 
+    aplicarBloqueoEstadoEnLista(tbody);
     modal.classList.remove("oculto");
     return pendientes.length;
 }
@@ -9635,6 +9644,24 @@ function actualizarMatematicaEstudianteIndividualConActividades(
    MOSTRAR ACTIVIDADES
 ===================================================== */
 
+function estudianteEsEfectivo(estudiante) {
+    return String(estudiante?.estado || '').trim().toUpperCase() === 'EFECTIVO';
+}
+function marcarEstudianteNoEfectivo(fila, estudiante) {
+    if (!fila || !estudiante || estudianteEsEfectivo(estudiante)) return;
+    fila.classList.add('estudiante-no-efectivo');
+    fila.title = `🔒 Bloqueado: estado ${String(estudiante.estado || 'SIN ESTADO')}`;
+    fila.setAttribute('aria-disabled','true');
+}
+function aplicarBloqueoEstadoEnLista(contenedor) {
+    if (!contenedor) return;
+    const mapa = new Map(estudiantes.map(e => [String(e.id), e]));
+    contenedor.querySelectorAll('[data-estudiante]').forEach(el => {
+        const e = mapa.get(String(el.dataset.estudiante));
+        if (e && !estudianteEsEfectivo(e)) marcarEstudianteNoEfectivo(el.closest('tr'), e);
+    });
+}
+
 function mostrarActividades() {
 
     const contenedor =
@@ -9784,6 +9811,7 @@ function mostrarActividades() {
     // Una sola pasada por el DOM para acelerar los cálculos de 3T.
     reconstruirIndiceInputsNotas();
 
+    aplicarBloqueoEstadoEnLista(contenedor);
 }
 
 
@@ -10270,6 +10298,7 @@ function crearActividadHTML(
         document.createElement(
             "tr"
         );
+        fila.dataset.estudiante = String(estudiante.id);
 
 
         fila.innerHTML = `
@@ -11195,6 +11224,7 @@ function mostrarTablaGeneral() {
         document.createElement(
             "tr"
         );
+        fila.dataset.estudiante = String(estudiante.id);
 
 
         fila.innerHTML = `
@@ -11276,6 +11306,8 @@ function mostrarTablaGeneral() {
 
     });
 
+
+    aplicarBloqueoEstadoEnLista(document.getElementById("tablaEstudiantes"));
 
     document.getElementById(
         "tablaGeneral"
@@ -12389,7 +12421,7 @@ async function cargarInformeGeneral() {
         const linkEstudiante = enlaceEstudiante
             ? `<a class="link-estudiante-general" href="${enlaceEstudiante}" target="_blank" rel="noopener" title="Abrir consulta del estudiante" aria-label="Abrir consulta de ${escapeHTML(estudiante.nombre || "estudiante")}">↗</a>`
             : `<span title="Faltan datos del estudiante">—</span>`;
-        cuerpo += `<tr><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td><td class="acceso-estudiante-general">${linkEstudiante}</td>`;
+        cuerpo += `<tr data-estudiante="${escapeHTML(String(estudiante.id))}"><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td><td class="acceso-estudiante-general">${linkEstudiante}</td>`;
         fechasAsistencia.forEach(f => {
             const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
             let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="licencia"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
@@ -12407,6 +12439,7 @@ async function cargarInformeGeneral() {
     });
 
     contenedor.innerHTML = `<div class="tabla-informe-general-contenedor"><table class="tabla-informe-general"><thead>${encabezado1}</thead><tbody>${cuerpo}</tbody></table></div>`;
+    aplicarBloqueoEstadoEnLista(contenedor);
 }
 
 /* =====================================================
@@ -18293,6 +18326,7 @@ function obtenerCandidatosAzarAsistencia() {
     const elegidos = new Set(obtenerElegidosAzarAsistencia());
 
     return estudiantesCurso.filter(estudiante =>
+        estudianteEsEfectivo(estudiante) &&
         !elegidos.has(String(estudiante.id))
     );
 }
@@ -19000,11 +19034,17 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     if (generoAula === "varon") nombreEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
 
     if (estudiante) {
-        nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
-        nombreEl.addEventListener("click", function(event) {
-            event.stopPropagation();
-            abrirAsistenciaEstudianteDesdeAula(estudiante.id);
-        });
+        if (!estudianteEsEfectivo(estudiante)) {
+            asiento.classList.add("estudiante-no-efectivo");
+            nombreEl.classList.remove("clicable");
+            nombreEl.title = `🔒 Bloqueado: estado ${String(estudiante.estado || "SIN ESTADO")}`;
+        } else {
+            nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
+            nombreEl.addEventListener("click", function(event) {
+                event.stopPropagation();
+                abrirAsistenciaEstudianteDesdeAula(estudiante.id);
+            });
+        }
     }
 
     asiento.appendChild(nombreEl);
@@ -19148,10 +19188,21 @@ function mostrarListaAsientos(asientoEnfocado = null) {
             opcion.value = idEstudiante;
             opcion.textContent = `${estudiante.num_lista ?? ""} ${estudiante.nombre}`;
             if (estudianteAsignado === idEstudiante) opcion.selected = true;
+            if (!estudianteEsEfectivo(estudiante)) {
+                opcion.disabled = true;
+                opcion.classList.add("opcion-estudiante-no-efectivo");
+                opcion.textContent += " 🔒";
+            }
             select.appendChild(opcion);
         });
 
         select.addEventListener("change", function() {
+            const seleccionado = obtenerEstudiantesCursoActual().find(e => String(e.id) === String(this.value || ""));
+            if (seleccionado && !estudianteEsEfectivo(seleccionado)) {
+                this.value = estudianteAsignado || "";
+                alert("🔒 Este estudiante no está EFECTIVO y no puede ser designado para un asiento.");
+                return;
+            }
             distribucionAulaActual[String(numero)] = this.value || null;
             actualizarSelectsDistribucionAula();
             actualizarBotonGuardarDistribucionAula();
