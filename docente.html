@@ -3298,8 +3298,12 @@ table tbody tr:nth-child(10n+10) td {
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
 
-.nombre-asiento-aula.genero-mujer { color: #e91e63; }
-.nombre-asiento-aula.genero-varon { color: #1976d2; }
+.nombre-asiento-aula.genero-mujer { color: var(--color-mujer-aula, #e91e63); }
+.nombre-asiento-aula.genero-varon { color: var(--color-varon-aula, #1976d2); }
+.configuracion-aula-colores-genero { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
+.configuracion-aula-color { display:flex; align-items:center; gap:8px; }
+.configuracion-aula-color label { font-weight:600; }
+.configuracion-aula-color input[type="color"] { width:44px; height:34px; padding:2px; border:1px solid #bbb; border-radius:7px; cursor:pointer; background:#fff; }
 
 .tabla-estadistica-scroll { overflow-x: auto; }
 .tabla-estadistica-genero { width: 100%; border-collapse: collapse; margin: 10px 0 18px; }
@@ -5575,6 +5579,16 @@ Cancelar
                         <input id="mostrarNumeroAsientoAula" type="checkbox">
                         <span>Mostrar número de asiento</span>
                     </label>
+                    <div class="configuracion-aula-colores-genero">
+                        <div class="configuracion-aula-color">
+                            <label for="colorMujerAula">Color de letras de mujeres</label>
+                            <input id="colorMujerAula" type="color" value="#e91e63" title="Elegir color para las letras de las mujeres">
+                        </div>
+                        <div class="configuracion-aula-color">
+                            <label for="colorVaronAula">Color de letras de varones</label>
+                            <input id="colorVaronAula" type="color" value="#1976d2" title="Elegir color para las letras de los varones">
+                        </div>
+                    </div>
                     <div class="configuracion-aula-campos">
                         <div class="configuracion-aula-campo">
                             <label for="cantidadColumnasAula">Columnas de mesas</label>
@@ -11082,7 +11096,7 @@ async function prepararEstadisticas() {
         const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
             cargarTodosLosRegistrosEstadisticas(
                 "matematica",
-                "id,num_lista,ci,nombre,curso,fecha_nacimiento,nota_1t,nota_2t",
+                "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,nota_1t,nota_2t",
                 "id"
             ),
             cargarTodosLosRegistrosEstadisticas(
@@ -17033,9 +17047,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -17072,7 +17086,9 @@ function normalizarConfiguracionAula(datos = {}) {
     const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
     const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
     const mostrarNumeroAsiento = datos.mostrarNumeroAsiento === true;
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento };
+    const colorMujer = /^#[0-9A-F]{6}$/i.test(String(datos.colorMujer || "")) ? String(datos.colorMujer) : "#e91e63";
+    const colorVaron = /^#[0-9A-F]{6}$/i.test(String(datos.colorVaron || "")) ? String(datos.colorVaron) : "#1976d2";
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -17100,7 +17116,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2") {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -17116,7 +17132,9 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         largoMesa,
         mostrarNombreCompleto: mostrarNombreCompleto === true,
         mostrarNumeroLista: mostrarNumeroLista !== false,
-        mostrarNumeroAsiento: mostrarNumeroAsiento === true
+        mostrarNumeroAsiento: mostrarNumeroAsiento === true,
+        colorMujer: /^#[0-9A-F]{6}$/i.test(String(colorMujer || "")) ? String(colorMujer) : "#e91e63",
+        colorVaron: /^#[0-9A-F]{6}$/i.test(String(colorVaron || "")) ? String(colorVaron) : "#1976d2"
     };
     localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
 }
@@ -17140,13 +17158,17 @@ async function cargarConfiguracionDistribucionAulaBD() {
             data.distribucion.__mostrarNombreCompleto === true;
         const metadataMostrarNumeroLista = !(data.distribucion &&
             data.distribucion.__mostrarNumeroLista === false);
+        const metadataColorMujer = data.distribucion && data.distribucion.__colorMujer;
+        const metadataColorVaron = data.distribucion && data.distribucion.__colorVaron;
 
         const config = normalizarConfiguracionAula({
             ...data,
             filasPorColumna: metadataFilas || undefined,
             mostrarNombreCompleto: metadataMostrarNombreCompleto,
             mostrarNumeroLista: metadataMostrarNumeroLista,
-            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true
+            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true,
+            colorMujer: metadataColorMujer,
+            colorVaron: metadataColorVaron
         });
         const distribucion = data.distribucion && typeof data.distribucion === "object"
             ? { ...data.distribucion } : null;
@@ -17156,6 +17178,8 @@ async function cargarConfiguracionDistribucionAulaBD() {
             delete distribucion.__mostrarNombreCompleto;
             delete distribucion.__mostrarNumeroLista;
             delete distribucion.__mostrarNumeroAsiento;
+            delete distribucion.__colorMujer;
+            delete distribucion.__colorVaron;
         }
 
         configuracionAulaActual = config;
@@ -17177,6 +17201,8 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
     distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
     distribucionParaGuardar.__mostrarNumeroAsiento = config.mostrarNumeroAsiento === true;
+    distribucionParaGuardar.__colorMujer = config.colorMujer;
+    distribucionParaGuardar.__colorVaron = config.colorVaron;
 
     const datos = {
         curso: cursoSeleccionado,
@@ -17201,7 +17227,9 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.filasPorColumna,
         config.mostrarNombreCompleto,
         config.mostrarNumeroLista,
-        config.mostrarNumeroAsiento
+        config.mostrarNumeroAsiento,
+        config.colorMujer,
+        config.colorVaron
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -17378,6 +17406,8 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     const generoAula = estudiante ? obtenerGeneroEstadistica(estudiante.gen) : "";
     nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio") + (generoAula ? ` genero-${generoAula}` : "");
     nombreEl.textContent = construirNombreCortoAula(estudiante);
+    if (generoAula === "mujer") nombreEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+    if (generoAula === "varon") nombreEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
 
     if (estudiante) {
         nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
@@ -17757,6 +17787,8 @@ function mostrarConfiguracionAula() {
     const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
     const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
     const inputMostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    const inputColorMujer = document.getElementById("colorMujerAula");
+    const inputColorVaron = document.getElementById("colorVaronAula");
 
     if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
     if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
@@ -17764,10 +17796,12 @@ function mostrarConfiguracionAula() {
     if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
     if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
     if (inputMostrarNumeroAsiento) inputMostrarNumeroAsiento.checked = configuracionAulaActual.mostrarNumeroAsiento === true;
+    if (inputColorMujer) inputColorMujer.value = configuracionAulaActual.colorMujer || "#e91e63";
+    if (inputColorVaron) inputColorVaron.value = configuracionAulaActual.colorVaron || "#1976d2";
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputColorMujer, inputColorVaron].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
@@ -17859,17 +17893,19 @@ function aplicarConfiguracionAula() {
     const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
     const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
     const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula")?.checked === true;
+    const colorMujer = document.getElementById("colorMujerAula")?.value || "#e91e63";
+    const colorVaron = document.getElementById("colorVaronAula")?.value || "#1976d2";
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -17905,7 +17941,9 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
            Number(a.largoMesa) === Number(b.largoMesa) &&
            (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
            (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false) &&
-           (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true);
+           (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true) &&
+           String(a.colorMujer || "#e91e63").toLowerCase() === String(b.colorMujer || "#e91e63").toLowerCase() &&
+           String(a.colorVaron || "#1976d2").toLowerCase() === String(b.colorVaron || "#1976d2").toLowerCase();
 }
 
 function actualizarBotonAplicarConfiguracionAula() {
