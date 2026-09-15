@@ -7451,6 +7451,10 @@ function normalizarHoraAsistencia(hora) {
     return valor;
 }
 
+function estudiantePuedeEditarAsistencia(estudiante) {
+    return !!estudiante && String(estudiante.estado || "").trim().toUpperCase() === "EFECTIVO";
+}
+
 function bloquearDesbloquearAsistencia() {
     if (esDiaSinClasesAsistencia()) {
         mostrarMensaje("ℹ️ No se puede registrar asistencia porque este día no se pasó clases.");
@@ -7523,7 +7527,9 @@ function bloquearDesbloquearAsistencia() {
         control => {
             const fila = control.closest("tr");
             const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
-            control.disabled = !estudiante || String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO";
+            const puedeEditar = estudiantePuedeEditarAsistencia(estudiante);
+            control.disabled = !puedeEditar;
+            if (fila && !puedeEditar) fila.classList.add("estudiante-estado-bloqueado");
         });
 
 
@@ -8647,6 +8653,17 @@ function mostrarTablaAsistencia() {
     });
 
     aplicarRestriccionTipoDiaAsistencia();
+
+    // Protección definitiva por estado de matrícula.
+    // Se aplica después de cualquier otra función que habilite/deshabilite
+    // la tabla, para que un estudiante no EFECTIVO nunca pueda editarse.
+    tbody.querySelectorAll("input").forEach(control => {
+        const fila = control.closest("tr");
+        const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
+        if (!estudiantePuedeEditarAsistencia(estudiante)) {
+            control.disabled = true;
+        }
+    });
 }
 
 
@@ -8894,6 +8911,14 @@ async function guardarAsistenciaIndividual(control) {
        Solo se detecta el cambio y se muestra el botón Guardar. */
     if (!control || !asistenciaDesbloqueada) return;
 
+    const fila = control.closest("tr");
+    const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
+    if (!estudiantePuedeEditarAsistencia(estudiante)) {
+        control.checked = false;
+        control.disabled = true;
+        return;
+    }
+
     if (esDiaSinClasesAsistencia()) {
         control.checked = false;
         mostrarMensaje("ℹ️ No se puede registrar asistencia porque este día no se pasó clases.");
@@ -8907,12 +8932,24 @@ async function guardarAsistenciaIndividual(control) {
 async function guardarObservacionAsistenciaIndividual(input) {
     /* Las observaciones manuales tampoco se guardan automáticamente. */
     if (!input || !asistenciaDesbloqueada) return;
+    const fila = input.closest("tr");
+    const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
+    if (!estudiantePuedeEditarAsistencia(estudiante)) {
+        input.disabled = true;
+        return;
+    }
     actualizarCambiosPendientesAsistencia();
 }
 
 async function guardarHoraAsistenciaIndividual(input) {
     /* La hora manual tampoco se guarda automáticamente. */
     if (!input || !asistenciaDesbloqueada) return;
+    const fila = input.closest("tr");
+    const estudiante = fila ? estudiantes.find(e => String(e.id) === String(fila.dataset.estudiante)) : null;
+    if (!estudiantePuedeEditarAsistencia(estudiante)) {
+        input.disabled = true;
+        return;
+    }
     actualizarCambiosPendientesAsistencia();
 }
 
