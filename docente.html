@@ -13282,7 +13282,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("asistencia")
             .select(
-                "estudiante_id,fecha,estado"
+                "estudiante_id,fecha,estado,hora,observacion"
             )
             .in(
                 "estudiante_id",
@@ -13922,6 +13922,405 @@ async function exportarExcel() {
                 libro,
                 hoja,
                 nombreHoja
+            );
+
+
+            /* =================================================
+               HOJA ADICIONAL DE OBSERVACIONES
+               No modifica la hoja normal del curso.
+               Ejemplo: 2A -> 2AObs
+               Cada asistencia queda como:
+               FECHA | HORA | OBSERVACIÓN
+               Cada actividad queda como:
+               NOTA | OBSERVACIÓN
+            ================================================= */
+            const columnasObs = [
+                "Nº LISTA",
+                "NOMBRE",
+                ...fechasCurso.flatMap(fecha => [
+                    formatearFechaExcel(fecha),
+                    "HORA " + formatearFechaExcel(fecha),
+                    "OBS " + formatearFechaExcel(fecha)
+                ]),
+                "TOTAL A",
+                "TOTAL R",
+                "TOTAL L",
+                "TOTAL F",
+                ...ser.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO SER",
+                ...saber.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO SABER",
+                ...hacer.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO HACER",
+                ...auto.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                "PROMEDIO AUTOEVALUACIÓN",
+                "NOTA 3T",
+                "NOTA FINAL"
+            ];
+
+            const datosObs = [];
+            datosObs.push(columnasObs);
+
+            estudiantesCurso.forEach(estudiante => {
+                const filaObs = [];
+
+                filaObs.push(estudiante.num_lista ?? "");
+                filaObs.push(estudiante.nombre ?? "");
+
+                const totalesObs = {
+                    A: 0,
+                    R: 0,
+                    L: 0,
+                    F: 0
+                };
+
+                fechasCurso.forEach(fecha => {
+                    const clave =
+                        estudiante.id +
+                        "_" +
+                        fecha;
+
+                    const registroAsistencia =
+                        todaAsistencia.find(
+                            r =>
+                                String(r.estudiante_id) === String(estudiante.id) &&
+                                String(r.fecha) === String(fecha)
+                        );
+
+                    const codigo =
+                        mapaAsistencia[clave] || "";
+
+                    const hora =
+                        registroAsistencia?.hora || "";
+
+                    const observacion =
+                        registroAsistencia?.observacion || "";
+
+                    filaObs.push(codigo);
+                    filaObs.push(hora);
+                    filaObs.push(observacion);
+
+                    if (
+                        codigo &&
+                        totalesObs[codigo] !== undefined
+                    ) {
+                        totalesObs[codigo]++;
+                    }
+                });
+
+                filaObs.push(totalesObs.A);
+                filaObs.push(totalesObs.R);
+                filaObs.push(totalesObs.L);
+                filaObs.push(totalesObs.F);
+
+                const agregarActividadesConObservacion = lista => {
+                    lista.forEach(actividad => {
+                        const registro =
+                            mapaCalificaciones[
+                                estudiante.id + "_" + actividad.id
+                            ];
+
+                        const nota =
+                            obtenerNotaExcel(
+                                estudiante.id,
+                                actividad.id,
+                                mapaCalificaciones
+                            );
+
+                        const observacion =
+                            registro?.observacion || "";
+
+                        filaObs.push(nota);
+                        filaObs.push(observacion);
+                    });
+                };
+
+                const notasSerObs = ser.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(ser);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasSerObs,
+                        ser
+                    )
+                );
+
+                const notasSaberObs = saber.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(saber);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasSaberObs,
+                        saber
+                    )
+                );
+
+                const notasHacerObs = hacer.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(hacer);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasHacerObs,
+                        hacer
+                    )
+                );
+
+                const notasAutoObs = auto.map(
+                    actividad =>
+                        obtenerNotaExcel(
+                            estudiante.id,
+                            actividad.id,
+                            mapaCalificaciones
+                        )
+                );
+
+                agregarActividadesConObservacion(auto);
+
+                filaObs.push(
+                    calcularPromedioPonderado(
+                        notasAutoObs,
+                        auto
+                    )
+                );
+
+                const nota1TObs = convertirNumero(estudiante.nota_1t);
+                const nota2TObs = convertirNumero(estudiante.nota_2t);
+
+                /* Se mantienen exactamente los mismos cálculos
+                   de NOTA 3T y NOTA FINAL de la hoja normal. */
+                const calcularPuntosCategoriaObs = (lista, limite) => {
+                    if (!lista || lista.length === 0) return 0;
+
+                    let sumaNotas = 0;
+                    let sumaMaximos = 0;
+
+                    lista.forEach(actividad => {
+                        const registro =
+                            mapaCalificaciones[
+                                estudiante.id + "_" + actividad.id
+                            ];
+
+                        if (
+                            !registro ||
+                            registro.nota === null ||
+                            registro.nota === undefined ||
+                            String(registro.nota).trim() === ""
+                        ) {
+                            return;
+                        }
+
+                        const nota = Number(registro.nota);
+                        const maximo = Number(
+                            actividad.puntaje_maximo ||
+                            LIMITES[actividad.categoria]
+                        );
+
+                        if (
+                            isNaN(nota) ||
+                            isNaN(maximo) ||
+                            maximo <= 0
+                        ) {
+                            return;
+                        }
+
+                        sumaNotas += nota;
+                        sumaMaximos += maximo;
+                    });
+
+                    if (sumaMaximos === 0) return 0;
+
+                    return (sumaNotas / sumaMaximos) * limite;
+                };
+
+                const puntosSERObs =
+                    calcularPuntosCategoriaObs(
+                        ser,
+                        LIMITES.SER
+                    );
+
+                const puntosSABERObs =
+                    calcularPuntosCategoriaObs(
+                        saber,
+                        LIMITES.SABER
+                    );
+
+                const puntosHACERObs =
+                    calcularPuntosCategoriaObs(
+                        hacer,
+                        LIMITES.HACER
+                    );
+
+                const puntosAUTOObs =
+                    calcularPuntosCategoriaObs(
+                        auto,
+                        LIMITES.AUTOEVALUACION
+                    );
+
+                const hayNotas3TObs =
+                    [ser, saber, hacer, auto].some(
+                        lista =>
+                            lista.some(actividad => {
+                                const registro =
+                                    mapaCalificaciones[
+                                        estudiante.id + "_" + actividad.id
+                                    ];
+
+                                return (
+                                    registro &&
+                                    registro.nota !== null &&
+                                    registro.nota !== undefined &&
+                                    String(registro.nota).trim() !== ""
+                                );
+                            })
+                    );
+
+                const nota3TObs = hayNotas3TObs
+                    ? redondear(
+                        puntosSERObs +
+                        puntosSABERObs +
+                        puntosHACERObs +
+                        puntosAUTOObs
+                    )
+                    : null;
+
+                const notaFinalObs =
+                    nota1TObs !== null &&
+                    nota2TObs !== null &&
+                    nota3TObs !== null
+                        ? redondear(
+                            (
+                                nota1TObs +
+                                nota2TObs +
+                                nota3TObs
+                            ) / 3
+                        )
+                        : null;
+
+                filaObs.push(
+                    nota3TObs === null
+                        ? ""
+                        : nota3TObs
+                );
+
+                filaObs.push(
+                    notaFinalObs === null
+                        ? ""
+                        : notaFinalObs
+                );
+
+                datosObs.push(filaObs);
+            });
+
+            const hojaObs =
+                XLSX.utils.aoa_to_sheet(
+                    datosObs
+                );
+
+            hojaObs["!freeze"] = {
+                xSplit: 2,
+                ySplit: 1
+            };
+
+            hojaObs["!cols"] =
+                columnasObs.map(
+                    (nombre, indice) => {
+                        if (indice === 0) {
+                            return { wch: 10 };
+                        }
+
+                        if (indice === 1) {
+                            return { wch: 32 };
+                        }
+
+                        if (
+                            indice >= 2 &&
+                            indice < 2 + (fechasCurso.length * 3)
+                        ) {
+                            const posicion = (indice - 2) % 3;
+
+                            if (posicion === 0) {
+                                return { wch: 13 };
+                            }
+
+                            if (posicion === 1) {
+                                return { wch: 12 };
+                            }
+
+                            return { wch: 25 };
+                        }
+
+                        return { wch: 20 };
+                    }
+                );
+
+            for (
+                let columna = 0;
+                columna < columnasObs.length;
+                columna++
+            ) {
+                const celda =
+                    XLSX.utils.encode_cell({
+                        r: 0,
+                        c: columna
+                    });
+
+                if (hojaObs[celda]) {
+                    hojaObs[celda].s = {
+                        alignment: {
+                            textRotation: 90,
+                            vertical: "center",
+                            horizontal: "center",
+                            wrapText: true
+                        }
+                    };
+                }
+            }
+
+            let nombreHojaObs =
+                String(curso)
+                .replace(
+                    /[\\/?*:]/g,
+                    ""
+                )
+                .substring(
+                    0,
+                    27
+                );
+
+            if (!nombreHojaObs) {
+                nombreHojaObs = "Curso";
+            }
+
+            nombreHojaObs += "Obs";
+
+            XLSX.utils.book_append_sheet(
+                libro,
+                hojaObs,
+                nombreHojaObs
             );
 
         });
