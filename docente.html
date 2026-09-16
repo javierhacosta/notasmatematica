@@ -1438,6 +1438,14 @@ td:first-child {
     background: white;
 }
 
+.calendario-dia-asistencia .marca-azar-asistencia {
+    position: absolute;
+    right: 2px;
+    top: 1px;
+    font-size: 9px;
+    line-height: 1;
+}
+
 .leyenda-calendario-asistencia {
     display: flex;
     align-items: center;
@@ -8000,6 +8008,7 @@ async function guardarTipoDiaAsistencia() {
 
 let fechasAsistenciaGuardadas = [];
 let tiposDiasAsistenciaGuardados = {};
+let fechasAzarAsistenciaGuardadas = new Set();
 let mesCalendarioAsistencia = new Date();
 mesCalendarioAsistencia.setDate(1);
 
@@ -8051,6 +8060,7 @@ function renderizarCalendarioFechasAsistencia() {
     );
 
     const tiposDias = tiposDiasAsistenciaGuardados || {};
+    const fechasAzar = fechasAzarAsistenciaGuardadas || new Set();
 
     for (let i = 0; i < desplazamiento; i++) {
         const vacio = document.createElement("span");
@@ -8087,6 +8097,14 @@ function renderizarCalendarioFechasAsistencia() {
             boton.appendChild(marca);
         }
 
+        if (fechasAzar.has(clave)) {
+            const marcaAzar = document.createElement("span");
+            marcaAzar.className = "marca-azar-asistencia";
+            marcaAzar.textContent = "🎲";
+            boton.appendChild(marcaAzar);
+            boton.title = (boton.title || "") + " · Hubo estudiantes elegidos al azar";
+        }
+
         if (clave === hoyClave) {
             boton.classList.add("hoy");
         }
@@ -8116,6 +8134,7 @@ async function cargarFechasAsistencia() {
 
     fechasAsistenciaGuardadas = [];
     tiposDiasAsistenciaGuardados = {};
+    fechasAzarAsistenciaGuardadas = new Set();
 
     if (!cursoSeleccionado) {
         renderizarCalendarioFechasAsistencia();
@@ -8134,7 +8153,7 @@ async function cargarFechasAsistencia() {
     }
 
     // Las dos consultas no dependen entre sí. Ejecutarlas juntas reduce la latencia total.
-    const [resultadoAsistencia, resultadoTipos] = await Promise.all([
+    const [resultadoAsistencia, resultadoTipos, resultadoAzar] = await Promise.all([
         supabaseClient
             .from("asistencia")
             .select("fecha")
@@ -8144,11 +8163,17 @@ async function cargarFechasAsistencia() {
             .from("asistencia_tipos_dia")
             .select("fecha,tipo")
             .eq("curso", cursoSeleccionado)
+            .order("fecha", { ascending: false }),
+        supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .select("fecha")
+            .eq("curso", cursoSeleccionado)
             .order("fecha", { ascending: false })
     ]);
 
     const { data: dataAsistencia, error: errorAsistencia } = resultadoAsistencia;
     const { data: dataTipos, error: errorTipos } = resultadoTipos;
+    const { data: dataAzar, error: errorAzar } = resultadoAzar;
 
     if (errorAsistencia) {
         console.error(errorAsistencia);
@@ -8163,6 +8188,14 @@ async function cargarFechasAsistencia() {
         renderizarCalendarioFechasAsistencia();
         return;
     }
+
+    if (errorAzar) {
+        console.warn("No se pudieron cargar las fechas con elecciones de estudiantes al azar:", errorAzar);
+    }
+
+    fechasAzarAsistenciaGuardadas = new Set(
+        (dataAzar || []).map(r => String(r.fecha)).filter(Boolean)
+    );
 
     tiposDiasAsistenciaGuardados = {};
     (dataTipos || []).forEach(r => {
