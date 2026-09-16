@@ -1438,6 +1438,16 @@ td:first-child {
     background: white;
 }
 
+.calendario-dia-asistencia .marca-actividad-calendario {
+    position: absolute;
+    left: 3px;
+    top: 0;
+    font-size: 16px;
+    line-height: 10px;
+    font-weight: bold;
+    color: #ef6c00;
+}
+
 .calendario-dia-asistencia .marca-azar-asistencia {
     position: absolute;
     right: 2px;
@@ -8009,6 +8019,7 @@ async function guardarTipoDiaAsistencia() {
 let fechasAsistenciaGuardadas = [];
 let tiposDiasAsistenciaGuardados = {};
 let fechasAzarAsistenciaGuardadas = new Set();
+let fechasActividadesAsistenciaGuardadas = new Set();
 let mesCalendarioAsistencia = new Date();
 mesCalendarioAsistencia.setDate(1);
 
@@ -8061,6 +8072,7 @@ function renderizarCalendarioFechasAsistencia() {
 
     const tiposDias = tiposDiasAsistenciaGuardados || {};
     const fechasAzar = fechasAzarAsistenciaGuardadas || new Set();
+    const fechasActividades = fechasActividadesAsistenciaGuardadas || new Set();
 
     for (let i = 0; i < desplazamiento; i++) {
         const vacio = document.createElement("span");
@@ -8095,6 +8107,14 @@ function renderizarCalendarioFechasAsistencia() {
             const marca = document.createElement("span");
             marca.className = "marca-guardado";
             boton.appendChild(marca);
+        }
+
+        if (fechasActividades.has(clave)) {
+            const marcaActividad = document.createElement("span");
+            marcaActividad.className = "marca-actividad-calendario";
+            marcaActividad.textContent = "•";
+            marcaActividad.title = "Hay una actividad en esta fecha";
+            boton.appendChild(marcaActividad);
         }
 
         if (fechasAzar.has(clave)) {
@@ -8153,7 +8173,7 @@ async function cargarFechasAsistencia() {
     }
 
     // Las dos consultas no dependen entre sí. Ejecutarlas juntas reduce la latencia total.
-    const [resultadoAsistencia, resultadoTipos, resultadoAzar] = await Promise.all([
+    const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades] = await Promise.all([
         supabaseClient
             .from("asistencia")
             .select("fecha")
@@ -8168,12 +8188,18 @@ async function cargarFechasAsistencia() {
             .from(TABLA_AZAR_ASISTENCIA_BD)
             .select("fecha")
             .eq("curso", cursoSeleccionado)
-            .order("fecha", { ascending: false })
+            .order("fecha", { ascending: false }),
+        supabaseClient
+            .from("actividades")
+            .select("fecha")
+            .eq("curso", cursoSeleccionado)
+            .not("fecha", "is", null)
     ]);
 
     const { data: dataAsistencia, error: errorAsistencia } = resultadoAsistencia;
     const { data: dataTipos, error: errorTipos } = resultadoTipos;
     const { data: dataAzar, error: errorAzar } = resultadoAzar;
+    const { data: dataActividades, error: errorActividades } = resultadoActividades;
 
     if (errorAsistencia) {
         console.error(errorAsistencia);
@@ -8193,8 +8219,16 @@ async function cargarFechasAsistencia() {
         console.warn("No se pudieron cargar las fechas con elecciones de estudiantes al azar:", errorAzar);
     }
 
+    if (errorActividades) {
+        console.warn("No se pudieron cargar las fechas con actividades:", errorActividades);
+    }
+
     fechasAzarAsistenciaGuardadas = new Set(
         (dataAzar || []).map(r => String(r.fecha)).filter(Boolean)
+    );
+
+    fechasActividadesAsistenciaGuardadas = new Set(
+        (dataActividades || []).map(r => String(r.fecha)).filter(Boolean)
     );
 
     tiposDiasAsistenciaGuardados = {};
