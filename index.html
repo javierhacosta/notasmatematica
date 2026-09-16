@@ -1026,8 +1026,31 @@ async function consultarNota() {
         const CLAVE_BLOQUEO_VISITA =
             `ultima_consulta_nota_${alumnoActual.id}`;
         const DURACION_BLOQUEO_VISITA = 60 * 60 * 1000;
+
+        // Respaldo temporal para navegadores que bloquean localStorage.
+        // Cuando localStorage funciona, se conserva exactamente el comportamiento actual.
+        window.__bloqueoVisitaTemporal = window.__bloqueoVisitaTemporal || {};
+
+        function obtenerUltimaConsulta(clave) {
+            try {
+                return localStorage.getItem(clave);
+            } catch (error) {
+                console.warn("localStorage no disponible; usando respaldo temporal:", error);
+                return window.__bloqueoVisitaTemporal[clave] || null;
+            }
+        }
+
+        function guardarUltimaConsulta(clave, valor) {
+            try {
+                localStorage.setItem(clave, valor);
+            } catch (error) {
+                console.warn("localStorage no disponible; usando respaldo temporal:", error);
+                window.__bloqueoVisitaTemporal[clave] = valor;
+            }
+        }
+
         const ultimaConsulta =
-            Number(localStorage.getItem(CLAVE_BLOQUEO_VISITA) || 0);
+            Number(obtenerUltimaConsulta(CLAVE_BLOQUEO_VISITA) || 0);
         const tiempoTranscurrido = Date.now() - ultimaConsulta;
 
         if (ultimaConsulta && tiempoTranscurrido < DURACION_BLOQUEO_VISITA) {
@@ -1038,7 +1061,7 @@ async function consultarNota() {
             return;
         }
 
-        localStorage.setItem(
+        guardarUltimaConsulta(
             CLAVE_BLOQUEO_VISITA,
             String(Date.now())
         );
