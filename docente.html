@@ -18552,6 +18552,10 @@ async function guardarDescartadosAzarAsistencia(lista) {
 
     const listaNormalizada = [...new Set((lista || []).map(String))];
 
+    // Guardar en Supabase primero. Así, si la BD rechaza la operación,
+    // no se oculta el error sobrescribiendo el estado local.
+    await sincronizarDescartadosAzarAsistenciaBD(listaNormalizada);
+
     try {
         const datos = JSON.parse(localStorage.getItem("azarAsistenciaDescartados") || "{}");
         datos[clave] = listaNormalizada;
@@ -18559,8 +18563,6 @@ async function guardarDescartadosAzarAsistencia(lista) {
     } catch (error) {
         console.warn("No se pudo guardar la lista de estudiantes descartados del azar:", error);
     }
-
-    await sincronizarDescartadosAzarAsistenciaBD(listaNormalizada);
 }
 
 async function cargarDescartadosAzarAsistenciaBD() {
@@ -18600,29 +18602,47 @@ async function sincronizarDescartadosAzarAsistenciaBD(lista) {
 
     const listaNormalizada = [...new Set((lista || []).map(String))];
 
-    // Reemplazar únicamente los bloqueos de este curso y esta fecha.
-    // Se evita depender de una restricción UNIQUE para hacer upsert.
-    const { error: errorEliminar } = await supabaseClient
+    // Sincronización completa sin depender de una restricción UNIQUE.
+    const { data: existentes, error: errorExistentes } = await supabaseClient
         .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
-        .delete()
+        .select("estudiante_id")
         .eq("curso", curso)
         .eq("fecha", fecha);
 
-    if (errorEliminar) throw errorEliminar;
+    if (errorExistentes) throw errorExistentes;
 
-    if (listaNormalizada.length === 0) return;
+    const idsNuevos = new Set(listaNormalizada);
+    const idsEliminar = (existentes || [])
+        .map(r => String(r.estudiante_id))
+        .filter(id => !idsNuevos.has(id));
 
-    const registros = listaNormalizada.map(estudianteId => ({
-        curso,
-        fecha,
-        estudiante_id: estudianteId
-    }));
+    if (idsEliminar.length > 0) {
+        const { error: errorEliminar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+            .delete()
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .in("estudiante_id", idsEliminar);
 
-    const { error: errorGuardar } = await supabaseClient
-        .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
-        .insert(registros);
+        if (errorEliminar) throw errorEliminar;
+    }
 
-    if (errorGuardar) throw errorGuardar;
+    const idsExistentes = new Set((existentes || []).map(r => String(r.estudiante_id)));
+    const idsInsertar = listaNormalizada.filter(id => !idsExistentes.has(id));
+
+    if (idsInsertar.length > 0) {
+        const registros = idsInsertar.map(estudianteId => ({
+            curso,
+            fecha,
+            estudiante_id: estudianteId
+        }));
+
+        const { error: errorGuardar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+            .insert(registros);
+
+        if (errorGuardar) throw errorGuardar;
+    }
 }
 
 function obtenerElegidosAzarAsistencia() {
@@ -19206,11 +19226,14 @@ async function descartarEstudianteAzarAsistencia(estudianteId, event) {
         : [...actuales, id];
 
     try {
-        // Guardar primero en local y confirmar la sincronización en BD.
         await guardarDescartadosAzarAsistencia(nuevaLista);
     } catch (error) {
-        // Si la BD falla, se mantiene el estado local para no perder la selección.
-        console.warn("No se pudo confirmar en BD el bloqueo/desbloqueo del estudiante:", error);
+        console.error("No se pudo guardar en BD el bloqueo/desbloqueo del estudiante:", error);
+        alert(
+            "No se pudo guardar el bloqueo en la base de datos.\n\n" +
+            (error?.message || error?.details || error?.hint || "Error desconocido")
+        );
+        return;
     }
 
     if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id && !estaBloqueado) {
