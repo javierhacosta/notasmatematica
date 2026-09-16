@@ -18639,7 +18639,9 @@ function obtenerCandidatosAzarAsistencia() {
             return Number.isFinite(numero) && numero > 0;
         });
 
-    const elegidos = new Set(obtenerElegidosAzarAsistencia());
+    const elegidos = new Set(
+        obtenerElegidosAzarAsistencia().map(id => String(id))
+    );
 
     return estudiantesCurso.filter(estudiante => {
         if (!estudianteEsEfectivo(estudiante)) return false;
@@ -18987,8 +18989,7 @@ function mostrarElegidosAzarAsistencia() {
 
     const elegidos = elegidosIds
         .map(id => mapa.get(String(id)))
-        .filter(Boolean)
-        .sort((a, b) => Number(a.num_lista) - Number(b.num_lista));
+        .filter(Boolean);
 
     if (!elegidos.length) {
         listaEl.innerHTML = `<div style="padding:12px;text-align:center;color:#666;">Todavía no se eligió ningún estudiante para esta fecha.</div>`;
