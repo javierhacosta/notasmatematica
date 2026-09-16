@@ -19351,7 +19351,16 @@ async function eliminarElegidoAzarAsistencia(estudianteId, event) {
 
     if (nuevas.length === actuales.length) return;
 
-    guardarElegidosAzarAsistencia(nuevas);
+    try {
+        await guardarElegidosAzarAsistencia(nuevas);
+    } catch (error) {
+        console.error("No se pudo eliminar de la BD el estudiante elegido:", error);
+        alert(
+            "No se pudo eliminar al estudiante de la base de datos.\n\n" +
+            (error?.message || error?.details || error?.hint || "Error desconocido")
+        );
+        return;
+    }
     if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id) {
         azarAsistenciaEstudianteActual = null;
     }
