@@ -14611,6 +14611,44 @@ async function exportarExcel() {
                 columnas
             );
 
+            /* =================================================
+               FILA ADICIONAL DE REFERENCIA
+               Asistencia: inicial del día de la semana.
+               Actividades: fecha de la actividad.
+            ================================================= */
+            const filaReferencia = ["", ""];
+
+            fechasCurso.forEach(fecha => {
+                const d = fechaLocalDesdeClaveAsistencia(fecha);
+                const inicialDia = d
+                    ? ["D", "L", "M", "X", "J", "V", "S"][d.getDay()]
+                    : "";
+                filaReferencia.push(inicialDia);
+            });
+
+            filaReferencia.push("", "", "", "");
+
+            ser.forEach(actividad => {
+                filaReferencia.push(actividad.fecha ? formatearFechaExcel(actividad.fecha) : "");
+            });
+            filaReferencia.push("");
+
+            saber.forEach(actividad => {
+                filaReferencia.push(actividad.fecha ? formatearFechaExcel(actividad.fecha) : "");
+            });
+            filaReferencia.push("");
+
+            hacer.forEach(actividad => {
+                filaReferencia.push(actividad.fecha ? formatearFechaExcel(actividad.fecha) : "");
+            });
+            filaReferencia.push("");
+
+            filaReferencia.push("");
+            filaReferencia.push("");
+            filaReferencia.push("");
+
+            datos.push(filaReferencia);
+
 
             estudiantesCurso.forEach(
             estudiante => {
@@ -14918,7 +14956,7 @@ async function exportarExcel() {
 
                 xSplit: 2,
 
-                ySplit: 1
+                ySplit: 2
 
             };
 
