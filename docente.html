@@ -1440,12 +1440,17 @@ td:first-child {
 
 .calendario-dia-asistencia .marca-actividad-calendario {
     position: absolute;
-    left: 3px;
+    left: 2px;
     top: 0;
-    font-size: 16px;
+    display: flex;
+    gap: 1px;
+    align-items: center;
+}
+
+.calendario-dia-asistencia .icono-categoria-actividad {
+    font-size: 9px;
     line-height: 10px;
-    font-weight: bold;
-    color: #ef6c00;
+    display: inline-block;
 }
 
 .calendario-dia-asistencia .marca-azar-asistencia {
@@ -8103,17 +8108,42 @@ function renderizarCalendarioFechasAsistencia() {
             } else {
                 boton.classList.add("guardado");
             }
-
-            const marca = document.createElement("span");
-            marca.className = "marca-guardado";
-            boton.appendChild(marca);
         }
 
         if (fechasActividades.has(clave)) {
             const marcaActividad = document.createElement("span");
             marcaActividad.className = "marca-actividad-calendario";
-            marcaActividad.textContent = "•";
-            marcaActividad.title = "Hay una actividad en esta fecha";
+            marcaActividad.title = "Hay actividad en esta fecha";
+
+            const categoriasFecha = [...new Set(
+                actividades
+                    .filter(a => String(a?.fecha || "") === clave)
+                    .map(a => String(a?.categoria || "").trim().toLowerCase())
+                    .filter(Boolean)
+            )];
+
+            const iconosCategoria = {
+                ser: "❤️",
+                saber: "🧠",
+                hacer: "🛠️",
+                autoevaluacion: "⭐"
+            };
+
+            const nombresCategoria = {
+                ser: "SER",
+                saber: "SABER",
+                hacer: "HACER",
+                autoevaluacion: "AUTOEVALUACIÓN"
+            };
+
+            categoriasFecha.forEach(categoria => {
+                const icono = document.createElement("span");
+                icono.className = "icono-categoria-actividad";
+                icono.textContent = iconosCategoria[categoria] || "📌";
+                icono.title = nombresCategoria[categoria] || categoria;
+                marcaActividad.appendChild(icono);
+            });
+
             boton.appendChild(marcaActividad);
         }
 
