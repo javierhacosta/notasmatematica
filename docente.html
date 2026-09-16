@@ -1898,6 +1898,14 @@ td:first-child {
     transform: scale(1.12);
 }
 
+.azar-estudiante-bloqueado {
+    opacity: .55;
+}
+
+.azar-estudiante-bloqueado .azar-asistencia-nombre-elegido {
+    text-decoration: line-through;
+}
+
 @media (max-width: 600px) {
     .modal-azar-asistencia {
         max-width: 100%;
@@ -19123,19 +19131,38 @@ function mostrarPorElegirAzarAsistencia() {
     const listaEl = document.getElementById("azarAsistenciaLista");
     if (!listaEl) return;
 
-    const candidatos = obtenerCandidatosAzarAsistencia();
     const tipo = obtenerTipoEleccionAzarAsistencia();
+    const elegidos = new Set(obtenerElegidosAzarAsistencia().map(id => String(id)));
+    const descartados = new Set(obtenerDescartadosAzarAsistencia().map(id => String(id)));
 
-    if (!candidatos.length) {
+    // Se muestran también los estudiantes bloqueados; sólo quedan fuera del sorteo.
+    const estudiantes = obtenerEstudiantesCursoActual()
+        .filter(estudiante => estudiante && estudiante.id != null)
+        .filter(estudiante => !elegidos.has(String(estudiante.id)))
+        .filter(estudiante => estudianteEsEfectivo(estudiante))
+        .filter(estudiante => {
+            if (tipo === "inicial") return String(estudiante.nombre || "").trim().length > 0;
+            const numero = Number(estudiante.num_lista);
+            return Number.isFinite(numero) && numero > 0;
+        })
+        .filter(estudiante => {
+            const genero = obtenerGeneroEstadistica(estudiante.gen);
+            if (tipo === "varones") return genero === "varon";
+            if (tipo === "mujeres") return genero === "mujer";
+            return true;
+        });
+
+    if (!estudiantes.length) {
         listaEl.innerHTML = `<div style="padding:12px;text-align:center;color:#666;">No quedan estudiantes por elegir para esta fecha.</div>`;
         listaEl.classList.remove("oculto");
         return;
     }
 
-    const filas = candidatos.map((estudiante, indice) => {
+    const filas = estudiantes.map((estudiante, indice) => {
         const idSeguro = JSON.stringify(String(estudiante.id));
+        const bloqueado = descartados.has(String(estudiante.id));
         return `
-        <tr>
+        <tr${bloqueado ? ' class="azar-estudiante-bloqueado"' : ''}>
             <td>${indice + 1}</td>
             <td>
                 <button type="button"
@@ -19150,9 +19177,9 @@ function mostrarPorElegirAzarAsistencia() {
                 <button type="button"
                         class="boton-descartar-azar"
                         onclick='descartarEstudianteAzarAsistencia(${idSeguro}, event)'
-                        title="Descartar de este sorteo para esta fecha"
-                        aria-label="Descartar de este sorteo para esta fecha">
-                    🚫
+                        title="${bloqueado ? "Desbloquear estudiante para el sorteo" : "Bloquear estudiante y descartarlo del sorteo"}"
+                        aria-label="${bloqueado ? "Desbloquear estudiante para el sorteo" : "Bloquear estudiante y descartarlo del sorteo"}">
+                    ${bloqueado ? "🔓" : "🔒"}
                 </button>
             </td>
         </tr>
@@ -19187,12 +19214,16 @@ async function descartarEstudianteAzarAsistencia(estudianteId, event) {
 
     const actuales = obtenerDescartadosAzarAsistencia();
     const id = String(estudianteId);
+    const estaBloqueado = actuales.some(item => String(item) === id);
 
-    if (actuales.some(item => String(item) === id)) return;
+    // El estudiante no se elimina: se bloquea/desbloquea y sólo se excluye o incluye en el sorteo.
+    const nuevaLista = estaBloqueado
+        ? actuales.filter(item => String(item) !== id)
+        : [...actuales, id];
 
-    guardarDescartadosAzarAsistencia([...actuales, id]);
+    guardarDescartadosAzarAsistencia(nuevaLista);
 
-    if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id) {
+    if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id && !estaBloqueado) {
         azarAsistenciaEstudianteActual = null;
     }
 
