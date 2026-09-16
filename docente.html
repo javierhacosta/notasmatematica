@@ -18560,8 +18560,9 @@ function guardarDescartadosAzarAsistencia(lista) {
         console.warn("No se pudo guardar la lista de estudiantes descartados del azar:", error);
     }
 
-    sincronizarDescartadosAzarAsistenciaBD(listaNormalizada).catch(error => {
+    return sincronizarDescartadosAzarAsistenciaBD(listaNormalizada).catch(error => {
         console.warn("No se pudo guardar en BD la lista de estudiantes descartados del azar:", error);
+        throw error;
     });
 }
 
@@ -19221,7 +19222,13 @@ async function descartarEstudianteAzarAsistencia(estudianteId, event) {
         ? actuales.filter(item => String(item) !== id)
         : [...actuales, id];
 
-    guardarDescartadosAzarAsistencia(nuevaLista);
+    try {
+        // Guardar primero en local y confirmar la sincronización en BD.
+        await guardarDescartadosAzarAsistencia(nuevaLista);
+    } catch (error) {
+        // Si la BD falla, se mantiene el estado local para no perder la selección.
+        console.warn("No se pudo confirmar en BD el bloqueo/desbloqueo del estudiante:", error);
+    }
 
     if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id && !estaBloqueado) {
         azarAsistenciaEstudianteActual = null;
