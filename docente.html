@@ -8846,10 +8846,32 @@ function actualizarIndicadorComentariosHorarioAsistencia() {
             : "Configurar hora de entrada y tolerancia");
 }
 
-function mostrarSugerenciasCambioHorarioAsistencia() {
-    // Los comentarios se muestran directamente en la fila de cada estudiante.
-    // Nunca se modifica automáticamente la asistencia o el atraso existente.
+function actualizarBurbujasComentariosHorarioAsistencia() {
+    const comentarios = obtenerComentariosHorarioAsistencia();
+    document.querySelectorAll('#tablaAsistencia tr[data-estudiante]').forEach(fila => {
+        const id = String(fila.dataset.estudiante || '');
+        const contenedorNombre = fila.querySelector('.nombre-estudiante-asistencia');
+        if (!contenedorNombre) return;
+
+        const burbujaAnterior = contenedorNombre.querySelector('.burbuja-comentario-horario-asistencia');
+        if (burbujaAnterior) burbujaAnterior.remove();
+
+        const comentario = comentarios[id] || comentarios[Number(id)];
+        if (!comentario) return;
+
+        const burbuja = document.createElement('div');
+        burbuja.className = 'burbuja-comentario-horario-asistencia';
+        burbuja.textContent = '💬 ' + comentario.texto;
+        burbuja.title = comentario.texto;
+        contenedorNombre.appendChild(burbuja);
+    });
     actualizarIndicadorComentariosHorarioAsistencia();
+}
+
+function mostrarSugerenciasCambioHorarioAsistencia() {
+    // No se muestran alertas ni sugerencias informativas.
+    // El aviso aparece como burbuja directamente en cada estudiante.
+    actualizarBurbujasComentariosHorarioAsistencia();
 }
 
 async function guardarConfiguracionHorarioAsistencia() {
@@ -8891,10 +8913,10 @@ async function guardarConfiguracionHorarioAsistencia() {
         /*
          * IMPORTANTE:
          * Cambiar la hora de entrada o la tolerancia NO modifica estados ya
-         * guardados ni selecciones manuales/QR. Solo se muestran sugerencias
-         * informativas tomando como referencia la hora que ya tiene cada registro.
+         * guardados ni selecciones manuales/QR. El aviso se muestra únicamente
+         * como burbuja en la fila del estudiante y hace parpadear ⏰ si existe.
          */
-        mostrarSugerenciasCambioHorarioAsistencia(hora, tolerancia);
+        actualizarBurbujasComentariosHorarioAsistencia();
     } catch (error) {
         console.error(error);
         alert("No se pudo guardar la configuración de horario: " + (error.message || error));
