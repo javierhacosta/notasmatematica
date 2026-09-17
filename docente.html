@@ -2147,7 +2147,7 @@ td:first-child {
     transition: opacity .2s ease, background .2s ease;
 }
 
-.boton-hora-asistencia.activo {
+.boton-hora-asistencia.configurado {
     opacity: 1;
 }
 
@@ -7650,6 +7650,7 @@ function actualizarBotonHoraAsistencia() {
 
     if (boton) {
         boton.classList.toggle("activo", mostrarHoraAsistencia);
+        boton.classList.toggle("configurado", !!configuracionHorarioAsistencia.activo);
         boton.title = mostrarHoraAsistencia
             ? "Ocultar columna de hora"
             : "Mostrar columna de hora";
@@ -8615,6 +8616,7 @@ async function cargarConfiguracionHorarioAsistencia() {
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
     actualizarInfoConfiguracionHorarioAsistencia();
     actualizarBotonNoEstablecerHoraEntradaAsistencia();
+    actualizarBotonHoraAsistencia();
 }
 
 function actualizarInfoConfiguracionHorarioAsistencia() {
@@ -8699,6 +8701,7 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (t) t.value = 0;
         actualizarInfoConfiguracionHorarioAsistencia();
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
+        actualizarBotonHoraAsistencia();
         mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
     } catch (error) {
         console.error(error);
@@ -8736,7 +8739,8 @@ async function guardarConfiguracionHorarioAsistencia() {
         if (error) throw error;
         configuracionHorarioAsistencia = { hora_entrada: hora, tolerancia_minutos: tolerancia, activo: true };
         actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarBotonNoEstablecerHoraEntradaAsistencia();
+        actualizarBotonNoEstablecerHoraEntradaAsistencia();
+        actualizarBotonHoraAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
         // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
         document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
