@@ -1451,23 +1451,14 @@ td:first-child {
     font-size: 9px;
     line-height: 10px;
     display: inline-block;
-    position: relative;
 }
 
-.calendario-dia-asistencia .contador-icono-categoria {
-    position: absolute;
-    top: -7px;
-    right: -7px;
-    min-width: 7px;
-    height: 9px;
-    padding: 0;
-    background: transparent;
-    color: #222;
-    font-size: 8px;
-    line-height: 9px;
-    font-weight: 700;
-    text-align: center;
-    z-index: 2;
+.calendario-dia-asistencia .contador-categoria-actividad {
+    font-size: 6px;
+    line-height: 1;
+    font-weight: bold;
+    vertical-align: super;
+    margin-left: 1px;
 }
 
 .calendario-dia-asistencia .marca-azar-asistencia {
@@ -8246,19 +8237,14 @@ function renderizarCalendarioFechasAsistencia() {
             marcaActividad.className = "marca-actividad-calendario";
             marcaActividad.title = "Hay actividad en esta fecha";
 
-            const actividadesPorCategoriaFecha = {};
-
+            const conteoCategoriasFecha = {};
             actividades
                 .filter(a => String(a?.fecha || "") === clave)
                 .forEach(a => {
                     const categoria = String(a?.categoria || "").trim().toLowerCase();
-                    if (!categoria) return;
-
-                    if (!actividadesPorCategoriaFecha[categoria]) {
-                        actividadesPorCategoriaFecha[categoria] = 0;
+                    if (categoria) {
+                        conteoCategoriasFecha[categoria] = (conteoCategoriasFecha[categoria] || 0) + 1;
                     }
-
-                    actividadesPorCategoriaFecha[categoria]++;
                 });
 
             const iconosCategoria = {
@@ -8275,26 +8261,19 @@ function renderizarCalendarioFechasAsistencia() {
                 autoevaluacion: "AUTOEVALUACIÓN"
             };
 
-            Object.keys(actividadesPorCategoriaFecha).forEach(categoria => {
+            Object.keys(conteoCategoriasFecha).forEach(categoria => {
                 const icono = document.createElement("span");
                 icono.className = "icono-categoria-actividad";
+                icono.textContent = iconosCategoria[categoria] || "📌";
 
-                const cantidad = actividadesPorCategoriaFecha[categoria];
-
-                if (cantidad >= 2) {
-                    icono.innerHTML =
-                        (iconosCategoria[categoria] || "📌") +
-                        '<span class="contador-icono-categoria">' +
-                        cantidad +
-                        '</span>';
-                } else {
-                    icono.textContent = iconosCategoria[categoria] || "📌";
+                if (conteoCategoriasFecha[categoria] >= 2) {
+                    const contador = document.createElement("sup");
+                    contador.className = "contador-categoria-actividad";
+                    contador.textContent = conteoCategoriasFecha[categoria];
+                    icono.appendChild(contador);
                 }
 
-                icono.title =
-                    (nombresCategoria[categoria] || categoria) +
-                    (cantidad > 1 ? " — " + cantidad + " actividades" : "");
-
+                icono.title = nombresCategoria[categoria] || categoria;
                 marcaActividad.appendChild(icono);
             });
 
