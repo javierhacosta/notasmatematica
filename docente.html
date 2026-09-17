@@ -9971,8 +9971,11 @@ async function guardarAsistencia() {
             if (seleccionado && ["asistio", "atraso"].includes(seleccionado.value) && configuracionHorarioAsistencia.activo) {
                 horaRegistro = horaRegistro || horaActualAsistencia();
             }
+            // Guardar exactamente el estado elegido para ESTE estudiante.
+            // La burbuja solo informa la sugerencia y no cambia ni recalcula
+            // los estados de los demás estudiantes.
             const estadoRegistro = seleccionado
-                ? estadoAutomaticoPorHoraAsistencia(horaRegistro, seleccionado.value)
+                ? seleccionado.value
                 : null;
 
             registros.push({
