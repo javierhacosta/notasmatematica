@@ -994,6 +994,67 @@ input, select {
     color: #1557a6;
 }
 
+/* Mostrar actividades anteriores en el escáner QR de actividades */
+.qr-mostrar-actividades-anteriores {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 9px 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.qr-mostrar-actividades-anteriores input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.qr-actividades-anteriores {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.qr-actividades-anteriores-titulo {
+    font-weight: bold;
+    color: #37474f;
+    margin-bottom: 6px;
+}
+
+.qr-actividad-anterior {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.qr-actividad-anterior:last-child {
+    border-bottom: none;
+}
+
+.qr-actividad-anterior-nombre {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.qr-actividad-anterior-nota {
+    flex-shrink: 0;
+    font-weight: bold;
+    color: #1557a6;
+}
+
+.qr-actividades-anteriores-vacio {
+    color: #777;
+    font-size: 13px;
+}
+
 #notaQR {
     text-align: center;
     font-size: 22px;
@@ -6176,6 +6237,14 @@ Cancelar
                 id="infoEstudianteQR"
                 class="info-estudiante-qr">
             </div>
+
+            <label class="qr-mostrar-actividades-anteriores">
+                <input
+                    type="checkbox"
+                    id="mostrarActividadesAnterioresQR"
+                    onchange="actualizarActividadesAnterioresQR()">
+                <span>Mostrar actividades anteriores</span>
+            </label>
 
             <div class="qr-notas-rapidas">
 
@@ -16443,6 +16512,10 @@ async function abrirEscanerQR(actividad) {
         "mensajeQR"
     );
 
+    const mostrarAnterioresQR =
+        document.getElementById("mostrarActividadesAnterioresQR");
+    if (mostrarAnterioresQR) mostrarAnterioresQR.checked = false;
+
     modal.classList.remove("oculto");
 
     const modalQR = modal.querySelector(".modal-qr");
@@ -17126,6 +17199,69 @@ function cerrarModalAsistenciaQR(event) {
 }
 
 
+function obtenerActividadesAnterioresQR(actividadActual) {
+    if (!actividadActual || !Array.isArray(actividades)) return [];
+
+    const ordenActual = Number(actividadActual.orden);
+    const fechaActual = String(actividadActual.fecha || "");
+
+    return actividades
+        .filter(a => {
+            if (String(a.id) === String(actividadActual.id)) return false;
+
+            const orden = Number(a.orden);
+            if (Number.isFinite(ordenActual) && Number.isFinite(orden)) {
+                return orden < ordenActual;
+            }
+
+            return fechaActual && String(a.fecha || "") < fechaActual;
+        })
+        .sort((a, b) => {
+            const oa = Number(a.orden);
+            const ob = Number(b.orden);
+            if (Number.isFinite(oa) && Number.isFinite(ob) && oa !== ob) return oa - ob;
+            return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+        });
+}
+
+function construirActividadesAnterioresQR(estudianteId, actividadActual) {
+    const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
+    if (!checkbox || !checkbox.checked) return "";
+
+    const anteriores = obtenerActividadesAnterioresQR(actividadActual);
+    if (anteriores.length === 0) {
+        return `
+            <div class="qr-actividades-anteriores">
+                <div class="qr-actividades-anteriores-titulo">Actividades anteriores</div>
+                <div class="qr-actividades-anteriores-vacio">No hay actividades anteriores.</div>
+            </div>
+        `;
+    }
+
+    const registrosEstudiante = calificaciones[estudianteId] || {};
+
+    return `
+        <div class="qr-actividades-anteriores">
+            <div class="qr-actividades-anteriores-titulo">Actividades anteriores y puntaje</div>
+            ${anteriores.map(a => {
+                const registro = registrosEstudiante[a.id];
+                const nota = registro && typeof registro === "object" ? registro.nota : registro;
+                const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
+                    ? "Sin nota"
+                    : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
+
+                return `
+                    <div class="qr-actividad-anterior">
+                        <span class="qr-actividad-anterior-nombre">${escapeHTML(a.nombre)}</span>
+                        <span class="qr-actividad-anterior-nota">${textoNota}</span>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+
 async function prepararCalificacionQR(
     ci
 ) {
@@ -17292,6 +17428,7 @@ async function prepararCalificacionQR(
         <br>
         <strong>Máximo:</strong>
         ${puntajeMaximo} puntos
+        ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
     const notaInput =
@@ -17358,6 +17495,31 @@ async function prepararCalificacionQR(
 
     procesandoQR = false;
 
+}
+
+
+function actualizarActividadesAnterioresQR() {
+    if (!estudianteQRSeleccionado || !actividadQRSeleccionada) return;
+
+    const info = document.getElementById("infoEstudianteQR");
+    if (!info) return;
+
+    const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
+    const bloque = info.querySelector(".qr-actividades-anteriores");
+
+    if (checkbox && checkbox.checked) {
+        const html = construirActividadesAnterioresQR(
+            estudianteQRSeleccionado.id,
+            actividadQRSeleccionada
+        );
+        if (bloque) {
+            bloque.outerHTML = html;
+        } else {
+            info.insertAdjacentHTML("beforeend", html);
+        }
+    } else if (bloque) {
+        bloque.remove();
+    }
 }
 
 
