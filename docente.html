@@ -1450,7 +1450,25 @@ td:first-child {
 .calendario-dia-asistencia .icono-categoria-actividad {
     font-size: 9px;
     line-height: 10px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.calendario-dia-asistencia .contador-categoria-actividad {
+    font-size: 6px;
+    line-height: 8px;
+    min-width: 8px;
+    height: 8px;
+    margin-left: 1px;
+    padding: 0 2px;
+    border-radius: 4px;
+    background: rgba(0,0,0,.55);
+    color: white;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calendario-dia-asistencia .marca-azar-asistencia {
@@ -4855,92 +4873,6 @@ table tbody tr:nth-child(10n+10) td {
     font-weight: 600;
 }
 
-
-/* =====================================================
-   CONFIGURACIÓN DE HORA DE ENTRADA Y TOLERANCIA
-===================================================== */
-.boton-config-horario-asistencia {
-    margin-left: 4px;
-}
-.campo-entrada-horario-asistencia {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.fila-entrada-horario-asistencia {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-}
-
-.boton-no-establecer-horario {
-    height: 34px;
-    border: none;
-    border-radius: 7px;
-    padding: 0 10px;
-    background: #757575;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.boton-no-establecer-horario:hover {
-    background: #555;
-}
-
-.boton-no-establecer-horario.oculto {
-    display: none !important;
-}
-
-.config-horario-asistencia {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 10px 12px;
-    margin: 0 0 10px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    background: #fff;
-}
-.config-horario-asistencia.oculto { display: none; }
-.config-horario-asistencia label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 600;
-    font-size: 13px;
-}
-.config-horario-asistencia input {
-    width: 92px;
-    min-height: 34px;
-    box-sizing: border-box;
-}
-.config-horario-asistencia input[type=number] { width: 76px; }
-.boton-guardar-config-horario {
-    min-height: 34px;
-    border: 0;
-    border-radius: 7px;
-    padding: 7px 12px;
-    background: #16803c;
-    color: #fff;
-    font-weight: bold;
-}
-.config-horario-info {
-    width: 100%;
-    text-align: center;
-    font-size: 12px;
-    opacity: .75;
-}
-@media (max-width: 600px) {
-    .config-horario-asistencia { gap: 7px; }
-    .config-horario-asistencia label { font-size: 12px; }
-}
 </style>
 
 </head>
@@ -5249,15 +5181,6 @@ Selecciona un curso
 
 <button
     type="button"
-    id="botonConfigHorarioAsistencia"
-    class="boton-bloquear-asistencia boton-config-horario-asistencia"
-    onclick="alternarConfigHorarioAsistencia()"
-    title="Configurar hora de entrada y tolerancia">
-    ⏰
-</button>
-
-<button
-    type="button"
     id="botonHoraAsistencia"
     class="boton-hora-asistencia"
     onclick="alternarMostrarHoraAsistencia()"
@@ -5332,24 +5255,6 @@ Selecciona un curso
 <div
     id="avisoDiaEspecialAsistencia"
     class="aviso-dia-especial">
-</div>
-
-<div
-    id="configHorarioAsistencia"
-    class="config-horario-asistencia oculto">
-    <label class="campo-entrada-horario-asistencia">
-        Entrada
-        <div class="fila-entrada-horario-asistencia">
-            <input type="time" id="horaEntradaAsistencia" step="1">
-            <button type="button" class="boton-no-establecer-horario oculto" onclick="noEstablecerHoraEntradaAsistencia()" title="No establecer hora para este día">🚫 No establecer</button>
-        </div>
-    </label>
-    <label>
-        Tolerancia (min)
-        <input type="number" id="toleranciaAsistencia" min="0" max="180" step="1">
-    </label>
-    <button type="button" class="boton-guardar-config-horario" onclick="guardarConfiguracionHorarioAsistencia()">💾 Guardar</button>
-    <div id="infoConfigHorarioAsistencia" class="config-horario-info"></div>
 </div>
 
 <div class="tabla-contenedor">
@@ -6860,7 +6765,6 @@ let registrosVisitasInformeGlobal = [];
 
 let asistenciaDesbloqueada = false;
 let mostrarHoraAsistencia = false;
-let configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, activo: false };
 
 /* =====================================================
    NUEVO ESTADO: ELECCIÓN ALEATORIA POR CURSO Y FECHA
@@ -8229,12 +8133,17 @@ function renderizarCalendarioFechasAsistencia() {
             marcaActividad.className = "marca-actividad-calendario";
             marcaActividad.title = "Hay actividad en esta fecha";
 
-            const categoriasFecha = [...new Set(
-                actividades
-                    .filter(a => String(a?.fecha || "") === clave)
-                    .map(a => String(a?.categoria || "").trim().toLowerCase())
-                    .filter(Boolean)
-            )];
+            const conteoCategoriasFecha = {};
+
+            actividades
+                .filter(a => String(a?.fecha || "") === clave)
+                .forEach(a => {
+                    const categoria = String(a?.categoria || "").trim().toLowerCase();
+                    if (categoria) {
+                        conteoCategoriasFecha[categoria] =
+                            (conteoCategoriasFecha[categoria] || 0) + 1;
+                    }
+                });
 
             const iconosCategoria = {
                 ser: "❤️",
@@ -8250,11 +8159,23 @@ function renderizarCalendarioFechasAsistencia() {
                 autoevaluacion: "AUTOEVALUACIÓN"
             };
 
-            categoriasFecha.forEach(categoria => {
+            Object.keys(conteoCategoriasFecha).forEach(categoria => {
                 const icono = document.createElement("span");
                 icono.className = "icono-categoria-actividad";
-                icono.textContent = iconosCategoria[categoria] || "📌";
                 icono.title = nombresCategoria[categoria] || categoria;
+
+                const simbolo = document.createElement("span");
+                simbolo.textContent = iconosCategoria[categoria] || "📌";
+                icono.appendChild(simbolo);
+
+                const cantidad = conteoCategoriasFecha[categoria];
+                if (cantidad > 1) {
+                    const contador = document.createElement("span");
+                    contador.className = "contador-categoria-actividad";
+                    contador.textContent = cantidad;
+                    icono.appendChild(contador);
+                }
+
                 marcaActividad.appendChild(icono);
             });
 
@@ -8554,191 +8475,6 @@ function ocultarBarraCargaFechaAsistencia() {
 }
 
 
-function alternarConfigHorarioAsistencia() {
-    const panel = document.getElementById("configHorarioAsistencia");
-    if (!panel) return;
-    const oculto = panel.classList.toggle("oculto");
-    if (!oculto) {
-        const h = document.getElementById("horaEntradaAsistencia");
-        const t = document.getElementById("toleranciaAsistencia");
-        if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
-        if (t) t.value = Number.isFinite(Number(configuracionHorarioAsistencia.tolerancia_minutos)) ? Number(configuracionHorarioAsistencia.tolerancia_minutos) : 0;
-    }
-}
-
-async function cargarConfiguracionHorarioAsistencia() {
-    configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, activo: false };
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!cursoSeleccionado || !fecha) return;
-
-    try {
-        const { data, error } = await supabaseClient
-            .from("asistencia_horarios")
-            .select("curso,fecha,hora_entrada,tolerancia_minutos")
-            .eq("curso", cursoSeleccionado)
-            .eq("fecha", fecha)
-            .maybeSingle();
-        if (error) throw error;
-        if (data) {
-            configuracionHorarioAsistencia = {
-                hora_entrada: normalizarHoraAsistencia(data.hora_entrada || ""),
-                tolerancia_minutos: Math.max(0, Number(data.tolerancia_minutos ?? 0)),
-                activo: !!data.hora_entrada
-            };
-        }
-    } catch (error) {
-        console.warn("No se pudo cargar la configuración de horario de asistencia:", error);
-    }
-
-    const h = document.getElementById("horaEntradaAsistencia");
-    const t = document.getElementById("toleranciaAsistencia");
-    if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
-    if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
-    actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarBotonNoEstablecerHoraEntradaAsistencia();
-}
-
-function actualizarInfoConfiguracionHorarioAsistencia() {
-    const info = document.getElementById("infoConfigHorarioAsistencia");
-    if (!info) return;
-    if (!configuracionHorarioAsistencia.activo) {
-        info.textContent = "Sin horario configurado: se mantiene el funcionamiento actual.";
-        return;
-    }
-    const limite = sumarMinutosHoraAsistencia(configuracionHorarioAsistencia.hora_entrada, configuracionHorarioAsistencia.tolerancia_minutos);
-    info.textContent = `Asistencia hasta ${limite}; después se guardará como atraso.`;
-}
-
-function sumarMinutosHoraAsistencia(hora, minutos) {
-    const partes = String(hora || "").split(":").map(Number);
-    if (partes.length < 2 || !Number.isFinite(partes[0]) || !Number.isFinite(partes[1])) return "";
-    const total = partes[0] * 60 + partes[1] + Number(minutos || 0);
-    const h = Math.floor(total / 60) % 24;
-    const m = total % 60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-}
-
-function horaAsegundosAsistencia(hora) {
-    const partes = String(hora || "").split(":").map(Number);
-    if (partes.length < 2 || !Number.isFinite(partes[0]) || !Number.isFinite(partes[1])) return null;
-    return partes[0] * 3600 + partes[1] * 60 + (Number.isFinite(partes[2]) ? partes[2] : 0);
-}
-
-function estadoAutomaticoPorHoraAsistencia(hora, estadoSolicitado) {
-    const estado = String(estadoSolicitado || "").toLowerCase();
-    if (!configuracionHorarioAsistencia.activo || !["asistio", "atraso"].includes(estado)) return estadoSolicitado;
-    const llegada = horaAsegundosAsistencia(hora);
-    const entrada = horaAsegundosAsistencia(configuracionHorarioAsistencia.hora_entrada);
-    if (llegada === null || entrada === null) return estadoSolicitado;
-    const limite = entrada + Number(configuracionHorarioAsistencia.tolerancia_minutos || 0) * 60;
-    return llegada <= limite ? "asistio" : "atraso";
-}
-
-function horaActualAsistencia() {
-    return new Date().toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-}
-
-function actualizarBotonNoEstablecerHoraEntradaAsistencia() {
-    const boton = document.querySelector(".boton-no-establecer-horario");
-    if (!boton) return;
-    const mostrar = !!(configuracionHorarioAsistencia && configuracionHorarioAsistencia.activo && configuracionHorarioAsistencia.hora_entrada);
-    boton.classList.toggle("oculto", !mostrar);
-}
-
-async function noEstablecerHoraEntradaAsistencia() {
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!cursoSeleccionado || !fecha) {
-        alert("Selecciona un curso y un día de asistencia.");
-        return;
-    }
-
-    const confirmar = confirm(
-        "⚠️ ADVERTENCIA\n\n" +
-        "No se establecerá una hora de entrada para este día.\n" +
-        "Se eliminará la configuración de hora y tolerancia guardada para este curso y día.\n\n" +
-        "La asistencia por QR y manual volverá a funcionar como antes, sin clasificar automáticamente por horario.\n\n" +
-        "¿Deseas continuar?"
-    );
-    if (!confirmar) return;
-
-    try {
-        const { data: eliminado, error } = await supabaseClient
-            .from("asistencia_horarios")
-            .delete()
-            .eq("curso", cursoSeleccionado)
-            .eq("fecha", fecha)
-            .select("curso,fecha");
-        if (error) throw error;
-        if (!eliminado || eliminado.length === 0) {
-            throw new Error("No se eliminó la configuración. Verifica que la política DELETE de Supabase esté habilitada para asistencia_horarios.");
-        }
-
-        configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, activo: false };
-        const h = document.getElementById("horaEntradaAsistencia");
-        const t = document.getElementById("toleranciaAsistencia");
-        if (h) h.value = "";
-        if (t) t.value = 0;
-        actualizarInfoConfiguracionHorarioAsistencia();
-        actualizarBotonNoEstablecerHoraEntradaAsistencia();
-        mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
-    } catch (error) {
-        console.error(error);
-        alert("No se pudo quitar la configuración de horario: " + (error.message || error));
-    }
-}
-
-async function guardarConfiguracionHorarioAsistencia() {
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!cursoSeleccionado || !fecha) {
-        alert("Selecciona un curso y un día de asistencia.");
-        return;
-    }
-    const hora = normalizarHoraAsistencia(document.getElementById("horaEntradaAsistencia")?.value || "");
-    const tolerancia = Number(document.getElementById("toleranciaAsistencia")?.value || 0);
-    if (!hora) { alert("Selecciona la hora de entrada."); return; }
-    if (!Number.isInteger(tolerancia) || tolerancia < 0 || tolerancia > 180) { alert("La tolerancia debe estar entre 0 y 180 minutos."); return; }
-
-    const confirmar = confirm(
-        "⚠️ ADVERTENCIA\n\n" +
-        `Se establecerá una hora de entrada de ${hora} con ${tolerancia} minuto(s) de tolerancia para este curso y día.\n\n` +
-        `Hasta ${sumarMinutosHoraAsistencia(hora, tolerancia)} se registrará como asistencia; después se registrará como atraso.\n\n` +
-        "Esta configuración se guardará en la base de datos y se aplicará a la asistencia por QR y manual.\n\n" +
-        "¿Deseas establecer este horario?"
-    );
-    if (!confirmar) return;
-
-    try {
-        const { error } = await supabaseClient.from("asistencia_horarios").upsert({
-            curso: cursoSeleccionado,
-            fecha,
-            hora_entrada: hora,
-            tolerancia_minutos: tolerancia
-        }, { onConflict: "curso,fecha" });
-        if (error) throw error;
-        configuracionHorarioAsistencia = { hora_entrada: hora, tolerancia_minutos: tolerancia, activo: true };
-        actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarBotonNoEstablecerHoraEntradaAsistencia();
-        mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
-        // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
-        document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
-            const id = fila.dataset.estudiante;
-            const radio = fila.querySelector(`input[name="asistencia-${id}"]:checked`);
-            const horaInput = fila.querySelector('.hora-asistencia-input');
-            if (!radio || !horaInput || !["asistio","atraso"].includes(radio.value)) return;
-            const nuevoEstado = estadoAutomaticoPorHoraAsistencia(horaInput.value || horaActualAsistencia(), radio.value);
-            if (nuevoEstado !== radio.value) {
-                const otro = fila.querySelector(`input[name="asistencia-${id}"][value="${nuevoEstado}"]`);
-                if (otro) otro.checked = true;
-            }
-        });
-        actualizarResumenAsistencia();
-        actualizarCambiosPendientesAsistencia();
-    } catch (error) {
-        console.error(error);
-        alert("No se pudo guardar la configuración de horario: " + (error.message || error));
-    }
-}
-
 async function cargarAsistencia() {
     mostrarBarraCargaFechaAsistencia();
 
@@ -8757,8 +8493,6 @@ async function cargarAsistencia() {
         ocultarBarraCargaFechaAsistencia();
         return;
     }
-
-    await cargarConfiguracionHorarioAsistencia();
 
     const estudiantesCurso = estudiantes.filter(
         e => e.curso === cursoSeleccionado
@@ -9554,17 +9288,6 @@ async function guardarAsistenciaIndividual(control) {
         return;
     }
 
-    if (["asistio", "atraso"].includes(control.value) && configuracionHorarioAsistencia.activo) {
-        const horaInput = fila?.querySelector('.hora-asistencia-input');
-        const hora = horaInput?.value?.trim() || horaActualAsistencia();
-        const nuevoEstado = estadoAutomaticoPorHoraAsistencia(hora, control.value);
-        if (nuevoEstado !== control.value) {
-            const otro = fila?.querySelector(`input[name="asistencia-${estudiante.id}"][value="${nuevoEstado}"]`);
-            if (otro) { otro.checked = true; control = otro; }
-        }
-        if (horaInput && !horaInput.value) horaInput.value = normalizarHoraAsistencia(hora);
-    }
-
     actualizarCambiosPendientesAsistencia();
 }
 
@@ -9771,21 +9494,13 @@ async function guardarAsistencia() {
 
             const registroLocal = registrosAsistencia[estudiante.id] || {};
 
-            let horaRegistro = mostrarHoraAsistencia
-                ? ((document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`)?.value || registroLocal.hora || "").trim() || null)
-                : (registroLocal.hora || null);
-            if (seleccionado && ["asistio", "atraso"].includes(seleccionado.value) && configuracionHorarioAsistencia.activo) {
-                horaRegistro = horaRegistro || horaActualAsistencia();
-            }
-            const estadoRegistro = seleccionado
-                ? estadoAutomaticoPorHoraAsistencia(horaRegistro, seleccionado.value)
-                : null;
-
             registros.push({
                 estudiante_id: estudiante.id,
                 fecha: fecha,
-                estado: estadoRegistro,
-                hora: horaRegistro,
+                estado: seleccionado ? seleccionado.value : null,
+                hora: mostrarHoraAsistencia
+                    ? ((document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`)?.value || registroLocal.hora || "").trim() || null)
+                    : (registroLocal.hora || null),
                 observacion: observacion ? observacion.value.trim() : null
             });
         });
@@ -16735,7 +16450,7 @@ async function prepararAsistenciaQR(ci) {
     }
 
     estudianteQRAsistencia = data;
-    estadoQRAsistencia = estadoAutomaticoPorHoraAsistencia(horaActualAsistencia(), "asistio");
+    estadoQRAsistencia = "asistio";
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
@@ -16827,7 +16542,7 @@ async function continuarEscaneoAsistenciaQR() {
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
-            estado: estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia),
+            estado: estadoQRAsistencia,
             hora: horaQR,
             observacion: observacion || null
         };
@@ -16843,9 +16558,8 @@ async function continuarEscaneoAsistenciaQR() {
         );
 
         /* Mantener la información local sincronizada */
-        estadoQRAsistencia = registro.estado;
         registrosAsistencia[estudiante.id] = {
-            estado: registro.estado,
+            estado: estadoQRAsistencia,
             hora: registro.hora || "",
             observacion: registro.observacion || ""
         };
@@ -20557,20 +20271,17 @@ async function guardarAsistenciaEstudianteDesdeAula() {
             }
         } else {
             const registroAnterior = registrosAsistencia[estudiante.id] || {};
-            const horaAula = registroAnterior.hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-            const estadoAula = estadoAutomaticoPorHoraAsistencia(horaAula, estado);
             const { error } = await supabaseClient.from("asistencia").upsert({
                 estudiante_id: estudiante.id,
                 fecha,
-                estado: estadoAula || null,
-                hora: horaAula || null,
+                estado: estado || null,
+                hora: registroAnterior.hora || null,
                 observacion: observacion || null
             }, { onConflict: "estudiante_id,fecha" });
             if (error) throw error;
         }
 
-        const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-        const nuevo = { estudiante_id: estudiante.id, fecha, estado: estadoAutomaticoPorHoraAsistencia(horaNuevoAula, estado) || null, hora: horaNuevoAula || null, observacion: observacion || null };
+        const nuevo = { estudiante_id: estudiante.id, fecha, estado: estado || null, hora: (registrosAsistencia[estudiante.id] || {}).hora || null, observacion: observacion || null };
         if (JSON.stringify({estado: anteriorData?.estado || null, observacion: anteriorData?.observacion || null}) !== JSON.stringify({estado: nuevo.estado, observacion: nuevo.observacion})) {
             guardarHistorialInterno({
                 table_name: "asistencia",
