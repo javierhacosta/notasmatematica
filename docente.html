@@ -8775,6 +8775,50 @@ async function noEstablecerHoraEntradaAsistencia() {
     }
 }
 
+function mostrarSugerenciasCambioHorarioAsistencia(horaEntradaNueva, toleranciaNueva) {
+    const limite = sumarMinutosHoraAsistencia(horaEntradaNueva, toleranciaNueva);
+    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
+    const sugerencias = [];
+
+    estudiantesCurso.forEach(estudiante => {
+        const registro = registrosAsistencia[estudiante.id];
+        if (!registro || !registro.hora || !registro.estado) return;
+
+        const horaLlegada = normalizarHoraAsistencia(registro.hora);
+        const sugerido = estadoAutomaticoPorHoraAsistencia(
+            horaLlegada,
+            "asistio"
+        );
+        if (!["asistio", "atraso"].includes(sugerido)) return;
+
+        const estadoGuardado = String(registro.estado || "").toLowerCase();
+        if (estadoGuardado !== sugerido) {
+            const textoEstado = estadoGuardado === "atraso" ? "Atraso" :
+                estadoGuardado === "asistio" ? "Asistencia" : registro.estado;
+            const textoSugerido = sugerido === "atraso" ? "Atraso" : "Asistencia";
+            sugerencias.push(
+                `• ${estudiante.nombre}: llegó a las ${horaLlegada}. ` +
+                `Estado guardado: ${textoEstado}. Sugerencia: ${textoSugerido}.`
+            );
+        }
+    });
+
+    if (sugerencias.length === 0) {
+        mostrarMensaje(
+            `ℹ️ Horario cambiado a ${horaEntradaNueva} + ${toleranciaNueva} min. ` +
+            "Los estados existentes no fueron modificados."
+        );
+        return;
+    }
+
+    alert(
+        "💡 SUGERENCIAS DEL NUEVO HORARIO\n\n" +
+        `Nueva entrada: ${horaEntradaNueva} · Tolerancia: ${toleranciaNueva} min (límite ${limite})\n\n` +
+        sugerencias.join("\n") +
+        "\n\n⚠️ Estas son solo sugerencias. No se cambió ninguna asistencia o atraso ya seleccionado o guardado."
+    );
+}
+
 async function guardarConfiguracionHorarioAsistencia() {
     const fecha = document.getElementById("fechaAsistencia")?.value || "";
     if (!cursoSeleccionado || !fecha) {
@@ -8810,20 +8854,14 @@ async function guardarConfiguracionHorarioAsistencia() {
         renderizarCalendarioFechasAsistencia();
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
-        // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
-        document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
-            const id = fila.dataset.estudiante;
-            const radio = fila.querySelector(`input[name="asistencia-${id}"]:checked`);
-            const horaInput = fila.querySelector('.hora-asistencia-input');
-            if (!radio || !horaInput || !["asistio","atraso"].includes(radio.value)) return;
-            const nuevoEstado = estadoAutomaticoPorHoraAsistencia(horaInput.value || horaActualAsistencia(), radio.value);
-            if (nuevoEstado !== radio.value) {
-                const otro = fila.querySelector(`input[name="asistencia-${id}"][value="${nuevoEstado}"]`);
-                if (otro) otro.checked = true;
-            }
-        });
-        actualizarResumenAsistencia();
-        actualizarCambiosPendientesAsistencia();
+
+        /*
+         * IMPORTANTE:
+         * Cambiar la hora de entrada o la tolerancia NO modifica estados ya
+         * guardados ni selecciones manuales/QR. Solo se muestran sugerencias
+         * informativas tomando como referencia la hora que ya tiene cada registro.
+         */
+        mostrarSugerenciasCambioHorarioAsistencia(hora, tolerancia);
     } catch (error) {
         console.error(error);
         alert("No se pudo guardar la configuración de horario: " + (error.message || error));
@@ -16826,7 +16864,8 @@ async function prepararAsistenciaQR(ci) {
     }
 
     estudianteQRAsistencia = data;
-    estadoQRAsistencia = estadoAutomaticoPorHoraAsistencia(horaActualAsistencia(), "asistio");
+    const horaLlegadaQR = horaActualAsistencia();
+    estadoQRAsistencia = estadoAutomaticoPorHoraAsistencia(horaLlegadaQR, "asistio");
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
@@ -16836,8 +16875,9 @@ async function prepararAsistenciaQR(ci) {
 
     const checkAsistencia = document.getElementById("checkAsistenciaQR");
     const checkAtraso = document.getElementById("checkAtrasoQR");
-    if (checkAsistencia) checkAsistencia.checked = true;
-    if (checkAtraso) checkAtraso.checked = false;
+    const esAtrasoQR = estadoQRAsistencia === "atraso";
+    if (checkAsistencia) checkAsistencia.checked = !esAtrasoQR;
+    if (checkAtraso) checkAtraso.checked = esAtrasoQR;
 
     const observacionQR = document.getElementById("observacionAsistenciaQR");
     if (observacionQR) {
