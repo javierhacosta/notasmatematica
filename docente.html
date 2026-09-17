@@ -4892,6 +4892,10 @@ table tbody tr:nth-child(10n+10) td {
     background: #555;
 }
 
+.boton-no-establecer-horario.oculto {
+    display: none !important;
+}
+
 .config-horario-asistencia {
     display: flex;
     align-items: center;
@@ -5337,7 +5341,7 @@ Selecciona un curso
         Entrada
         <div class="fila-entrada-horario-asistencia">
             <input type="time" id="horaEntradaAsistencia" step="1">
-            <button type="button" class="boton-no-establecer-horario" onclick="noEstablecerHoraEntradaAsistencia()" title="No establecer hora para este día">🚫 No establecer</button>
+            <button type="button" class="boton-no-establecer-horario oculto" onclick="noEstablecerHoraEntradaAsistencia()" title="No establecer hora para este día">🚫 No establecer</button>
         </div>
     </label>
     <label>
@@ -8591,6 +8595,7 @@ async function cargarConfiguracionHorarioAsistencia() {
     if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
     actualizarInfoConfiguracionHorarioAsistencia();
+    actualizarBotonNoEstablecerHoraEntradaAsistencia();
 }
 
 function actualizarInfoConfiguracionHorarioAsistencia() {
@@ -8633,6 +8638,13 @@ function horaActualAsistencia() {
     return new Date().toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
+function actualizarBotonNoEstablecerHoraEntradaAsistencia() {
+    const boton = document.querySelector(".boton-no-establecer-horario");
+    if (!boton) return;
+    const mostrar = !!(configuracionHorarioAsistencia && configuracionHorarioAsistencia.activo && configuracionHorarioAsistencia.hora_entrada);
+    boton.classList.toggle("oculto", !mostrar);
+}
+
 async function noEstablecerHoraEntradaAsistencia() {
     const fecha = document.getElementById("fechaAsistencia")?.value || "";
     if (!cursoSeleccionado || !fecha) {
@@ -8663,6 +8675,7 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (h) h.value = "";
         if (t) t.value = 0;
         actualizarInfoConfiguracionHorarioAsistencia();
+    actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
     } catch (error) {
         console.error(error);
@@ -8700,6 +8713,7 @@ async function guardarConfiguracionHorarioAsistencia() {
         if (error) throw error;
         configuracionHorarioAsistencia = { hora_entrada: hora, tolerancia_minutos: tolerancia, activo: true };
         actualizarInfoConfiguracionHorarioAsistencia();
+    actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
         // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
         document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
