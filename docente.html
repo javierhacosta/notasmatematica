@@ -2147,7 +2147,7 @@ td:first-child {
     transition: opacity .2s ease, background .2s ease;
 }
 
-.boton-hora-asistencia.configurado {
+.boton-hora-asistencia.activo {
     opacity: 1;
 }
 
@@ -4869,6 +4869,19 @@ table tbody tr:nth-child(10n+10) td {
 ===================================================== */
 .boton-config-horario-asistencia {
     margin-left: 4px;
+    transition: opacity .2s ease, filter .2s ease;
+}
+
+/* Opaco cuando no existe una hora para el curso y día seleccionados. */
+.boton-config-horario-asistencia.sin-horario-configurado {
+    opacity: .38;
+    filter: grayscale(1);
+}
+
+/* Visible normalmente cuando sí existe una hora configurada. */
+.boton-config-horario-asistencia.con-horario-configurado {
+    opacity: 1;
+    filter: none;
 }
 .campo-entrada-horario-asistencia {
     display: flex;
@@ -7639,7 +7652,26 @@ function aplicarRestriccionTipoDiaAsistencia() {
     });
 }
 
+function actualizarEstadoIconoConfiguracionHorarioAsistencia() {
+    const boton = document.getElementById("botonConfigHorarioAsistencia");
+    if (!boton) return;
+
+    const configurado = !!(
+        configuracionHorarioAsistencia &&
+        configuracionHorarioAsistencia.activo &&
+        configuracionHorarioAsistencia.hora_entrada
+    );
+
+    boton.classList.toggle("sin-horario-configurado", !configurado);
+    boton.classList.toggle("con-horario-configurado", configurado);
+    boton.title = configurado
+        ? "Modificar hora de entrada y tolerancia de este curso y día"
+        : "Configurar hora de entrada y tolerancia para este curso y día";
+}
+
 function actualizarBotonHoraAsistencia() {
+    actualizarEstadoIconoConfiguracionHorarioAsistencia();
+
     const boton = document.getElementById("botonHoraAsistencia");
     const tabla = document.querySelector(".tabla-asistencia");
     const controlesHora = document.getElementById("controlesHoraAsistencia");
@@ -7650,7 +7682,6 @@ function actualizarBotonHoraAsistencia() {
 
     if (boton) {
         boton.classList.toggle("activo", mostrarHoraAsistencia);
-        boton.classList.toggle("configurado", !!configuracionHorarioAsistencia.activo);
         boton.title = mostrarHoraAsistencia
             ? "Ocultar columna de hora"
             : "Mostrar columna de hora";
@@ -8615,8 +8646,8 @@ async function cargarConfiguracionHorarioAsistencia() {
     if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
     actualizarInfoConfiguracionHorarioAsistencia();
+    actualizarEstadoIconoConfiguracionHorarioAsistencia();
     actualizarBotonNoEstablecerHoraEntradaAsistencia();
-    actualizarBotonHoraAsistencia();
 }
 
 function actualizarInfoConfiguracionHorarioAsistencia() {
@@ -8700,8 +8731,8 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (h) h.value = "";
         if (t) t.value = 0;
         actualizarInfoConfiguracionHorarioAsistencia();
+        actualizarEstadoIconoConfiguracionHorarioAsistencia();
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
-        actualizarBotonHoraAsistencia();
         mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
     } catch (error) {
         console.error(error);
@@ -8739,8 +8770,7 @@ async function guardarConfiguracionHorarioAsistencia() {
         if (error) throw error;
         configuracionHorarioAsistencia = { hora_entrada: hora, tolerancia_minutos: tolerancia, activo: true };
         actualizarInfoConfiguracionHorarioAsistencia();
-        actualizarBotonNoEstablecerHoraEntradaAsistencia();
-        actualizarBotonHoraAsistencia();
+    actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
         // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
         document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
