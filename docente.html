@@ -1450,7 +1450,25 @@ td:first-child {
 .calendario-dia-asistencia .icono-categoria-actividad {
     font-size: 9px;
     line-height: 10px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.calendario-dia-asistencia .contador-categoria-actividad {
+    font-size: 6px;
+    line-height: 8px;
+    min-width: 8px;
+    height: 8px;
+    margin-left: 1px;
+    padding: 0 2px;
+    border-radius: 4px;
+    background: rgba(0,0,0,.55);
+    color: white;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .calendario-dia-asistencia .marca-azar-asistencia {
@@ -8115,12 +8133,17 @@ function renderizarCalendarioFechasAsistencia() {
             marcaActividad.className = "marca-actividad-calendario";
             marcaActividad.title = "Hay actividad en esta fecha";
 
-            const categoriasFecha = [...new Set(
-                actividades
-                    .filter(a => String(a?.fecha || "") === clave)
-                    .map(a => String(a?.categoria || "").trim().toLowerCase())
-                    .filter(Boolean)
-            )];
+            const conteoCategoriasFecha = {};
+
+            actividades
+                .filter(a => String(a?.fecha || "") === clave)
+                .forEach(a => {
+                    const categoria = String(a?.categoria || "").trim().toLowerCase();
+                    if (categoria) {
+                        conteoCategoriasFecha[categoria] =
+                            (conteoCategoriasFecha[categoria] || 0) + 1;
+                    }
+                });
 
             const iconosCategoria = {
                 ser: "❤️",
@@ -8136,11 +8159,23 @@ function renderizarCalendarioFechasAsistencia() {
                 autoevaluacion: "AUTOEVALUACIÓN"
             };
 
-            categoriasFecha.forEach(categoria => {
+            Object.keys(conteoCategoriasFecha).forEach(categoria => {
                 const icono = document.createElement("span");
                 icono.className = "icono-categoria-actividad";
-                icono.textContent = iconosCategoria[categoria] || "📌";
                 icono.title = nombresCategoria[categoria] || categoria;
+
+                const simbolo = document.createElement("span");
+                simbolo.textContent = iconosCategoria[categoria] || "📌";
+                icono.appendChild(simbolo);
+
+                const cantidad = conteoCategoriasFecha[categoria];
+                if (cantidad > 1) {
+                    const contador = document.createElement("span");
+                    contador.className = "contador-categoria-actividad";
+                    contador.textContent = cantidad;
+                    icono.appendChild(contador);
+                }
+
                 marcaActividad.appendChild(icono);
             });
 
