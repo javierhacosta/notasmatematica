@@ -4862,6 +4862,36 @@ table tbody tr:nth-child(10n+10) td {
 .boton-config-horario-asistencia {
     margin-left: 4px;
 }
+.campo-entrada-horario-asistencia {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.fila-entrada-horario-asistencia {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.boton-no-establecer-horario {
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    padding: 0 10px;
+    background: #757575;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.boton-no-establecer-horario:hover {
+    background: #555;
+}
+
 .config-horario-asistencia {
     display: flex;
     align-items: center;
@@ -5303,9 +5333,12 @@ Selecciona un curso
 <div
     id="configHorarioAsistencia"
     class="config-horario-asistencia oculto">
-    <label>
+    <label class="campo-entrada-horario-asistencia">
         Entrada
-        <input type="time" id="horaEntradaAsistencia" step="1">
+        <div class="fila-entrada-horario-asistencia">
+            <input type="time" id="horaEntradaAsistencia" step="1">
+            <button type="button" class="boton-no-establecer-horario" onclick="noEstablecerHoraEntradaAsistencia()" title="No establecer hora para este día">🚫 No establecer</button>
+        </div>
     </label>
     <label>
         Tolerancia (min)
@@ -8600,6 +8633,43 @@ function horaActualAsistencia() {
     return new Date().toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
+async function noEstablecerHoraEntradaAsistencia() {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!cursoSeleccionado || !fecha) {
+        alert("Selecciona un curso y un día de asistencia.");
+        return;
+    }
+
+    const confirmar = confirm(
+        "⚠️ ADVERTENCIA\n\n" +
+        "No se establecerá una hora de entrada para este día.\n" +
+        "Se eliminará la configuración de hora y tolerancia guardada para este curso y día.\n\n" +
+        "La asistencia por QR y manual volverá a funcionar como antes, sin clasificar automáticamente por horario.\n\n" +
+        "¿Deseas continuar?"
+    );
+    if (!confirmar) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from("asistencia_horarios")
+            .delete()
+            .eq("curso", cursoSeleccionado)
+            .eq("fecha", fecha);
+        if (error) throw error;
+
+        configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, activo: false };
+        const h = document.getElementById("horaEntradaAsistencia");
+        const t = document.getElementById("toleranciaAsistencia");
+        if (h) h.value = "";
+        if (t) t.value = 0;
+        actualizarInfoConfiguracionHorarioAsistencia();
+        mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
+    } catch (error) {
+        console.error(error);
+        alert("No se pudo quitar la configuración de horario: " + (error.message || error));
+    }
+}
+
 async function guardarConfiguracionHorarioAsistencia() {
     const fecha = document.getElementById("fechaAsistencia")?.value || "";
     if (!cursoSeleccionado || !fecha) {
@@ -8610,6 +8680,15 @@ async function guardarConfiguracionHorarioAsistencia() {
     const tolerancia = Number(document.getElementById("toleranciaAsistencia")?.value || 0);
     if (!hora) { alert("Selecciona la hora de entrada."); return; }
     if (!Number.isInteger(tolerancia) || tolerancia < 0 || tolerancia > 180) { alert("La tolerancia debe estar entre 0 y 180 minutos."); return; }
+
+    const confirmar = confirm(
+        "⚠️ ADVERTENCIA\n\n" +
+        `Se establecerá una hora de entrada de ${hora} con ${tolerancia} minuto(s) de tolerancia para este curso y día.\n\n` +
+        `Hasta ${sumarMinutosHoraAsistencia(hora, tolerancia)} se registrará como asistencia; después se registrará como atraso.\n\n` +
+        "Esta configuración se guardará en la base de datos y se aplicará a la asistencia por QR y manual.\n\n" +
+        "¿Deseas establecer este horario?"
+    );
+    if (!confirmar) return;
 
     try {
         const { error } = await supabaseClient.from("asistencia_horarios").upsert({
