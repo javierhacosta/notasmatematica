@@ -1469,6 +1469,14 @@ td:first-child {
     line-height: 1;
 }
 
+.calendario-dia-asistencia .marca-horario-calendario {
+    position: absolute;
+    right: 2px;
+    bottom: 1px;
+    font-size: 8px;
+    line-height: 1;
+}
+
 .leyenda-calendario-asistencia {
     display: flex;
     align-items: center;
@@ -2127,6 +2135,16 @@ td:first-child {
 
  .boton-bloquear-asistencia:hover {
     background: #d95f00;
+}
+
+/* ESTADO VISUAL DEL BOTÓN DE CONFIGURACIÓN DE HORARIO */
+.boton-config-horario-asistencia {
+    opacity: .35;
+    transition: opacity .2s ease, background .2s ease;
+}
+
+.boton-config-horario-asistencia.horario-configurado {
+    opacity: 1;
 }
 
 /* BOTÓN MOSTRAR/OCULTAR HORA DE ASISTENCIA */
@@ -4869,19 +4887,6 @@ table tbody tr:nth-child(10n+10) td {
 ===================================================== */
 .boton-config-horario-asistencia {
     margin-left: 4px;
-    transition: opacity .2s ease, filter .2s ease;
-}
-
-/* Opaco cuando no existe una hora para el curso y día seleccionados. */
-.boton-config-horario-asistencia.sin-horario-configurado {
-    opacity: .38;
-    filter: grayscale(1);
-}
-
-/* Visible normalmente cuando sí existe una hora configurada. */
-.boton-config-horario-asistencia.con-horario-configurado {
-    opacity: 1;
-    filter: none;
 }
 .campo-entrada-horario-asistencia {
     display: flex;
@@ -7652,26 +7657,22 @@ function aplicarRestriccionTipoDiaAsistencia() {
     });
 }
 
-function actualizarEstadoIconoConfiguracionHorarioAsistencia() {
+function actualizarBotonConfiguracionHorarioAsistencia() {
     const boton = document.getElementById("botonConfigHorarioAsistencia");
+    const panel = document.getElementById("configHorarioAsistencia");
     if (!boton) return;
 
-    const configurado = !!(
-        configuracionHorarioAsistencia &&
-        configuracionHorarioAsistencia.activo &&
-        configuracionHorarioAsistencia.hora_entrada
-    );
-
-    boton.classList.toggle("sin-horario-configurado", !configurado);
-    boton.classList.toggle("con-horario-configurado", configurado);
-    boton.title = configurado
-        ? "Modificar hora de entrada y tolerancia de este curso y día"
-        : "Configurar hora de entrada y tolerancia para este curso y día";
+    // El icono se muestra normal únicamente mientras está visible
+    // el panel donde se puede ver/configurar la hora.
+    const visible = panel && !panel.classList.contains("oculto");
+    boton.classList.toggle("horario-configurado", !!visible);
+    boton.title = visible
+        ? "Ocultar configuración de hora de entrada"
+        : "Configurar hora de entrada y tolerancia";
 }
 
 function actualizarBotonHoraAsistencia() {
-    actualizarEstadoIconoConfiguracionHorarioAsistencia();
-
+    actualizarBotonConfiguracionHorarioAsistencia();
     const boton = document.getElementById("botonHoraAsistencia");
     const tabla = document.querySelector(".tabla-asistencia");
     const controlesHora = document.getElementById("controlesHoraAsistencia");
@@ -8179,6 +8180,7 @@ let fechasAsistenciaGuardadas = [];
 let tiposDiasAsistenciaGuardados = {};
 let fechasAzarAsistenciaGuardadas = new Set();
 let fechasActividadesAsistenciaGuardadas = new Set();
+let fechasHorarioAsistenciaGuardadas = new Set();
 let mesCalendarioAsistencia = new Date();
 mesCalendarioAsistencia.setDate(1);
 
@@ -8232,6 +8234,7 @@ function renderizarCalendarioFechasAsistencia() {
     const tiposDias = tiposDiasAsistenciaGuardados || {};
     const fechasAzar = fechasAzarAsistenciaGuardadas || new Set();
     const fechasActividades = fechasActividadesAsistenciaGuardadas || new Set();
+    const fechasHorario = fechasHorarioAsistenciaGuardadas || new Set();
 
     for (let i = 0; i < desplazamiento; i++) {
         const vacio = document.createElement("span");
@@ -8320,6 +8323,15 @@ function renderizarCalendarioFechasAsistencia() {
             boton.title = (boton.title || "") + " · Hubo estudiantes elegidos al azar";
         }
 
+        if (fechasHorario.has(clave)) {
+            const marcaHorario = document.createElement("span");
+            marcaHorario.className = "marca-horario-calendario";
+            marcaHorario.textContent = "⏰";
+            marcaHorario.title = "Hora de entrada configurada";
+            boton.appendChild(marcaHorario);
+            boton.title = (boton.title || "") + " · Hora de entrada configurada";
+        }
+
         if (clave === hoyClave) {
             boton.classList.add("hoy");
         }
@@ -8350,6 +8362,7 @@ async function cargarFechasAsistencia() {
     fechasAsistenciaGuardadas = [];
     tiposDiasAsistenciaGuardados = {};
     fechasAzarAsistenciaGuardadas = new Set();
+    fechasHorarioAsistenciaGuardadas = new Set();
 
     if (!cursoSeleccionado) {
         renderizarCalendarioFechasAsistencia();
@@ -8368,7 +8381,7 @@ async function cargarFechasAsistencia() {
     }
 
     // Las dos consultas no dependen entre sí. Ejecutarlas juntas reduce la latencia total.
-    const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades] = await Promise.all([
+    const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades, resultadoHorarios] = await Promise.all([
         supabaseClient
             .from("asistencia")
             .select("fecha")
@@ -8388,13 +8401,20 @@ async function cargarFechasAsistencia() {
             .from("actividades")
             .select("fecha")
             .eq("curso", cursoSeleccionado)
-            .not("fecha", "is", null)
+            .not("fecha", "is", null),
+        supabaseClient
+            .from("asistencia_horarios")
+            .select("fecha,hora_entrada")
+            .eq("curso", cursoSeleccionado)
+            .not("hora_entrada", "is", null)
+            .order("fecha", { ascending: false })
     ]);
 
     const { data: dataAsistencia, error: errorAsistencia } = resultadoAsistencia;
     const { data: dataTipos, error: errorTipos } = resultadoTipos;
     const { data: dataAzar, error: errorAzar } = resultadoAzar;
     const { data: dataActividades, error: errorActividades } = resultadoActividades;
+    const { data: dataHorarios, error: errorHorarios } = resultadoHorarios;
 
     if (errorAsistencia) {
         console.error(errorAsistencia);
@@ -8417,6 +8437,14 @@ async function cargarFechasAsistencia() {
     if (errorActividades) {
         console.warn("No se pudieron cargar las fechas con actividades:", errorActividades);
     }
+
+    if (errorHorarios) {
+        console.warn("No se pudieron cargar las fechas con horario de asistencia:", errorHorarios);
+    }
+
+    fechasHorarioAsistenciaGuardadas = new Set(
+        (dataHorarios || []).map(r => String(r.fecha)).filter(Boolean)
+    );
 
     fechasAzarAsistenciaGuardadas = new Set(
         (dataAzar || []).map(r => String(r.fecha)).filter(Boolean)
@@ -8609,6 +8637,11 @@ function alternarConfigHorarioAsistencia() {
     const panel = document.getElementById("configHorarioAsistencia");
     if (!panel) return;
     const oculto = panel.classList.toggle("oculto");
+
+    // El icono deja de estar opaco al abrir la configuración
+    // y vuelve a estar opaco al ocultarla.
+    actualizarBotonConfiguracionHorarioAsistencia();
+
     if (!oculto) {
         const h = document.getElementById("horaEntradaAsistencia");
         const t = document.getElementById("toleranciaAsistencia");
@@ -8646,7 +8679,7 @@ async function cargarConfiguracionHorarioAsistencia() {
     if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
     actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarEstadoIconoConfiguracionHorarioAsistencia();
+    actualizarBotonConfiguracionHorarioAsistencia();
     actualizarBotonNoEstablecerHoraEntradaAsistencia();
 }
 
@@ -8731,7 +8764,9 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (h) h.value = "";
         if (t) t.value = 0;
         actualizarInfoConfiguracionHorarioAsistencia();
-        actualizarEstadoIconoConfiguracionHorarioAsistencia();
+        actualizarBotonConfiguracionHorarioAsistencia();
+        fechasHorarioAsistenciaGuardadas.delete(fecha);
+        renderizarCalendarioFechasAsistencia();
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
     } catch (error) {
@@ -8770,7 +8805,10 @@ async function guardarConfiguracionHorarioAsistencia() {
         if (error) throw error;
         configuracionHorarioAsistencia = { hora_entrada: hora, tolerancia_minutos: tolerancia, activo: true };
         actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarBotonNoEstablecerHoraEntradaAsistencia();
+        actualizarBotonConfiguracionHorarioAsistencia();
+        fechasHorarioAsistenciaGuardadas.add(fecha);
+        renderizarCalendarioFechasAsistencia();
+        actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
         // Si ya existen estados de asistencia/atraso visibles, recalcularlos según la nueva configuración.
         document.querySelectorAll('#tablaAsistencia tr').forEach(fila => {
