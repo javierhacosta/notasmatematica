@@ -2147,6 +2147,38 @@ td:first-child {
     opacity: 1;
 }
 
+/* PARPADEO: existen comentarios de horario en estudiantes del curso */
+@keyframes parpadearComentarioHorarioAsistencia {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .35; transform: scale(1.12); }
+}
+
+.boton-config-horario-asistencia.horario-con-comentarios {
+    animation: parpadearComentarioHorarioAsistencia 1s infinite;
+}
+
+/* BURBUJA DE COMENTARIO EN LA FILA DEL ESTUDIANTE */
+.nombre-estudiante-asistencia {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.burbuja-comentario-horario-asistencia {
+    display: inline-block;
+    max-width: min(430px, 100%);
+    padding: 6px 9px;
+    border-radius: 10px;
+    background: #fff3cd;
+    border: 1px solid #f0c36d;
+    color: #5f4500;
+    font-size: 11px;
+    line-height: 1.35;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
 /* BOTÓN MOSTRAR/OCULTAR HORA DE ASISTENCIA */
 .boton-hora-asistencia {
     width: 34px;
@@ -8775,48 +8807,49 @@ async function noEstablecerHoraEntradaAsistencia() {
     }
 }
 
-function mostrarSugerenciasCambioHorarioAsistencia(horaEntradaNueva, toleranciaNueva) {
-    const limite = sumarMinutosHoraAsistencia(horaEntradaNueva, toleranciaNueva);
-    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
-    const sugerencias = [];
+function obtenerComentariosHorarioAsistencia() {
+    const comentarios = {};
+    if (!cursoSeleccionado || !configuracionHorarioAsistencia?.activo) return comentarios;
 
+    const estudiantesCurso = estudiantes.filter(e => e.curso === cursoSeleccionado);
     estudiantesCurso.forEach(estudiante => {
         const registro = registrosAsistencia[estudiante.id];
         if (!registro || !registro.hora || !registro.estado) return;
 
         const horaLlegada = normalizarHoraAsistencia(registro.hora);
-        const sugerido = estadoAutomaticoPorHoraAsistencia(
-            horaLlegada,
-            "asistio"
-        );
+        const sugerido = estadoAutomaticoPorHoraAsistencia(horaLlegada, "asistio");
+        const estadoActual = String(registro.estado || "").toLowerCase();
         if (!["asistio", "atraso"].includes(sugerido)) return;
+        if (!["asistio", "atraso"].includes(estadoActual) || estadoActual === sugerido) return;
 
-        const estadoGuardado = String(registro.estado || "").toLowerCase();
-        if (estadoGuardado !== sugerido) {
-            const textoEstado = estadoGuardado === "atraso" ? "Atraso" :
-                estadoGuardado === "asistio" ? "Asistencia" : registro.estado;
-            const textoSugerido = sugerido === "atraso" ? "Atraso" : "Asistencia";
-            sugerencias.push(
-                `• ${estudiante.nombre}: llegó a las ${horaLlegada}. ` +
-                `Estado guardado: ${textoEstado}. Sugerencia: ${textoSugerido}.`
-            );
-        }
+        const textoActual = estadoActual === "atraso" ? "Atraso" : "Asistencia";
+        const textoSugerido = sugerido === "atraso" ? "Atraso" : "Asistencia";
+        comentarios[estudiante.id] = {
+            hora: horaLlegada,
+            actual: textoActual,
+            sugerido: textoSugerido,
+            texto: `Según la nueva hora de entrada, ${estudiante.nombre} debería estar como ${textoSugerido}. Actualmente está como ${textoActual}. Llegó a las ${horaLlegada}.`
+        };
     });
+    return comentarios;
+}
 
-    if (sugerencias.length === 0) {
-        mostrarMensaje(
-            `ℹ️ Horario cambiado a ${horaEntradaNueva} + ${toleranciaNueva} min. ` +
-            "Los estados existentes no fueron modificados."
-        );
-        return;
-    }
+function actualizarIndicadorComentariosHorarioAsistencia() {
+    const boton = document.getElementById("botonConfigHorarioAsistencia");
+    if (!boton) return;
+    const hayComentarios = Object.keys(obtenerComentariosHorarioAsistencia()).length > 0;
+    boton.classList.toggle("horario-con-comentarios", hayComentarios);
+    boton.title = hayComentarios
+        ? "Hay comentarios de asistencia según el horario configurado"
+        : (boton.classList.contains("horario-configurado")
+            ? "Ocultar configuración de hora de entrada"
+            : "Configurar hora de entrada y tolerancia");
+}
 
-    alert(
-        "💡 SUGERENCIAS DEL NUEVO HORARIO\n\n" +
-        `Nueva entrada: ${horaEntradaNueva} · Tolerancia: ${toleranciaNueva} min (límite ${limite})\n\n` +
-        sugerencias.join("\n") +
-        "\n\n⚠️ Estas son solo sugerencias. No se cambió ninguna asistencia o atraso ya seleccionado o guardado."
-    );
+function mostrarSugerenciasCambioHorarioAsistencia() {
+    // Los comentarios se muestran directamente en la fila de cada estudiante.
+    // Nunca se modifica automáticamente la asistencia o el atraso existente.
+    actualizarIndicadorComentariosHorarioAsistencia();
 }
 
 async function guardarConfiguracionHorarioAsistencia() {
@@ -8934,6 +8967,8 @@ async function cargarAsistencia() {
             observacion: registro.observacion || ""
         };
     });
+
+    actualizarIndicadorComentariosHorarioAsistencia();
 
     if (tipoError) {
         console.error("Error al cargar el tipo de día:", tipoError);
@@ -9209,9 +9244,15 @@ function mostrarTablaAsistencia() {
             </td>
 
             <td class="nombre">
-                ${escapeHTML(
-                    estudiante.nombre
-                )}
+                <div class="nombre-estudiante-asistencia">
+                    <span>${escapeHTML(estudiante.nombre)}</span>
+                    ${(() => {
+                        const comentarioHorario = obtenerComentariosHorarioAsistencia()[estudiante.id];
+                        return comentarioHorario
+                            ? `<span class="burbuja-comentario-horario-asistencia" title="${escapeHTML(comentarioHorario.texto)}">💬 ${escapeHTML(comentarioHorario.texto)}</span>`
+                            : "";
+                    })()}
+                </div>
             </td>
 
             <td class="columna-hora-asistencia">
@@ -9401,6 +9442,8 @@ function mostrarTablaAsistencia() {
         );
 
     });
+
+    actualizarIndicadorComentariosHorarioAsistencia();
 
     aplicarRestriccionTipoDiaAsistencia();
 
