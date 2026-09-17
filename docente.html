@@ -8662,12 +8662,16 @@ async function noEstablecerHoraEntradaAsistencia() {
     if (!confirmar) return;
 
     try {
-        const { error } = await supabaseClient
+        const { data: eliminado, error } = await supabaseClient
             .from("asistencia_horarios")
             .delete()
             .eq("curso", cursoSeleccionado)
-            .eq("fecha", fecha);
+            .eq("fecha", fecha)
+            .select("curso,fecha");
         if (error) throw error;
+        if (!eliminado || eliminado.length === 0) {
+            throw new Error("No se eliminó la configuración. Verifica que la política DELETE de Supabase esté habilitada para asistencia_horarios.");
+        }
 
         configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, activo: false };
         const h = document.getElementById("horaEntradaAsistencia");
@@ -8675,7 +8679,7 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (h) h.value = "";
         if (t) t.value = 0;
         actualizarInfoConfiguracionHorarioAsistencia();
-    actualizarBotonNoEstablecerHoraEntradaAsistencia();
+        actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Sin hora de entrada: se mantiene el funcionamiento anterior para este curso y día.");
     } catch (error) {
         console.error(error);
