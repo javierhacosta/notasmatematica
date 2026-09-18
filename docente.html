@@ -5406,6 +5406,10 @@ Selecciona un curso
     id="botonHoraAsistencia"
     class="boton-hora-asistencia"
     onclick="alternarMostrarHoraAsistencia()"
+    onpointerdown="iniciarPulsacionLargaHoraAsistencia(event)"
+    onpointerup="finalizarPulsacionHoraAsistencia(event)"
+    onpointercancel="cancelarPulsacionHoraAsistencia()"
+    onpointerleave="cancelarPulsacionHoraAsistencia()"
     title="Mostrar columna de hora">
 
 🕒
@@ -7828,10 +7832,50 @@ function actualizarBotonHoraAsistencia() {
     aplicarRestriccionTipoDiaAsistencia();
 }
 
+let temporizadorPulsacionLargaHoraAsistencia = null;
+let pulsacionLargaHoraAsistencia = false;
+
+function iniciarPulsacionLargaHoraAsistencia(event) {
+    if (event && event.pointerType === "mouse" && event.button !== 0) return;
+
+    pulsacionLargaHoraAsistencia = false;
+    cancelarPulsacionHoraAsistencia();
+
+    temporizadorPulsacionLargaHoraAsistencia = setTimeout(() => {
+        pulsacionLargaHoraAsistencia = true;
+        const controlesHora = document.getElementById("controlesHoraAsistencia");
+        if (controlesHora) controlesHora.classList.remove("oculto");
+    }, 2000);
+}
+
+function finalizarPulsacionHoraAsistencia() {
+    if (temporizadorPulsacionLargaHoraAsistencia) {
+        clearTimeout(temporizadorPulsacionLargaHoraAsistencia);
+        temporizadorPulsacionLargaHoraAsistencia = null;
+    }
+}
+
+function cancelarPulsacionHoraAsistencia() {
+    if (temporizadorPulsacionLargaHoraAsistencia) {
+        clearTimeout(temporizadorPulsacionLargaHoraAsistencia);
+        temporizadorPulsacionLargaHoraAsistencia = null;
+    }
+}
+
 function alternarMostrarHoraAsistencia() {
+    // Una pulsación larga solo revela Asignar/Borrar y no ejecuta el clic normal.
+    if (pulsacionLargaHoraAsistencia) {
+        pulsacionLargaHoraAsistencia = false;
+        return;
+    }
+
     mostrarHoraAsistencia = !mostrarHoraAsistencia;
     actualizarBotonHoraAsistencia();
     actualizarCambiosPendientesAsistencia();
+
+    // La pulsación normal mantiene ocultos los controles avanzados.
+    const controlesHora = document.getElementById("controlesHoraAsistencia");
+    if (controlesHora) controlesHora.classList.add("oculto");
 }
 
 function abrirModalAsignarHoraAsistencia() {
