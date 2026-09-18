@@ -5525,7 +5525,7 @@ Selecciona un curso
     <div class="fila-guardar-config-horario">
         <label class="opcion-horario-automatico">
             <input type="checkbox" id="activarHorarioAutomaticoAsistencia" onchange="cambiarHorarioAutomaticoAsistencia()">
-            <span>Aplicar automáticamente</span>
+            <span>Vista previa</span>
         </label>
         <button type="button" class="boton-guardar-config-horario" onclick="guardarConfiguracionHorarioAsistencia()">💾 Guardar</button>
     </div>
@@ -8912,6 +8912,8 @@ async function cargarConfiguracionHorarioAsistencia() {
     if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
     if (automatico) automatico.checked = false;
+    vistaPreviaHorarioAsistenciaActiva = false;
+    estadosAntesVistaPreviaAsistencia.clear();
     actualizarInfoConfiguracionHorarioAsistencia();
     actualizarBotonConfiguracionHorarioAsistencia();
     actualizarBotonNoEstablecerHoraEntradaAsistencia();
@@ -8943,55 +8945,115 @@ function horaAsegundosAsistencia(hora) {
     return partes[0] * 3600 + partes[1] * 60 + (Number.isFinite(partes[2]) ? partes[2] : 0);
 }
 
-function estadoAutomaticoPorHoraAsistencia(hora, estadoSolicitado) {
-    const estado = String(estadoSolicitado || "").toLowerCase();
-    if (!configuracionHorarioAsistencia.activo || !["asistio", "atraso"].includes(estado)) return estadoSolicitado;
+function estadoAutomaticoPorHoraAsistencia(hora, horaEntrada, tolerancia) {
     const llegada = horaAsegundosAsistencia(hora);
-    const entrada = horaAsegundosAsistencia(configuracionHorarioAsistencia.hora_entrada);
-    if (llegada === null || entrada === null) return estadoSolicitado;
-    const limite = entrada + Number(configuracionHorarioAsistencia.tolerancia_minutos || 0) * 60;
+    const entrada = horaAsegundosAsistencia(horaEntrada);
+    if (llegada === null || entrada === null) return "";
+    const limite = entrada + Number(tolerancia || 0) * 60;
     return llegada <= limite ? "asistio" : "atraso";
 }
 
-async function aplicarHorarioAutomaticoAsistencia() {
-    const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
-    if (!checkbox || !checkbox.checked) return;
-    if (!cursoSeleccionado || !configuracionHorarioAsistencia?.activo || esDiaSinClasesAsistencia()) return;
+/*
+ * Vista previa del horario:
+ * - NO modifica registrosAsistencia.
+ * - NO modifica las horas de los estudiantes.
+ * - Solo cambia temporalmente los radios visibles de Asistencia/Atraso.
+ * - Al quitar Vista previa, se restauran exactamente los estados que
+ *   estaban visibles antes de activarla.
+ */
+let estadosAntesVistaPreviaAsistencia = new Map();
+let vistaPreviaHorarioAsistenciaActiva = false;
 
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!fecha) return;
+function guardarEstadosVistaPreviaAsistencia() {
+    estadosAntesVistaPreviaAsistencia = new Map();
 
-    const horaActual = horaActualAsistencia();
-    const nuevoEstado = estadoAutomaticoPorHoraAsistencia(horaActual, "asistio");
-    if (!['asistio', 'atraso'].includes(nuevoEstado)) return;
+    document.querySelectorAll('#tablaAsistencia tr[data-estudiante]').forEach(fila => {
+        const id = String(fila.dataset.estudiante || "");
+        const seleccionado = fila.querySelector(
+            `input[name="asistencia-${id}"]:checked`
+        );
+        estadosAntesVistaPreviaAsistencia.set(
+            id,
+            seleccionado ? seleccionado.value : ""
+        );
+    });
+}
 
-    const estudiantesCurso = estudiantes.filter(e =>
-        e.curso === cursoSeleccionado &&
-        String(e.estado || "").trim().toUpperCase() === "EFECTIVO"
-    );
-
-    if (!estudiantesCurso.length) return;
-
-    // Al activar el modo automático, solo se modifica la vista en ese momento.
-    // Los cambios quedan pendientes para que el usuario los guarde con el botón Guardar.
-    estudiantesCurso.forEach(estudiante => {
-        const registro = registrosAsistencia[estudiante.id] || {};
-        const estadoActual = String(registro.estado || "").toLowerCase();
-
-        // No modificar faltas, permisos ni licencias.
-        if (["falta", "permiso", "licencia"].includes(estadoActual)) return;
-
-        const fila = document.querySelector(`tr[data-estudiante="${estudiante.id}"]`);
+function restaurarEstadosVistaPreviaAsistencia() {
+    estadosAntesVistaPreviaAsistencia.forEach((estado, id) => {
+        const fila = document.querySelector(`tr[data-estudiante="${id}"]`);
         if (!fila) return;
 
-        const radio = fila.querySelector(`input[name="asistencia-${estudiante.id}"][value="${nuevoEstado}"]`);
-        if (radio) radio.checked = true;
-
-        // Al aplicar automáticamente NO se modifica la hora registrada del estudiante.
-        // Solo se cambia temporalmente la opción de asistencia correspondiente.
-        // La hora del estudiante se conserva tal como estaba.
+        fila.querySelectorAll(`input[name="asistencia-${id}"]`).forEach(radio => {
+            radio.checked = radio.value === estado;
+        });
     });
 
+    estadosAntesVistaPreviaAsistencia.clear();
+}
+
+function obtenerHoraEntradaVistaPreviaAsistencia() {
+    const input = document.getElementById("horaEntradaAsistencia");
+    return normalizarHoraAsistencia(input?.value || "");
+}
+
+function obtenerToleranciaVistaPreviaAsistencia() {
+    const input = document.getElementById("toleranciaAsistencia");
+    const valor = Number(input?.value || 0);
+    return Number.isFinite(valor) && valor >= 0 ? valor : 0;
+}
+
+function aplicarVistaPreviaHorarioAsistencia() {
+    const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
+    if (!checkbox || !checkbox.checked) return;
+
+    if (!cursoSeleccionado || esDiaSinClasesAsistencia()) return;
+
+    const horaEntrada = obtenerHoraEntradaVistaPreviaAsistencia();
+    if (!horaEntrada) return;
+
+    const tolerancia = obtenerToleranciaVistaPreviaAsistencia();
+
+    estudiantes
+        .filter(e =>
+            e.curso === cursoSeleccionado &&
+            String(e.estado || "").trim().toUpperCase() === "EFECTIVO"
+        )
+        .forEach(estudiante => {
+            const fila = document.querySelector(
+                `tr[data-estudiante="${estudiante.id}"]`
+            );
+            if (!fila) return;
+
+            const registro = registrosAsistencia[estudiante.id] || {};
+            const horaEstudiante = normalizarHoraAsistencia(
+                registro.hora ||
+                fila.querySelector(
+                    `.hora-asistencia-input[data-estudiante="${estudiante.id}"]`
+                )?.value ||
+                ""
+            );
+
+            // Sin hora de llegada no se puede calcular un estado nuevo.
+            if (!horaEstudiante) return;
+
+            const nuevoEstado = estadoAutomaticoPorHoraAsistencia(
+                horaEstudiante,
+                horaEntrada,
+                tolerancia
+            );
+
+            if (!["asistio", "atraso"].includes(nuevoEstado)) return;
+
+            const radio = fila.querySelector(
+                `input[name="asistencia-${estudiante.id}"][value="${nuevoEstado}"]`
+            );
+
+            if (radio) radio.checked = true;
+        });
+
+    // La vista previa se considera un cambio pendiente solo para permitir
+    // que el docente pulse Guardar si decide conservar el resultado.
     actualizarCambiosPendientesAsistencia();
     actualizarEstadosGuardado();
 }
@@ -9000,26 +9062,47 @@ function cambiarHorarioAutomaticoAsistencia() {
     const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
     if (!checkbox) return;
 
-    if (checkbox.checked && !configuracionHorarioAsistencia?.activo) {
-        checkbox.checked = false;
-        mostrarMensaje("ℹ️ Primero guarda la hora de entrada y la tolerancia.");
-        return;
-    }
-
     if (checkbox.checked) {
-        aplicarHorarioAutomaticoAsistencia();
+        if (!cursoSeleccionado || esDiaSinClasesAsistencia()) {
+            checkbox.checked = false;
+            return;
+        }
+
+        guardarEstadosVistaPreviaAsistencia();
+        vistaPreviaHorarioAsistenciaActiva = true;
+        aplicarVistaPreviaHorarioAsistencia();
+        mostrarMensaje("👁️ Vista previa activada: no se guardó ningún cambio.");
+    } else {
+        if (vistaPreviaHorarioAsistenciaActiva) {
+            restaurarEstadosVistaPreviaAsistencia();
+        }
+
+        vistaPreviaHorarioAsistenciaActiva = false;
+        actualizarCambiosPendientesAsistencia();
+        actualizarEstadosGuardado();
+        mostrarMensaje("✓ Vista previa cerrada. No se guardaron los cambios.");
     }
 }
 
-// Revisa periódicamente la hora cuando el modo automático está activado.
-setInterval(() => {
+// Si se cambia la hora o la tolerancia mientras la vista previa está activa,
+// recalcular inmediatamente la vista sin tocar la base de datos.
+function actualizarVistaPreviaAlCambiarHorarioAsistencia() {
     const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
-    if (checkbox?.checked) aplicarHorarioAutomaticoAsistencia();
-}, 30000);
+    if (checkbox?.checked) {
+        aplicarVistaPreviaHorarioAsistencia();
+    }
+}
 
 function horaActualAsistencia() {
     return new Date().toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
+
+// La hora y tolerancia se pueden probar libremente mientras Vista previa esté activa.
+// Estos cambios de los campos NO se guardan hasta pulsar el botón Guardar correspondiente.
+document.getElementById("horaEntradaAsistencia")?.addEventListener("input", actualizarVistaPreviaAlCambiarHorarioAsistencia);
+document.getElementById("horaEntradaAsistencia")?.addEventListener("change", actualizarVistaPreviaAlCambiarHorarioAsistencia);
+document.getElementById("toleranciaAsistencia")?.addEventListener("input", actualizarVistaPreviaAlCambiarHorarioAsistencia);
+document.getElementById("toleranciaAsistencia")?.addEventListener("change", actualizarVistaPreviaAlCambiarHorarioAsistencia);
 
 function actualizarBotonNoEstablecerHoraEntradaAsistencia() {
     const boton = document.querySelector(".boton-no-establecer-horario");
@@ -9063,6 +9146,8 @@ async function noEstablecerHoraEntradaAsistencia() {
         if (t) t.value = 0;
         const automatico = document.getElementById("activarHorarioAutomaticoAsistencia");
         if (automatico) automatico.checked = false;
+        vistaPreviaHorarioAsistenciaActiva = false;
+        estadosAntesVistaPreviaAsistencia.clear();
         actualizarInfoConfiguracionHorarioAsistencia();
         actualizarBotonConfiguracionHorarioAsistencia();
         fechasHorarioAsistenciaGuardadas.delete(fecha);
