@@ -1538,6 +1538,14 @@ td:first-child {
     line-height: 1;
 }
 
+.calendario-dia-asistencia .marca-observacion-calendario {
+    position: absolute;
+    left: 2px;
+    bottom: 1px;
+    font-size: 8px;
+    line-height: 1;
+}
+
 .leyenda-calendario-asistencia {
     display: flex;
     align-items: center;
@@ -2099,6 +2107,15 @@ td:first-child {
 
 .opciones-tipo-dia-asistencia button:hover {
     background: #f0f4f8;
+}
+
+.opciones-tipo-dia-asistencia .boton-observaciones-dia {
+    border-color: #1565c0;
+}
+
+.opciones-tipo-dia-asistencia .boton-observaciones-dia:hover {
+    background: #e8f1fb;
+    color: #1557a6;
 }
 
 .boton-guardar-tipo-dia-asistencia {
@@ -5359,6 +5376,14 @@ Selecciona un curso
 
     <button
         type="button"
+        class="boton-observaciones-dia"
+        onclick="seleccionarTipoDiaAsistencia('observacion')"
+        title="Agregar observaciones del día">
+        📝 Observaciones
+    </button>
+
+    <button
+        type="button"
         id="botonGuardarTipoDiaAsistencia"
         class="boton-guardar-tipo-dia-asistencia oculto"
         onclick="guardarTipoDiaAsistencia()"
@@ -8197,18 +8222,27 @@ function seleccionarTipoDiaAsistencia(tipo) {
     if (contenedorMotivo) {
         contenedorMotivo.classList.toggle(
             "visible",
-            tipo === "no_clases" || tipo === "clase_informal"
+            tipo === "no_clases" || tipo === "clase_informal" || tipo === "observacion"
         );
     }
 
     if (campoMotivo) {
-        campoMotivo.value = motivoNoClases || "";
-        campoMotivo.placeholder = tipo === "clase_informal"
-            ? "Escribe el motivo o detalle de la clase informal (opcional)..."
-            : "Escribe por qué no hubo clases (opcional)...";
+        campoMotivo.value = observacionesDiasAsistenciaGuardadas[
+            document.getElementById("fechaAsistencia")?.value || ""
+        ] || motivoNoClases || "";
+
+        if (tipo === "clase_informal") {
+            campoMotivo.placeholder = "Escribe el motivo o detalle de la clase informal (opcional)...";
+        } else if (tipo === "observacion") {
+            campoMotivo.placeholder = "Escribe las observaciones de este día (opcional)...";
+        } else {
+            campoMotivo.placeholder = "Escribe por qué no hubo clases (opcional)...";
+        }
+
         setTimeout(() => campoMotivo.focus(), 50);
     }
 }
+
 
 async function guardarTipoDiaAsistencia() {
     if (!cursoSeleccionado) {
@@ -8225,7 +8259,7 @@ async function guardarTipoDiaAsistencia() {
     const opciones = document.getElementById("opcionesTipoDiaAsistencia");
     const tipo = opciones?.dataset.tipoSeleccionado || tipoDiaAsistencia;
 
-    if (!["no_clases", "clase_informal"].includes(tipo)) {
+    if (!["no_clases", "clase_informal", "observacion"].includes(tipo)) {
         return false;
     }
 
@@ -8239,7 +8273,7 @@ async function guardarTipoDiaAsistencia() {
     }
 
     try {
-        mostrarMensaje("Guardando tipo de clase...");
+        mostrarMensaje(tipo === "observacion" ? "Guardando observación..." : "Guardando tipo de clase...");
 
         const campoMotivo = document.getElementById("motivoNoClases");
         const motivo = String(campoMotivo?.value || "").trim() || null;
@@ -8296,17 +8330,19 @@ async function guardarTipoDiaAsistencia() {
         // Nunca se guarda en la tabla historial_cambios de Supabase.
         guardarHistorialLocalTipoDia(registroHistorialTipo);
 
-        // Si se marca un día especial, se eliminan los estados normales
-        // que pudiera tener esa fecha para evitar datos contradictorios.
-        const ids = estudiantesCurso.map(estudiante => estudiante.id);
+        // Solo los tipos especiales eliminan los estados normales de asistencia.
+        // Una observación puede coexistir con la asistencia del día.
+        if (tipo === "no_clases" || tipo === "clase_informal") {
+            const ids = estudiantesCurso.map(estudiante => estudiante.id);
 
-        const { error: errorAsistencia } = await supabaseClient
-            .from("asistencia")
-            .delete()
-            .eq("fecha", fecha)
-            .in("estudiante_id", ids);
+            const { error: errorAsistencia } = await supabaseClient
+                .from("asistencia")
+                .delete()
+                .eq("fecha", fecha)
+                .in("estudiante_id", ids);
 
-        if (errorAsistencia) throw errorAsistencia;
+            if (errorAsistencia) throw errorAsistencia;
+        }
 
         tipoDiaAsistencia = tipo;
         motivoNoClases = motivo || "";
@@ -8333,7 +8369,9 @@ async function guardarTipoDiaAsistencia() {
         mostrarMensaje(
             tipo === "no_clases"
                 ? "✓ Fecha guardada como: No se pasó clases."
-                : "✓ Fecha guardada como: Clase informal."
+                : tipo === "clase_informal"
+                    ? "✓ Fecha guardada como: Clase informal."
+                    : "✓ Observación del día guardada correctamente."
         );
 
         return true;
@@ -8355,6 +8393,7 @@ async function guardarTipoDiaAsistencia() {
 
 let fechasAsistenciaGuardadas = [];
 let tiposDiasAsistenciaGuardados = {};
+let observacionesDiasAsistenciaGuardadas = {};
 let fechasAzarAsistenciaGuardadas = new Set();
 let fechasActividadesAsistenciaGuardadas = new Set();
 let fechasHorarioAsistenciaGuardadas = new Set();
@@ -8426,13 +8465,16 @@ function renderizarCalendarioFechasAsistencia() {
         boton.className = "calendario-dia-asistencia";
         boton.textContent = dia;
         const tipoDia = String(tiposDias[clave] || "");
+        const observacionDia = String(observacionesDiasAsistenciaGuardadas[clave] || "").trim();
         boton.title = tipoDia === "no_clases"
             ? "No se pasó clases: " + formatearFechaGuardadaAsistencia(clave)
             : tipoDia === "clase_informal"
                 ? "Clase informal: " + formatearFechaGuardadaAsistencia(clave)
-                : fechasGuardadas.has(clave)
-                    ? "Asistencia guardada: " + formatearFechaGuardadaAsistencia(clave)
-                    : "Seleccionar " + clave;
+                : tipoDia === "observacion"
+                    ? "Observación: " + (observacionDia || "sin texto") + " · " + formatearFechaGuardadaAsistencia(clave)
+                    : fechasGuardadas.has(clave)
+                        ? "Asistencia guardada: " + formatearFechaGuardadaAsistencia(clave)
+                        : "Seleccionar " + clave;
 
         if (fechasGuardadas.has(clave)) {
             if (tipoDia === "no_clases") {
@@ -8500,6 +8542,16 @@ function renderizarCalendarioFechasAsistencia() {
             boton.title = (boton.title || "") + " · Hubo estudiantes elegidos al azar";
         }
 
+        if (tipoDia === "observacion" || observacionDia) {
+            const marcaObservacion = document.createElement("span");
+            marcaObservacion.className = "marca-observacion-calendario";
+            marcaObservacion.textContent = "📝";
+            marcaObservacion.title = observacionDia
+                ? "Observación: " + observacionDia
+                : "Hay una observación registrada";
+            boton.appendChild(marcaObservacion);
+        }
+
         if (fechasHorario.has(clave)) {
             const marcaHorario = document.createElement("span");
             marcaHorario.className = "marca-horario-calendario";
@@ -8538,6 +8590,7 @@ async function cargarFechasAsistencia() {
 
     fechasAsistenciaGuardadas = [];
     tiposDiasAsistenciaGuardados = {};
+    observacionesDiasAsistenciaGuardadas = {};
     fechasAzarAsistenciaGuardadas = new Set();
     fechasHorarioAsistenciaGuardadas = new Set();
 
@@ -8566,7 +8619,7 @@ async function cargarFechasAsistencia() {
             .order("fecha", { ascending: false }),
         supabaseClient
             .from("asistencia_tipos_dia")
-            .select("fecha,tipo")
+            .select("fecha,tipo,motivo")
             .eq("curso", cursoSeleccionado)
             .order("fecha", { ascending: false }),
         supabaseClient
@@ -8634,7 +8687,9 @@ async function cargarFechasAsistencia() {
     tiposDiasAsistenciaGuardados = {};
     (dataTipos || []).forEach(r => {
         if (r?.fecha && r?.tipo) {
-            tiposDiasAsistenciaGuardados[String(r.fecha)] = String(r.tipo);
+            const claveFecha = String(r.fecha);
+            tiposDiasAsistenciaGuardados[claveFecha] = String(r.tipo);
+            observacionesDiasAsistenciaGuardadas[claveFecha] = String(r.motivo || "");
         }
     });
 
@@ -9209,6 +9264,9 @@ async function cargarAsistencia() {
 
     actualizarIndicadorComentariosHorarioAsistencia();
 
+    tipoDiaAsistencia = "";
+    motivoNoClases = "";
+
     if (tipoError) {
         console.error("Error al cargar el tipo de día:", tipoError);
     } else if (tipoData?.tipo) {
@@ -9297,7 +9355,16 @@ function actualizarAvisoDiaEspecialAsistencia() {
             : `<strong>🚫 Este día no se pasó clases.</strong> No se registró el motivo.`;
         aviso.classList.add("visible");
     } else if (tipoDiaAsistencia === "clase_informal") {
-        aviso.innerHTML = `<strong>ℹ️ Este día se realizó una clase informal.</strong>`;
+        const motivo = String(motivoNoClases || "").trim();
+        aviso.innerHTML = motivo
+            ? `<strong>ℹ️ Este día se realizó una clase informal:</strong> ${escapeHTML(motivo)}`
+            : `<strong>ℹ️ Este día se realizó una clase informal.</strong>`;
+        aviso.classList.add("visible");
+    } else if (tipoDiaAsistencia === "observacion") {
+        const observacion = String(motivoNoClases || "").trim();
+        aviso.innerHTML = observacion
+            ? `<strong>📝 Observación del día:</strong> ${escapeHTML(observacion)}`
+            : `<strong>📝 Este día tiene una observación registrada.</strong>`;
         aviso.classList.add("visible");
     } else {
         aviso.innerHTML = "";
