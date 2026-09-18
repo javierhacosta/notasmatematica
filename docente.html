@@ -5050,6 +5050,32 @@ table tbody tr:nth-child(10n+10) td {
     color: #fff;
     font-weight: bold;
 }
+.fila-guardar-config-horario {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.opcion-horario-automatico {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.opcion-horario-automatico input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
 .config-horario-info {
     width: 100%;
     text-align: center;
@@ -5467,7 +5493,13 @@ Selecciona un curso
         Tolerancia (min)
         <input type="number" id="toleranciaAsistencia" min="0" max="180" step="1">
     </label>
-    <button type="button" class="boton-guardar-config-horario" onclick="guardarConfiguracionHorarioAsistencia()">💾 Guardar</button>
+    <div class="fila-guardar-config-horario">
+        <label class="opcion-horario-automatico">
+            <input type="checkbox" id="activarHorarioAutomaticoAsistencia" onchange="cambiarHorarioAutomaticoAsistencia()">
+            <span>Aplicar automáticamente</span>
+        </label>
+        <button type="button" class="boton-guardar-config-horario" onclick="guardarConfiguracionHorarioAsistencia()">💾 Guardar</button>
+    </div>
     <div id="infoConfigHorarioAsistencia" class="config-horario-info"></div>
 </div>
 
@@ -8777,8 +8809,10 @@ async function cargarConfiguracionHorarioAsistencia() {
 
     const h = document.getElementById("horaEntradaAsistencia");
     const t = document.getElementById("toleranciaAsistencia");
+    const automatico = document.getElementById("activarHorarioAutomaticoAsistencia");
     if (h) h.value = configuracionHorarioAsistencia.hora_entrada || "";
     if (t) t.value = configuracionHorarioAsistencia.tolerancia_minutos;
+    if (automatico) automatico.checked = false;
     actualizarInfoConfiguracionHorarioAsistencia();
     actualizarBotonConfiguracionHorarioAsistencia();
     actualizarBotonNoEstablecerHoraEntradaAsistencia();
@@ -8819,6 +8853,96 @@ function estadoAutomaticoPorHoraAsistencia(hora, estadoSolicitado) {
     const limite = entrada + Number(configuracionHorarioAsistencia.tolerancia_minutos || 0) * 60;
     return llegada <= limite ? "asistio" : "atraso";
 }
+
+async function aplicarHorarioAutomaticoAsistencia() {
+    const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
+    if (!checkbox || !checkbox.checked) return;
+    if (!cursoSeleccionado || !configuracionHorarioAsistencia?.activo || esDiaSinClasesAsistencia()) return;
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) return;
+
+    const horaActual = horaActualAsistencia();
+    const nuevoEstado = estadoAutomaticoPorHoraAsistencia(horaActual, "asistio");
+    if (!["asistio", "atraso"].includes(nuevoEstado)) return;
+
+    const estudiantesCurso = estudiantes.filter(e =>
+        e.curso === cursoSeleccionado &&
+        String(e.estado || "").trim().toUpperCase() === "EFECTIVO"
+    );
+
+    if (!estudiantesCurso.length) return;
+
+    const cambios = [];
+
+    estudiantesCurso.forEach(estudiante => {
+        const registro = registrosAsistencia[estudiante.id] || {};
+        const estadoActual = String(registro.estado || "").toLowerCase();
+
+        // Solo la asistencia y el atraso se controlan automáticamente.
+        // Faltas y permisos/licencias no se modifican.
+        if (["falta", "permiso", "licencia"].includes(estadoActual)) return;
+
+        const registroNuevo = {
+            estudiante_id: estudiante.id,
+            fecha,
+            estado: nuevoEstado,
+            hora: horaActual,
+            observacion: registro.observacion || null
+        };
+
+        if (estadoActual !== nuevoEstado ||
+            normalizarHoraAsistencia(registro.hora || "") !== normalizarHoraAsistencia(horaActual)) {
+            cambios.push(registroNuevo);
+        }
+
+        registrosAsistencia[estudiante.id] = {
+            ...registro,
+            estado: nuevoEstado,
+            hora: horaActual
+        };
+    });
+
+    if (!cambios.length) {
+        actualizarResumenAsistencia();
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient
+            .from("asistencia")
+            .upsert(cambios, { onConflict: "estudiante_id,fecha" });
+        if (error) throw error;
+
+        mostrarTablaAsistencia();
+        aplicarRestriccionTipoDiaAsistencia();
+        actualizarResumenAsistencia();
+        actualizarCambiosPendientesAsistencia();
+    } catch (error) {
+        console.error("Error al aplicar automáticamente el horario de asistencia:", error);
+    }
+}
+
+function cambiarHorarioAutomaticoAsistencia() {
+    const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
+    if (!checkbox) return;
+
+    if (checkbox.checked && !configuracionHorarioAsistencia?.activo) {
+        checkbox.checked = false;
+        mostrarMensaje("ℹ️ Primero guarda la hora de entrada y la tolerancia.");
+        return;
+    }
+
+    if (checkbox.checked) {
+        aplicarHorarioAutomaticoAsistencia();
+    }
+}
+
+// Revisa periódicamente la hora cuando el modo automático está activado.
+setInterval(() => {
+    const checkbox = document.getElementById("activarHorarioAutomaticoAsistencia");
+    if (checkbox?.checked) aplicarHorarioAutomaticoAsistencia();
+}, 30000);
 
 function horaActualAsistencia() {
     return new Date().toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
@@ -8864,6 +8988,8 @@ async function noEstablecerHoraEntradaAsistencia() {
         const t = document.getElementById("toleranciaAsistencia");
         if (h) h.value = "";
         if (t) t.value = 0;
+        const automatico = document.getElementById("activarHorarioAutomaticoAsistencia");
+        if (automatico) automatico.checked = false;
         actualizarInfoConfiguracionHorarioAsistencia();
         actualizarBotonConfiguracionHorarioAsistencia();
         fechasHorarioAsistenciaGuardadas.delete(fecha);
@@ -8978,6 +9104,11 @@ async function guardarConfiguracionHorarioAsistencia() {
         renderizarCalendarioFechasAsistencia();
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
+
+        const automatico = document.getElementById("activarHorarioAutomaticoAsistencia");
+        if (automatico?.checked) {
+            await aplicarHorarioAutomaticoAsistencia();
+        }
 
         /*
          * IMPORTANTE:
