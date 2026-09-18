@@ -957,7 +957,7 @@ async function consultarNota() {
         const urlConsulta = `${SUPABASE_URL}/rest/v1/matematica?` +
             `ci=eq.${encodeURIComponent(ci)}` +
             `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
-            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t`;
+            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,estado`;
 
         let respuesta = null;
         let ultimoError = null;
@@ -1261,6 +1261,85 @@ async function mostrarResultado(alumno) {
 
     const nota2 =
         redondearNota(alumno.nota_2t);
+
+    /*
+     * ESTADO DEL ESTUDIANTE SEGÚN LA TABLA "matematica".
+     * Solo los estudiantes con estado EFECTIVO pueden ver
+     * actividades, asistencia, 3er trimestre y nota final.
+     * Para cualquier otro estado se muestran únicamente 1T y 2T
+     * y, si corresponde por curso, el centralizador.
+     */
+    const estadoAlumno = String(alumno.estado || "").trim().toUpperCase();
+
+    if (estadoAlumno !== "EFECTIVO") {
+
+        document.getElementById("resultado").innerHTML = `
+
+            <div class="nota-box">
+
+                <div class="nombre">
+                    ${escapeHTML(alumno.nombre)}
+                </div>
+
+                <div class="curso">
+                    Curso:
+                    ${escapeHTML(alumno.curso || "")}
+                </div>
+
+                <div class="trimestres" style="grid-template-columns:repeat(2, 1fr);">
+
+                    <div class="trimestre-card">
+                        <div class="titulo">
+                            1er Trimestre
+                        </div>
+                        <div class="numero t1">
+                            ${
+                                nota1 === null
+                                ? "—"
+                                : nota1
+                            }
+                        </div>
+                    </div>
+
+                    <div class="trimestre-card">
+                        <div class="titulo">
+                            2do Trimestre
+                        </div>
+                        <div class="numero t2">
+                            ${
+                                nota2 === null
+                                ? "—"
+                                : nota2
+                            }
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            ${
+                ["5A", "1B"].includes(String(alumno.curso || "").trim().toUpperCase())
+                ? `
+                    <button
+                        type="button"
+                        class="boton-centralizador"
+                        onclick="mostrarCentralizador()"
+                    >
+                        📊 Ver mis notas de todas las materias
+                    </button>
+                    <div id="centralizador5A"></div>
+                  `
+                : ""
+            }
+
+        `;
+
+        return;
+    }
+
+    // Desde aquí se mantiene el comportamiento actual únicamente para EFECTIVO.
+
 
     // El 3er trimestre y la nota anual se calculan directamente
     // en este HTML a partir de las actividades y calificaciones.
