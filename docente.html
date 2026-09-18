@@ -17202,25 +17202,22 @@ function cerrarModalAsistenciaQR(event) {
 function obtenerActividadesAnterioresQR(actividadActual) {
     if (!actividadActual || !Array.isArray(actividades)) return [];
 
-    const ordenActual = Number(actividadActual.orden);
     const fechaActual = String(actividadActual.fecha || "");
 
     return actividades
         .filter(a => {
             if (String(a.id) === String(actividadActual.id)) return false;
 
-            const orden = Number(a.orden);
-            if (Number.isFinite(ordenActual) && Number.isFinite(orden)) {
-                return orden < ordenActual;
-            }
+            const fechaActividad = String(a.fecha || "");
 
-            return fechaActual && String(a.fecha || "") < fechaActual;
+            // Considerar anterior por fecha.
+            return fechaActividad && fechaActual &&
+                   fechaActividad < fechaActual;
         })
         .sort((a, b) => {
-            const oa = Number(a.orden);
-            const ob = Number(b.orden);
-            if (Number.isFinite(oa) && Number.isFinite(ob) && oa !== ob) return oa - ob;
-            return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+            return String(a.fecha || "").localeCompare(
+                String(b.fecha || "")
+            );
         });
 }
 
@@ -17233,7 +17230,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
         return `
             <div class="qr-actividades-anteriores">
                 <div class="qr-actividades-anteriores-titulo">Actividades anteriores</div>
-                <div class="qr-actividades-anteriores-vacio">No hay actividades anteriores.</div>
+                <div class="qr-actividades-anteriores-vacio">No hay actividades anteriores para esta fecha.</div>
             </div>
         `;
     }
@@ -17252,7 +17249,12 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
 
                 return `
                     <div class="qr-actividad-anterior">
-                        <span class="qr-actividad-anterior-nombre">${escapeHTML(a.nombre)}</span>
+                        <span class="qr-actividad-anterior-nombre">
+                            ${escapeHTML(a.nombre)}
+                            <small style="display:block;color:#777;font-size:11px;">
+                                📅 ${escapeHTML(a.fecha || "")}
+                            </small>
+                        </span>
                         <span class="qr-actividad-anterior-nota">${textoNota}</span>
                     </div>
                 `;
