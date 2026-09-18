@@ -15005,6 +15005,25 @@ async function exportarExcel() {
         }
 
 
+        // Fechas especiales de asistencia: "No se pasó clases" y "Clase informal".
+        // Se consultan aparte porque no generan registros en la tabla asistencia.
+        let todosTiposDiaAsistencia = [];
+
+        const {
+            data: dataTiposDiaAsistencia,
+            error: errorTiposDiaAsistencia
+        } = await supabaseClient
+            .from("asistencia_tipos_dia")
+            .select("curso,fecha,tipo")
+            .order("fecha");
+
+        if (errorTiposDiaAsistencia) {
+            throw errorTiposDiaAsistencia;
+        }
+
+        todosTiposDiaAsistencia = dataTiposDiaAsistencia || [];
+
+
         const codigoAsistencia = {
 
             asistio: "A",
@@ -15086,23 +15105,38 @@ async function exportarExcel() {
             );
 
 
+            const fechasAsistenciaCurso =
+            todaAsistencia
+            .filter(
+                registro =>
+                idsCurso.has(
+                    registro.estudiante_id
+                )
+            )
+            .map(
+                registro =>
+                registro.fecha
+            )
+            .filter(Boolean);
+
+            const tiposDiaCurso =
+            todosTiposDiaAsistencia.filter(
+                registro =>
+                registro.curso === curso &&
+                ["no_clases", "clase_informal"].includes(String(registro.tipo || "")) &&
+                registro.fecha
+            );
+
             const fechasCurso =
-            [...new Set(
+            [...new Set([
+                ...fechasAsistenciaCurso,
+                ...tiposDiaCurso.map(registro => registro.fecha)
+            ])].sort();
 
-                todaAsistencia
-                .filter(
-                    registro =>
-                    idsCurso.has(
-                        registro.estudiante_id
-                    )
-                )
-                .map(
-                    registro =>
-                    registro.fecha
-                )
-                .filter(Boolean)
-
-            )].sort();
+            const mapaTiposDiaCurso = {};
+            tiposDiaCurso.forEach(registro => {
+                mapaTiposDiaCurso[String(registro.fecha)] = String(registro.tipo || "");
+            });
 
 
             const actividadesCurso =
@@ -15205,6 +15239,16 @@ async function exportarExcel() {
             const filaReferencia = ["", ""];
 
             fechasCurso.forEach(fecha => {
+                const tipoDia = mapaTiposDiaCurso[String(fecha)] || "";
+                if (tipoDia === "no_clases") {
+                    filaReferencia.push("NC");
+                    return;
+                }
+                if (tipoDia === "clase_informal") {
+                    filaReferencia.push("IC");
+                    return;
+                }
+
                 const d = fechaLocalDesdeClaveAsistencia(fecha);
                 const inicialDia = d
                     ? ["D", "L", "M", "X", "J", "V", "S"][d.getDay()]
