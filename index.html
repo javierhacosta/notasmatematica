@@ -2450,7 +2450,7 @@ async function mostrarAsistenciaEnDetalle() {
             `curso=eq.${encodeURIComponent(alumnoActual.curso || "")}` +
             `&fecha=gte.${INICIO_3T}` +
             `&fecha=lte.${FIN_3T}` +
-            `&tipo=in.(no_clases,clase_informal)` +
+            `&tipo=in.(no_clases,clase_informal,observacion)` +
             `&select=fecha,tipo,motivo` +
             `&order=fecha.desc`,
             {
@@ -2531,8 +2531,8 @@ async function mostrarAsistenciaEnDetalle() {
 
 
         /*
-         * Unir asistencia normal + días especiales y ordenar TODO por fecha.
-         * Así "Clase informal" y "No se pasó clases" aparecen en su lugar
+         * Unir asistencia normal + días especiales y observaciones, y ordenar TODO por fecha.
+         * Así "Clase informal", "No se pasó clases" y "Observación del día" aparecen en su lugar
          * cronológico correspondiente.
          */
         const registrosAsistencia = [
@@ -2708,6 +2708,69 @@ async function mostrarAsistenciaEnDetalle() {
             }
 
 
+            if (registro.tipoRegistro === "observacion") {
+
+                filas += `
+
+                    <tr>
+
+                        <td>
+
+                            ${formatearFecha(
+                                dia.fecha
+                            )}
+
+                        </td>
+
+
+                        <td>
+
+                            <span style="font-size:18px;">
+
+                                📝
+
+                            </span>
+
+                        </td>
+
+
+                        <td>
+
+                            <span style="
+                                display:inline-block;
+                                background:#e8f5e9;
+                                color:#2e7d32;
+                                border:1px solid #a5d6a7;
+                                font-weight:bold;
+                                padding:6px 8px;
+                                border-radius:8px;
+                                font-size:12px;
+                            ">
+
+                                Observación del día
+
+                            </span>
+
+                        </td>
+
+
+                        <td class="observacion">
+
+                            ${motivo
+                                ? motivo
+                                : "Observación registrada."
+                            }
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+                return;
+            }
+
+
             const motivoNoClases =
                 motivo || "No se registró el motivo.";
 
@@ -2749,7 +2812,7 @@ async function mostrarAsistenciaEnDetalle() {
         });
 
 
-        // Se muestra la tabla si existe asistencia normal o algún día sin clases.
+        // Se muestra la tabla si existe asistencia normal, algún día sin clases o alguna observación.
         const hayRegistrosAsistencia =
             asistencias.length > 0 ||
             diasNoClases.length > 0;
