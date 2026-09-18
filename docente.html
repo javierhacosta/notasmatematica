@@ -8864,7 +8864,7 @@ async function aplicarHorarioAutomaticoAsistencia() {
 
     const horaActual = horaActualAsistencia();
     const nuevoEstado = estadoAutomaticoPorHoraAsistencia(horaActual, "asistio");
-    if (!["asistio", "atraso"].includes(nuevoEstado)) return;
+    if (!['asistio', 'atraso'].includes(nuevoEstado)) return;
 
     const estudiantesCurso = estudiantes.filter(e =>
         e.curso === cursoSeleccionado &&
@@ -8873,54 +8873,27 @@ async function aplicarHorarioAutomaticoAsistencia() {
 
     if (!estudiantesCurso.length) return;
 
-    const cambios = [];
-
+    // Al activar el modo automático, solo se modifica la vista en ese momento.
+    // Los cambios quedan pendientes para que el usuario los guarde con el botón Guardar.
     estudiantesCurso.forEach(estudiante => {
         const registro = registrosAsistencia[estudiante.id] || {};
         const estadoActual = String(registro.estado || "").toLowerCase();
 
-        // Solo la asistencia y el atraso se controlan automáticamente.
-        // Faltas y permisos/licencias no se modifican.
+        // No modificar faltas, permisos ni licencias.
         if (["falta", "permiso", "licencia"].includes(estadoActual)) return;
 
-        const registroNuevo = {
-            estudiante_id: estudiante.id,
-            fecha,
-            estado: nuevoEstado,
-            hora: horaActual,
-            observacion: registro.observacion || null
-        };
+        const fila = document.querySelector(`tr[data-estudiante="${estudiante.id}"]`);
+        if (!fila) return;
 
-        if (estadoActual !== nuevoEstado ||
-            normalizarHoraAsistencia(registro.hora || "") !== normalizarHoraAsistencia(horaActual)) {
-            cambios.push(registroNuevo);
-        }
+        const radio = fila.querySelector(`input[name="asistencia-${estudiante.id}"][value="${nuevoEstado}"]`);
+        if (radio) radio.checked = true;
 
-        registrosAsistencia[estudiante.id] = {
-            ...registro,
-            estado: nuevoEstado,
-            hora: horaActual
-        };
+        const horaInput = fila.querySelector('.hora-asistencia-input');
+        if (horaInput) horaInput.value = normalizarHoraAsistencia(horaActual);
     });
 
-    if (!cambios.length) {
-        actualizarResumenAsistencia();
-        return;
-    }
-
-    try {
-        const { error } = await supabaseClient
-            .from("asistencia")
-            .upsert(cambios, { onConflict: "estudiante_id,fecha" });
-        if (error) throw error;
-
-        mostrarTablaAsistencia();
-        aplicarRestriccionTipoDiaAsistencia();
-        actualizarResumenAsistencia();
-        actualizarCambiosPendientesAsistencia();
-    } catch (error) {
-        console.error("Error al aplicar automáticamente el horario de asistencia:", error);
-    }
+    actualizarCambiosPendientesAsistencia();
+    actualizarEstadosGuardado();
 }
 
 function cambiarHorarioAutomaticoAsistencia() {
