@@ -2710,65 +2710,59 @@ async function mostrarAsistenciaEnDetalle() {
 
             if (registro.tipoRegistro === "observacion") {
 
-                filas += `
+            // La observación no reemplaza la asistencia del estudiante.
+            // Si existe asistencia para esa fecha, se muestra su estado.
+            const asistenciaDelDia = registrosAsistencia.find(
+                r =>
+                    r.tipoRegistro === "asistencia" &&
+                    r.fecha === dia.fecha
+            );
 
-                    <tr>
+            filas += `
 
-                        <td>
+        <tr>
 
-                            ${formatearFecha(
-                                dia.fecha
-                            )}
+            <td>
 
-                        </td>
+                ${formatearFecha(
+                    dia.fecha
+                )}
 
+            </td>
 
-                        <td>
+            <td>
 
-                            <span style="font-size:18px;">
+                ${asistenciaDelDia
+                    ? (asistenciaDelDia.hora || "—")
+                    : "—"
+                }
 
-                                📝
+            </td>
 
-                            </span>
+            <td>
 
-                        </td>
+                ${asistenciaDelDia
+                    ? (asistenciaDelDia.estado || "—")
+                    : "—"
+                }
 
+            </td>
 
-                        <td>
+            <td class="observacion">
 
-                            <span style="
-                                display:inline-block;
-                                background:#e8f5e9;
-                                color:#2e7d32;
-                                border:1px solid #a5d6a7;
-                                font-weight:bold;
-                                padding:6px 8px;
-                                border-radius:8px;
-                                font-size:12px;
-                            ">
+                ${motivo
+                    ? motivo
+                    : (asistenciaDelDia?.observacion || "—")
+                }
 
-                                Observación del día
+            </td>
 
-                            </span>
+        </tr>
 
-                        </td>
+    `;
 
-
-                        <td class="observacion">
-
-                            ${motivo
-                                ? motivo
-                                : "Observación registrada."
-                            }
-
-                        </td>
-
-                    </tr>
-
-                `;
-
-                return;
-            }
+            return;
+}
 
 
             const motivoNoClases =
