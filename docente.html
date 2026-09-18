@@ -9177,16 +9177,14 @@ async function guardarConfiguracionHorarioAsistencia() {
         actualizarBotonNoEstablecerHoraEntradaAsistencia();
         mostrarMensaje("✓ Hora de entrada y tolerancia guardadas para este curso y día.");
 
-        const automatico = document.getElementById("activarHorarioAutomaticoAsistencia");
-        if (automatico?.checked) {
-            await aplicarHorarioAutomaticoAsistencia();
-        }
-
         /*
          * IMPORTANTE:
-         * Cambiar la hora de entrada o la tolerancia NO modifica estados ya
-         * guardados ni selecciones manuales/QR. El aviso se muestra únicamente
-         * como burbuja en la fila del estudiante y hace parpadear ⏰ si existe.
+         * Guardar la configuración de hora de entrada SOLO guarda la hora y
+         * tolerancia del curso y día seleccionado. No modifica ni recalcula
+         * la hora, estado o asistencia de ningún estudiante.
+         *
+         * El horario automático solo se ejecuta cuando el docente lo activa
+         * expresamente después de guardar la configuración.
          */
         actualizarBurbujasComentariosHorarioAsistencia();
     } catch (error) {
