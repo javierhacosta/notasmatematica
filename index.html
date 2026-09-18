@@ -2634,9 +2634,17 @@ async function mostrarAsistenciaEnDetalle() {
 
                         <td class="observacion">
 
-                            ${observacion}
+                ${(() => {
+                    const obsDia = registrosAsistencia.find(
+                        r => r.tipoRegistro === "observacion" &&
+                             r.fecha === registro.fecha
+                    );
+                    return (obsDia && obsDia.motivo)
+                        ? obsDia.motivo
+                        : (registro.observacion || "—");
+                })()}
 
-                        </td>
+            </td>
 
                     </tr>
 
@@ -2710,8 +2718,8 @@ async function mostrarAsistenciaEnDetalle() {
 
             if (registro.tipoRegistro === "observacion") {
 
-            // No crear una fila independiente: la observación se
-            // incorporará a la fila de asistencia correspondiente.
+            // No crear una fila separada. La observación se muestra
+            // junto al registro de asistencia de la misma fecha.
             return;
 }
 
