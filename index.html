@@ -729,14 +729,14 @@ button:hover {
 <div class="contenedor">
 
 
-    <div class="institucion" id="nombreInstitucion">
+    <div class="institucion">
 
         U.E. GERMAN BUSCH I
 
     </div>
 
 
-    <h1 id="nombreMateria">
+    <h1>
 
         Matemática 2026
 
@@ -822,30 +822,9 @@ const SUPABASE_KEY =
 "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
 
-$1
+let alumnoActual = null;
 
-    /* =================================================
-       ENCABEZADO SEGÚN EL CURSO
-    ================================================= */
 
-    function actualizarEncabezado(alumno) {
-        const institucion = document.getElementById("nombreInstitucion");
-        const materia = document.getElementById("nombreMateria");
-        const curso = String(alumno?.curso || "").trim().toUpperCase();
-        const esManuelAscencioPadilla = curso === "1A" || curso === "1B";
-
-        if (institucion) {
-            institucion.textContent = esManuelAscencioPadilla
-                ? "U.E. MANUEL ASCENCIO PADILLA"
-                : "U.E. GERMAN BUSCH I";
-        }
-
-        if (materia) {
-            materia.textContent = esManuelAscencioPadilla
-                ? "Técnica Tecnológica General 2026"
-                : "Matemática 2026";
-        }
-    }
 /* =================================================
    FECHAS DEL 3ER TRIMESTRE
 ================================================= */
@@ -858,13 +837,13 @@ const FIN_3T = "2026-12-31";
 /* =================================================
    CONTROL DE CONSULTAS REPETIDAS
 ================================================= */
-let temporizadorVisita = null;
+let intervaloVisita = null;
 
 function iniciarCuentaRegresivaVisita(segundos) {
 
-    if (temporizadorVisita) {
-        clearInterval(temporizadorVisita);
-        temporizadorVisita = null;
+    if (intervaloVisita) {
+        clearInterval(intervaloVisita);
+        intervaloVisita = null;
     }
 
     const boton = document.querySelector('button[onclick="consultarNota()"]');
@@ -875,8 +854,8 @@ function iniciarCuentaRegresivaVisita(segundos) {
     const actualizar = () => {
 
         if (segundos <= 0) {
-            clearInterval(temporizadorVisita);
-            temporizadorVisita = null;
+            clearInterval(intervaloVisita);
+            intervaloVisita = null;
             boton.disabled = false;
             boton.style.opacity = "1";
             boton.style.cursor = "pointer";
@@ -905,7 +884,7 @@ function iniciarCuentaRegresivaVisita(segundos) {
     };
 
     actualizar();
-    temporizadorVisita = setInterval(actualizar, 1000);
+    intervaloVisita = setInterval(actualizar, 1000);
 }
 
 /* =================================================
@@ -915,8 +894,6 @@ function iniciarCuentaRegresivaVisita(segundos) {
 function cerrarSesion() {
     alumnoActual = null;
 
-    actualizarEncabezado(null);
-
     const ci = document.getElementById("ci");
     const fecha = document.getElementById("fecha_nacimiento");
     const resultado = document.getElementById("resultado");
@@ -925,9 +902,9 @@ function cerrarSesion() {
     if (fecha) fecha.value = "";
     if (resultado) resultado.innerHTML = "";
 
-    if (temporizadorVisita) {
-        clearInterval(temporizadorVisita);
-        temporizadorVisita = null;
+    if (intervaloVisita) {
+        clearInterval(intervaloVisita);
+        intervaloVisita = null;
     }
 
     const botonConsultar = document.querySelector('button[onclick="consultarNota()"]');
@@ -1041,8 +1018,6 @@ async function consultarNota() {
 
         alumnoActual =
             datos[0];
-
-        actualizarEncabezado(alumnoActual);
 
 
         /* =================================================
@@ -2415,7 +2390,7 @@ async function mostrarAsistenciaEnDetalle() {
             `${SUPABASE_URL}/rest/v1/asistencia?` +
             `estudiante_id=eq.${alumnoActual.id}` +
             `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
-            `&select=id,fecha,hora,estado,observacion&order=fecha.asc`,
+            `&select=id,fecha,hora,estado,observacion&order=fecha.desc`,
             { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
         );
         if (!respuesta.ok) throw new Error("Error asistencia");
@@ -2426,7 +2401,7 @@ async function mostrarAsistenciaEnDetalle() {
             `curso=eq.${encodeURIComponent(alumnoActual.curso || "")}` +
             `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
             `&tipo=in.(no_clases,clase_informal,observacion)` +
-            `&select=fecha,tipo,motivo&order=fecha.asc`,
+            `&select=fecha,tipo,motivo&order=fecha.desc`,
             { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
         );
         if (!respuestaTiposDia.ok) throw new Error("Error al consultar los días especiales");
@@ -2496,7 +2471,7 @@ async function mostrarAsistenciaEnDetalle() {
 
         const registrosAsistencia = Array.from(fechas.entries())
             .map(([fecha, datos]) => ({ fecha, ...datos }))
-            .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+            .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
         let filas = "";
 
