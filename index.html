@@ -2382,801 +2382,242 @@ async function mostrarDetalles() {
 ================================================= */
 
 async function mostrarAsistenciaEnDetalle() {
-
-    const contenedor =
-        document.getElementById(
-            "detalle3T"
-        );
-
-
-    if (!contenedor) {
-
-        return;
-
-    }
-
+    const contenedor = document.getElementById("detalle3T");
+    if (!contenedor) return;
 
     try {
+        const respuesta = await fetch(
+            `${SUPABASE_URL}/rest/v1/asistencia?` +
+            `estudiante_id=eq.${alumnoActual.id}` +
+            `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
+            `&select=id,fecha,hora,estado,observacion&order=fecha.desc`,
+            { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        );
+        if (!respuesta.ok) throw new Error("Error asistencia");
+        const asistencias = await respuesta.json();
 
-        const respuesta =
-            await fetch(
-
-                `${SUPABASE_URL}/rest/v1/asistencia?` +
-
-                `estudiante_id=eq.${alumnoActual.id}` +
-
-                `&fecha=gte.${INICIO_3T}` +
-
-                `&fecha=lte.${FIN_3T}` +
-
-                `&select=id,fecha,hora,estado,observacion` +
-
-                `&order=fecha.desc`,
-
-                {
-
-                    headers: {
-
-                        "apikey":
-                            SUPABASE_KEY,
-
-                        "Authorization":
-                            `Bearer ${SUPABASE_KEY}`
-
-                    }
-
-                }
-
-            );
-
-
-        if (!respuesta.ok) {
-
-            throw new Error(
-                "Error asistencia"
-            );
-
-        }
-
-
-        const asistencias =
-            await respuesta.json();
-
-        // También se consultan los días en los que no se pasó clases.
-        // Estos registros no pertenecen a la tabla "asistencia", por eso
-        // se cargan desde "asistencia_tipos_dia".
         const respuestaTiposDia = await fetch(
             `${SUPABASE_URL}/rest/v1/asistencia_tipos_dia?` +
             `curso=eq.${encodeURIComponent(alumnoActual.curso || "")}` +
-            `&fecha=gte.${INICIO_3T}` +
-            `&fecha=lte.${FIN_3T}` +
+            `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
             `&tipo=in.(no_clases,clase_informal,observacion)` +
-            `&select=fecha,tipo,motivo` +
-            `&order=fecha.desc`,
-            {
-                headers: {
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": `Bearer ${SUPABASE_KEY}`
-                }
-            }
+            `&select=fecha,tipo,motivo&order=fecha.desc`,
+            { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
         );
+        if (!respuestaTiposDia.ok) throw new Error("Error al consultar los días especiales");
+        const diasNoClases = await respuestaTiposDia.json();
 
-        if (!respuestaTiposDia.ok) {
-            throw new Error("Error al consultar los días sin clases");
-        }
+        let presentes = 0, atrasos = 0, licencias = 0, faltas = 0;
 
-        const diasNoClases =
-            await respuestaTiposDia.json();
+        asistencias.forEach(asistencia => {
+            const esClaseInformal = diasNoClases.some(
+                dia => String(dia.fecha) === String(asistencia.fecha) &&
+                       String(dia.tipo || "").toLowerCase() === "clase_informal"
+            );
+            if (esClaseInformal) return;
 
-
-        let presentes = 0;
-
-        let atrasos = 0;
-
-        let licencias = 0;
-
-        let faltas = 0;
-
-
-        asistencias.forEach(
-            asistencia => {
-
-                // La asistencia de una clase informal se muestra, pero no se cuenta.
-                const esClaseInformal = diasNoClases.some(
-                    dia => String(dia.fecha) === String(asistencia.fecha) &&
-                           String(dia.tipo || '').toLowerCase() === 'clase_informal'
-                );
-                if (esClaseInformal) return;
-
-                const estado =
-                    normalizarEstado(
-                        asistencia.estado
-                    );
-
-
-                if (
-                    estado === "asistio"
-                ) {
-
-                    presentes++;
-
-                }
-
-                else if (
-                    estado === "atraso"
-                ) {
-
-                    atrasos++;
-
-                }
-
-                else if (
-                    estado === "licencia"
-                ) {
-
-                    licencias++;
-
-                }
-
-                else if (
-                    estado === "falta"
-                ) {
-
-                    faltas++;
-
-                }
-
-            }
-        );
-
-
-        /*
-         * Unir asistencia normal + días especiales y observaciones, y ordenar TODO por fecha.
-         * Así "Clase informal", "No se pasó clases" y "Observación del día" aparecen en su lugar
-         * cronológico correspondiente.
-         */
-        const registrosAsistencia = [
-            ...asistencias.map(asistencia => ({
-                fecha: asistencia.fecha,
-                tipoRegistro: "asistencia",
-                datos: asistencia
-            })),
-            ...diasNoClases.map(dia => ({
-                fecha: dia.fecha,
-                tipoRegistro: String(dia.tipo || "").toLowerCase(),
-                datos: dia
-            }))
-        ].sort((a, b) => {
-            const comparacion =
-                String(a.fecha || "").localeCompare(String(b.fecha || ""));
-
-            if (comparacion !== 0) return comparacion;
-
-            // Si dos registros tienen la misma fecha, la asistencia
-            // normal aparece primero.
-            if (a.tipoRegistro === "asistencia" && b.tipoRegistro !== "asistencia") return -1;
-            if (a.tipoRegistro !== "asistencia" && b.tipoRegistro === "asistencia") return 1;
-
-            return 0;
+            const estado = normalizarEstado(asistencia.estado);
+            if (estado === "asistio") presentes++;
+            else if (estado === "atraso") atrasos++;
+            else if (estado === "licencia") licencias++;
+            else if (estado === "falta") faltas++;
         });
 
+        /*
+         * UN SOLO REGISTRO POR FECHA.
+         * La observación del día se integra en la misma fila que la asistencia.
+         */
+        const fechas = new Map();
+
+        asistencias.forEach(asistencia => {
+            const fecha = String(asistencia.fecha || "");
+            if (!fechas.has(fecha)) {
+                fechas.set(fecha, {
+                    asistencia,
+                    observaciones: [],
+                    claseInformal: null,
+                    noClases: null
+                });
+            }
+        });
+
+        diasNoClases.forEach(dia => {
+            const fecha = String(dia.fecha || "");
+            if (!fechas.has(fecha)) {
+                fechas.set(fecha, {
+                    asistencia: null,
+                    observaciones: [],
+                    claseInformal: null,
+                    noClases: null
+                });
+            }
+
+            const registro = fechas.get(fecha);
+            const tipo = String(dia.tipo || "").toLowerCase();
+            const motivo = dia.motivo && String(dia.motivo).trim()
+                ? String(dia.motivo).trim()
+                : "";
+
+            if (tipo === "observacion") {
+                if (motivo && !registro.observaciones.includes(motivo)) {
+                    registro.observaciones.push(motivo);
+                }
+            } else if (tipo === "clase_informal") {
+                registro.claseInformal = dia;
+            } else if (tipo === "no_clases") {
+                registro.noClases = dia;
+            }
+        });
+
+        const registrosAsistencia = Array.from(fechas.entries())
+            .map(([fecha, datos]) => ({ fecha, ...datos }))
+            .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
 
         let filas = "";
 
-
         registrosAsistencia.forEach(registro => {
+            const asistencia = registro.asistencia;
 
-            if (registro.tipoRegistro === "asistencia") {
+            if (asistencia) {
+                const estado = normalizarEstado(asistencia.estado);
+                const informacion = obtenerEstadoAsistencia(estado);
+                const observaciones = [];
 
-                const asistencia = registro.datos;
+                if (asistencia.observacion && String(asistencia.observacion).trim()) {
+                    observaciones.push(String(asistencia.observacion).trim());
+                }
+                registro.observaciones.forEach(obs => {
+                    if (!observaciones.includes(obs)) observaciones.push(obs);
+                });
 
-                const estado =
-                    normalizarEstado(
-                        asistencia.estado
-                    );
-
-                const informacion =
-                    obtenerEstadoAsistencia(
-                        estado
-                    );
-
-                const claseInformalMismaFecha = diasNoClases.find(
-                    dia => String(dia.tipo || "").toLowerCase() === "clase_informal" &&
-                           String(dia.fecha || "") === String(asistencia.fecha || "")
-                );
-
-                const observacion =
-                    asistencia.observacion
-                    ? escapeHTML(asistencia.observacion)
-                    : (claseInformalMismaFecha?.motivo
-                        ? `<strong>Motivo:</strong> ${escapeHTML(String(claseInformalMismaFecha.motivo).trim())}`
-                        : "—");
-
+                const textoObservacion = observaciones.length
+                    ? observaciones.map(escapeHTML).join("<br>")
+                    : "—";
 
                 filas += `
-
                     <tr>
-
+                        <td>${formatearFecha(asistencia.fecha)}</td>
+                        <td>${asistencia.hora ? escapeHTML(String(asistencia.hora).substring(0, 5)) : "—"}</td>
                         <td>
-
-                            ${formatearFecha(
-                                asistencia.fecha
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            ${asistencia.hora ? escapeHTML(String(asistencia.hora).substring(0, 5)) : ""}
-
-                        </td>
-
-
-                        <td>
-
-                            <span class="
-                                estado-asistencia
-                                ${informacion.clase}
-                            ">
-
-                                ${informacion.icono}
-
-                                ${informacion.nombre}
-
+                            <span class="estado-asistencia ${informacion.clase}">
+                                ${informacion.icono} ${informacion.nombre}
                             </span>
-                            ${claseInformalMismaFecha
+                            ${registro.claseInformal
                                 ? `<div class="estado-clase-informal" style="margin-top:5px;">ℹ️ Clase informal</div>`
                                 : ""}
-
                         </td>
-
-
-                        <td class="observacion">
-
-                            ${observacion}
-
-                        </td>
-
+                        <td class="observacion">${textoObservacion}</td>
                     </tr>
-
                 `;
-
                 return;
             }
 
-
-            const dia = registro.datos;
-
-            const esClaseInformal =
-                registro.tipoRegistro === "clase_informal";
-
-            const motivo =
-                dia.motivo && String(dia.motivo).trim()
-                ? escapeHTML(String(dia.motivo).trim())
-                : "";
-
-
-            if (esClaseInformal) {
-
-                const tieneAsistenciaMismaFecha = asistencias.some(
-                    asistencia => String(asistencia.fecha || "") === String(dia.fecha || "")
-                );
-
-                if (tieneAsistenciaMismaFecha) {
-                    return;
-                }
+            if (registro.claseInformal) {
+                const motivo = registro.claseInformal.motivo && String(registro.claseInformal.motivo).trim()
+                    ? escapeHTML(String(registro.claseInformal.motivo).trim())
+                    : "Clase informal registrada.";
 
                 filas += `
-
                     <tr class="dia-clase-informal">
-
-                        <td>
-
-                            ${formatearFecha(
-                                dia.fecha
-                            )}
-
-                        </td>
-
-
-                        <td>
-
-                            <span class="estado-clase-informal">
-
-                                ℹ️ Clase informal
-
-                            </span>
-
-                        </td>
-
-
-                        <td class="observacion motivo-clase-informal-detalle">
-
-                            ${motivo
-                                ? `<strong>Motivo:</strong> ${motivo}`
-                                : "Clase informal registrada."
-                            }
-
-                        </td>
-
+                        <td>${formatearFecha(registro.fecha)}</td>
+                        <td>—</td>
+                        <td><span class="estado-clase-informal">ℹ️ Clase informal</span></td>
+                        <td class="observacion motivo-clase-informal-detalle">${motivo}</td>
                     </tr>
-
                 `;
-
                 return;
             }
 
+            if (registro.noClases) {
+                const motivo = registro.noClases.motivo && String(registro.noClases.motivo).trim()
+                    ? escapeHTML(String(registro.noClases.motivo).trim())
+                    : "No se registró el motivo.";
 
-            if (registro.tipoRegistro === "observacion") {
-
-            // La observación se muestra junto con la asistencia del estudiante.
-            // La observación no reemplaza el estado de asistencia.
-            const asistenciaDelDia = asistencias.find(
-                asistencia =>
-                    String(asistencia.fecha || "") === String(dia.fecha || "")
-            );
-
-            const estadoObservacion = asistenciaDelDia
-                ? normalizarEstado(asistenciaDelDia.estado)
-                : "";
-
-            const informacionObservacion = asistenciaDelDia
-                ? obtenerEstadoAsistencia(estadoObservacion)
-                : null;
+                filas += `
+                    <tr class="dia-no-clases">
+                        <td>${formatearFecha(registro.fecha)}</td>
+                        <td>—</td>
+                        <td><span class="estado-no-clases">🚫 No se pasó clases</span></td>
+                        <td class="observacion motivo-no-clases-detalle"><strong>Motivo:</strong> ${motivo}</td>
+                    </tr>
+                `;
+                return;
+            }
 
             filas += `
-
-        <tr>
-
-            <td>
-
-                ${formatearFecha(
-                    dia.fecha
-                )}
-
-            </td>
-
-            <td>
-
-                ${asistenciaDelDia?.hora
-                    ? escapeHTML(String(asistenciaDelDia.hora).substring(0, 5))
-                    : "—"
-                }
-
-            </td>
-
-            <td>
-
-                ${informacionObservacion
-                    ? `<span class="estado-asistencia ${informacionObservacion.clase}">
-                            ${informacionObservacion.icono}
-                            ${informacionObservacion.nombre}
-                       </span>`
-                    : "—"
-                }
-
-            </td>
-
-            <td class="observacion">
-
-                ${motivo
-                    ? motivo
-                    : (asistenciaDelDia?.observacion
-                        ? escapeHTML(asistenciaDelDia.observacion)
-                        : "—")
-                }
-
-            </td>
-
-        </tr>
-
-    `;
-
-            return;
-}
-
-
-            const motivoNoClases =
-                motivo || "No se registró el motivo.";
-
-
-            filas += `
-
-                <tr class="dia-no-clases">
-
-                    <td>
-
-                        ${formatearFecha(
-                            dia.fecha
-                        )}
-
-                    </td>
-
-
-                    <td>
-
-                        <span class="estado-no-clases">
-
-                            🚫 No se pasó clases
-
-                        </span>
-
-                    </td>
-
-
-                    <td class="observacion motivo-no-clases-detalle">
-
-                        <strong>Motivo:</strong> ${motivoNoClases}
-
-                    </td>
-
+                <tr>
+                    <td>${formatearFecha(registro.fecha)}</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td class="observacion">${registro.observaciones.map(escapeHTML).join("<br>") || "—"}</td>
                 </tr>
-
             `;
-
         });
 
-
-        // Se muestra la tabla si existe asistencia normal, algún día sin clases o alguna observación.
-        const hayRegistrosAsistencia =
-            asistencias.length > 0 ||
-            diasNoClases.length > 0;
-
-
-        let contenidoTabla = "";
-
-
-        if (!hayRegistrosAsistencia) {
-
-            contenidoTabla = `
-
-                <div class="asistencia-vacia">
-
-                    Todavía no hay registros
-                    de asistencia.
-
-                </div>
-
-            `;
-
-        }
-
-        else {
-
-            contenidoTabla = `
-
+        const contenidoTabla = registrosAsistencia.length
+            ? `
                 <div class="tabla-asistencia-contenedor">
-
                     <table class="tabla-asistencia">
-
                         <thead>
-
                             <tr>
-
-                                <th>
-
-                                    📅 Fecha
-
-                                </th>
-
-                                <th>
-
-                                    Hora
-
-                                </th>
-
-                                <th>
-
-                                    Estado
-
-                                </th>
-
-                                <th>
-
-                                    Observación
-
-                                </th>
-
+                                <th>📅 Fecha</th>
+                                <th>Hora</th>
+                                <th>Estado</th>
+                                <th>Observación</th>
                             </tr>
-
                         </thead>
-
-
-                        <tbody>
-
-                            ${filas}
-
-                        </tbody>
-
+                        <tbody>${filas}</tbody>
                     </table>
-
                 </div>
-
-            `;
-
-        }
-
+            `
+            : `<div class="asistencia-vacia">Todavía no hay registros de asistencia.</div>`;
 
         const asistenciaHTML = `
-
             <div class="asistencia-box">
-
-
-                <div class="asistencia-titulo">
-
-                    🗓️ Asistencia del 3er Trimestre
-
-                </div>
-
-
-                <div class="asistencia-descripcion">
-
-                    Resumen de tu asistencia
-                    durante el tercer trimestre.
-
-                </div>
-
-
+                <div class="asistencia-titulo">🗓️ Asistencia del 3er Trimestre</div>
+                <div class="asistencia-descripcion">Resumen de tu asistencia durante el tercer trimestre.</div>
                 <div class="asistencia-resumen">
-
-
                     <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🟢
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-presente
-                        ">
-
-                            ${presentes}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            ASISTENCIAS
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🟡
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-atraso
-                        ">
-
-                            ${atrasos}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            ATRASOS
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🔵
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-licencia
-                        ">
-
-                            ${licencias}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            CON LICENCIA
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="asistencia-card">
-
-                        <span class="icono">
-
-                            🔴
-
-                        </span>
-
-
-                        <span class="
-                            cantidad
-                            asistencia-falta
-                        ">
-
-                            ${faltas}
-
-                        </span>
-
-
-                        <span class="texto">
-
-                            SIN LICENCIA
-
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <button
-                    type="button"
-                    class="boton-asistencia"
-                    onclick="alternarDetalleAsistencia(this)"
-                >
-
-                    − Ocultar detalle de asistencia
-
-                </button>
-
-
-                <div
-                    class="detalle-asistencia"
-                    id="tablaDetalleAsistencia"
-                    style="display:block"
-                >
-
-                    ${contenidoTabla}
-
-                </div>
-
-
-            </div>
-
-        `;
-
-
-        contenedor.insertAdjacentHTML(
-            "beforeend",
-            asistenciaHTML
-        );
-
-    }
-
-
-    catch(error) {
-
-        console.error(error);
-
-
-        const asistenciaError = `
-
-            <div class="asistencia-box">
-
-
-                <div class="asistencia-titulo">
-
-                    🗓️ Asistencia del 3er Trimestre
-
-                </div>
-
-
-                <div class="asistencia-resumen">
-
-
-                    <div class="asistencia-card">
-
                         <span class="icono">🟢</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-presente
-                        ">0</span>
-
-                        <span class="texto">
-                            ASISTENCIAS
-                        </span>
-
+                        <span class="cantidad asistencia-presente">${presentes}</span>
+                        <span class="texto">ASISTENCIAS</span>
                     </div>
-
-
                     <div class="asistencia-card">
-
                         <span class="icono">🟡</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-atraso
-                        ">0</span>
-
-                        <span class="texto">
-                            ATRASOS
-                        </span>
-
+                        <span class="cantidad asistencia-atraso">${atrasos}</span>
+                        <span class="texto">ATRASOS</span>
                     </div>
-
-
                     <div class="asistencia-card">
-
                         <span class="icono">🔵</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-licencia
-                        ">0</span>
-
-                        <span class="texto">
-                            CON LICENCIA
-                        </span>
-
+                        <span class="cantidad asistencia-licencia">${licencias}</span>
+                        <span class="texto">CON LICENCIA</span>
                     </div>
-
-
                     <div class="asistencia-card">
-
                         <span class="icono">🔴</span>
-
-                        <span class="
-                            cantidad
-                            asistencia-falta
-                        ">0</span>
-
-                        <span class="texto">
-                            SIN LICENCIA
-                        </span>
-
+                        <span class="cantidad asistencia-falta">${faltas}</span>
+                        <span class="texto">SIN LICENCIA</span>
                     </div>
-
-
                 </div>
-
-
-                <div class="asistencia-vacia">
-
-                    No se pudo cargar el detalle
-                    de asistencia.
-
+                <button type="button" class="boton-asistencia" onclick="alternarDetalleAsistencia(this)">
+                    − Ocultar detalle de asistencia
+                </button>
+                <div class="detalle-asistencia" id="tablaDetalleAsistencia" style="display:block">
+                    ${contenidoTabla}
                 </div>
-
             </div>
-
         `;
 
+        contenedor.insertAdjacentHTML("beforeend", asistenciaHTML);
 
-        contenedor.insertAdjacentHTML(
-            "beforeend",
-            asistenciaError
-        );
-
+    } catch(error) {
+        console.error(error);
+        contenedor.insertAdjacentHTML("beforeend", `
+            <div class="asistencia-box">
+                <div class="asistencia-titulo">🗓️ Asistencia del 3er Trimestre</div>
+                <div class="asistencia-vacia">No se pudo cargar el detalle de asistencia.</div>
+            </div>
+        `);
     }
-
 }
 
 
