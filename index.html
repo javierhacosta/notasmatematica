@@ -2634,17 +2634,9 @@ async function mostrarAsistenciaEnDetalle() {
 
                         <td class="observacion">
 
-                ${(() => {
-                    const obsDia = registrosAsistencia.find(
-                        r => r.tipoRegistro === "observacion" &&
-                             r.fecha === registro.fecha
-                    );
-                    return (obsDia && obsDia.motivo)
-                        ? obsDia.motivo
-                        : (registro.observacion || "—");
-                })()}
+                            ${observacion}
 
-            </td>
+                        </td>
 
                     </tr>
 
@@ -2718,8 +2710,69 @@ async function mostrarAsistenciaEnDetalle() {
 
             if (registro.tipoRegistro === "observacion") {
 
-            // No crear una fila separada. La observación se muestra
-            // junto al registro de asistencia de la misma fecha.
+            // La observación se muestra junto con la asistencia del estudiante.
+            // La observación no reemplaza el estado de asistencia.
+            const asistenciaDelDia = asistencias.find(
+                asistencia =>
+                    String(asistencia.fecha || "") === String(dia.fecha || "")
+            );
+
+            const estadoObservacion = asistenciaDelDia
+                ? normalizarEstado(asistenciaDelDia.estado)
+                : "";
+
+            const informacionObservacion = asistenciaDelDia
+                ? obtenerEstadoAsistencia(estadoObservacion)
+                : null;
+
+            filas += `
+
+        <tr>
+
+            <td>
+
+                ${formatearFecha(
+                    dia.fecha
+                )}
+
+            </td>
+
+            <td>
+
+                ${asistenciaDelDia?.hora
+                    ? escapeHTML(String(asistenciaDelDia.hora).substring(0, 5))
+                    : "—"
+                }
+
+            </td>
+
+            <td>
+
+                ${informacionObservacion
+                    ? `<span class="estado-asistencia ${informacionObservacion.clase}">
+                            ${informacionObservacion.icono}
+                            ${informacionObservacion.nombre}
+                       </span>`
+                    : "—"
+                }
+
+            </td>
+
+            <td class="observacion">
+
+                ${motivo
+                    ? motivo
+                    : (asistenciaDelDia?.observacion
+                        ? escapeHTML(asistenciaDelDia.observacion)
+                        : "—")
+                }
+
+            </td>
+
+        </tr>
+
+    `;
+
             return;
 }
 
