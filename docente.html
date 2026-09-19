@@ -1469,17 +1469,6 @@ td:first-child {
 .calendario-dia-asistencia.no-clases:hover {
     background: #a91f1f;
 }
-
-.calendario-dia-asistencia.clase-informal {
-    background: #f9a825;
-    color: white;
-    font-weight: bold;
-}
-
-.calendario-dia-asistencia.clase-informal:hover {
-    background: #d99000;
-}
-
 .calendario-dia-asistencia.seleccionado {
     box-shadow: inset 0 0 0 2px #ef6c00;
 }
@@ -1599,11 +1588,6 @@ td:first-child {
 .punto-calendario-asistencia.no-clases {
     background: #c62828;
 }
-
-.punto-calendario-asistencia.clase-informal {
-    background: #f9a825;
-}
-
 @media (max-width: 600px) {
     .calendario-fechas-asistencia {
         width: 100%;
@@ -3569,10 +3553,10 @@ table tbody tr:nth-child(10n+10) td {
     background: #c62828;
     color: white;
 }
-.detalle-fila-clase-informal td {
+
     background: #fff8e1;
 }
-.detalle-fila-clase-informal td:nth-child(2) .detalle-badge {
+
     background: #f9a825;
     color: white;
 }
@@ -5281,8 +5265,6 @@ Selecciona un curso
         <span>Día con asistencia</span>
         <span class="punto-calendario-asistencia no-clases"></span>
         <span>Sin clases</span>
-        <span class="punto-calendario-asistencia clase-informal"></span>
-        <span>Clase informal</span>
     </div>
     <div id="barraCargaFechaAsistencia"
          class="barra-carga-fecha-asistencia"
@@ -5366,15 +5348,7 @@ Selecciona un curso
         title="No se pasó clases">
         🚫 No se pasó clases
     </button>
-
-    <button
-        type="button"
-        onclick="seleccionarTipoDiaAsistencia('clase_informal')"
-        title="Clase informal">
-        ℹ️ Clase informal
-    </button>
-
-    <button
+<button
         type="button"
         class="boton-observaciones-dia"
         onclick="seleccionarTipoDiaAsistencia('observacion')"
@@ -8222,7 +8196,7 @@ function seleccionarTipoDiaAsistencia(tipo) {
     if (contenedorMotivo) {
         contenedorMotivo.classList.toggle(
             "visible",
-            tipo === "no_clases" || tipo === "clase_informal" || tipo === "observacion"
+            tipo === "no_clases" || tipo === "observacion"
         );
     }
 
@@ -8230,10 +8204,7 @@ function seleccionarTipoDiaAsistencia(tipo) {
         campoMotivo.value = observacionesDiasAsistenciaGuardadas[
             document.getElementById("fechaAsistencia")?.value || ""
         ] || motivoNoClases || "";
-
-        if (tipo === "clase_informal") {
-            campoMotivo.placeholder = "Escribe el motivo o detalle de la clase informal (opcional)...";
-        } else if (tipo === "observacion") {
+        if (tipo === "observacion") {
             campoMotivo.placeholder = "Escribe las observaciones de este día (opcional)...";
         } else {
             campoMotivo.placeholder = "Escribe por qué no hubo clases (opcional)...";
@@ -8259,7 +8230,7 @@ async function guardarTipoDiaAsistencia() {
     const opciones = document.getElementById("opcionesTipoDiaAsistencia");
     const tipo = opciones?.dataset.tipoSeleccionado || tipoDiaAsistencia;
 
-    if (!["no_clases", "clase_informal", "observacion"].includes(tipo)) {
+    if (!["no_clases", "observacion"].includes(tipo)) {
         return false;
     }
 
@@ -8282,7 +8253,7 @@ async function guardarTipoDiaAsistencia() {
         // porque esa columna solo acepta los estados normales.
         // Se guardan en la tabla asistencia_tipos_dia.
         // Guardar el estado anterior para que el cambio de
-        // "No se pasó clases / Clase informal" también quede en el historial.
+
         const { data: tipoAnterior, error: errorTipoAnterior } = await supabaseClient
             .from("asistencia_tipos_dia")
             .select("curso,fecha,tipo,motivo")
@@ -8332,7 +8303,7 @@ async function guardarTipoDiaAsistencia() {
 
         // Solo los tipos especiales eliminan los estados normales de asistencia.
         // Una observación puede coexistir con la asistencia del día.
-        if (tipo === "no_clases" || tipo === "clase_informal") {
+        if (tipo === "no_clases") {
             const ids = estudiantesCurso.map(estudiante => estudiante.id);
 
             const { error: errorAsistencia } = await supabaseClient
@@ -8368,10 +8339,7 @@ async function guardarTipoDiaAsistencia() {
 
         mostrarMensaje(
             tipo === "no_clases"
-                ? "✓ Fecha guardada como: No se pasó clases."
-                : tipo === "clase_informal"
-                    ? "✓ Fecha guardada como: Clase informal."
-                    : "✓ Observación del día guardada correctamente."
+                ? "✓ Fecha guardada como: No se pasó clases.": "✓ Observación del día guardada correctamente."
         );
 
         return true;
@@ -8468,8 +8436,6 @@ function renderizarCalendarioFechasAsistencia() {
         const observacionDia = String(observacionesDiasAsistenciaGuardadas[clave] || "").trim();
         boton.title = tipoDia === "no_clases"
             ? "No se pasó clases: " + formatearFechaGuardadaAsistencia(clave)
-            : tipoDia === "clase_informal"
-                ? "Clase informal: " + formatearFechaGuardadaAsistencia(clave)
                 : tipoDia === "observacion"
                     ? "Observación: " + (observacionDia || "sin texto") + " · " + formatearFechaGuardadaAsistencia(clave)
                     : fechasGuardadas.has(clave)
@@ -8478,10 +8444,7 @@ function renderizarCalendarioFechasAsistencia() {
 
         if (fechasGuardadas.has(clave)) {
             if (tipoDia === "no_clases") {
-                boton.classList.add("no-clases");
-            } else if (tipoDia === "clase_informal") {
-                boton.classList.add("clase-informal");
-            } else {
+                boton.classList.add("no-clases"); else {
                 boton.classList.add("guardado");
             }
         }
@@ -9437,12 +9400,6 @@ function actualizarAvisoDiaEspecialAsistencia() {
         aviso.innerHTML = motivo
             ? `<strong>🚫 Este día no se pasó clases por:</strong> ${escapeHTML(motivo)}`
             : `<strong>🚫 Este día no se pasó clases.</strong> No se registró el motivo.`;
-        aviso.classList.add("visible");
-    } else if (tipoDiaAsistencia === "clase_informal") {
-        const motivo = String(motivoNoClases || "").trim();
-        aviso.innerHTML = motivo
-            ? `<strong>ℹ️ Este día se realizó una clase informal:</strong> ${escapeHTML(motivo)}`
-            : `<strong>ℹ️ Este día se realizó una clase informal.</strong>`;
         aviso.classList.add("visible");
     } else if (tipoDiaAsistencia === "observacion") {
         const observacion = String(motivoNoClases || "").trim();
@@ -15304,7 +15261,7 @@ async function exportarExcel() {
         }
 
 
-        // Fechas especiales de asistencia: "No se pasó clases" y "Clase informal".
+
         // Se consultan aparte porque no generan registros en la tabla asistencia.
         let todosTiposDiaAsistencia = [];
 
@@ -15422,7 +15379,7 @@ async function exportarExcel() {
             todosTiposDiaAsistencia.filter(
                 registro =>
                 registro.curso === curso &&
-                ["no_clases", "clase_informal"].includes(String(registro.tipo || "")) &&
+                ["no_clases", "observacion"].includes(String(registro.tipo || "")) &&
                 registro.fecha
             );
 
@@ -15543,7 +15500,7 @@ async function exportarExcel() {
                     filaReferencia.push("NC");
                     return;
                 }
-                if (tipoDia === "clase_informal") {
+                if (tipoDia === "__legacy_informal_no_usar__") {
                     filaReferencia.push("IC");
                     return;
                 }
@@ -18534,22 +18491,14 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
         const tipo = String(dia.tipo || "").toLowerCase();
         const esNoClases = tipo === "no_clases";
-        const esInformal = tipo === "clase_informal";
-
-        if (!esNoClases && !esInformal) return;
+        if (!esNoClases) return;
 
         mapaDetalleAsistencia.set(fecha, {
             fecha: dia.fecha,
-            tipo: esNoClases ? "no_clases" : "clase_informal",
-            estado: esNoClases
-                ? "🚫 No se pasó clases"
-                : "ℹ️ Clase informal",
+            tipo: "no_clases",
+            estado: "🚫 No se pasó clases",
             hora: "",
-            observacion: dia.motivo || (
-                esNoClases
-                    ? "No se registró el motivo."
-                    : "No se registró el motivo o detalle."
-            )
+            observacion: dia.motivo || "No se registró el motivo."
         });
     });
 
@@ -18557,11 +18506,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
     const filasAsistencia = detalleAsistencia.map(r => `
-        <tr class="${r.tipo === "no_clases"
-            ? "detalle-fila-no-clases"
-            : r.tipo === "clase_informal"
-                ? "detalle-fila-clase-informal"
-                : ""}">
+        <tr class="${r.tipo === "no_clases" ? "detalle-fila-no-clases" : ""}">
             <td>${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
@@ -19353,13 +19298,13 @@ function obtenerCampoCambioHistorial(item) {
                 campo: "Tipo de día",
                 antes: tipoAntes === "no_clases"
                     ? "No se pasó clases"
-                    : tipoAntes === "clase_informal"
-                        ? "Clase informal"
+                    : tipoAntes === "__legacy_informal_no_usar__"
+
                         : valorHistorial(tipoAntes),
                 despues: tipoDespues === "no_clases"
                     ? "No se pasó clases"
-                    : tipoDespues === "clase_informal"
-                        ? "Clase informal"
+                    : tipoDespues === "__legacy_informal_no_usar__"
+
                         : valorHistorial(tipoDespues),
                 esNota: false
             };
