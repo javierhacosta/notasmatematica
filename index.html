@@ -837,13 +837,13 @@ const FIN_3T = "2026-12-31";
 /* =================================================
    CONTROL DE CONSULTAS REPETIDAS
 ================================================= */
-let intervaloVisita = null;
+let temporizadorVisita = null;
 
 function iniciarCuentaRegresivaVisita(segundos) {
 
-    if (intervaloVisita) {
-        clearInterval(intervaloVisita);
-        intervaloVisita = null;
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
     }
 
     const boton = document.querySelector('button[onclick="consultarNota()"]');
@@ -854,8 +854,8 @@ function iniciarCuentaRegresivaVisita(segundos) {
     const actualizar = () => {
 
         if (segundos <= 0) {
-            clearInterval(intervaloVisita);
-            intervaloVisita = null;
+            clearInterval(temporizadorVisita);
+            temporizadorVisita = null;
             boton.disabled = false;
             boton.style.opacity = "1";
             boton.style.cursor = "pointer";
@@ -884,7 +884,7 @@ function iniciarCuentaRegresivaVisita(segundos) {
     };
 
     actualizar();
-    intervaloVisita = setInterval(actualizar, 1000);
+    temporizadorVisita = setInterval(actualizar, 1000);
 }
 
 /* =================================================
@@ -902,9 +902,9 @@ function cerrarSesion() {
     if (fecha) fecha.value = "";
     if (resultado) resultado.innerHTML = "";
 
-    if (intervaloVisita) {
-        clearInterval(intervaloVisita);
-        intervaloVisita = null;
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
     }
 
     const botonConsultar = document.querySelector('button[onclick="consultarNota()"]');
@@ -2471,7 +2471,7 @@ async function mostrarAsistenciaEnDetalle() {
 
         const registrosAsistencia = Array.from(fechas.entries())
             .map(([fecha, datos]) => ({ fecha, ...datos }))
-            .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+            .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
         let filas = "";
 
