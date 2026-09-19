@@ -13174,8 +13174,39 @@ async function prepararEstadisticas() {
             } catch (_) {}
         }
 
-        const visitas = registrosVisitasEstudiantes || [];
-        const cursos = [...new Set(est.map(e => e.curso).filter(Boolean))].sort();
+        /*
+         * ESTADÍSTICAS: los cálculos relacionados con estudiantes se hacen
+         * únicamente con estudiantes EFECTIVOS. Los demás estados se
+         * mantienen aparte para mostrar la composición de la matrícula.
+         */
+        const normalizarEstadoEstudianteEstadistica = valor =>
+            String(valor ?? "").trim().toUpperCase();
+
+        const estudiantesEfectivos = est.filter(e =>
+            normalizarEstadoEstudianteEstadistica(e.estado) === "EFECTIVO"
+        );
+        const estudiantesNoIncorporados = est.filter(e =>
+            normalizarEstadoEstudianteEstadistica(e.estado) === "NO INCORPORADO"
+        );
+        const estudiantesRetiradosAbandono = est.filter(e =>
+            normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO ABANDONO"
+        );
+        const estudiantesRetiradosTraslado = est.filter(e =>
+            normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO TRASLADO"
+        );
+        const estudiantesOtrosEstados = est.filter(e => {
+            const estado = normalizarEstadoEstudianteEstadistica(e.estado);
+            return estado !== "EFECTIVO" &&
+                   estado !== "NO INCORPORADO" &&
+                   estado !== "RETIRADO ABANDONO" &&
+                   estado !== "RETIRADO TRASLADO";
+        });
+
+        const idsEfectivos = new Set(estudiantesEfectivos.map(e => String(e.id)));
+        const visitas = (registrosVisitasEstudiantes || []).filter(v => idsEfectivos.has(String(v.estudiante_id)));
+        const asistenciasEfectivas = (asistenciasTodas || []).filter(r => idsEfectivos.has(String(r.estudiante_id)));
+        const calificacionesEfectivas = (calificacionesTodas || []).filter(r => idsEfectivos.has(String(r.estudiante_id)));
+        const cursos = [...new Set(estudiantesEfectivos.map(e => e.curso).filter(Boolean))].sort();
         const mapaEstudiante = new Map(est.map(e => [String(e.id), e]));
         const mapaCalificaciones = {};
         calificacionesTodas.forEach(r => {
@@ -13190,7 +13221,7 @@ async function prepararEstadisticas() {
         });
 
         // Calcular 3T y final para todos los estudiantes, sin necesidad de abrir un curso.
-        const estudiantesConNotas = est.map(e => {
+        const estudiantesConNotas = estudiantesEfectivos.map(e => {
             const nota1 = convertirNumero(e.nota_1t);
             const nota2 = convertirNumero(e.nota_2t);
             const nota3 = calcularNota3TEstadisticas(e.id, actividadesPorCurso[e.curso] || [], mapaCalificaciones);
@@ -13224,7 +13255,7 @@ async function prepararEstadisticas() {
         const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
         const visitasHoy = visitas.filter(v => obtenerFechaLocalVisita(v.fecha_hora) === hoyClave).length;
         const estudiantesConIngreso = new Set(visitas.map(v => String(v.estudiante_id))).size;
-        const estados = conteoEstado(asistenciasTodas);
+        const estados = conteoEstado(asistenciasEfectivas);
         const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
         const cantidadVarones = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
         const cantidadMujeres = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
@@ -13233,10 +13264,10 @@ async function prepararEstadisticas() {
         const estadisticaGenero = (genero) => {
             const grupo = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === genero);
             const ids = new Set(grupo.map(e => String(e.id)));
-            const asistenciasGrupo = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const asistenciasGrupo = asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id)));
             const estadosGrupo = conteoEstado(asistenciasGrupo);
             const observacionesAsistencia = asistenciasGrupo.filter(r => String(r.observacion || '').trim()).length;
-            const calificacionesGrupo = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)));
+            const calificacionesGrupo = calificacionesEfectivas.filter(r => ids.has(String(r.estudiante_id)));
             const observacionesActividades = calificacionesGrupo.filter(r => String(r.observacion || '').trim()).length;
             const visitasGrupo = visitas.filter(v => ids.has(String(v.estudiante_id))).length;
             return {
@@ -13259,12 +13290,17 @@ async function prepararEstadisticas() {
 
         if (general) general.innerHTML = `
             <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes efectivos</span><strong>${estudiantesEfectivos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>No incorporados</span><strong>${estudiantesNoIncorporados.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Retirados por abandono</span><strong>${estudiantesRetiradosAbandono.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Retirados por traslado</span><strong>${estudiantesRetiradosTraslado.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Otros estados</span><strong>${estudiantesOtrosEstados.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Total registrados</span><strong>${est.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Cursos efectivos</span><strong>${cursos.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
-                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasEfectivas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
                 <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
             </div>
@@ -13308,11 +13344,30 @@ async function prepararEstadisticas() {
         if (cursosPanel) cursosPanel.innerHTML = `
             <div class="estadistica-resumen">
                 <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes efectivos</span><strong>${estudiantesEfectivos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>No incorporados</span><strong>${estudiantesNoIncorporados.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Retirados</span><strong>${estudiantesRetiradosAbandono.length + estudiantesRetiradosTraslado.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasEfectivas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
                 <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
+            </div>
+            <div class="estadistica-tabla-genero-curso">
+                <h4>👥 Estado de matrícula por curso</h4>
+                <div class="tabla-estadistica-scroll">
+                    <table class="tabla-estadistica-genero">
+                        <thead><tr><th>Curso</th><th>Efectivos</th><th>No incorporados</th><th>Ret. abandono</th><th>Ret. traslado</th><th>Otros</th><th>Total registrados</th></tr></thead>
+                        <tbody>${[...new Set(est.map(e => e.curso).filter(Boolean))].sort().map(c => {
+                            const grupo = est.filter(e => e.curso === c);
+                            const efectivos = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "EFECTIVO").length;
+                            const noInc = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "NO INCORPORADO").length;
+                            const abandono = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO ABANDONO").length;
+                            const traslado = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO TRASLADO").length;
+                            const otros = grupo.length - efectivos - noInc - abandono - traslado;
+                            return `<tr><td>${escEstadistica(c)}</td><td>${efectivos}</td><td>${noInc}</td><td>${abandono}</td><td>${traslado}</td><td>${otros}</td><td>${grupo.length}</td></tr>`;
+                        }).join("")}</tbody>
+                    </table>
+                </div>
             </div>
             <div class="estadistica-tabla-genero-curso">
                 <h4>👥 Varones y mujeres por curso</h4>
@@ -13339,9 +13394,9 @@ async function prepararEstadisticas() {
                             const idsMuj = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").map(e => String(e.id)));
                             const datosGrupo = ids => {
                                 const es = grupo.filter(e => ids.has(String(e.id)));
-                                const as = conteoEstado(asistenciasTodas.filter(r => ids.has(String(r.estudiante_id))));
-                                const obsA = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
-                                const obsC = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const as = conteoEstado(asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id))));
+                                const obsA = asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const obsC = calificacionesEfectivas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
                                 return { n:es.length, prom:promedio(es.map(e => e.final)), asist:as.asistio, falta:as.falta, obs:obsA + obsC };
                             };
                             const v = datosGrupo(idsVar), m = datosGrupo(idsMuj);
@@ -13370,7 +13425,7 @@ async function prepararEstadisticas() {
                 const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
                 return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
             }))}
-            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasTodas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
+            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasEfectivas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
             ${prepararGraficaEstadistica("Ingresos a la página por curso", cursos.map(c => ({nombre:c,valor:visitas.filter(v=>mapaEstudiante.get(String(v.estudiante_id))?.curso===c).length})))}`;
 
         const finales = estudiantesConNotas.map(e=>e.final).filter(Number.isFinite);
@@ -13391,7 +13446,7 @@ async function prepararEstadisticas() {
             ])}`;
 
         const asistenciaPorCurso = cursos.map(c => {
-            const registros = asistenciasTodas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
+            const registros = asistenciasEfectivas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
             const ce = conteoEstado(registros);
             return { curso:c, ...ce };
         });
@@ -13424,7 +13479,7 @@ async function prepararEstadisticas() {
             ${prepararGraficaEstadistica("Actividades por curso", cursos.map(c=>({nombre:c,valor:(actividadesPorCurso[c]||[]).length})))}
             ${prepararGraficaEstadistica("Calificaciones registradas por curso", cursos.map(c=>{
                 const ids=new Set(estudiantesConNotas.filter(e=>e.curso===c).map(e=>String(e.id)));
-                return {nombre:c,valor:calificacionesTodas.filter(r=>ids.has(String(r.estudiante_id))).length};
+                return {nombre:c,valor:calificacionesEfectivas.filter(r=>ids.has(String(r.estudiante_id))).length};
             }))}`;
 
         // Mantener también la lista de estudiantes y sus notas sincronizadas en memoria.
