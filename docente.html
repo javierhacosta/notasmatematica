@@ -11460,7 +11460,7 @@ function crearActividadHTML(
             id="horario-actividad-${actividad.id}"
             class="puntaje-actividad">
             ${actividad.hora_inicio && actividad.hora_fin
-                ? `— ${escapeHTML(actividad.hora_inicio)} a ${escapeHTML(actividad.hora_fin)}`
+                ? `— ${escapeHTML(formatearHoraActividad(actividad.hora_inicio))} a ${escapeHTML(formatearHoraActividad(actividad.hora_fin))}`
                 : ""}
         </span>
 
@@ -12031,6 +12031,18 @@ function crearActividadHTML(
 
 
 /* =====================================================
+   FORMATEAR HORA DE ACTIVIDAD (SOLO HH:MM)
+===================================================== */
+
+function formatearHoraActividad(hora) {
+
+    if (!hora) return "";
+
+    return String(hora).slice(0, 5);
+}
+
+
+/* =====================================================
    EDITAR NOMBRE Y FECHA
 ===================================================== */
 
@@ -12118,7 +12130,7 @@ async function editarNombreActividad(
 
 
     const horaInicioActual =
-    actividad.hora_inicio || "";
+    formatearHoraActividad(actividad.hora_inicio);
 
     const nuevaHoraInicio =
     prompt(
@@ -12133,7 +12145,7 @@ async function editarNombreActividad(
     const horaInicio = nuevaHoraInicio.trim();
 
     const horaFinActual =
-    actividad.hora_fin || "";
+    formatearHoraActividad(actividad.hora_fin);
 
     const nuevaHoraFin =
     prompt(
