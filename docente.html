@@ -11483,6 +11483,7 @@ function actualizarObsEntregaFila(fila, actividad) {
 
     const celda = fila.querySelector(".obs-entrega");
     const inputEntrega = fila.querySelector(".entrega-actividad");
+    const presentacion = fila.querySelector(".presentacion-actividad");
     if (!celda) return;
 
     const tieneHora = !!obtenerFechaHoraActividad(actividad);
@@ -11490,6 +11491,12 @@ function actualizarObsEntregaFila(fila, actividad) {
 
     celda.textContent = calcularObsEntrega(actividad, fecha_entrega);
     celda.title = celda.textContent || "";
+
+    if (presentacion) {
+        presentacion.textContent = fecha_entrega
+            ? "🕐 Presentación: " + formatearFechaHoraPresentacion(fecha_entrega)
+            : "";
+    }
 }
 
 function actualizarObsEntregaActividad(actividadId) {
@@ -12062,6 +12069,11 @@ function crearActividadHTML(
                     ${actividadTieneHora ? "" : "disabled"}
                 >
 
+                <div
+                    class="presentacion-actividad"
+                    style="margin-top:5px;font-size:12px;color:#555;line-height:1.3;"
+                >${fecha_entrega ? `🕐 Presentación: ${escapeHTML(formatearFechaHoraPresentacion(fecha_entrega))}` : ""}</div>
+
             </td>
 
             <td class="columna-obs-entrega obs-entrega"></td>
@@ -12356,6 +12368,41 @@ function formatearHoraActividad(hora) {
     if (!hora) return "";
 
     return String(hora).slice(0, 5);
+}
+
+
+/* =====================================================
+   FORMATEAR FECHA/HORA DE PRESENTACIÓN
+===================================================== */
+function formatearFechaHoraPresentacion(valor) {
+    if (!valor) return "";
+
+    const fecha = new Date(String(valor));
+
+    if (Number.isNaN(fecha.getTime())) return "";
+
+    const p = n => String(n).padStart(2, "0");
+
+    const dia = fecha.toLocaleDateString("es-BO", {
+        weekday: "long"
+    });
+
+    const diaCapitalizado =
+        dia.charAt(0).toUpperCase() + dia.slice(1);
+
+    return (
+        diaCapitalizado +
+        " " +
+        p(fecha.getDate()) +
+        "/" +
+        p(fecha.getMonth() + 1) +
+        "/" +
+        fecha.getFullYear() +
+        " " +
+        p(fecha.getHours()) +
+        ":" +
+        p(fecha.getMinutes())
+    );
 }
 
 
