@@ -1154,6 +1154,13 @@ td:first-child {
 
 
 /* =====================================================
+   ENTREGA DE ACTIVIDADES
+===================================================== */
+.entrega-actividad { width:100%; min-width:170px; padding:7px; border:1px solid #ccc; border-radius:6px; font-size:13px; }
+.entrega-actividad:disabled { background:#eeeeee; color:#555; cursor:not-allowed; border-color:#ddd; }
+.entrega-actividad.editable { background:#fffde7; border:2px solid #ef6c00; }
+
+/* =====================================================
    OBSERVACIONES DE ACTIVIDADES
 ===================================================== */
 
@@ -3144,11 +3151,18 @@ td,
 
 
 /* =====================================================
+   COLUMNA ENTREGA
+===================================================== */
+#contenedorActividades table th:nth-child(4),
+#contenedorActividades table td:nth-child(4) { width:180px; min-width:170px; }
+#contenedorActividades table .entrega-actividad { width:100%; min-width:165px; }
+
+/* =====================================================
    COLUMNA OBSERVACIONES
 ===================================================== */
 
-#contenedorActividades table th:nth-child(4),
-#contenedorActividades table td:nth-child(4) {
+#contenedorActividades table th:nth-child(5),
+#contenedorActividades table td:nth-child(5) {
     width: 180px;
     min-width: 150px;
 }
@@ -10893,7 +10907,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion"
+        "id,actividad_id,estudiante_id,nota,observacion,entrega"
     )
     .in(
         "actividad_id",
@@ -10945,7 +10959,10 @@ async function cargarCalificaciones() {
             cal.nota,
 
             observacion:
-            cal.observacion || ""
+            cal.observacion || "",
+
+            entrega:
+            cal.entrega || ""
 
         };
 
@@ -11641,6 +11658,8 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
+                <th>Entrega</th>
+
                 <th>Observaciones</th>
 
             </tr>
@@ -11670,6 +11689,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
+        let entrega = "";
         let observacion = "";
 
 
@@ -11699,6 +11719,9 @@ function crearActividadHTML(
 
                 nota =
                 registro.nota;
+
+                entrega =
+                registro.entrega || "";
 
                 observacion =
                 registro.observacion || "";
@@ -11792,6 +11815,23 @@ function crearActividadHTML(
 
                     oninput="validarNota(this); programarGuardadoCambioActividad(this)"
 
+                >
+
+            </td>
+
+
+            <td>
+
+                <input
+                    type="datetime-local"
+                    class="entrega-actividad"
+                    value="${escapeHTML(formatearEntregaParaInput(entrega))}"
+                    data-estudiante="${estudiante.id}"
+                    data-actividad="${actividad.id}"
+                    data-valor-inicial="${escapeHTML(formatearEntregaParaInput(entrega))}"
+                    oninput="programarGuardadoCambioActividad(this)"
+                    onchange="programarGuardadoCambioActividad(this)"
+                    disabled
                 >
 
             </td>
@@ -11948,7 +11988,7 @@ function crearActividadHTML(
 
         const inputs =
         bloque.querySelectorAll(
-            ".nota-input, .observacion-actividad"
+            ".nota-input, .entrega-actividad, .observacion-actividad"
         );
 
 
@@ -12029,6 +12069,21 @@ function crearActividadHTML(
 
 }
 
+
+/* =====================================================
+   ENTREGA: FECHA Y HORA
+===================================================== */
+function formatearEntregaParaInput(valor) {
+    if (!valor) return "";
+    const fecha = new Date(String(valor));
+    if (Number.isNaN(fecha.getTime())) return String(valor).slice(0,16).replace(" ","T");
+    const p=n=>String(n).padStart(2,"0");
+    return `${fecha.getFullYear()}-${p(fecha.getMonth()+1)}-${p(fecha.getDate())}T${p(fecha.getHours())}:${p(fecha.getMinutes())}`;
+}
+function obtenerEntregaISO(valor) {
+    const texto=String(valor||"").trim(); if(!texto) return null;
+    const fecha=new Date(texto); return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString();
+}
 
 /* =====================================================
    FORMATEAR HORA DE ACTIVIDAD (SOLO HH:MM)
@@ -14589,6 +14644,10 @@ function programarGuardadoCambioActividad(input) {
         `.nota-input[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
     );
 
+    const entregaInput = document.querySelector(
+        `.entrega-actividad[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
+    );
+
     const observacionInput = document.querySelector(
         `.observacion-actividad[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
     );
@@ -14598,6 +14657,9 @@ function programarGuardadoCambioActividad(input) {
 
     const notaInicial =
         notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
+
+    const entregaActual = entregaInput ? entregaInput.value.trim() : "";
+    const entregaInicial = entregaInput ? (entregaInput.dataset.valorInicial || "").trim() : "";
 
     const observacionActual =
         observacionInput ? observacionInput.value.trim() : "";
@@ -14613,6 +14675,7 @@ function programarGuardadoCambioActividad(input) {
     */
     if (
         notaActual === notaInicial &&
+        entregaActual === entregaInicial &&
         observacionActual === observacionInicial
     ) {
         actualizarBotonGuardarActividadManual(actividadId);
@@ -14680,6 +14743,10 @@ async function guardarActividadManual(actividadId) {
         document.querySelectorAll(
             `.nota-input[data-actividad="${id}"]`
         )
+    );
+
+    const inputsEntregas = Array.from(
+        document.querySelectorAll(`.entrega-actividad[data-actividad="${id}"]`)
     );
 
     const inputsObservaciones = Array.from(
@@ -14776,6 +14843,11 @@ async function guardarActividadManual(actividadId) {
         /*
            Crear los registros únicamente de esta actividad.
         */
+        const entregasPorEstudiante = new Map();
+        inputsEntregas.forEach(input => {
+            entregasPorEstudiante.set(String(input.dataset.estudiante), obtenerEntregaISO(input.value));
+        });
+
         const observacionesPorEstudiante = new Map();
 
         inputsObservaciones.forEach(input => {
@@ -14795,16 +14867,11 @@ async function guardarActividadManual(actividadId) {
                 ? null
                 : Number(input.value);
 
-            const observacion =
-                observacionesPorEstudiante.get(
-                    String(estudianteId)
-                ) ?? null;
+            const observacion = observacionesPorEstudiante.get(String(estudianteId)) ?? null;
+            const entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
 
             registros.push({
-                actividad_id: id,
-                estudiante_id: estudianteId,
-                nota,
-                observacion
+                actividad_id: id, estudiante_id: estudianteId, nota, entrega, observacion
             });
         });
 
@@ -14829,7 +14896,7 @@ async function guardarActividadManual(actividadId) {
         } = await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion"
+                "actividad_id,estudiante_id,nota,observacion,entrega"
             )
             .eq("actividad_id", id)
             .in(
@@ -15160,6 +15227,12 @@ async function guardarNotas() {
         const estudiantesAfectados = new Set();
 
         /* Mapa de observaciones: evita hacer querySelector() por cada nota. */
+        const entregas = new Map();
+        document.querySelectorAll(".entrega-actividad").forEach(input => {
+            const clave = `${Number(input.dataset.actividad)}|${Number(input.dataset.estudiante)}`;
+            entregas.set(clave, obtenerEntregaISO(input.value));
+        });
+
         const observaciones = new Map();
         document.querySelectorAll(".observacion-actividad").forEach(input => {
             const clave = `${Number(input.dataset.actividad)}|${Number(input.dataset.estudiante)}`;
@@ -15172,12 +15245,10 @@ async function guardarNotas() {
             const nota = input.value === "" ? null : Number(input.value);
             const clave = `${actividadId}|${estudianteId}`;
             const observacion = observaciones.get(clave) ?? null;
+            const entrega = entregas.get(clave) ?? null;
 
             registros.push({
-                actividad_id: actividadId,
-                estudiante_id: estudianteId,
-                nota,
-                observacion
+                actividad_id: actividadId, estudiante_id: estudianteId, nota, entrega, observacion
             });
         }
 
@@ -15194,7 +15265,7 @@ async function guardarNotas() {
             const { data: anteriores, error: errorAnteriores } =
                 await supabaseClient
                     .from("calificaciones")
-                    .select("actividad_id,estudiante_id,nota,observacion")
+                    .select("actividad_id,estudiante_id,nota,observacion,entrega")
                     .in("actividad_id", idsActividades)
                     .in("estudiante_id", idsEstudiantes);
 
@@ -15215,7 +15286,8 @@ async function guardarNotas() {
                 const igual =
                     anterior &&
                     String(anterior.nota ?? "") === String(registro.nota ?? "") &&
-                    String(anterior.observacion ?? "") === String(registro.observacion ?? "");
+                    String(anterior.observacion ?? "") === String(registro.observacion ?? "") &&
+                    String(anterior.entrega ?? "") === String(registro.entrega ?? "");
 
                 if (!igual) estudiantesAfectados.add(Number(registro.estudiante_id));
                 return !igual;
@@ -15284,8 +15356,7 @@ async function guardarNotas() {
                 }
 
                 calificaciones[estudianteId][actividadId] = {
-                    nota: registro.nota,
-                    observacion: registro.observacion || ""
+                    nota: registro.nota, entrega: registro.entrega || "", observacion: registro.observacion || ""
                 };
             });
         }
@@ -18405,6 +18476,7 @@ async function guardarCalificacionQR() {
                 actividad_id: actividadQRSeleccionada.id,
                 estudiante_id: estudianteQRSeleccionado.id,
                 nota: nota,
+                entrega: new Date().toISOString(),
                 observacion: observacion || null
             },
             {
@@ -18439,6 +18511,7 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: registroAnterior.nota ?? null,
+            entrega: registroAnterior.entrega ?? null,
             observacion: registroAnterior.observacion ?? null
         }
         : null;
@@ -18447,11 +18520,13 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: nota,
+            entrega: new Date().toISOString(),
             observacion: observacion || null
         };
 
         if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
+            String(anteriorHistorialQR.entrega ?? "") !== String(nuevoHistorialQR.entrega ?? "") ||
             String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
@@ -18478,6 +18553,9 @@ async function guardarCalificacionQR() {
             nota:
             nota,
 
+            entrega:
+            nuevoHistorialQR.entrega,
+
             observacion:
             observacion
         };
@@ -18493,6 +18571,10 @@ async function guardarCalificacionQR() {
         const notaTablaQR = document.querySelector(
             `.nota-input[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
         );
+        const entregaTablaQR = document.querySelector(
+            `.entrega-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
+        );
+
         const observacionTablaQR = document.querySelector(
             `.observacion-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
         );
@@ -18500,6 +18582,12 @@ async function guardarCalificacionQR() {
         if (notaTablaQR) {
             notaTablaQR.value = String(nota);
             notaTablaQR.dataset.valorInicial = String(nota);
+        }
+
+        if (entregaTablaQR) {
+            const entregaQR = nuevoHistorialQR.entrega || "";
+            entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
+            entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
         }
 
         if (observacionTablaQR) {
