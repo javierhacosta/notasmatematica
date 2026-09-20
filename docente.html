@@ -12359,6 +12359,76 @@ async function eliminarActividad(
     }
 
 
+    /* Segunda confirmación informativa:
+       primero contamos las calificaciones realmente registradas
+       para esta actividad antes de permitir su eliminación. */
+    mostrarMensaje(
+        "Revisando calificaciones registradas..."
+    );
+
+    const {
+        count: cantidadCalificaciones,
+        error: errorConteoCalificaciones
+    } =
+    await supabaseClient
+    .from("calificaciones")
+    .select(
+        "id",
+        {
+            count: "exact",
+            head: true
+        }
+    )
+    .eq(
+        "actividad_id",
+        actividad.id
+    );
+
+
+    if (errorConteoCalificaciones) {
+
+        console.error(
+            "Error al contar calificaciones antes de eliminar:",
+            errorConteoCalificaciones
+        );
+
+        alert(
+            "No se pudo verificar cuántas calificaciones tiene esta actividad.\n\n" +
+            errorConteoCalificaciones.message +
+            "\n\nLa actividad no se eliminará."
+        );
+
+        return;
+
+    }
+
+
+    const totalCalificaciones =
+    Number(cantidadCalificaciones || 0);
+
+
+    const confirmarDefinitivo =
+    confirm(
+
+        "Esta actividad tiene " +
+        totalCalificaciones +
+        " calificaciones registradas.\n\n" +
+
+        "Actividad: " +
+        actividad.nombre +
+        "\n\n" +
+
+        "Si continúas, se eliminarán la actividad y todas sus calificaciones.\n\n" +
+        "¿Deseas eliminarla?"
+
+    );
+
+
+    if (!confirmarDefinitivo) {
+        return;
+    }
+
+
     mostrarMensaje(
         "Eliminando actividad..."
     );
