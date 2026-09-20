@@ -12340,91 +12340,127 @@ async function eliminarActividad(
     actividad
 ) {
 
+    /*
+     * Segunda confirmación informativa:
+     * antes de borrar, consulta las calificaciones de esta actividad
+     * y muestra únicamente los estudiantes que tienen una nota registrada.
+     */
+    mostrarMensaje(
+        "Revisando calificaciones de la actividad..."
+    );
+
+    const {
+        data: calificacionesEliminar,
+        error: errorConsultaCalificaciones
+    } = await supabaseClient
+        .from("calificaciones")
+        .select("estudiante_id,nota")
+        .eq("actividad_id", actividad.id)
+        .not("nota", "is", null);
+
+    if (errorConsultaCalificaciones) {
+        console.error(
+            "Error al consultar calificaciones antes de eliminar:",
+            errorConsultaCalificaciones
+        );
+
+        alert(
+            "No se pudo verificar las calificaciones de esta actividad antes de eliminarla.\n\n" +
+            (errorConsultaCalificaciones.message || "Error desconocido")
+        );
+
+        return;
+    }
+
+    const registrosConNota = calificacionesEliminar || [];
+    const idsEstudiantesConNota = [
+        ...new Set(
+            registrosConNota
+                .map(registro => Number(registro.estudiante_id))
+                .filter(id => Number.isFinite(id))
+        )
+    ];
+
+    let estudiantesConNota = [];
+
+    if (idsEstudiantesConNota.length > 0) {
+        const {
+            data: estudiantesDatos,
+            error: errorConsultaEstudiantes
+        } = await supabaseClient
+            .from("estudiantes")
+            .select("id,nombre")
+            .in("id", idsEstudiantesConNota);
+
+        if (errorConsultaEstudiantes) {
+            console.error(
+                "Error al consultar estudiantes de las calificaciones:",
+                errorConsultaEstudiantes
+            );
+
+            alert(
+                "No se pudo obtener la lista de estudiantes con nota antes de eliminarla.\n\n" +
+                (errorConsultaEstudiantes.message || "Error desconocido")
+            );
+
+            return;
+        }
+
+        const mapaEstudiantes = new Map(
+            (estudiantesDatos || []).map(estudiante => [
+                String(estudiante.id),
+                estudiante
+            ])
+        );
+
+        estudiantesConNota = registrosConNota
+            .map(registro => {
+                const estudiante = mapaEstudiantes.get(
+                    String(registro.estudiante_id)
+                );
+
+                if (!estudiante) return null;
+
+                return {
+                    nombre: String(estudiante.nombre || "Estudiante"),
+                    nota: registro.nota
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) =>
+                a.nombre.localeCompare(
+                    b.nombre,
+                    "es",
+                    { sensitivity: "base" }
+                )
+            );
+    }
+
+    const cantidadNotas = registrosConNota.length;
+
+    const listaNotas = estudiantesConNota.length > 0
+        ? estudiantesConNota
+            .map(item =>
+                `${item.nombre} ${item.nota}`
+            )
+            .join("\n")
+        : "No hay estudiantes con nota registrada.";
+
     const confirmar =
     confirm(
 
-        "¿Está seguro de eliminar esta actividad?\n\n" +
+        "Esta actividad tiene " +
+        cantidadNotas +
+        " calificaciones registradas.\n\n" +
 
-        "Actividad: " +
-        actividad.nombre +
+        listaNotas +
 
-        "\n\nTambién se eliminarán todas las " +
-        "calificaciones de esta actividad."
+        "\n\n¿Deseas eliminarla?"
 
     );
 
 
     if (!confirmar) {
-        return;
-    }
-
-
-    /* Segunda confirmación informativa:
-       primero contamos las calificaciones realmente registradas
-       para esta actividad antes de permitir su eliminación. */
-    mostrarMensaje(
-        "Revisando calificaciones registradas..."
-    );
-
-    const {
-        count: cantidadCalificaciones,
-        error: errorConteoCalificaciones
-    } =
-    await supabaseClient
-    .from("calificaciones")
-    .select(
-        "id",
-        {
-            count: "exact",
-            head: true
-        }
-    )
-    .eq(
-        "actividad_id",
-        actividad.id
-    );
-
-
-    if (errorConteoCalificaciones) {
-
-        console.error(
-            "Error al contar calificaciones antes de eliminar:",
-            errorConteoCalificaciones
-        );
-
-        alert(
-            "No se pudo verificar cuántas calificaciones tiene esta actividad.\n\n" +
-            errorConteoCalificaciones.message +
-            "\n\nLa actividad no se eliminará."
-        );
-
-        return;
-
-    }
-
-
-    const totalCalificaciones =
-    Number(cantidadCalificaciones || 0);
-
-
-    const confirmarDefinitivo =
-    confirm(
-
-        "Esta actividad tiene " +
-        totalCalificaciones +
-        " calificaciones registradas.\n\n" +
-
-        "Actividad: " +
-        actividad.nombre +
-        "\n\n" +
-
-        "Si continúas, se eliminarán la actividad y todas sus calificaciones.\n\n" +
-        "¿Deseas eliminarla?"
-
-    );
-
-
-    if (!confirmarDefinitivo) {
         return;
     }
 
