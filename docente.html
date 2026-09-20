@@ -17716,9 +17716,15 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
             ${anteriores.map(a => {
                 const registro = registrosEstudiante[a.id];
                 const nota = registro && typeof registro === "object" ? registro.nota : registro;
+                const observacion = registro && typeof registro === "object"
+                    ? (registro.observacion || "")
+                    : "";
                 const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
                     ? "Sin nota"
                     : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
+                const textoObservacion = String(observacion).trim()
+                    ? `<small style="display:block;color:#555;font-size:11px;margin-top:2px;">📝 ${escapeHTML(String(observacion))}</small>`
+                    : "";
 
                 return `
                     <div class="qr-actividad-anterior">
@@ -17727,6 +17733,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                             <small style="display:block;color:#777;font-size:11px;">
                                 📅 ${escapeHTML(a.fecha || "")}
                             </small>
+                            ${textoObservacion}
                         </span>
                         <span class="qr-actividad-anterior-nota">${textoNota}</span>
                     </div>
