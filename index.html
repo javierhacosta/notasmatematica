@@ -1166,7 +1166,15 @@ function formatearFechaHoraPresentacion(fechaHora) {
     const texto = String(fechaHora).trim();
     const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
     if (!match) return texto;
-    return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`;
+
+    const fecha = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    const diasSemana = [
+        "Domingo", "Lunes", "Martes", "Miércoles",
+        "Jueves", "Viernes", "Sábado"
+    ];
+    const diaSemana = diasSemana[fecha.getDay()];
+
+    return `${diaSemana} ${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`;
 }
 
 function obtenerFechaHoraActividad(actividad) {
