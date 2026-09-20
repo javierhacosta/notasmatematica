@@ -15095,6 +15095,22 @@ async function guardarActividadManual(actividadId) {
         }
     }
 
+    /* Detectar también cambios manuales en fecha_entrega. */
+    if (!hayCambios) {
+        for (const input of inputsEntregas) {
+            const actual =
+                obtenerEntregaISO(input.value) || "";
+
+            const inicial =
+                obtenerEntregaISO(input.dataset.valorInicial || "") || "";
+
+            if (actual !== inicial) {
+                hayCambios = true;
+                break;
+            }
+        }
+    }
+
     if (!hayCambios) {
         actividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
@@ -15215,6 +15231,12 @@ async function guardarActividadManual(actividadId) {
                     ) ===
                     String(
                         registro.observacion ?? ""
+                    ) &&
+                    String(
+                        anterior.fecha_entrega ?? ""
+                    ) ===
+                    String(
+                        registro.fecha_entrega ?? ""
                     );
 
                 if (!igual) {
@@ -15328,6 +15350,8 @@ async function guardarActividadManual(actividadId) {
 
             calificaciones[estudianteId][id] = {
                 nota: registro.nota,
+                fecha_entrega:
+                    registro.fecha_entrega || "",
                 observacion:
                     registro.observacion || ""
             };
@@ -15352,6 +15376,16 @@ async function guardarActividadManual(actividadId) {
                             `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
                         )?.value.trim() || ""
                 })
+            );
+        });
+
+        inputsEntregas.forEach(input => {
+            input.dataset.valorInicial =
+                input.value;
+
+            actualizarObsEntregaFila(
+                input.closest("tr"),
+                actividad
             );
         });
 
