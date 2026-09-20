@@ -18344,7 +18344,7 @@ function obtenerActividadesAnterioresQR(actividadActual) {
 }
 
 function obtenerTextoPresentacionActividad(actividad, fechaEntrega) {
-    if (!fechaEntrega) return "❌ No presentó";
+    if (!fechaEntrega) return "";
 
     let resultado = calcularObsEntrega(actividad, fechaEntrega);
 
@@ -19433,7 +19433,9 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
         const fechaEntrega = registro?.fecha_entrega || "";
-        const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
+        const textoPresentacion = (!fechaEntrega && registro && (String(registro.nota ?? "").trim() === "" || Number(registro.nota) === 0))
+            ? "❌ No presentó"
+            : obtenerTextoPresentacionActividad(a, fechaEntrega);
 
         const categoria = String(a.categoria || "").toUpperCase();
         const claseCategoria =
