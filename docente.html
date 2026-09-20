@@ -3157,6 +3157,50 @@ td,
 #contenedorActividades table td:nth-child(4) { width:180px; min-width:170px; }
 #contenedorActividades table .entrega-actividad { width:100%; min-width:165px; }
 
+/* Columnas Entrega / obs_entrega ocultas por defecto. */
+.columna-entrega,
+.columna-obs-entrega {
+    display: none;
+}
+
+.actividad.mostrar-entrega-actividad .columna-entrega,
+.actividad.mostrar-entrega-actividad .columna-obs-entrega {
+    display: table-cell;
+}
+
+.boton-mostrar-entrega {
+    color: white;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #607d8b;
+    opacity: .45;
+}
+
+.boton-mostrar-entrega.activo {
+    background: #00838f;
+    opacity: 1;
+}
+
+.boton-mostrar-entrega:hover {
+    opacity: .85;
+}
+
+.obs-entrega {
+    font-weight: bold;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
 /* =====================================================
    COLUMNA OBSERVACIONES
 ===================================================== */
@@ -7162,6 +7206,13 @@ const LIMITES = {
 const actividadesDesbloqueadas =
 new Set();
 
+/* =====================================================
+   VISIBILIDAD DE ENTREGA / OBS_ENTREGA POR ACTIVIDAD
+   Por defecto permanece desactivada.
+===================================================== */
+const actividadesEntregaVisibles =
+new Set();
+
 
 /* =====================================================
    SESIÓN
@@ -7759,6 +7810,7 @@ document.getElementById(
         cerrarModalActividad();
 
         actividadesDesbloqueadas.clear();
+        actividadesEntregaVisibles.clear();
 
         asistenciaDesbloqueada =
         false;
@@ -11350,6 +11402,136 @@ function obtenerIconoAsistenciaActividad(
 
 
 /* =====================================================
+   ENTREGA: OBS_ENTREGA AUTOMÁTICO
+===================================================== */
+
+/*
+ * Devuelve la fecha/hora límite de la actividad.
+ * Si la actividad no tiene hora de inicio, no se calcula entrega.
+ */
+function obtenerFechaHoraActividad(actividad) {
+    if (!actividad || !actividad.fecha || !actividad.hora_inicio) return null;
+
+    const fechaTexto = String(actividad.fecha).slice(0, 10);
+    const horaTexto = String(actividad.hora_inicio).slice(0, 5);
+
+    const fecha = new Date(`${fechaTexto}T${horaTexto}:00`);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+/*
+ * Calcula obs_entrega comparando la fecha/hora de entrega
+ * con la fecha/hora de inicio de la actividad.
+ */
+function calcularObsEntrega(actividad, entrega) {
+    const limite = obtenerFechaHoraActividad(actividad);
+    if (!limite || !entrega) return "";
+
+    const fechaEntrega = new Date(String(entrega));
+    if (Number.isNaN(fechaEntrega.getTime())) return "";
+
+    const diferenciaMs = fechaEntrega.getTime() - limite.getTime();
+
+    if (diferenciaMs <= 0) {
+        return "Puntual";
+    }
+
+    const totalMinutos = Math.floor(diferenciaMs / 60000);
+    const dias = Math.floor(totalMinutos / 1440);
+    const horas = Math.floor((totalMinutos % 1440) / 60);
+    const minutos = totalMinutos % 60;
+
+    const partes = [];
+
+    if (dias > 0) {
+        partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
+    }
+
+    if (horas > 0) {
+        partes.push(`${horas} ${horas === 1 ? "h" : "h"}`);
+    }
+
+    /*
+     * Se muestran los minutos solo cuando no hay días/horas,
+     * para no llenar la tabla con demasiado detalle.
+     */
+    if (dias === 0 && horas === 0 && minutos > 0) {
+        partes.push(`${minutos} min`);
+    }
+
+    return `Atrasado ${partes.join(" ")}`.trim();
+}
+
+function actualizarObsEntregaFila(fila, actividad) {
+    if (!fila || !actividad) return;
+
+    const celda = fila.querySelector(".obs-entrega");
+    const inputEntrega = fila.querySelector(".entrega-actividad");
+    if (!celda) return;
+
+    const tieneHora = !!obtenerFechaHoraActividad(actividad);
+    const entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
+
+    celda.textContent = calcularObsEntrega(actividad, entrega);
+    celda.title = celda.textContent || "";
+}
+
+function actualizarObsEntregaActividad(actividadId) {
+    const actividad = actividades.find(
+        a => String(a.id) === String(actividadId)
+    );
+    if (!actividad) return;
+
+    document.querySelectorAll(
+        `.actividad[data-actividad-id="${actividadId}"] tr[data-estudiante]`
+    ).forEach(fila => actualizarObsEntregaFila(fila, actividad));
+}
+
+function actualizarVisibilidadEntregaActividad(bloque, actividad, boton) {
+    if (!bloque || !actividad) return;
+
+    const visible = actividadesEntregaVisibles.has(actividad.id);
+
+    bloque.classList.toggle("mostrar-entrega-actividad", visible);
+
+    if (boton) {
+        boton.classList.toggle("activo", visible);
+        boton.textContent = visible ? "📦" : "📦";
+        boton.title = visible
+            ? "Ocultar columnas Entrega y obs_entrega"
+            : "Mostrar columnas Entrega y obs_entrega";
+        boton.setAttribute("aria-pressed", visible ? "true" : "false");
+    }
+}
+
+
+/* Actualización en tiempo real de obs_entrega para edición manual. */
+document.addEventListener("input", function(event) {
+    const input = event.target;
+    if (!input || !input.classList || !input.classList.contains("entrega-actividad")) return;
+
+    const actividad = actividades.find(
+        a => String(a.id) === String(input.dataset.actividad)
+    );
+    if (actividad) {
+        actualizarObsEntregaFila(input.closest("tr"), actividad);
+    }
+});
+
+document.addEventListener("change", function(event) {
+    const input = event.target;
+    if (!input || !input.classList || !input.classList.contains("entrega-actividad")) return;
+
+    const actividad = actividades.find(
+        a => String(a.id) === String(input.dataset.actividad)
+    );
+    if (actividad) {
+        actualizarObsEntregaFila(input.closest("tr"), actividad);
+    }
+});
+
+
+/* =====================================================
    CREAR HTML ACTIVIDAD
 ===================================================== */
 
@@ -11364,6 +11546,9 @@ function crearActividadHTML(
 
     bloque.className =
     "actividad";
+
+    bloque.dataset.actividadId =
+    String(actividad.id);
 
 
     const encabezado =
@@ -11543,6 +11728,26 @@ function crearActividadHTML(
     "Desbloquear notas y observaciones";
 
 
+    const botonMostrarEntrega =
+    document.createElement(
+        "button"
+    );
+
+    botonMostrarEntrega.className =
+    "boton-mostrar-entrega";
+
+    botonMostrarEntrega.textContent =
+    "📦";
+
+    botonMostrarEntrega.title =
+    "Mostrar columnas Entrega y obs_entrega";
+
+    botonMostrarEntrega.setAttribute(
+        "aria-pressed",
+        "false"
+    );
+
+
     const botonEscanearQR =
     document.createElement(
         "button"
@@ -11607,6 +11812,10 @@ function crearActividadHTML(
         botonBloquear
     );
 
+    derecha.appendChild(
+        botonMostrarEntrega
+    );
+
 
     encabezado.appendChild(
         izquierda
@@ -11658,7 +11867,9 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
-                <th>Entrega</th>
+                <th class="columna-entrega">Entrega</th>
+
+                <th class="columna-obs-entrega">obs_entrega</th>
 
                 <th>Observaciones</th>
 
@@ -11691,6 +11902,7 @@ function crearActividadHTML(
         let nota = null;
         let entrega = "";
         let observacion = "";
+        const actividadTieneHora = !!obtenerFechaHoraActividad(actividad);
 
 
         if (
@@ -11820,21 +12032,23 @@ function crearActividadHTML(
             </td>
 
 
-            <td>
+            <td class="columna-entrega">
 
                 <input
                     type="datetime-local"
                     class="entrega-actividad"
-                    value="${escapeHTML(formatearEntregaParaInput(entrega))}"
+                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
                     data-estudiante="${estudiante.id}"
                     data-actividad="${actividad.id}"
-                    data-valor-inicial="${escapeHTML(formatearEntregaParaInput(entrega))}"
-                    oninput="programarGuardadoCambioActividad(this)"
-                    onchange="programarGuardadoCambioActividad(this)"
-                    disabled
+                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
+                    oninput="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
+                    onchange="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
+                    ${actividadTieneHora ? "" : "disabled"}
                 >
 
             </td>
+
+            <td class="columna-obs-entrega obs-entrega"></td>
 
 
             <td>
@@ -11872,6 +12086,11 @@ function crearActividadHTML(
 
         tbody.appendChild(
             fila
+        );
+
+        actualizarObsEntregaFila(
+            fila,
+            actividad
         );
 
     });
@@ -11977,6 +12196,26 @@ function crearActividadHTML(
     };
 
 
+    botonMostrarEntrega.onclick =
+    function(event) {
+
+        event.stopPropagation();
+
+        if (actividadesEntregaVisibles.has(actividad.id)) {
+            actividadesEntregaVisibles.delete(actividad.id);
+        } else {
+            actividadesEntregaVisibles.add(actividad.id);
+        }
+
+        actualizarVisibilidadEntregaActividad(
+            bloque,
+            actividad,
+            botonMostrarEntrega
+        );
+
+    };
+
+
     botonBloquear.onclick =
     function() {
 
@@ -12053,6 +12292,13 @@ function crearActividadHTML(
         }
 
     };
+
+
+    actualizarVisibilidadEntregaActividad(
+        bloque,
+        actividad,
+        botonMostrarEntrega
+    );
 
 
     botonEliminar.onclick =
@@ -18588,6 +18834,16 @@ async function guardarCalificacionQR() {
             const entregaQR = nuevoHistorialQR.entrega || "";
             entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
             entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
+
+            const actividadQR = actividades.find(
+                a => String(a.id) === String(actividadIdGuardadaQR)
+            );
+            if (actividadQR) {
+                actualizarObsEntregaFila(
+                    entregaTablaQR.closest("tr"),
+                    actividadQR
+                );
+            }
         }
 
         if (observacionTablaQR) {
