@@ -1787,6 +1787,29 @@ td:first-child {
     background: #a91f1f;
 }
 
+.boton-volver-clase-normal {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #1565c0;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.boton-volver-clase-normal:hover {
+    background: #0d47a1;
+}
+
+.boton-volver-clase-normal.oculto {
+    display: none !important;
+}
+
 
 /* =====================================================
    NUEVO: SELECCIÓN ALEATORIA DE NÚMERO DE LISTA
@@ -5316,6 +5339,17 @@ Selecciona un curso
 🗑️
 
 </button>
+
+<button
+    type="button"
+    id="botonVolverClaseNormal"
+    class="boton-volver-clase-normal oculto"
+    onclick="volverAClaseNormal()"
+    title="Volver el día seleccionado a asistencia normal">
+
+↩️
+
+</button>
 <button
     type="button"
     id="botonListaEstadoAsistencia"
@@ -8249,6 +8283,62 @@ function seleccionarTipoDiaAsistencia(tipo) {
 }
 
 
+async function volverAClaseNormal() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona una fecha de asistencia.");
+        return;
+    }
+
+    if (![
+        "no_clases",
+        "clase_informal",
+        "observacion"
+    ].includes(tipoDiaAsistencia)) {
+        return;
+    }
+
+    const confirmar = confirm(
+        "¿Deseas volver esta fecha a asistencia normal?\n\n" +
+        "La asistencia registrada de ese día no será eliminada."
+    );
+
+    if (!confirmar) return;
+
+    try {
+        mostrarMensaje("Volviendo la fecha a clase normal...");
+
+        const { error } = await supabaseClient
+            .from("asistencia_tipos_dia")
+            .delete()
+            .eq("curso", cursoSeleccionado)
+            .eq("fecha", fecha);
+
+        if (error) throw error;
+
+        tipoDiaAsistencia = "";
+        motivoNoClases = "";
+
+        await cargarFechasAsistencia();
+        await cargarAsistencia();
+
+        mostrarMensaje("✓ La fecha volvió a asistencia normal. La asistencia registrada se conservó.");
+    } catch (error) {
+        console.error("Error al volver la fecha a clase normal:", error);
+        mostrarMensaje(
+            "✕ Error al volver la fecha a clase normal: " +
+            (error.message || error),
+            true
+        );
+    }
+}
+
+
 async function guardarTipoDiaAsistencia() {
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
@@ -9371,6 +9461,8 @@ async function cargarAsistencia() {
         delete opcionesTipoDia.dataset.tipoSeleccionado;
     }
 
+    actualizarBotonVolverClaseNormal();
+
     if (botonGuardarTipoDia) {
         botonGuardarTipoDia.classList.add("oculto");
     }
@@ -9385,6 +9477,7 @@ async function cargarAsistencia() {
     }
 
     actualizarAvisoDiaEspecialAsistencia();
+    actualizarBotonVolverClaseNormal();
     mostrarTablaAsistencia();
     cambiosPendientesAsistencia = false;
     actualizarBotonGuardarAsistencia();
@@ -9432,6 +9525,24 @@ function formatearFechaGuardadaAsistencia(fecha) {
 /* =====================================================
    AVISO DE DÍA ESPECIAL
 ===================================================== */
+
+function actualizarBotonVolverClaseNormal() {
+    const boton = document.getElementById("botonVolverClaseNormal");
+    if (!boton) return;
+
+    const esDiaEspecial = [
+        "no_clases",
+        "clase_informal",
+        "observacion"
+    ].includes(tipoDiaAsistencia);
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    const mostrar = Boolean(fecha && cursoSeleccionado && esDiaEspecial);
+
+    boton.classList.toggle("oculto", !mostrar);
+    boton.style.display = mostrar ? "flex" : "none";
+}
+
 
 function actualizarAvisoDiaEspecialAsistencia() {
     const aviso = document.getElementById("avisoDiaEspecialAsistencia");
