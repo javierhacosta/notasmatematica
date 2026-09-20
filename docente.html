@@ -11434,10 +11434,18 @@ function obtenerIconoAsistenciaActividad(
  * Si la actividad no tiene hora de inicio, no se calcula fecha_entrega.
  */
 function obtenerFechaHoraActividad(actividad) {
-    if (!actividad || !actividad.fecha || !actividad.hora_inicio) return null;
+    if (!actividad || !actividad.fecha) return null;
 
     const fechaTexto = String(actividad.fecha).slice(0, 10);
-    const horaTexto = String(actividad.hora_inicio).slice(0, 5);
+
+    // Si la actividad tiene hora final, esa es la hora límite para
+    // considerar la presentación como puntual.
+    // Ejemplo: 18:30 a 18:50 -> atraso desde las 18:51.
+    const horaTexto = String(
+        actividad.hora_fin || actividad.hora_inicio || ""
+    ).slice(0, 5);
+
+    if (!horaTexto) return null;
 
     const fecha = new Date(`${fechaTexto}T${horaTexto}:00`);
     return Number.isNaN(fecha.getTime()) ? null : fecha;
