@@ -1154,6 +1154,25 @@ td:first-child {
 
 
 /* =====================================================
+   COLUMNAS ENTREGA / OBS_ENTREGA
+===================================================== */
+#contenedorActividades table.columnas-entrega-ocultas .columna-entrega,
+#contenedorActividades table.columnas-entrega-ocultas .columna-obs-entrega {
+    display: none;
+}
+
+.boton-mostrar-entrega.inactivo {
+    opacity: .38;
+}
+
+.obs-entrega-actividad {
+    display: block;
+    min-width: 135px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =====================================================
    ENTREGA DE ACTIVIDADES
 ===================================================== */
 .entrega-actividad { width:100%; min-width:170px; padding:7px; border:1px solid #ccc; border-radius:6px; font-size:13px; }
@@ -7162,6 +7181,9 @@ const LIMITES = {
 const actividadesDesbloqueadas =
 new Set();
 
+/* Columnas de entrega: ocultas por defecto en cada actividad. */
+const columnasEntregaVisibles = new Set();
+
 
 /* =====================================================
    SESIÓN
@@ -9771,6 +9793,13 @@ function mostrarTablaAsistencia() {
         registro.observacion || "";
 
 
+        /* obs_entrega siempre se calcula según la fecha/hora de la actividad. */
+        obsEntrega = calcularObsEntregaActividad(actividad, entrega);
+        if (!tieneHoraActividad(actividad)) {
+            entrega = "";
+            obsEntrega = "";
+        }
+
         const fila =
         document.createElement(
             "tr"
@@ -10907,7 +10936,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion,entrega"
+        "id,actividad_id,estudiante_id,nota,observacion,entrega,obs_entrega"
     )
     .in(
         "actividad_id",
@@ -10962,7 +10991,10 @@ async function cargarCalificaciones() {
             cal.observacion || "",
 
             entrega:
-            cal.entrega || ""
+            cal.entrega || "",
+
+            obs_entrega:
+            cal.obs_entrega || ""
 
         };
 
@@ -11543,6 +11575,22 @@ function crearActividadHTML(
     "Desbloquear notas y observaciones";
 
 
+    const botonMostrarEntrega =
+    document.createElement(
+        "button"
+    );
+
+    botonMostrarEntrega.className =
+    "boton-bloquear boton-mostrar-entrega" +
+    (columnasEntregaVisibles.has(actividad.id) ? "" : " inactivo");
+
+    botonMostrarEntrega.textContent =
+    "⏱️";
+
+    botonMostrarEntrega.title =
+    "Mostrar columnas Entrega y obs_entrega";
+
+
     const botonEscanearQR =
     document.createElement(
         "button"
@@ -11607,6 +11655,10 @@ function crearActividadHTML(
         botonBloquear
     );
 
+    derecha.appendChild(
+        botonMostrarEntrega
+    );
+
 
     encabezado.appendChild(
         izquierda
@@ -11646,6 +11698,12 @@ function crearActividadHTML(
     );
 
 
+    if (columnasEntregaVisibles.has(actividad.id)) {
+        tabla.classList.remove("columnas-entrega-ocultas");
+    } else {
+        tabla.classList.add("columnas-entrega-ocultas");
+    }
+
     tabla.innerHTML = `
 
         <thead>
@@ -11658,7 +11716,9 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
-                <th>Entrega</th>
+                <th class="columna-entrega">Entrega</th>
+
+                <th class="columna-obs-entrega">obs_entrega</th>
 
                 <th>Observaciones</th>
 
@@ -11690,6 +11750,7 @@ function crearActividadHTML(
 
         let nota = null;
         let entrega = "";
+        let obsEntrega = "";
         let observacion = "";
 
 
@@ -11722,6 +11783,9 @@ function crearActividadHTML(
 
                 entrega =
                 registro.entrega || "";
+
+                obsEntrega =
+                registro.obs_entrega || "";
 
                 observacion =
                 registro.observacion || "";
@@ -11820,7 +11884,7 @@ function crearActividadHTML(
             </td>
 
 
-            <td>
+            <td class="columna-entrega">
 
                 <input
                     type="datetime-local"
@@ -11828,12 +11892,18 @@ function crearActividadHTML(
                     value="${escapeHTML(formatearEntregaParaInput(entrega))}"
                     data-estudiante="${estudiante.id}"
                     data-actividad="${actividad.id}"
+                    data-fecha-actividad="${escapeHTML(actividad.fecha || "")}"
+                    data-hora-inicio="${escapeHTML(formatearHoraActividad(actividad.hora_inicio))}"
                     data-valor-inicial="${escapeHTML(formatearEntregaParaInput(entrega))}"
-                    oninput="programarGuardadoCambioActividad(this)"
-                    onchange="programarGuardadoCambioActividad(this)"
+                    oninput="actualizarObsEntregaDesdeInput(this); programarGuardadoCambioActividad(this)"
+                    onchange="actualizarObsEntregaDesdeInput(this); programarGuardadoCambioActividad(this)"
                     disabled
                 >
 
+            </td>
+
+            <td class="columna-obs-entrega">
+                <span class="obs-entrega-actividad">${escapeHTML(obsEntrega)}</span>
             </td>
 
 
@@ -11977,6 +12047,31 @@ function crearActividadHTML(
     };
 
 
+    botonMostrarEntrega.onclick =
+    function(event) {
+
+        event.stopPropagation();
+
+        const visible = columnasEntregaVisibles.has(
+            actividad.id
+        );
+
+        if (visible) {
+            columnasEntregaVisibles.delete(actividad.id);
+            botonMostrarEntrega.classList.add("inactivo");
+            botonMostrarEntrega.title =
+                "Mostrar columnas Entrega y obs_entrega";
+            tabla.classList.add("columnas-entrega-ocultas");
+        } else {
+            columnasEntregaVisibles.add(actividad.id);
+            botonMostrarEntrega.classList.remove("inactivo");
+            botonMostrarEntrega.title =
+                "Ocultar columnas Entrega y obs_entrega";
+            tabla.classList.remove("columnas-entrega-ocultas");
+        }
+    };
+
+
     botonBloquear.onclick =
     function() {
 
@@ -12083,6 +12178,58 @@ function formatearEntregaParaInput(valor) {
 function obtenerEntregaISO(valor) {
     const texto=String(valor||"").trim(); if(!texto) return null;
     const fecha=new Date(texto); return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString();
+}
+
+function tieneHoraActividad(actividad) {
+    return !!(actividad && formatearHoraActividad(actividad.hora_inicio));
+}
+
+function calcularObsEntregaActividad(actividad, entrega) {
+    if (!tieneHoraActividad(actividad) || !entrega) return "";
+
+    const horaInicio = formatearHoraActividad(actividad.hora_inicio);
+    const inicio = new Date(`${actividad.fecha}T${horaInicio}:00`);
+    const entregaFecha = new Date(String(entrega));
+
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(entregaFecha.getTime())) return "";
+
+    const diferenciaMs = entregaFecha.getTime() - inicio.getTime();
+    if (diferenciaMs <= 0) return "puntual";
+
+    const minutos = Math.ceil(diferenciaMs / 60000);
+    const dias = Math.floor(minutos / 1440);
+    const horas = Math.floor((minutos % 1440) / 60);
+    const mins = minutos % 60;
+
+    if (dias === 0) {
+        if (horas === 0) return `atrasado ${mins} min`;
+        return `atrasado ${horas} h${mins ? ` ${mins} min` : ""}`;
+    }
+
+    if (dias === 1) return "atrasado 1 día";
+    if (dias < 7) return `atrasado ${dias} días`;
+    if (dias === 7) return "atrasado 1 semana";
+    const semanas = Math.floor(dias / 7);
+    const diasRestantes = dias % 7;
+    if (diasRestantes === 0) return `atrasado ${semanas} semanas`;
+    return `atrasado ${semanas} semana${semanas === 1 ? "" : "s"} y ${diasRestantes} día${diasRestantes === 1 ? "" : "s"}`;
+}
+
+function actualizarObsEntregaDesdeInput(input) {
+    if (!input) return;
+    const fila = input.closest("tr");
+    if (!fila) return;
+    const actividad = actividades.find(a => String(a.id) === String(input.dataset.actividad));
+    const span = fila.querySelector(".obs-entrega-actividad");
+    if (!span) return;
+
+    if (!tieneHoraActividad(actividad)) {
+        input.value = "";
+        span.textContent = "";
+        return;
+    }
+
+    span.textContent = calcularObsEntregaActividad(actividad, input.value);
 }
 
 /* =====================================================
@@ -14804,6 +14951,17 @@ async function guardarActividadManual(actividadId) {
     }
 
     if (!hayCambios) {
+        for (const input of inputsEntregas) {
+            const actual = input.value.trim();
+            const inicial = (input.dataset.valorInicial || "").trim();
+            if (actual !== inicial) {
+                hayCambios = true;
+                break;
+            }
+        }
+    }
+
+    if (!hayCambios) {
         for (const input of inputsObservaciones) {
             const actual =
                 input.value.trim();
@@ -14869,9 +15027,10 @@ async function guardarActividadManual(actividadId) {
 
             const observacion = observacionesPorEstudiante.get(String(estudianteId)) ?? null;
             const entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
+            const obs_entrega = tieneHoraActividad(actividad) ? calcularObsEntregaActividad(actividad, entrega) || null : null;
 
             registros.push({
-                actividad_id: id, estudiante_id: estudianteId, nota, entrega, observacion
+                actividad_id: id, estudiante_id: estudianteId, nota, entrega, obs_entrega, observacion
             });
         });
 
@@ -14896,7 +15055,7 @@ async function guardarActividadManual(actividadId) {
         } = await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,entrega"
+                "actividad_id,estudiante_id,nota,observacion,entrega,obs_entrega"
             )
             .eq("actividad_id", id)
             .in(
@@ -14938,7 +15097,9 @@ async function guardarActividadManual(actividadId) {
                     ) ===
                     String(
                         registro.observacion ?? ""
-                    );
+                    ) &&
+                    String(anterior.entrega ?? "") === String(registro.entrega ?? "") &&
+                    String(anterior.obs_entrega ?? "") === String(registro.obs_entrega ?? "");
 
                 if (!igual) {
                     estudiantesAfectados.add(
@@ -15051,8 +15212,9 @@ async function guardarActividadManual(actividadId) {
 
             calificaciones[estudianteId][id] = {
                 nota: registro.nota,
-                observacion:
-                    registro.observacion || ""
+                entrega: registro.entrega || "",
+                obs_entrega: registro.obs_entrega || "",
+                observacion: registro.observacion || ""
             };
         });
 
@@ -15068,12 +15230,10 @@ async function guardarActividadManual(actividadId) {
             valoresActividadGuardados.set(
                 clave,
                 JSON.stringify({
-                    nota:
-                        input.value.trim(),
-                    observacion:
-                        document.querySelector(
-                            `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
-                        )?.value.trim() || ""
+                    nota: input.value.trim(),
+                    entrega: document.querySelector(`.entrega-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.value.trim() || "",
+                    obs_entrega: document.querySelector(`.obs-entrega-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.textContent.trim() || "",
+                    observacion: document.querySelector(`.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.value.trim() || ""
                 })
             );
         });
@@ -15090,12 +15250,10 @@ async function guardarActividadManual(actividadId) {
             valoresActividadGuardados.set(
                 clave,
                 JSON.stringify({
-                    nota:
-                        document.querySelector(
-                            `.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
-                        )?.value.trim() || "",
-                    observacion:
-                        input.value.trim()
+                    nota: document.querySelector(`.nota-input[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.value.trim() || "",
+                    entrega: document.querySelector(`.entrega-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.value.trim() || "",
+                    obs_entrega: document.querySelector(`.obs-entrega-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`)?.textContent.trim() || "",
+                    observacion: input.value.trim()
                 })
             );
         });
@@ -18463,6 +18621,13 @@ async function guardarCalificacionQR() {
 
     try {
 
+        const entregaQR = tieneHoraActividad(actividadQRSeleccionada)
+            ? new Date().toISOString()
+            : null;
+        const obsEntregaQR = entregaQR
+            ? calcularObsEntregaActividad(actividadQRSeleccionada, entregaQR) || null
+            : null;
+
         /* Al pulsar "Guardar" en la ventana QR de actividades,
            guardar siempre directamente en Supabase, independientemente
            del modo de guardado seleccionado. */
@@ -18476,7 +18641,8 @@ async function guardarCalificacionQR() {
                 actividad_id: actividadQRSeleccionada.id,
                 estudiante_id: estudianteQRSeleccionado.id,
                 nota: nota,
-                entrega: new Date().toISOString(),
+                entrega: entregaQR,
+                obs_entrega: obsEntregaQR,
                 observacion: observacion || null
             },
             {
@@ -18512,6 +18678,7 @@ async function guardarCalificacionQR() {
             estudiante_id: estudianteQRSeleccionado.id,
             nota: registroAnterior.nota ?? null,
             entrega: registroAnterior.entrega ?? null,
+            obs_entrega: registroAnterior.obs_entrega ?? null,
             observacion: registroAnterior.observacion ?? null
         }
         : null;
@@ -18520,13 +18687,15 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: nota,
-            entrega: new Date().toISOString(),
+            entrega: entregaQR,
+            obs_entrega: obsEntregaQR,
             observacion: observacion || null
         };
 
         if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
             String(anteriorHistorialQR.entrega ?? "") !== String(nuevoHistorialQR.entrega ?? "") ||
+            String(anteriorHistorialQR.obs_entrega ?? "") !== String(nuevoHistorialQR.obs_entrega ?? "") ||
             String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
@@ -18555,6 +18724,9 @@ async function guardarCalificacionQR() {
 
             entrega:
             nuevoHistorialQR.entrega,
+
+            obs_entrega:
+            nuevoHistorialQR.obs_entrega,
 
             observacion:
             observacion
@@ -18585,9 +18757,10 @@ async function guardarCalificacionQR() {
         }
 
         if (entregaTablaQR) {
-            const entregaQR = nuevoHistorialQR.entrega || "";
-            entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
-            entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
+            const entregaMostradaQR = nuevoHistorialQR.entrega || "";
+            entregaTablaQR.value = formatearEntregaParaInput(entregaMostradaQR);
+            entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaMostradaQR);
+            actualizarObsEntregaDesdeInput(entregaTablaQR);
         }
 
         if (observacionTablaQR) {
@@ -18602,7 +18775,7 @@ async function guardarCalificacionQR() {
         if (!guardadoAutomatico) {
             const quedanCambiosActividadQR = Array.from(
                 document.querySelectorAll(
-                    `.nota-input[data-actividad="${actividadIdGuardadaQR}"], .observacion-actividad[data-actividad="${actividadIdGuardadaQR}"]`
+                    `.nota-input[data-actividad="${actividadIdGuardadaQR}"], .entrega-actividad[data-actividad="${actividadIdGuardadaQR}"], .observacion-actividad[data-actividad="${actividadIdGuardadaQR}"]`
                 )
             ).some(input => {
                 const actual = (input.value || "").trim();
