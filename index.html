@@ -284,6 +284,22 @@ button:hover {
     text-align: right;
 }
 
+.actividad-entrega {
+    margin-top: 4px;
+    color: #777;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.3;
+}
+
+.actividad-obs-entrega {
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #e65100;
+    line-height: 1.3;
+}
+
 .actividad-observacion {
     margin-top: 4px;
     font-size: 12px;
@@ -1142,6 +1158,43 @@ async function consultarNota() {
 
 
 /* =================================================
+   PRESENTACIÓN DE ACTIVIDADES
+================================================= */
+
+function formatearFechaHoraPresentacion(fechaHora) {
+    if (!fechaHora) return "No presentó";
+    const texto = String(fechaHora).trim();
+    const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+    if (!match) return texto;
+    return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`;
+}
+
+function obtenerFechaHoraActividad(actividad) {
+    if (!actividad || !actividad.fecha) return null;
+    const hora = actividad.hora_fin || actividad.hora_final || actividad.hora_inicio;
+    if (hora) return `${actividad.fecha}T${String(hora).slice(0, 5)}`;
+    return `${actividad.fecha}T23:59`;
+}
+
+function calcularObsEntrega(actividad, fechaEntrega) {
+    if (!fechaEntrega) return "No presentó";
+    const fechaLimite = obtenerFechaHoraActividad(actividad);
+    if (!fechaLimite) return "";
+    const limite = new Date(fechaLimite);
+    const entrega = new Date(String(fechaEntrega).replace(" ", "T"));
+    if (isNaN(limite.getTime()) || isNaN(entrega.getTime())) return "";
+    const diferencia = entrega.getTime() - limite.getTime();
+    if (diferencia <= 0) return "Puntual";
+    const minutos = Math.floor(diferencia / 60000);
+    const dias = Math.floor(minutos / 1440);
+    const horas = Math.floor((minutos % 1440) / 60);
+    const mins = minutos % 60;
+    if (dias > 0) return `Atrasado ${dias} día${dias !== 1 ? "s" : ""}${horas ? ` ${horas}hr` : ""}${mins ? ` ${mins}min` : ""}`;
+    if (horas > 0) return `Atrasado ${horas}hr${mins ? ` ${mins}min` : ""}`;
+    return `Atrasado ${mins}min`;
+}
+
+/* =================================================
    CALCULAR NOTA DEL 3ER TRIMESTRE Y ANUAL EN HTML
 ================================================= */
 
@@ -1843,7 +1896,7 @@ async function mostrarDetalles() {
 
                 `&trimestre=eq.3` +
 
-                `&select=id,categoria,nombre,orden,puntaje_maximo,fecha` +
+                `&select=id,categoria,nombre,orden,puntaje_maximo,fecha,hora_inicio,hora_fin,hora_final` +
 
                 `&order=orden`,
 
@@ -1929,7 +1982,7 @@ async function mostrarDetalles() {
 
                 `&actividad_id=in.(${ids.join(",")})` +
 
-                `&select=actividad_id,nota,observacion`,
+                `&select=actividad_id,nota,observacion,fecha_entrega`,
 
                 {
 
@@ -1963,7 +2016,10 @@ async function mostrarDetalles() {
                     nota: c.nota,
 
                     observacion:
-                        c.observacion
+                        c.observacion,
+
+                    fecha_entrega:
+                        c.fecha_entrega
 
                 };
 
@@ -2176,6 +2232,23 @@ async function mostrarDetalles() {
                             : "";
 
 
+                        const fechaEntrega =
+                            registro
+                            ? registro.fecha_entrega
+                            : null;
+
+                        const presentacion =
+                            fechaEntrega
+                            ? formatearFechaHoraPresentacion(fechaEntrega)
+                            : "No presentó";
+
+                        const obsEntrega =
+                            calcularObsEntrega(
+                                actividad,
+                                fechaEntrega
+                            );
+
+
                         const valor =
 
                             nota === null ||
@@ -2209,6 +2282,14 @@ async function mostrarDetalles() {
                                             : "Sin fecha"
                                         }
 
+                                    </span>
+
+                                    <span class="actividad-entrega">
+                                        📤 Presentación: ${escapeHTML(presentacion)}
+                                    </span>
+
+                                    <span class="actividad-obs-entrega">
+                                        ${escapeHTML(obsEntrega)}
                                     </span>
 
                                 </div>
