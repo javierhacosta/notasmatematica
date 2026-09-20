@@ -5961,13 +5961,12 @@ Fecha de la actividad
 <div class="campo">
 
 <label>
-Desde qué hora
+Hora de inicio
 </label>
 
 <input
     type="time"
-    id="horaInicioActividad"
-    step="60">
+    id="horaInicioActividad">
 
 </div>
 
@@ -5975,13 +5974,12 @@ Desde qué hora
 <div class="campo">
 
 <label>
-Hasta qué hora
+Hora de final
 </label>
 
 <input
     type="time"
-    id="horaFinActividad"
-    step="60">
+    id="horaFinActividad">
 
 </div>
 
@@ -10610,6 +10608,14 @@ function abrirModalActividad() {
         "nombreActividad"
     ).value = "";
 
+    document.getElementById(
+        "horaInicioActividad"
+    ).value = "";
+
+    document.getElementById(
+        "horaFinActividad"
+    ).value = "";
+
 
     establecerFechaActividadActual();
 
@@ -11451,17 +11457,11 @@ function crearActividadHTML(
 
 
         <span
-            id="hora-actividad-${actividad.id}"
+            id="horario-actividad-${actividad.id}"
             class="puntaje-actividad">
-
-            ${(
-                actividad.hora_inicio &&
-                actividad.hora_fin
-            )
-                ? `— ${escapeHTML(String(actividad.hora_inicio).slice(0,5))} a ${escapeHTML(String(actividad.hora_fin).slice(0,5))}`
-                : ""
-            }
-
+            ${actividad.hora_inicio && actividad.hora_fin
+                ? `— ${escapeHTML(actividad.hora_inicio)} a ${escapeHTML(actividad.hora_fin)}`
+                : ""}
         </span>
 
 
@@ -12109,7 +12109,7 @@ async function editarNombreActividad(
     if (!fechaValida) {
 
         alert(
-            "La fecha debe tener el formato AAAA-MM-DD.\\n\\nEjemplo: 28/08/2026 se escribe como 2026-08-28."
+            "La fecha debe tener el formato AAAA-MM-DD.\n\nEjemplo: 28/08/2026 se escribe como 2026-08-28."
         );
 
         return;
@@ -12118,111 +12118,47 @@ async function editarNombreActividad(
 
 
     const horaInicioActual =
-    actividad.hora_inicio
-        ? String(actividad.hora_inicio).slice(0, 5)
-        : "";
-
-
-    const horaFinActual =
-    actividad.hora_fin
-        ? String(actividad.hora_fin).slice(0, 5)
-        : "";
-
+    actividad.hora_inicio || "";
 
     const nuevaHoraInicio =
     prompt(
-        "¿Desde qué hora? (HH:MM). Deja vacío si no deseas registrar horario.",
+        "Escribe la hora de inicio (HH:MM):",
         horaInicioActual
     );
 
-
-    if (
-        nuevaHoraInicio === null
-    ) {
+    if (nuevaHoraInicio === null) {
         return;
     }
 
+    const horaInicio = nuevaHoraInicio.trim();
 
-    const horaInicio =
-    nuevaHoraInicio.trim();
-
+    const horaFinActual =
+    actividad.hora_fin || "";
 
     const nuevaHoraFin =
     prompt(
-        "¿Hasta qué hora? (HH:MM). Deja vacío si no deseas registrar horario.",
+        "Escribe la hora final (HH:MM):",
         horaFinActual
     );
 
-
-    if (
-        nuevaHoraFin === null
-    ) {
+    if (nuevaHoraFin === null) {
         return;
     }
 
-
-    const horaFin =
-    nuevaHoraFin.trim();
-
-
-    if (
-        (horaInicio && !horaFin) ||
-        (!horaInicio && horaFin)
-    ) {
-
-        alert(
-            "Si colocas la hora, debes indicar desde qué hora y hasta qué hora."
-        );
-
-        return;
-
-    }
-
+    const horaFin = nuevaHoraFin.trim();
 
     const horaValida =
-    /^([01]\d|2[0-3]):[0-5]\d$/.test;
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
 
-
-    if (
-        horaInicio &&
-        !horaValida(horaInicio)
-    ) {
-
-        alert(
-            "La hora de inicio debe tener el formato HH:MM."
-        );
-
+    if (!horaValida) {
+        alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
         return;
-
     }
 
-
-    if (
-        horaFin &&
-        !horaValida(horaFin)
-    ) {
-
-        alert(
-            "La hora de finalización debe tener el formato HH:MM."
-        );
-
+    if (horaFin <= horaInicio) {
+        alert("La hora final debe ser posterior a la hora de inicio.");
         return;
-
-    }
-
-
-    if (
-        horaInicio &&
-        horaFin &&
-        horaInicio >= horaFin
-    ) {
-
-        alert(
-            "La hora de inicio debe ser menor que la hora de finalización."
-        );
-
-        return;
-
     }
 
 
@@ -12255,10 +12191,10 @@ async function editarNombreActividad(
         fecha,
 
         hora_inicio:
-        horaInicio || null,
+        horaInicio,
 
         hora_fin:
-        horaFin || null
+        horaFin
 
     })
     .eq(
@@ -12288,10 +12224,10 @@ async function editarNombreActividad(
     fecha;
 
     actividad.hora_inicio =
-    horaInicio || null;
+    horaInicio;
 
     actividad.hora_fin =
-    horaFin || null;
+    horaFin;
 
 
     const elementoNombre =
@@ -12326,24 +12262,15 @@ async function editarNombreActividad(
 
     }
 
-
-    const elementoHora =
+    const elementoHorario =
     document.getElementById(
-        "hora-actividad-" +
+        "horario-actividad-" +
         actividad.id
     );
 
-
-    if (elementoHora) {
-
-        elementoHora.textContent =
-            (
-                horaInicio &&
-                horaFin
-            )
-                ? "— " + horaInicio + " a " + horaFin
-                : "";
-
+    if (elementoHorario) {
+        elementoHorario.textContent =
+            "— " + horaInicio + " a " + horaFin;
     }
 
 
@@ -12485,14 +12412,12 @@ async function crearActividad() {
         "fechaActividad"
     ).value;
 
-
-    const horaInicioActividad =
+    const horaInicio =
     document.getElementById(
         "horaInicioActividad"
     ).value;
 
-
-    const horaFinActividad =
+    const horaFin =
     document.getElementById(
         "horaFinActividad"
     ).value;
@@ -12534,32 +12459,9 @@ async function crearActividad() {
     }
 
 
-    if (
-        (horaInicioActividad && !horaFinActividad) ||
-        (!horaInicioActividad && horaFinActividad)
-    ) {
-
-        alert(
-            "Si colocas la hora, debes indicar desde qué hora y hasta qué hora."
-        );
-
+    if (horaInicio && horaFin && horaFin <= horaInicio) {
+        alert("La hora final debe ser posterior a la hora de inicio.");
         return;
-
-    }
-
-
-    if (
-        horaInicioActividad &&
-        horaFinActividad &&
-        horaInicioActividad >= horaFinActividad
-    ) {
-
-        alert(
-            "La hora de inicio debe ser menor que la hora de finalización."
-        );
-
-        return;
-
     }
 
 
@@ -12634,10 +12536,10 @@ async function crearActividad() {
         fechaActividad,
 
         hora_inicio:
-        horaInicioActividad || null,
+        horaInicio || null,
 
         hora_fin:
-        horaFinActividad || null,
+        horaFin || null,
 
         orden:
         orden,
