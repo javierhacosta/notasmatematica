@@ -3157,6 +3157,20 @@ td,
 #contenedorActividades table td:nth-child(4) { width:180px; min-width:170px; }
 #contenedorActividades table .entrega-actividad { width:100%; min-width:165px; }
 
+@media (max-width: 600px) {
+    #contenedorActividades table th:nth-child(4),
+    #contenedorActividades table td:nth-child(4) {
+        width: 90px;
+        min-width: 85px;
+        max-width: 90px;
+    }
+
+    #contenedorActividades table .entrega-actividad {
+        min-width: 80px;
+        width: 100%;
+    }
+}
+
 /* Columnas Entrega / obs_entrega ocultas por defecto. */
 .columna-entrega,
 .columna-obs-entrega {
@@ -10959,7 +10973,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion,entrega"
+        "id,actividad_id,estudiante_id,nota,observacion,fecha_entrega"
     )
     .in(
         "actividad_id",
@@ -11013,8 +11027,8 @@ async function cargarCalificaciones() {
             observacion:
             cal.observacion || "",
 
-            entrega:
-            cal.entrega || ""
+            fecha_entrega:
+            cal.fecha_entrega || ""
 
         };
 
@@ -11407,7 +11421,7 @@ function obtenerIconoAsistenciaActividad(
 
 /*
  * Devuelve la fecha/hora límite de la actividad.
- * Si la actividad no tiene hora de inicio, no se calcula entrega.
+ * Si la actividad no tiene hora de inicio, no se calcula fecha_entrega.
  */
 function obtenerFechaHoraActividad(actividad) {
     if (!actividad || !actividad.fecha || !actividad.hora_inicio) return null;
@@ -11420,14 +11434,14 @@ function obtenerFechaHoraActividad(actividad) {
 }
 
 /*
- * Calcula obs_entrega comparando la fecha/hora de entrega
+ * Calcula obs_entrega comparando la fecha/hora de fecha_entrega
  * con la fecha/hora de inicio de la actividad.
  */
-function calcularObsEntrega(actividad, entrega) {
+function calcularObsEntrega(actividad, fecha_entrega) {
     const limite = obtenerFechaHoraActividad(actividad);
-    if (!limite || !entrega) return "";
+    if (!limite || !fecha_entrega) return "";
 
-    const fechaEntrega = new Date(String(entrega));
+    const fechaEntrega = new Date(String(fecha_entrega));
     if (Number.isNaN(fechaEntrega.getTime())) return "";
 
     const diferenciaMs = fechaEntrega.getTime() - limite.getTime();
@@ -11470,9 +11484,9 @@ function actualizarObsEntregaFila(fila, actividad) {
     if (!celda) return;
 
     const tieneHora = !!obtenerFechaHoraActividad(actividad);
-    const entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
+    const fecha_entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
 
-    celda.textContent = calcularObsEntrega(actividad, entrega);
+    celda.textContent = calcularObsEntrega(actividad, fecha_entrega);
     celda.title = celda.textContent || "";
 }
 
@@ -11867,7 +11881,7 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
-                <th class="columna-entrega">Entrega</th>
+                <th class="columna-entrega">fecha_entrega</th>
 
                 <th class="columna-obs-entrega">obs_entrega</th>
 
@@ -11900,7 +11914,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
-        let entrega = "";
+        let fecha_entrega = "";
         let observacion = "";
         const actividadTieneHora = !!obtenerFechaHoraActividad(actividad);
 
@@ -11932,8 +11946,8 @@ function crearActividadHTML(
                 nota =
                 registro.nota;
 
-                entrega =
-                registro.entrega || "";
+                fecha_entrega =
+                registro.fecha_entrega || "";
 
                 observacion =
                 registro.observacion || "";
@@ -12037,10 +12051,10 @@ function crearActividadHTML(
                 <input
                     type="datetime-local"
                     class="entrega-actividad"
-                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
+                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     data-estudiante="${estudiante.id}"
                     data-actividad="${actividad.id}"
-                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
+                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     oninput="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
                     onchange="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
                     ${actividadTieneHora ? "" : "disabled"}
@@ -15114,10 +15128,10 @@ async function guardarActividadManual(actividadId) {
                 : Number(input.value);
 
             const observacion = observacionesPorEstudiante.get(String(estudianteId)) ?? null;
-            const entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
+            const fecha_entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
 
             registros.push({
-                actividad_id: id, estudiante_id: estudianteId, nota, entrega, observacion
+                actividad_id: id, estudiante_id: estudianteId, nota, fecha_entrega, observacion
             });
         });
 
@@ -15142,7 +15156,7 @@ async function guardarActividadManual(actividadId) {
         } = await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,entrega"
+                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
             )
             .eq("actividad_id", id)
             .in(
@@ -15491,10 +15505,10 @@ async function guardarNotas() {
             const nota = input.value === "" ? null : Number(input.value);
             const clave = `${actividadId}|${estudianteId}`;
             const observacion = observaciones.get(clave) ?? null;
-            const entrega = entregas.get(clave) ?? null;
+            const fecha_entrega = entregas.get(clave) ?? null;
 
             registros.push({
-                actividad_id: actividadId, estudiante_id: estudianteId, nota, entrega, observacion
+                actividad_id: actividadId, estudiante_id: estudianteId, nota, fecha_entrega, observacion
             });
         }
 
@@ -15511,7 +15525,7 @@ async function guardarNotas() {
             const { data: anteriores, error: errorAnteriores } =
                 await supabaseClient
                     .from("calificaciones")
-                    .select("actividad_id,estudiante_id,nota,observacion,entrega")
+                    .select("actividad_id,estudiante_id,nota,observacion,fecha_entrega")
                     .in("actividad_id", idsActividades)
                     .in("estudiante_id", idsEstudiantes);
 
@@ -15533,7 +15547,7 @@ async function guardarNotas() {
                     anterior &&
                     String(anterior.nota ?? "") === String(registro.nota ?? "") &&
                     String(anterior.observacion ?? "") === String(registro.observacion ?? "") &&
-                    String(anterior.entrega ?? "") === String(registro.entrega ?? "");
+                    String(anterior.fecha_entrega ?? "") === String(registro.fecha_entrega ?? "");
 
                 if (!igual) estudiantesAfectados.add(Number(registro.estudiante_id));
                 return !igual;
@@ -15602,7 +15616,7 @@ async function guardarNotas() {
                 }
 
                 calificaciones[estudianteId][actividadId] = {
-                    nota: registro.nota, entrega: registro.entrega || "", observacion: registro.observacion || ""
+                    nota: registro.nota, fecha_entrega: registro.fecha_entrega || "", observacion: registro.observacion || ""
                 };
             });
         }
@@ -18722,7 +18736,7 @@ async function guardarCalificacionQR() {
                 actividad_id: actividadQRSeleccionada.id,
                 estudiante_id: estudianteQRSeleccionado.id,
                 nota: nota,
-                entrega: new Date().toISOString(),
+                fecha_entrega: new Date().toISOString(),
                 observacion: observacion || null
             },
             {
@@ -18757,7 +18771,7 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: registroAnterior.nota ?? null,
-            entrega: registroAnterior.entrega ?? null,
+            fecha_entrega: registroAnterior.fecha_entrega ?? null,
             observacion: registroAnterior.observacion ?? null
         }
         : null;
@@ -18766,13 +18780,13 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: nota,
-            entrega: new Date().toISOString(),
+            fecha_entrega: new Date().toISOString(),
             observacion: observacion || null
         };
 
         if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
-            String(anteriorHistorialQR.entrega ?? "") !== String(nuevoHistorialQR.entrega ?? "") ||
+            String(anteriorHistorialQR.fecha_entrega ?? "") !== String(nuevoHistorialQR.fecha_entrega ?? "") ||
             String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
@@ -18799,8 +18813,8 @@ async function guardarCalificacionQR() {
             nota:
             nota,
 
-            entrega:
-            nuevoHistorialQR.entrega,
+            fecha_entrega:
+            nuevoHistorialQR.fecha_entrega,
 
             observacion:
             observacion
@@ -18831,7 +18845,7 @@ async function guardarCalificacionQR() {
         }
 
         if (entregaTablaQR) {
-            const entregaQR = nuevoHistorialQR.entrega || "";
+            const entregaQR = nuevoHistorialQR.fecha_entrega || "";
             entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
             entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
 
