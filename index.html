@@ -1162,7 +1162,7 @@ async function consultarNota() {
 ================================================= */
 
 function formatearFechaHoraPresentacion(fechaHora) {
-    if (!fechaHora) return "No presentó";
+    if (!fechaHora) return "";
     const texto = String(fechaHora).trim();
     const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
     if (!match) return texto;
@@ -1177,7 +1177,7 @@ function obtenerFechaHoraActividad(actividad) {
 }
 
 function calcularObsEntrega(actividad, fechaEntrega) {
-    if (!fechaEntrega) return "No presentó";
+    if (!fechaEntrega) return "";
     const fechaLimite = obtenerFechaHoraActividad(actividad);
     if (!fechaLimite) return "";
     const limite = new Date(fechaLimite);
@@ -2240,13 +2240,15 @@ async function mostrarDetalles() {
                         const presentacion =
                             fechaEntrega
                             ? formatearFechaHoraPresentacion(fechaEntrega)
-                            : "No presentó";
+                            : "";
 
                         const obsEntrega =
-                            calcularObsEntrega(
+                            fechaEntrega
+                            ? calcularObsEntrega(
                                 actividad,
                                 fechaEntrega
-                            );
+                            )
+                            : "";
 
 
                         const valor =
@@ -2284,13 +2286,25 @@ async function mostrarDetalles() {
 
                                     </span>
 
+                                    ${
+                                        fechaEntrega
+                                        ? `
                                     <span class="actividad-entrega">
-                                        📤 Presentación: ${escapeHTML(presentacion)}
+                                        🕐 Presentación: ${escapeHTML(presentacion)}
                                     </span>
 
+                                    ${
+                                        obsEntrega
+                                        ? `
                                     <span class="actividad-obs-entrega">
                                         ${escapeHTML(obsEntrega)}
                                     </span>
+                                        `
+                                        : ""
+                                    }
+                                        `
+                                        : ""
+                                    }
 
                                 </div>
 
