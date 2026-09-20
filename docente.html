@@ -12446,12 +12446,17 @@ async function editarNombreActividad(
     }
 
 
+    /*
+       La hora es opcional al editar.
+       Si se deja vacía cualquiera de las dos horas, la actividad
+       queda sin horario, igual que una actividad sin hora.
+    */
     const horaInicioActual =
     formatearHoraActividad(actividad.hora_inicio);
 
     const nuevaHoraInicio =
     prompt(
-        "Escribe la hora de inicio (HH:MM):",
+        "Escribe la hora de inicio (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
         horaInicioActual
     );
 
@@ -12459,14 +12464,14 @@ async function editarNombreActividad(
         return;
     }
 
-    const horaInicio = nuevaHoraInicio.trim();
+    let horaInicio = nuevaHoraInicio.trim();
 
     const horaFinActual =
     formatearHoraActividad(actividad.hora_fin);
 
     const nuevaHoraFin =
     prompt(
-        "Escribe la hora final (HH:MM):",
+        "Escribe la hora final (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
         horaFinActual
     );
 
@@ -12474,28 +12479,37 @@ async function editarNombreActividad(
         return;
     }
 
-    const horaFin = nuevaHoraFin.trim();
+    let horaFin = nuevaHoraFin.trim();
 
-    const horaValida =
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
+    /* Si falta una de las dos horas, se eliminan ambas. */
+    if (!horaInicio || !horaFin) {
+        horaInicio = null;
+        horaFin = null;
+    } else {
 
-    if (!horaValida) {
-        alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
-        return;
+        const horaValida =
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
+
+        if (!horaValida) {
+            alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
+            return;
+        }
+
+        if (horaFin <= horaInicio) {
+            alert("La hora final debe ser posterior a la hora de inicio.");
+            return;
+        }
     }
 
-    if (horaFin <= horaInicio) {
-        alert("La hora final debe ser posterior a la hora de inicio.");
-        return;
-    }
-
+    const horaInicioComparar = horaInicio || "";
+    const horaFinComparar = horaFin || "";
 
     if (
         nombre === actividad.nombre &&
         fecha === fechaActual &&
-        horaInicio === horaInicioActual &&
-        horaFin === horaFinActual
+        horaInicioComparar === horaInicioActual &&
+        horaFinComparar === horaFinActual
     ) {
         return;
     }
@@ -12599,7 +12613,9 @@ async function editarNombreActividad(
 
     if (elementoHorario) {
         elementoHorario.textContent =
-            "— " + horaInicio + " a " + horaFin;
+            horaInicio && horaFin
+                ? "— " + horaInicio + " a " + horaFin
+                : "";
     }
 
 
@@ -12608,7 +12624,6 @@ async function editarNombreActividad(
     );
 
 }
-
 
 /* =====================================================
    VALIDAR NOTA
