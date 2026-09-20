@@ -5205,6 +5205,14 @@ table tbody tr:nth-child(10n+10) td {
     .config-horario-asistencia { gap: 7px; }
     .config-horario-asistencia label { font-size: 12px; }
 }
+
+.detalle-presentacion-actividad {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    color: #555;
+    font-weight: 600;
+}
 </style>
 
 </head>
@@ -18335,6 +18343,33 @@ function obtenerActividadesAnterioresQR(actividadActual) {
         });
 }
 
+function obtenerTextoPresentacionActividad(actividad, fechaEntrega) {
+    if (!fechaEntrega) return "❌ No presentó";
+
+    let resultado = calcularObsEntrega(actividad, fechaEntrega);
+
+    /* Si la actividad no tiene hora de inicio, comparar igualmente por fecha. */
+    if (!resultado && actividad && actividad.fecha) {
+        const fechaActividad = new Date(`${String(actividad.fecha).slice(0, 10)}T00:00:00`);
+        const fechaEntregaSoloFecha = new Date(`${String(fechaEntrega).slice(0, 10)}T00:00:00`);
+
+        if (!Number.isNaN(fechaActividad.getTime()) && !Number.isNaN(fechaEntregaSoloFecha.getTime())) {
+            const diferenciaMs = fechaEntregaSoloFecha.getTime() - fechaActividad.getTime();
+            if (diferenciaMs <= 0) {
+                resultado = "Puntual";
+            } else {
+                const dias = Math.floor(diferenciaMs / 86400000);
+                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
+            }
+        }
+    }
+
+    if (!resultado) return "";
+    if (resultado === "Puntual") return "✅ Puntual";
+    return `⏰ ${resultado}`;
+}
+
+
 function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
     if (!checkbox || !checkbox.checked) return "";
@@ -18360,6 +18395,10 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                 const observacion = registro && typeof registro === "object"
                     ? (registro.observacion || "")
                     : "";
+                const fechaEntrega = registro && typeof registro === "object"
+                    ? (registro.fecha_entrega || "")
+                    : "";
+                const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
                 const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
                     ? "Sin nota"
                     : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
@@ -18373,6 +18412,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                             ${escapeHTML(a.nombre)}
                             <small style="display:block;color:#777;font-size:11px;">
                                 📅 ${escapeHTML(a.fecha || "")}
+                                ${textoPresentacion ? `<br>${escapeHTML(textoPresentacion)}` : ""}
                             </small>
                             ${textoObservacion}
                         </span>
@@ -19274,12 +19314,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 .order("fecha", { ascending:false }),
 
             supabaseClient.from("actividades")
-                .select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo")
+                .select("id,curso,trimestre,categoria,nombre,fecha,hora_inicio,orden,puntaje_maximo")
                 .eq("curso", estudiante.curso)
                 .order("trimestre").order("orden"),
 
             supabaseClient.from("calificaciones")
-                .select("id,actividad_id,estudiante_id,nota,observacion")
+                .select("id,actividad_id,estudiante_id,nota,observacion,fecha_entrega")
                 .eq("estudiante_id", estudianteId)
         ]);
 
@@ -19301,7 +19341,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         calMap[String(c.actividad_id)] = {
             id: c.id,
             nota:c.nota,
-            observacion:c.observacion || ""
+            observacion:c.observacion || "",
+            fecha_entrega:c.fecha_entrega || ""
         };
     });
 
@@ -19391,6 +19432,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
+        const fechaEntrega = registro?.fecha_entrega || "";
+        const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
 
         const categoria = String(a.categoria || "").toUpperCase();
         const claseCategoria =
@@ -19416,6 +19459,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 <td>
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
                     ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
+                    ${textoPresentacion ? `<small class="detalle-presentacion-actividad">${escapeHTML(textoPresentacion)}</small>` : ""}
                 </td>
                 <td class="detalle-celda-nota">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
