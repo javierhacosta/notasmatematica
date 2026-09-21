@@ -18353,35 +18353,61 @@ function obtenerActividadesAnterioresQR(actividadActual) {
 
 function obtenerTextoPresentacionActividad(actividad, fechaEntrega, nota) {
     /* Si la nota es 0, se considera que no presentó. */
-    if (nota !== null && nota !== undefined && String(nota).trim() !== "" && Number(nota) === 0) {
+    if (
+        nota !== null &&
+        nota !== undefined &&
+        String(nota).trim() !== "" &&
+        Number(nota) === 0
+    ) {
         return "❌ No presentó";
     }
 
-    if (!fechaEntrega) return "";
+    /* Si existe fecha de entrega, calcular siempre Puntual/Atrasado. */
+    if (fechaEntrega) {
+        let resultado = calcularObsEntrega(actividad, fechaEntrega);
 
-    let resultado = calcularObsEntrega(actividad, fechaEntrega);
+        /* Si no hay hora configurada, comparar por fecha. */
+        if (!resultado && actividad && actividad.fecha) {
+            const fechaActividad = new Date(
+                `${String(actividad.fecha).slice(0, 10)}T00:00:00`
+            );
+            const fechaEntregaSoloFecha = new Date(
+                `${String(fechaEntrega).slice(0, 10)}T00:00:00`
+            );
 
-    /* Si la actividad no tiene hora de inicio, comparar igualmente por fecha. */
-    if (!resultado && actividad && actividad.fecha) {
-        const fechaActividad = new Date(`${String(actividad.fecha).slice(0, 10)}T00:00:00`);
-        const fechaEntregaSoloFecha = new Date(`${String(fechaEntrega).slice(0, 10)}T00:00:00`);
+            if (
+                !Number.isNaN(fechaActividad.getTime()) &&
+                !Number.isNaN(fechaEntregaSoloFecha.getTime())
+            ) {
+                const diferenciaMs =
+                    fechaEntregaSoloFecha.getTime() -
+                    fechaActividad.getTime();
 
-        if (!Number.isNaN(fechaActividad.getTime()) && !Number.isNaN(fechaEntregaSoloFecha.getTime())) {
-            const diferenciaMs = fechaEntregaSoloFecha.getTime() - fechaActividad.getTime();
-            if (diferenciaMs <= 0) {
-                resultado = "Puntual";
-            } else {
-                const dias = Math.floor(diferenciaMs / 86400000);
-                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
+                if (diferenciaMs <= 0) {
+                    resultado = "Puntual";
+                } else {
+                    const dias = Math.floor(
+                        diferenciaMs / 86400000
+                    );
+                    resultado =
+                        `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
+                }
             }
+        }
+
+        if (resultado === "Puntual") {
+            return "✅ Puntual";
+        }
+
+        if (resultado) {
+            return `⏰ ${resultado}`;
         }
     }
 
-    if (!resultado) return "";
-    if (resultado === "Puntual") return "✅ Puntual";
-    return `⏰ ${resultado}`;
+    /* Si no hay fecha de entrega y tiene una nota distinta de 0,
+       no inventar un estado de presentación. */
+    return "";
 }
-
 
 function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
