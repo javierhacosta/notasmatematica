@@ -1526,6 +1526,12 @@ td:first-child {
     display: inline-block;
 }
 
+.calendario-dia-asistencia .icono-horario-actividad-calendario {
+    font-size: 8px;
+    line-height: 10px;
+    display: inline-block;
+}
+
 .calendario-dia-asistencia .contador-categoria-actividad {
     font-size: 6px;
     line-height: 1;
@@ -8747,6 +8753,33 @@ function renderizarCalendarioFechasAsistencia() {
                 icono.title = nombresCategoria[categoria] || categoria;
                 marcaActividad.appendChild(icono);
             });
+
+            /* Icono pequeño adicional para indicar que la actividad tiene horario de presentación. */
+            const actividadesConHorario = actividades.filter(a =>
+                String(a?.fecha || "") === clave &&
+                (String(a?.hora_inicio || "").trim() || String(a?.hora_fin || "").trim())
+            );
+
+            if (actividadesConHorario.length > 0) {
+                const iconoHorarioActividad = document.createElement("span");
+                iconoHorarioActividad.className = "icono-horario-actividad-calendario";
+                iconoHorarioActividad.textContent = "🕐";
+
+                const horarios = actividadesConHorario
+                    .map(a => {
+                        const inicio = String(a?.hora_inicio || "").slice(0, 5);
+                        const fin = String(a?.hora_fin || "").slice(0, 5);
+                        if (inicio && fin) return inicio + " a " + fin;
+                        return inicio || fin;
+                    })
+                    .filter(Boolean);
+
+                iconoHorarioActividad.title = horarios.length
+                    ? "Actividad con hora de presentación: " + horarios.join(", ")
+                    : "Actividad con hora de presentación";
+
+                marcaActividad.appendChild(iconoHorarioActividad);
+            }
 
             boton.appendChild(marcaActividad);
         }
