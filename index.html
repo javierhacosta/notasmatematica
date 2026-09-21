@@ -293,11 +293,39 @@ button:hover {
 }
 
 .actividad-obs-entrega {
-    margin-top: 3px;
-    font-size: 12px;
+    margin-top: 4px;
+    font-size: 13px;
     font-weight: bold;
     color: #e65100;
-    line-height: 1.3;
+    line-height: 1.35;
+}
+
+.actividad-estado-entrega {
+    display: block;
+    margin-top: 5px;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.35;
+}
+
+.actividad-estado-puntual {
+    color: #2e7d32;
+}
+
+.actividad-estado-atrasado {
+    color: #e65100;
+}
+
+.actividad-estado-no-presento {
+    color: #c62828;
+}
+
+.actividad-fecha-entrega {
+    display: block;
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+    font-weight: normal;
 }
 
 .actividad-observacion {
@@ -734,6 +762,121 @@ button:hover {
 }
 
 
+
+/* =================================================
+   MEJORAS DE CLARIDAD PARA ESTUDIANTES Y FAMILIAS
+================================================= */
+.guia-consulta {
+    background: #f7faff;
+    border: 1px solid #cfe0f5;
+    border-left: 5px solid #1557a6;
+    border-radius: 14px;
+    padding: 15px;
+    margin: 0 0 22px;
+}
+.guia-titulo {
+    color: #1557a6;
+    font-weight: 800;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.guia-paso {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 8px 0;
+    color: #37474f;
+    font-size: 14px;
+    line-height: 1.4;
+}
+.guia-paso span {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1557a6;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+.guia-ayuda {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid #dbe7f4;
+    color: #607d8b;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.ayuda-campo {
+    color: #607d8b;
+    font-size: 12px;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+.cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 20px 10px;
+}
+.cargando-icono { font-size: 28px; }
+.cargando small { color: #607d8b; }
+.titulo-3t {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.subtexto-nota, .subtexto-final {
+    display: block;
+    font-size: 12px;
+    color: #607d8b;
+    font-weight: normal;
+    line-height: 1.4;
+}
+.final-titulo { line-height: 1.4; }
+.estado-label {
+    display: block;
+    font-size: 12px;
+    color: #607d8b;
+    font-weight: normal;
+    margin-bottom: 3px;
+}
+.explicacion-nota {
+    background: #f7faff;
+    border: 1px solid #e0e8f0;
+    border-radius: 10px;
+    padding: 12px;
+    color: #455a64;
+    font-size: 13px;
+    line-height: 1.55;
+    margin-bottom: 14px;
+}
+.asistencia-card .texto {
+    font-size: 11px;
+    font-weight: 800;
+}
+.asistencia-card .texto-ayuda {
+    display: block;
+    color: #78909c;
+    font-size: 10px;
+    margin-top: 3px;
+    line-height: 1.2;
+}
+.nota-box > .curso {
+    font-size: 14px;
+    font-weight: 600;
+}
+@media(max-width:500px) {
+    .guia-consulta { padding: 13px; }
+    .guia-paso { font-size: 13px; }
+    .subtexto-nota, .subtexto-final { font-size: 11px; }
+    .explicacion-nota { font-size: 12px; }
+}
+
 </style>
 
 </head>
@@ -767,15 +910,21 @@ button:hover {
 
 
     <div class="subtitulo">
+        Consulta de notas, actividades y asistencia
+    </div>
 
-        Consulta tu calificación
-
+    <div class="guia-consulta">
+        <div class="guia-titulo">📌 ¿Cómo consultar?</div>
+        <div class="guia-paso"><span>1</span> Escribe tu <strong>Carnet de Identidad (CI)</strong>.</div>
+        <div class="guia-paso"><span>2</span> Selecciona tu <strong>fecha de nacimiento</strong>.</div>
+        <div class="guia-paso"><span>3</span> Pulsa <strong>“Consultar mis notas”</strong>.</div>
+        <div class="guia-ayuda">La información que aparece corresponde a los registros disponibles en este momento.</div>
     </div>
 
 
     <label for="ci">
 
-        CI
+        Carnet de Identidad (CI)
 
     </label>
 
@@ -784,6 +933,8 @@ button:hover {
         type="text"
         id="ci"
         placeholder="Ejemplo: 1234567"
+        inputmode="numeric"
+        autocomplete="off"
     >
 
 
@@ -792,6 +943,7 @@ button:hover {
         Fecha de nacimiento
 
     </label>
+    <div class="ayuda-campo">Usa la fecha registrada en la institución.</div>
 
 
     <input
@@ -802,7 +954,7 @@ button:hover {
 
     <button onclick="consultarNota()">
 
-        Consultar mi nota
+        🔎 Consultar mis notas
 
     </button>
 
@@ -865,7 +1017,7 @@ function iniciarCuentaRegresivaVisita(segundos) {
     const boton = document.querySelector('button[onclick="consultarNota()"]');
     if (!boton || segundos <= 0) return;
 
-    const textoOriginal = "Consultar mi nota";
+    const textoOriginal = "🔎 Consultar mis notas";
 
     const actualizar = () => {
 
@@ -1025,7 +1177,7 @@ async function consultarNota() {
 
             resultado.innerHTML =
                 '<p class="error">' +
-                'CI o fecha de nacimiento incorrectos.' +
+                'No encontramos un estudiante con esos datos. Revisa el CI y la fecha de nacimiento e inténtalo nuevamente.' +
                 '</p>';
 
             return;
@@ -1441,7 +1593,7 @@ async function mostrarResultado(alumno) {
 
             <div class="curso">
 
-                Curso:
+                🎓 Curso:
                 ${escapeHTML(
                     alumno.curso || ""
                 )}
@@ -1450,21 +1602,14 @@ async function mostrarResultado(alumno) {
 
 
             <div class="aviso-provisional">
-
-                <strong>
-                    📌 RESULTADOS PROVISIONALES
-                </strong>
-
-                Las calificaciones pueden modificarse
-                con las próximas actividades y evaluaciones.
-
+                <strong>📌 Información importante</strong>
+                Estas son tus calificaciones registradas hasta el momento. Pueden cambiar cuando se registren nuevas actividades o evaluaciones.
             </div>
 
 
             <div class="titulo-3t">
-
-                Nota del 3er Trimestre
-
+                📘 Nota del 3er Trimestre
+                <span class="subtexto-nota">Resultado acumulado del tercer trimestre</span>
             </div>
 
 
@@ -1593,7 +1738,7 @@ async function mostrarResultado(alumno) {
                     ? `
 
                         <div class="estado ${claseFinal}">
-
+                            <span class="estado-label">Resultado:</span>
                             ${
                                 final <= 50
                                 ? "REPROBADO"
@@ -1729,7 +1874,7 @@ async function mostrarCentralizador() {
             contenedor.innerHTML = `
                 <div class="centralizador-box">
                     <div class="centralizador-titulo">
-                        📊 NOTAS DE TODAS LAS MATERIAS
+                        📚 Mis notas de todas las materias
                     </div>
                     <p style="text-align:center;color:#666;line-height:1.5;">
                         No se encontraron notas en el centralizador.
@@ -1771,7 +1916,7 @@ async function mostrarCentralizador() {
             <div class="centralizador-box">
 
                 <div class="centralizador-titulo">
-                    📊 NOTAS DE TODAS LAS MATERIAS
+                    📚 Mis notas de todas las materias
                 </div>
 
                 <div style="text-align:center;color:#666;font-size:13px;margin-bottom:12px;">
@@ -1784,10 +1929,10 @@ async function mostrarCentralizador() {
                         <thead>
                             <tr>
                                 <th>Materia</th>
-                                <th>1er Trimestre</th>
-                                <th>2do Trimestre</th>
-                                <th>3er Trimestre</th>
-                                <th>Promedio Anual</th>
+                                <th>1er trim.</th>
+                                <th>2do trim.</th>
+                                <th>3er trim.</th>
+                                <th>Promedio anual</th>
                             </tr>
                         </thead>
 
@@ -1806,7 +1951,7 @@ async function mostrarCentralizador() {
         contenedor.innerHTML = `
             <div class="centralizador-box">
                 <div class="centralizador-titulo">
-                    📊 NOTAS DE TODAS LAS MATERIAS
+                    📚 Mis notas de todas las materias
                 </div>
                 <p class="error">
                     No se pudo cargar el centralizador de notas.
@@ -2069,10 +2214,10 @@ async function mostrarDetalles() {
             <div class="detalle">
 
                 <div class="detalle-titulo">
-
-                    📊 ¿Cómo se calcula tu nota
-                    del 3er trimestre?
-
+                    📊 Entiende tu nota del 3er trimestre
+                </div>
+                <div class="explicacion-nota">
+                    Revisa por separado tus <strong>actitudes y responsabilidad</strong>, <strong>evaluaciones</strong>, <strong>tareas y trabajos</strong> y <strong>autoevaluación</strong>. En cada actividad se muestra la nota registrada y, cuando corresponde, la observación.
                 </div>
 
 
@@ -2302,25 +2447,18 @@ async function mostrarDetalles() {
                                     ${
                                         notaSinPresentar
                                         ? `
-                                    <span class="actividad-entrega">
-                                        🕐 Presentación: <span style="color:red;font-weight:bold;">No presentó</span>
+                                    <span class="actividad-estado-entrega actividad-estado-no-presento">
+                                        ❌ No presentó
                                     </span>
                                         `
                                         : fechaEntrega
                                         ? `
-                                    <span class="actividad-entrega">
-                                        🕐 Presentación: ${escapeHTML(presentacion)}
+                                    <span class="actividad-estado-entrega ${obsEntrega === 'Puntual' ? 'actividad-estado-puntual' : 'actividad-estado-atrasado'}">
+                                        ${obsEntrega === 'Puntual' ? '✅' : '🕐'} ${escapeHTML(obsEntrega)}
                                     </span>
-
-                                    ${
-                                        obsEntrega
-                                        ? `
-                                    <span class="actividad-obs-entrega" style="${obsEntrega === 'Puntual' ? 'color: green;' : ''}">
-                                        ${escapeHTML(obsEntrega)}
+                                    <span class="actividad-fecha-entrega">
+                                        📅 ${escapeHTML(presentacion)}
                                     </span>
-                                        `
-                                        : ""
-                                    }
                                         `
                                         : ""
                                     }
@@ -2331,6 +2469,8 @@ async function mostrarDetalles() {
                                 <div class="actividad-nota">
 
                                     <div>
+
+                                        <span style="display:block;font-size:11px;color:#777;font-weight:normal;margin-bottom:2px;">Calificación</span>
 
                                         ${valor}
 
@@ -2677,7 +2817,7 @@ async function mostrarAsistenciaEnDetalle() {
                                 <th>📅 Fecha</th>
                                 <th>Hora</th>
                                 <th>Estado</th>
-                                <th>Observación</th>
+                                <th>Información / observación</th>
                             </tr>
                         </thead>
                         <tbody>${filas}</tbody>
@@ -2688,28 +2828,32 @@ async function mostrarAsistenciaEnDetalle() {
 
         const asistenciaHTML = `
             <div class="asistencia-box">
-                <div class="asistencia-titulo">🗓️ Asistencia del 3er Trimestre</div>
-                <div class="asistencia-descripcion">Resumen de tu asistencia durante el tercer trimestre.</div>
+                <div class="asistencia-titulo">🗓️ Tu asistencia</div>
+                <div class="asistencia-descripcion">Aquí puedes ver cuántas veces asististe, llegaste tarde, tuviste licencia o registraste una falta durante el tercer trimestre.</div>
                 <div class="asistencia-resumen">
                     <div class="asistencia-card">
                         <span class="icono">🟢</span>
                         <span class="cantidad asistencia-presente">${presentes}</span>
                         <span class="texto">ASISTENCIAS</span>
+                        <span class="texto-ayuda">Presente</span>
                     </div>
                     <div class="asistencia-card">
                         <span class="icono">🟡</span>
                         <span class="cantidad asistencia-atraso">${atrasos}</span>
                         <span class="texto">ATRASOS</span>
+                        <span class="texto-ayuda">Llegó tarde</span>
                     </div>
                     <div class="asistencia-card">
                         <span class="icono">🔵</span>
                         <span class="cantidad asistencia-licencia">${licencias}</span>
-                        <span class="texto">CON LICENCIA</span>
+                        <span class="texto">LICENCIAS</span>
+                        <span class="texto-ayuda">Falta justificada</span>
                     </div>
                     <div class="asistencia-card">
                         <span class="icono">🔴</span>
                         <span class="cantidad asistencia-falta">${faltas}</span>
-                        <span class="texto">SIN LICENCIA</span>
+                        <span class="texto">FALTAS</span>
+                        <span class="texto-ayuda">Sin licencia</span>
                     </div>
                 </div>
                 <button type="button" class="boton-asistencia" onclick="alternarDetalleAsistencia(this)">
