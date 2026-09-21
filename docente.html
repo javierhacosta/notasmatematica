@@ -1021,17 +1021,6 @@ input, select {
     border-top: 1px solid #ddd;
 }
 
-/* Cuando hay varias actividades anteriores, la lista se puede
-   desplazar tocando y deslizando en la pantalla. */
-.qr-actividades-anteriores-lista {
-    max-height: 180px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    padding-right: 4px;
-    touch-action: pan-y;
-}
-
 .qr-actividades-anteriores-titulo {
     font-weight: bold;
     color: #37474f;
@@ -18363,7 +18352,7 @@ function obtenerActividadesAnterioresQR(actividadActual) {
 }
 
 function obtenerTextoPresentacionActividad(actividad, fechaEntrega, nota) {
-    /* Una nota de 0 significa que el estudiante no presentó. */
+    /* Si la nota es 0, se considera que no presentó. */
     if (nota !== null && nota !== undefined && String(nota).trim() !== "" && Number(nota) === 0) {
         return "❌ No presentó";
     }
@@ -18382,17 +18371,8 @@ function obtenerTextoPresentacionActividad(actividad, fechaEntrega, nota) {
             if (diferenciaMs <= 0) {
                 resultado = "Puntual";
             } else {
-                const totalMinutos = Math.floor(diferenciaMs / 60000);
-                const dias = Math.floor(totalMinutos / 1440);
-                const horas = Math.floor((totalMinutos % 1440) / 60);
-                const minutos = totalMinutos % 60;
-                const partes = [];
-
-                if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
-                if (horas > 0) partes.push(`${horas} h`);
-                if (minutos > 0) partes.push(`${minutos} min`);
-
-                resultado = `Atrasado ${partes.join(" ")}`.trim();
+                const dias = Math.floor(diferenciaMs / 86400000);
+                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
             }
         }
     }
@@ -18422,7 +18402,6 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     return `
         <div class="qr-actividades-anteriores">
             <div class="qr-actividades-anteriores-titulo">Actividades anteriores y puntaje</div>
-            <div class="qr-actividades-anteriores-lista">
             ${anteriores.map(a => {
                 const registro = registrosEstudiante[a.id];
                 const nota = registro && typeof registro === "object" ? registro.nota : registro;
@@ -18454,7 +18433,6 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                     </div>
                 `;
             }).join("")}
-            </div>
         </div>
     `;
 }
@@ -18569,21 +18547,6 @@ async function prepararCalificacionQR(
         "infoEstudianteQR"
     );
 
-    /* Presentación de la actividad actual:
-       0 = No presentó; con fecha/hora de entrega se muestra
-       Puntual o el tiempo de atraso. */
-    const fechaEntregaQR =
-        registro && typeof registro === "object"
-        ? (registro.fecha_entrega || "")
-        : "";
-
-    const presentacionQR =
-        obtenerTextoPresentacionActividad(
-            actividadQRSeleccionada,
-            fechaEntregaQR,
-            notaActual
-        );
-
     /* Mostrar el estado de asistencia correspondiente
        exactamente a la fecha de la actividad. */
     const claveAsistenciaQR =
@@ -18641,9 +18604,6 @@ async function prepararCalificacionQR(
         <br>
         <strong>Máximo:</strong>
         ${puntajeMaximo} puntos
-        ${presentacionQR
-            ? `<br><strong>Presentación:</strong> ${escapeHTML(presentacionQR)}`
-            : ""}
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
