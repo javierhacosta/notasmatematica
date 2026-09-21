@@ -1019,6 +1019,11 @@ input, select {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
+    max-height: 180px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-width: thin;
 }
 
 .qr-actividades-anteriores-titulo {
@@ -18351,63 +18356,76 @@ function obtenerActividadesAnterioresQR(actividadActual) {
         });
 }
 
-function obtenerTextoPresentacionActividad(actividad, fechaEntrega, nota) {
-    /* Si la nota es 0, se considera que no presentó. */
-    if (
-        nota !== null &&
-        nota !== undefined &&
-        String(nota).trim() !== "" &&
-        Number(nota) === 0
-    ) {
-        return "❌ No presentó";
-    }
+function obtenerTextoPresentacionActividad(actividad, fechaEntrega) {
+    if (!fechaEntrega) return "";
 
-    /* Si existe fecha de entrega, calcular siempre Puntual/Atrasado. */
-    if (fechaEntrega) {
-        let resultado = calcularObsEntrega(actividad, fechaEntrega);
+    let resultado = calcularObsEntrega(actividad, fechaEntrega);
 
-        /* Si no hay hora configurada, comparar por fecha. */
-        if (!resultado && actividad && actividad.fecha) {
-            const fechaActividad = new Date(
-                `${String(actividad.fecha).slice(0, 10)}T00:00:00`
-            );
-            const fechaEntregaSoloFecha = new Date(
-                `${String(fechaEntrega).slice(0, 10)}T00:00:00`
-            );
+    /* Si la actividad no tiene hora de inicio, comparar igualmente por fecha. */
+    if (!resultado && actividad && actividad.fecha) {
+        const fechaActividad = new Date(`${String(actividad.fecha).slice(0, 10)}T00:00:00`);
+        const fechaEntregaSoloFecha = new Date(`${String(fechaEntrega).slice(0, 10)}T00:00:00`);
 
-            if (
-                !Number.isNaN(fechaActividad.getTime()) &&
-                !Number.isNaN(fechaEntregaSoloFecha.getTime())
-            ) {
-                const diferenciaMs =
-                    fechaEntregaSoloFecha.getTime() -
-                    fechaActividad.getTime();
-
-                if (diferenciaMs <= 0) {
-                    resultado = "Puntual";
-                } else {
-                    const dias = Math.floor(
-                        diferenciaMs / 86400000
-                    );
-                    resultado =
-                        `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
-                }
+        if (!Number.isNaN(fechaActividad.getTime()) && !Number.isNaN(fechaEntregaSoloFecha.getTime())) {
+            const diferenciaMs = fechaEntregaSoloFecha.getTime() - fechaActividad.getTime();
+            if (diferenciaMs <= 0) {
+                resultado = "Puntual";
+            } else {
+                const dias = Math.floor(diferenciaMs / 86400000);
+                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
             }
         }
-
-        if (resultado === "Puntual") {
-            return "✅ Puntual";
-        }
-
-        if (resultado) {
-            return `⏰ ${resultado}`;
-        }
     }
 
-    /* Si no hay fecha de entrega y tiene una nota distinta de 0,
-       no inventar un estado de presentación. */
-    return "";
+    if (!resultado) return "";
+    if (resultado === "Puntual") return "✅ Puntual";
+    return `⏰ ${resultado}`;
 }
+
+
+function obtenerPresentacionQR(actividad, nota) {
+    const notaTexto = String(nota ?? "").trim();
+
+    if (notaTexto !== "" && Number(notaTexto) === 0) {
+        return "No presentó";
+    }
+
+    if (!actividad) return "";
+
+    const limite = obtenerFechaHoraActividad(actividad);
+    if (!limite) return "";
+
+    const ahora = new Date();
+    const diferenciaMs = ahora.getTime() - limite.getTime();
+
+    if (diferenciaMs <= 0) return "Puntual";
+
+    const totalMinutos = Math.floor(diferenciaMs / 60000);
+    const dias = Math.floor(totalMinutos / 1440);
+    const horas = Math.floor((totalMinutos % 1440) / 60);
+    const minutos = totalMinutos % 60;
+    const partes = [];
+
+    if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
+    if (horas > 0) partes.push(`${horas} h`);
+    if (minutos > 0 || partes.length === 0) partes.push(`${minutos} min`);
+
+    return `Atrasado ${partes.join(" ")}`;
+}
+
+function actualizarPresentacionQR() {
+    const elemento = document.getElementById("presentacionQR");
+    if (!elemento || !actividadQRSeleccionada) return;
+
+    const notaInput = document.getElementById("notaQR");
+    const texto = obtenerPresentacionQR(
+        actividadQRSeleccionada,
+        notaInput ? notaInput.value : ""
+    );
+
+    elemento.textContent = texto || "—";
+}
+
 
 function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
@@ -18437,7 +18455,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                 const fechaEntrega = registro && typeof registro === "object"
                     ? (registro.fecha_entrega || "")
                     : "";
-                const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega, nota);
+                const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
                 const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
                     ? "Sin nota"
                     : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
@@ -18630,6 +18648,9 @@ async function prepararCalificacionQR(
         <br>
         <strong>Máximo:</strong>
         ${puntajeMaximo} puntos
+        <br>
+        <strong>Presentación:</strong>
+        <span id="presentacionQR">—</span>
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
@@ -18659,6 +18680,8 @@ async function prepararCalificacionQR(
     notaActual === undefined
     ? ""
     : notaActual;
+
+    actualizarPresentacionQR();
 
     const observacionInputQR =
     document.getElementById(
@@ -18725,6 +18748,13 @@ function actualizarActividadesAnterioresQR() {
 }
 
 
+document.addEventListener("input", function(event) {
+    if (event.target && event.target.id === "notaQR") {
+        actualizarPresentacionQR();
+    }
+});
+
+
 function seleccionarNotaRapidaQR(nota) {
 
     const notaInput =
@@ -18744,6 +18774,7 @@ function seleccionarNotaRapidaQR(nota) {
     }
 
     notaInput.value = nota;
+    actualizarPresentacionQR();
 
     /* En celular, las notas rápidas no deben abrir el teclado.
        El teclado aparecerá únicamente al tocar el cuadro de calificación
