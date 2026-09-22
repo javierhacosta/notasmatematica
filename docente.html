@@ -7163,10 +7163,8 @@ function actualizarEstadosGuardado() {
         const categoria = String(encabezado.dataset.categoria || "");
         const tienePendiente = !guardadoAutomatico &&
             actividadesPendientes.size > 0 &&
-            actividades.some(actividad =>
-                String(actividad.id) &&
-                String(actividad.categoria || "").toUpperCase() === categoria &&
-                actividadesPendientes.has(String(actividad.id))
+            Array.from(actividadesPendientes).some(actividadId =>
+                String(categoriaPorActividadCache.get(String(actividadId)) || "").toUpperCase() === categoria
             );
 
         encabezado.classList.toggle(
@@ -11392,6 +11390,7 @@ function mostrarActividades() {
     reconstruirIndiceInputsNotas();
 
     aplicarBloqueoEstadoEnLista(contenedor);
+    actualizarEstadosGuardado();
 }
 
 
