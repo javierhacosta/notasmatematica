@@ -1019,6 +1019,11 @@ input, select {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
+    max-height: 180px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-width: thin;
 }
 
 .qr-actividades-anteriores-titulo {
@@ -1517,6 +1522,12 @@ td:first-child {
 
 .calendario-dia-asistencia .icono-categoria-actividad {
     font-size: 9px;
+    line-height: 10px;
+    display: inline-block;
+}
+
+.calendario-dia-asistencia .icono-horario-actividad-calendario {
+    font-size: 8px;
     line-height: 10px;
     display: inline-block;
 }
@@ -3157,6 +3168,22 @@ td,
 #contenedorActividades table td:nth-child(4) { width:180px; min-width:170px; }
 #contenedorActividades table .entrega-actividad { width:100%; min-width:165px; }
 
+@media (max-width: 600px) {
+    #contenedorActividades table th:nth-child(4),
+    #contenedorActividades table td:nth-child(4) {
+        width: 180px;
+        min-width: 170px;
+        max-width: 180px;
+    }
+
+    #contenedorActividades table th:nth-child(5),
+    #contenedorActividades table td:nth-child(5) {
+        width: 90px;
+        min-width: 85px;
+        max-width: 90px;
+    }
+}
+
 /* Columnas Entrega / obs_entrega ocultas por defecto. */
 .columna-entrega,
 .columna-obs-entrega {
@@ -3302,6 +3329,17 @@ td,
 #botonGuardarAsistenciaTabla,
 #contenedorActividades .boton-guardar-tabla {
     display: none !important;
+}
+
+/* Parpadeo únicamente del fondo cuando existe guardado pendiente. */
+@keyframes parpadearFondoPendiente {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.35); }
+}
+
+.titulo-asistencia.parpadeo-guardado-pendiente,
+.titulo-categoria.parpadeo-guardado-pendiente {
+    animation: parpadearFondoPendiente 0.9s ease-in-out infinite;
 }
 
 /* =====================================================
@@ -5188,6 +5226,14 @@ table tbody tr:nth-child(10n+10) td {
 @media (max-width: 600px) {
     .config-horario-asistencia { gap: 7px; }
     .config-horario-asistencia label { font-size: 12px; }
+}
+
+.detalle-presentacion-actividad {
+    display: block;
+    margin-top: 3px;
+    font-size: 11px;
+    color: #555;
+    font-weight: 600;
 }
 </style>
 
@@ -7104,6 +7150,31 @@ function actualizarEstadosGuardado() {
         if (el) el.classList.remove("visible");
     });
 
+    /* El parpadeo se aplica únicamente a la categoría que tiene pendiente. */
+    const encabezadoAsistencia = document.querySelector(".titulo-asistencia");
+    if (encabezadoAsistencia) {
+        encabezadoAsistencia.classList.toggle(
+            "parpadeo-guardado-pendiente",
+            !guardadoAutomatico && cambiosPendientesAsistencia
+        );
+    }
+
+    document.querySelectorAll(".titulo-categoria").forEach(encabezado => {
+        const categoria = String(encabezado.dataset.categoria || "");
+        const tienePendiente = !guardadoAutomatico &&
+            actividadesPendientes.size > 0 &&
+            Array.from(actividadesPendientes).some(actividadId =>
+                String(categoriaPorActividadCache.get(String(actividadId)) || "").toUpperCase() === categoria
+            );
+
+        encabezado.classList.toggle(
+            "parpadeo-guardado-pendiente",
+            tienePendiente
+        );
+    });
+
+    actualizarAvisoDatosSinGuardar();
+
     if (guardadoAutomatico) return;
 
     if (asistencia && cambiosPendientesAsistencia) {
@@ -8718,6 +8789,33 @@ function renderizarCalendarioFechasAsistencia() {
                 icono.title = nombresCategoria[categoria] || categoria;
                 marcaActividad.appendChild(icono);
             });
+
+            /* Icono pequeño adicional para indicar que la actividad tiene horario de presentación. */
+            const actividadesConHorario = actividades.filter(a =>
+                String(a?.fecha || "") === clave &&
+                (String(a?.hora_inicio || "").trim() || String(a?.hora_fin || "").trim())
+            );
+
+            if (actividadesConHorario.length > 0) {
+                const iconoHorarioActividad = document.createElement("span");
+                iconoHorarioActividad.className = "icono-horario-actividad-calendario";
+                iconoHorarioActividad.textContent = "🕐";
+
+                const horarios = actividadesConHorario
+                    .map(a => {
+                        const inicio = String(a?.hora_inicio || "").slice(0, 5);
+                        const fin = String(a?.hora_fin || "").slice(0, 5);
+                        if (inicio && fin) return inicio + " a " + fin;
+                        return inicio || fin;
+                    })
+                    .filter(Boolean);
+
+                iconoHorarioActividad.title = horarios.length
+                    ? "Actividad con hora de presentación: " + horarios.join(", ")
+                    : "Actividad con hora de presentación";
+
+                marcaActividad.appendChild(iconoHorarioActividad);
+            }
 
             boton.appendChild(marcaActividad);
         }
@@ -10598,10 +10696,13 @@ async function guardarAsistencia() {
         renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
-        // Actualizar inmediatamente la asistencia que se muestra dentro de Actividades.
-        // Antes solo se actualizaba después de recargar la página.
-        await cargarAsistenciaActividades();
-        mostrarActividades();
+        /*
+         * IMPORTANTE:
+         * No reconstruir la vista de Actividades al guardar Asistencia.
+         * Cada categoría conserva su edición/guardado de forma independiente.
+         * Reconstruir Actividades aquí reemplazaba las notas aún pendientes
+         * de guardar con los valores que estaban en Supabase.
+         */
 
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
@@ -10959,7 +11060,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion,entrega"
+        "id,actividad_id,estudiante_id,nota,observacion,fecha_entrega"
     )
     .in(
         "actividad_id",
@@ -11013,8 +11114,8 @@ async function cargarCalificaciones() {
             observacion:
             cal.observacion || "",
 
-            entrega:
-            cal.entrega || ""
+            fecha_entrega:
+            cal.fecha_entrega || ""
 
         };
 
@@ -11216,6 +11317,7 @@ function mostrarActividades() {
         encabezado.className =
         "titulo-categoria " +
         categoria.clase;
+        encabezado.dataset.categoria = categoria.codigo;
 
         const nombreCategoria =
         document.createElement("span");
@@ -11293,6 +11395,7 @@ function mostrarActividades() {
     reconstruirIndiceInputsNotas();
 
     aplicarBloqueoEstadoEnLista(contenedor);
+    actualizarEstadosGuardado();
 }
 
 
@@ -11407,27 +11510,35 @@ function obtenerIconoAsistenciaActividad(
 
 /*
  * Devuelve la fecha/hora límite de la actividad.
- * Si la actividad no tiene hora de inicio, no se calcula entrega.
+ * Si la actividad no tiene hora de inicio, no se calcula fecha_entrega.
  */
 function obtenerFechaHoraActividad(actividad) {
-    if (!actividad || !actividad.fecha || !actividad.hora_inicio) return null;
+    if (!actividad || !actividad.fecha) return null;
 
     const fechaTexto = String(actividad.fecha).slice(0, 10);
-    const horaTexto = String(actividad.hora_inicio).slice(0, 5);
+
+    // Si la actividad tiene hora final, esa es la hora límite para
+    // considerar la presentación como puntual.
+    // Ejemplo: 18:30 a 18:50 -> atraso desde las 18:51.
+    const horaTexto = String(
+        actividad.hora_fin || actividad.hora_inicio || ""
+    ).slice(0, 5);
+
+    if (!horaTexto) return null;
 
     const fecha = new Date(`${fechaTexto}T${horaTexto}:00`);
     return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
 /*
- * Calcula obs_entrega comparando la fecha/hora de entrega
+ * Calcula obs_entrega comparando la fecha/hora de fecha_entrega
  * con la fecha/hora de inicio de la actividad.
  */
-function calcularObsEntrega(actividad, entrega) {
+function calcularObsEntrega(actividad, fecha_entrega) {
     const limite = obtenerFechaHoraActividad(actividad);
-    if (!limite || !entrega) return "";
+    if (!limite || !fecha_entrega) return "";
 
-    const fechaEntrega = new Date(String(entrega));
+    const fechaEntrega = new Date(String(fecha_entrega));
     if (Number.isNaN(fechaEntrega.getTime())) return "";
 
     const diferenciaMs = fechaEntrega.getTime() - limite.getTime();
@@ -11470,9 +11581,9 @@ function actualizarObsEntregaFila(fila, actividad) {
     if (!celda) return;
 
     const tieneHora = !!obtenerFechaHoraActividad(actividad);
-    const entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
+    const fecha_entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
 
-    celda.textContent = calcularObsEntrega(actividad, entrega);
+    celda.textContent = calcularObsEntrega(actividad, fecha_entrega);
     celda.title = celda.textContent || "";
 }
 
@@ -11867,7 +11978,7 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
-                <th class="columna-entrega">Entrega</th>
+                <th class="columna-entrega">fecha_entrega</th>
 
                 <th class="columna-obs-entrega">obs_entrega</th>
 
@@ -11900,7 +12011,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
-        let entrega = "";
+        let fecha_entrega = "";
         let observacion = "";
         const actividadTieneHora = !!obtenerFechaHoraActividad(actividad);
 
@@ -11932,8 +12043,8 @@ function crearActividadHTML(
                 nota =
                 registro.nota;
 
-                entrega =
-                registro.entrega || "";
+                fecha_entrega =
+                registro.fecha_entrega || "";
 
                 observacion =
                 registro.observacion || "";
@@ -12037,10 +12148,10 @@ function crearActividadHTML(
                 <input
                     type="datetime-local"
                     class="entrega-actividad"
-                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
+                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     data-estudiante="${estudiante.id}"
                     data-actividad="${actividad.id}"
-                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(entrega)) : ""}"
+                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     oninput="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
                     onchange="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
                     ${actividadTieneHora ? "" : "disabled"}
@@ -12430,12 +12541,17 @@ async function editarNombreActividad(
     }
 
 
+    /*
+       La hora es opcional al editar.
+       Si se deja vacía cualquiera de las dos horas, la actividad
+       queda sin horario, igual que una actividad sin hora.
+    */
     const horaInicioActual =
     formatearHoraActividad(actividad.hora_inicio);
 
     const nuevaHoraInicio =
     prompt(
-        "Escribe la hora de inicio (HH:MM):",
+        "Escribe la hora de inicio (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
         horaInicioActual
     );
 
@@ -12443,14 +12559,14 @@ async function editarNombreActividad(
         return;
     }
 
-    const horaInicio = nuevaHoraInicio.trim();
+    let horaInicio = nuevaHoraInicio.trim();
 
     const horaFinActual =
     formatearHoraActividad(actividad.hora_fin);
 
     const nuevaHoraFin =
     prompt(
-        "Escribe la hora final (HH:MM):",
+        "Escribe la hora final (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
         horaFinActual
     );
 
@@ -12458,28 +12574,37 @@ async function editarNombreActividad(
         return;
     }
 
-    const horaFin = nuevaHoraFin.trim();
+    let horaFin = nuevaHoraFin.trim();
 
-    const horaValida =
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
-    /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
+    /* Si falta una de las dos horas, se eliminan ambas. */
+    if (!horaInicio || !horaFin) {
+        horaInicio = null;
+        horaFin = null;
+    } else {
 
-    if (!horaValida) {
-        alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
-        return;
+        const horaValida =
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
+
+        if (!horaValida) {
+            alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
+            return;
+        }
+
+        if (horaFin <= horaInicio) {
+            alert("La hora final debe ser posterior a la hora de inicio.");
+            return;
+        }
     }
 
-    if (horaFin <= horaInicio) {
-        alert("La hora final debe ser posterior a la hora de inicio.");
-        return;
-    }
-
+    const horaInicioComparar = horaInicio || "";
+    const horaFinComparar = horaFin || "";
 
     if (
         nombre === actividad.nombre &&
         fecha === fechaActual &&
-        horaInicio === horaInicioActual &&
-        horaFin === horaFinActual
+        horaInicioComparar === horaInicioActual &&
+        horaFinComparar === horaFinActual
     ) {
         return;
     }
@@ -12583,7 +12708,9 @@ async function editarNombreActividad(
 
     if (elementoHorario) {
         elementoHorario.textContent =
-            "— " + horaInicio + " a " + horaFin;
+            horaInicio && horaFin
+                ? "— " + horaInicio + " a " + horaFin
+                : "";
     }
 
 
@@ -12592,7 +12719,6 @@ async function editarNombreActividad(
     );
 
 }
-
 
 /* =====================================================
    VALIDAR NOTA
@@ -14933,6 +15059,7 @@ function programarGuardadoCambioActividad(input) {
 
     cambiosPendientesActividades =
         actividadesPendientes.size > 0;
+    actualizarEstadosGuardado();
 }
 
 /* Muestra únicamente el botón de la actividad modificada. */
@@ -15064,6 +15191,22 @@ async function guardarActividadManual(actividadId) {
         }
     }
 
+    /* Detectar también cambios manuales en fecha_entrega. */
+    if (!hayCambios) {
+        for (const input of inputsEntregas) {
+            const actual =
+                obtenerEntregaISO(input.value) || "";
+
+            const inicial =
+                obtenerEntregaISO(input.dataset.valorInicial || "") || "";
+
+            if (actual !== inicial) {
+                hayCambios = true;
+                break;
+            }
+        }
+    }
+
     if (!hayCambios) {
         actividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
@@ -15114,10 +15257,10 @@ async function guardarActividadManual(actividadId) {
                 : Number(input.value);
 
             const observacion = observacionesPorEstudiante.get(String(estudianteId)) ?? null;
-            const entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
+            const fecha_entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
 
             registros.push({
-                actividad_id: id, estudiante_id: estudianteId, nota, entrega, observacion
+                actividad_id: id, estudiante_id: estudianteId, nota, fecha_entrega, observacion
             });
         });
 
@@ -15142,7 +15285,7 @@ async function guardarActividadManual(actividadId) {
         } = await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,entrega"
+                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
             )
             .eq("actividad_id", id)
             .in(
@@ -15184,6 +15327,12 @@ async function guardarActividadManual(actividadId) {
                     ) ===
                     String(
                         registro.observacion ?? ""
+                    ) &&
+                    String(
+                        anterior.fecha_entrega ?? ""
+                    ) ===
+                    String(
+                        registro.fecha_entrega ?? ""
                     );
 
                 if (!igual) {
@@ -15297,6 +15446,8 @@ async function guardarActividadManual(actividadId) {
 
             calificaciones[estudianteId][id] = {
                 nota: registro.nota,
+                fecha_entrega:
+                    registro.fecha_entrega || "",
                 observacion:
                     registro.observacion || ""
             };
@@ -15321,6 +15472,16 @@ async function guardarActividadManual(actividadId) {
                             `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
                         )?.value.trim() || ""
                 })
+            );
+        });
+
+        inputsEntregas.forEach(input => {
+            input.dataset.valorInicial =
+                input.value;
+
+            actualizarObsEntregaFila(
+                input.closest("tr"),
+                actividad
             );
         });
 
@@ -15367,6 +15528,7 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
+        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
@@ -15491,10 +15653,10 @@ async function guardarNotas() {
             const nota = input.value === "" ? null : Number(input.value);
             const clave = `${actividadId}|${estudianteId}`;
             const observacion = observaciones.get(clave) ?? null;
-            const entrega = entregas.get(clave) ?? null;
+            const fecha_entrega = entregas.get(clave) ?? null;
 
             registros.push({
-                actividad_id: actividadId, estudiante_id: estudianteId, nota, entrega, observacion
+                actividad_id: actividadId, estudiante_id: estudianteId, nota, fecha_entrega, observacion
             });
         }
 
@@ -15511,7 +15673,7 @@ async function guardarNotas() {
             const { data: anteriores, error: errorAnteriores } =
                 await supabaseClient
                     .from("calificaciones")
-                    .select("actividad_id,estudiante_id,nota,observacion,entrega")
+                    .select("actividad_id,estudiante_id,nota,observacion,fecha_entrega")
                     .in("actividad_id", idsActividades)
                     .in("estudiante_id", idsEstudiantes);
 
@@ -15533,7 +15695,7 @@ async function guardarNotas() {
                     anterior &&
                     String(anterior.nota ?? "") === String(registro.nota ?? "") &&
                     String(anterior.observacion ?? "") === String(registro.observacion ?? "") &&
-                    String(anterior.entrega ?? "") === String(registro.entrega ?? "");
+                    String(anterior.fecha_entrega ?? "") === String(registro.fecha_entrega ?? "");
 
                 if (!igual) estudiantesAfectados.add(Number(registro.estudiante_id));
                 return !igual;
@@ -15602,7 +15764,7 @@ async function guardarNotas() {
                 }
 
                 calificaciones[estudianteId][actividadId] = {
-                    nota: registro.nota, entrega: registro.entrega || "", observacion: registro.observacion || ""
+                    nota: registro.nota, fecha_entrega: registro.fecha_entrega || "", observacion: registro.observacion || ""
                 };
             });
         }
@@ -15889,7 +16051,7 @@ async function exportarExcel() {
         await supabaseClient
         .from("actividades")
         .select(
-            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
+            "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
         )
         .eq(
             "trimestre",
@@ -15924,7 +16086,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion"
+                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
             )
             .in(
                 "actividad_id",
@@ -15963,8 +16125,10 @@ async function exportarExcel() {
                 cal.nota,
 
                 observacion:
-                cal.observacion || ""
+                cal.observacion || "",
 
+                fecha_entrega:
+                cal.fecha_entrega || ""
             };
 
         });
@@ -16724,6 +16888,45 @@ async function exportarExcel() {
                Cada actividad queda como:
                NOTA | OBSERVACIÓN
             ================================================= */
+            /*
+             * En las hojas Obs, las columnas de entrega se crean
+             * para toda actividad que tenga horario, aunque todavía
+             * no exista una fecha_entrega registrada.
+             */
+            const actividadTieneHoraExcel = actividad => {
+                return !!(
+                    String(actividad?.hora_inicio || "").trim() ||
+                    String(actividad?.hora_fin || "").trim()
+                );
+            };
+
+            const nombreActividadExcelConHora = actividad => {
+                const nombre = String(actividad?.nombre || "");
+                if (!actividadTieneHoraExcel(actividad)) {
+                    return nombre;
+                }
+
+                const inicio = String(actividad?.hora_inicio || "").slice(0, 5);
+                const fin = String(actividad?.hora_fin || "").slice(0, 5);
+                const horario = inicio && fin
+                    ? inicio + " a " + fin
+                    : inicio || fin;
+
+                return horario ? nombre + " " + horario : nombre;
+            };
+
+            const columnasActividadObs = lista => {
+                return lista.flatMap(actividad => {
+                    const nombreExcel = nombreActividadExcelConHora(actividad);
+                    const columnas = [nombreExcel];
+                    if (actividadTieneHoraExcel(actividad)) {
+                        columnas.push("fecha_entrega", "obs_entrega");
+                    }
+                    columnas.push("OBS " + nombreExcel);
+                    return columnas;
+                });
+            };
+
             const columnasObs = [
                 "Nº LISTA",
                 "NOMBRE",
@@ -16736,13 +16939,13 @@ async function exportarExcel() {
                 "TOTAL R",
                 "TOTAL L",
                 "TOTAL F",
-                ...ser.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(ser),
                 "PROMEDIO SER",
-                ...saber.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(saber),
                 "PROMEDIO SABER",
-                ...hacer.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(hacer),
                 "PROMEDIO HACER",
-                ...auto.flatMap(a => [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(auto),
                 "PROMEDIO AUTOEVALUACIÓN",
                 "NOTA 3T",
                 "NOTA FINAL"
@@ -16821,6 +17024,14 @@ async function exportarExcel() {
                             registro?.observacion || "";
 
                         filaObs.push(nota);
+
+                        if (actividadTieneHoraExcel(actividad)) {
+                            const fechaEntrega = registro?.fecha_entrega || "";
+                            const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
+                            filaObs.push(fechaEntrega);
+                            filaObs.push(obsEntrega);
+                        }
+
                         filaObs.push(observacion);
                     });
                 };
@@ -18270,6 +18481,77 @@ function obtenerActividadesAnterioresQR(actividadActual) {
         });
 }
 
+function obtenerTextoPresentacionActividad(actividad, fechaEntrega) {
+    if (!fechaEntrega) return "";
+
+    let resultado = calcularObsEntrega(actividad, fechaEntrega);
+
+    /* Si la actividad no tiene hora de inicio, comparar igualmente por fecha. */
+    if (!resultado && actividad && actividad.fecha) {
+        const fechaActividad = new Date(`${String(actividad.fecha).slice(0, 10)}T00:00:00`);
+        const fechaEntregaSoloFecha = new Date(`${String(fechaEntrega).slice(0, 10)}T00:00:00`);
+
+        if (!Number.isNaN(fechaActividad.getTime()) && !Number.isNaN(fechaEntregaSoloFecha.getTime())) {
+            const diferenciaMs = fechaEntregaSoloFecha.getTime() - fechaActividad.getTime();
+            if (diferenciaMs <= 0) {
+                resultado = "Puntual";
+            } else {
+                const dias = Math.floor(diferenciaMs / 86400000);
+                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
+            }
+        }
+    }
+
+    if (!resultado) return "";
+    if (resultado === "Puntual") return "✅ Puntual";
+    return `⏰ ${resultado}`;
+}
+
+
+function obtenerPresentacionQR(actividad, nota) {
+    const notaTexto = String(nota ?? "").trim();
+
+    if (notaTexto !== "" && Number(notaTexto) === 0) {
+        return "No presentó";
+    }
+
+    if (!actividad) return "";
+
+    const limite = obtenerFechaHoraActividad(actividad);
+    if (!limite) return "";
+
+    const ahora = new Date();
+    const diferenciaMs = ahora.getTime() - limite.getTime();
+
+    if (diferenciaMs <= 0) return "✅ Puntual";
+
+    const totalMinutos = Math.floor(diferenciaMs / 60000);
+    const dias = Math.floor(totalMinutos / 1440);
+    const horas = Math.floor((totalMinutos % 1440) / 60);
+    const minutos = totalMinutos % 60;
+    const partes = [];
+
+    if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
+    if (horas > 0) partes.push(`${horas} h`);
+    if (minutos > 0 || partes.length === 0) partes.push(`${minutos} min`);
+
+    return `⏰ Atrasado ${partes.join(" ").replace(/ h/g, " h.")}`;
+}
+
+function actualizarPresentacionQR() {
+    const elemento = document.getElementById("presentacionQR");
+    if (!elemento || !actividadQRSeleccionada) return;
+
+    const notaInput = document.getElementById("notaQR");
+    const texto = obtenerPresentacionQR(
+        actividadQRSeleccionada,
+        notaInput ? notaInput.value : ""
+    );
+
+    elemento.textContent = texto || "—";
+}
+
+
 function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
     if (!checkbox || !checkbox.checked) return "";
@@ -18295,6 +18577,10 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                 const observacion = registro && typeof registro === "object"
                     ? (registro.observacion || "")
                     : "";
+                const fechaEntrega = registro && typeof registro === "object"
+                    ? (registro.fecha_entrega || "")
+                    : "";
+                const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
                 const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
                     ? "Sin nota"
                     : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
@@ -18308,6 +18594,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                             ${escapeHTML(a.nombre)}
                             <small style="display:block;color:#777;font-size:11px;">
                                 📅 ${escapeHTML(a.fecha || "")}
+                                ${textoPresentacion ? `<br>${escapeHTML(textoPresentacion)}` : ""}
                             </small>
                             ${textoObservacion}
                         </span>
@@ -18486,6 +18773,9 @@ async function prepararCalificacionQR(
         <br>
         <strong>Máximo:</strong>
         ${puntajeMaximo} puntos
+        <br>
+        <strong>Presentación:</strong>
+        <span id="presentacionQR">—</span>
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
@@ -18515,6 +18805,8 @@ async function prepararCalificacionQR(
     notaActual === undefined
     ? ""
     : notaActual;
+
+    actualizarPresentacionQR();
 
     const observacionInputQR =
     document.getElementById(
@@ -18581,6 +18873,13 @@ function actualizarActividadesAnterioresQR() {
 }
 
 
+document.addEventListener("input", function(event) {
+    if (event.target && event.target.id === "notaQR") {
+        actualizarPresentacionQR();
+    }
+});
+
+
 function seleccionarNotaRapidaQR(nota) {
 
     const notaInput =
@@ -18600,6 +18899,7 @@ function seleccionarNotaRapidaQR(nota) {
     }
 
     notaInput.value = nota;
+    actualizarPresentacionQR();
 
     /* En celular, las notas rápidas no deben abrir el teclado.
        El teclado aparecerá únicamente al tocar el cuadro de calificación
@@ -18722,7 +19022,7 @@ async function guardarCalificacionQR() {
                 actividad_id: actividadQRSeleccionada.id,
                 estudiante_id: estudianteQRSeleccionado.id,
                 nota: nota,
-                entrega: new Date().toISOString(),
+                fecha_entrega: new Date().toISOString(),
                 observacion: observacion || null
             },
             {
@@ -18757,7 +19057,7 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: registroAnterior.nota ?? null,
-            entrega: registroAnterior.entrega ?? null,
+            fecha_entrega: registroAnterior.fecha_entrega ?? null,
             observacion: registroAnterior.observacion ?? null
         }
         : null;
@@ -18766,13 +19066,13 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: nota,
-            entrega: new Date().toISOString(),
+            fecha_entrega: new Date().toISOString(),
             observacion: observacion || null
         };
 
         if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
-            String(anteriorHistorialQR.entrega ?? "") !== String(nuevoHistorialQR.entrega ?? "") ||
+            String(anteriorHistorialQR.fecha_entrega ?? "") !== String(nuevoHistorialQR.fecha_entrega ?? "") ||
             String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
@@ -18799,8 +19099,8 @@ async function guardarCalificacionQR() {
             nota:
             nota,
 
-            entrega:
-            nuevoHistorialQR.entrega,
+            fecha_entrega:
+            nuevoHistorialQR.fecha_entrega,
 
             observacion:
             observacion
@@ -18831,7 +19131,7 @@ async function guardarCalificacionQR() {
         }
 
         if (entregaTablaQR) {
-            const entregaQR = nuevoHistorialQR.entrega || "";
+            const entregaQR = nuevoHistorialQR.fecha_entrega || "";
             entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
             entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
 
@@ -19209,12 +19509,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 .order("fecha", { ascending:false }),
 
             supabaseClient.from("actividades")
-                .select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo")
+                .select("id,curso,trimestre,categoria,nombre,fecha,hora_inicio,orden,puntaje_maximo")
                 .eq("curso", estudiante.curso)
                 .order("trimestre").order("orden"),
 
             supabaseClient.from("calificaciones")
-                .select("id,actividad_id,estudiante_id,nota,observacion")
+                .select("id,actividad_id,estudiante_id,nota,observacion,fecha_entrega")
                 .eq("estudiante_id", estudianteId)
         ]);
 
@@ -19236,7 +19536,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         calMap[String(c.actividad_id)] = {
             id: c.id,
             nota:c.nota,
-            observacion:c.observacion || ""
+            observacion:c.observacion || "",
+            fecha_entrega:c.fecha_entrega || ""
         };
     });
 
@@ -19326,6 +19627,10 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
+        const fechaEntrega = registro?.fecha_entrega || "";
+        const textoPresentacion = (!fechaEntrega && registro && (String(registro.nota ?? "").trim() === "" || Number(registro.nota) === 0))
+            ? "❌ No presentó"
+            : obtenerTextoPresentacionActividad(a, fechaEntrega);
 
         const categoria = String(a.categoria || "").toUpperCase();
         const claseCategoria =
@@ -19351,6 +19656,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 <td>
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
                     ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
+                    ${textoPresentacion ? `<small class="detalle-presentacion-actividad">${escapeHTML(textoPresentacion)}</small>` : ""}
                 </td>
                 <td class="detalle-celda-nota">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
@@ -22494,6 +22800,166 @@ async function recuperarCopiaBaseDatos(event) {
         input.value = "";
     }
 }
+
+
+/* =====================================================
+   AVISO ANTES DE ACTUALIZAR/CERRAR LA PÁGINA
+   Solo avisa cuando existen cambios de asistencia o
+   actividades que todavía no fueron guardados.
+===================================================== */
+
+function obtenerDetallesDatosSinGuardar() {
+    const detalles = [];
+
+    const colaQR =
+        (typeof asistenciasQRPendientesGuardar !== "undefined" &&
+         asistenciasQRPendientesGuardar)
+            ? asistenciasQRPendientesGuardar
+            : new Map();
+
+    const asistenciaPendiente =
+        !guardadoAutomatico &&
+        (
+            cambiosPendientesAsistencia === true ||
+            colaQR.size > 0
+        );
+
+    if (asistenciaPendiente) {
+        const fechaAsistencia =
+            document.getElementById("fechaAsistencia")?.value || "";
+
+        detalles.push(
+            "ASISTENCIA: " +
+            (fechaAsistencia
+                ? "fecha " + fechaAsistencia
+                : "fecha seleccionada")
+        );
+    }
+
+    const idsActividadesPendientes = new Set();
+
+    if (!guardadoAutomatico && actividadesPendientes) {
+        actividadesPendientes.forEach(id => {
+            idsActividadesPendientes.add(String(id));
+        });
+    }
+
+    if (!guardadoAutomatico && cambiosPendientesActividades) {
+        document.querySelectorAll(
+            ".estado-guardado-actividad-nombre.visible"
+        ).forEach(el => {
+            const id = String(el.dataset.actividadId || "");
+            if (id) idsActividadesPendientes.add(id);
+        });
+    }
+
+    if (idsActividadesPendientes.size > 0) {
+        const nombres = [];
+
+        idsActividadesPendientes.forEach(id => {
+            const actividad = actividades.find(
+                a => String(a?.id) === id
+            );
+
+            if (actividad) {
+                const nombre = String(actividad.nombre || "Actividad");
+                const fecha = String(actividad.fecha || "").trim();
+
+                nombres.push(
+                    fecha
+                        ? `${nombre} (${fecha})`
+                        : nombre
+                );
+            } else {
+                nombres.push("Actividad " + id);
+            }
+        });
+
+        detalles.push(
+            "ACTIVIDADES: " + nombres.join(", ")
+        );
+    } else if (!guardadoAutomatico && cambiosPendientesActividades) {
+        detalles.push("ACTIVIDADES: hay cambios pendientes de guardar");
+    }
+
+    return detalles;
+}
+
+function hayDatosSinGuardarAntesDeSalir() {
+    return obtenerDetallesDatosSinGuardar().length > 0;
+}
+
+function actualizarAvisoDatosSinGuardar() {
+    let aviso = document.getElementById("avisoDatosSinGuardar");
+
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "avisoDatosSinGuardar";
+        aviso.style.cssText = [
+            "position:fixed",
+            "left:10px",
+            "right:10px",
+            "bottom:10px",
+            "z-index:99999",
+            "padding:10px 14px",
+            "border-radius:8px",
+            "background:#fff3cd",
+            "border:1px solid #ffcc00",
+            "color:#664d03",
+            "font-weight:bold",
+            "font-size:14px",
+            "line-height:1.4",
+            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
+            "display:none"
+        ].join(";");
+
+        if (document.body) {
+            document.body.appendChild(aviso);
+        } else {
+            return;
+        }
+    }
+
+    if (guardadoAutomatico) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    const detalles = obtenerDetallesDatosSinGuardar();
+
+    if (detalles.length === 0) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    aviso.innerHTML =
+        "⚠️ <strong>Hay datos sin guardar:</strong><br>" +
+        detalles.map(d => escapeHTML(d)).join("<br>") +
+        "<br><small>Guarda los cambios antes de actualizar o cerrar la página.</small>";
+
+    aviso.style.display = "block";
+}
+
+/*
+ * Los navegadores modernos suelen mostrar un mensaje genérico propio
+ * en el cuadro de confirmación de beforeunload. El detalle específico
+ * queda visible en el aviso amarillo de la página.
+ */
+window.addEventListener("beforeunload", function (event) {
+    if (!hayDatosSinGuardarAntesDeSalir()) return;
+
+    const detalles = obtenerDetallesDatosSinGuardar();
+
+    event.preventDefault();
+
+    event.returnValue =
+        "Hay datos sin guardar: " + detalles.join(" | ") +
+        ". Guarda los cambios antes de actualizar la página.";
+
+    return event.returnValue;
+});
+
+document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
