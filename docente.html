@@ -10049,11 +10049,11 @@ function mostrarTablaAsistencia() {
                         <input
                             type="radio"
                             name="asistencia-${estudiante.id}"
-                            id="permiso-${estudiante.id}"
-                            value="permiso"
+                            id="licencia-${estudiante.id}"
+                            value="licencia"
                             onchange="guardarAsistenciaIndividual(this)"
                             ${
-                                estado === "permiso"
+                                estado === "licencia"
                                 ? "checked"
                                 : ""
                             }
@@ -10061,7 +10061,7 @@ function mostrarTablaAsistencia() {
                         >
 
                         <label
-                            for="permiso-${estudiante.id}"
+                            for="licencia-${estudiante.id}"
                             title="Permiso"
                         >
 
@@ -10313,7 +10313,7 @@ function mostrarPendientesAsistencia() {
                         ⏰ Atraso
                     </label>
                     <label class="opcion-pendiente" title="Permiso">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="permiso" ${estadoActual === "permiso" ? "checked" : ""}>
+                        <input type="radio" name="pendiente-${estudiante.id}" value="licencia" ${estadoActual === "licencia" ? "checked" : ""}>
                         📄 Permiso
                     </label>
                     <label class="opcion-pendiente" title="Falta">
@@ -18361,7 +18361,7 @@ async function continuarEscaneoAsistenciaQR() {
             fecha: fecha,
             estado: (() => {
                 const estadoQR = estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia);
-                return String(estadoQR || "").toLowerCase() === "licencia" ? "permiso" : estadoQR;
+                return String(estadoQR || "").toLowerCase();
             })(),
             hora: horaQR,
             observacion: observacion || null
@@ -20257,9 +20257,7 @@ async function cerrarEscanerQR(
             const registrosQR = colaQR.map(registro => ({
                 estudiante_id: registro.estudiante_id,
                 fecha: registro.fecha,
-                estado: String(registro.estado || "").toLowerCase() === "licencia"
-                    ? "permiso"
-                    : String(registro.estado || "").toLowerCase(),
+                estado: String(registro.estado || "").toLowerCase(),
                 hora: registro.hora || null,
                 observacion: registro.observacion || null
             }));
