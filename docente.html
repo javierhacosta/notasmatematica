@@ -2607,7 +2607,7 @@ td:first-child {
 
 /* LICENCIA */
 
-.estado-licencia {
+.estado-permiso {
     background: #1565c0;
     color: white;
 }
@@ -3149,7 +3149,7 @@ td,
     color: white;
 }
 
-.icono-asistencia-actividad.licencia,
+.icono-asistencia-actividad.permiso,
 .icono-asistencia-actividad.permiso {
     background: #1565c0;
     color: white;
@@ -4085,7 +4085,7 @@ table tbody tr:nth-child(10n+10) td {
 
 .icono-estado-asiento.asistio { background: #2e7d32; color: white; }
 .icono-estado-asiento.atraso { background: #f9a825; color: white; }
-.icono-estado-asiento.licencia,
+.icono-estado-asiento.permiso,
 .icono-estado-asiento.permiso { background: #1565c0; color: white; }
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
@@ -4279,7 +4279,7 @@ table tbody tr:nth-child(10n+10) td {
     background: #fff8e1;
 }
 
-.asiento-aula.estado-asiento-licencia,
+.asiento-aula.estado-asiento-permiso,
 .asiento-aula.estado-asiento-permiso {
     background: #e3f2fd;
 }
@@ -6704,7 +6704,7 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaSinMarcar" value=""><label for="estadoAulaSinMarcar">⚪<br>Sin marcar</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAsistio" value="asistio"><label for="estadoAulaAsistio">✓<br>Asistió</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAtraso" value="atraso"><label for="estadoAulaAtraso">⏰<br>Atraso</label></div>
-                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
+                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="permiso"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
             <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
@@ -9776,7 +9776,7 @@ function actualizarResumenAsistencia() {
     const totales = {
         asistio: 0,
         atraso: 0,
-        licencia: 0,
+        permiso: 0,
         falta: 0,
         noEfectivo: 0
     };
@@ -9784,7 +9784,7 @@ function actualizarResumenAsistencia() {
     /*
      * El resumen cuenta únicamente a los estudiantes EFECTIVO
      * del curso seleccionado. Los demás estados no participan en
-     * asistentes, atrasos, licencias ni faltas.
+     * asistentes, atrasos, permisos ni faltas.
      */
     const estudiantesCurso = cursoSeleccionado
         ? estudiantes.filter(estudiante => estudiante.curso === cursoSeleccionado)
@@ -9809,7 +9809,7 @@ function actualizarResumenAsistencia() {
     resumen.innerHTML = `
         <span>✓ ${totales.asistio}</span>
         <span>⏰ ${totales.atraso}</span>
-        <span>📄 ${totales.licencia}</span>
+        <span>📄 ${totales.permiso}</span>
         <span>✕ ${totales.falta}</span>
         ${totales.noEfectivo > 0 ? `<span title="Estudiantes con estado diferente de EFECTIVO">🔒 ${totales.noEfectivo}</span>` : ""}
     `;
@@ -9817,7 +9817,7 @@ function actualizarResumenAsistencia() {
     /*
      * AVISO VISUAL:
      * Si algún estudiante del curso todavía no tiene marcado
-     * asistencia, atraso, permiso/licencia o falta, los iconos
+     * asistencia, atraso, permiso/permiso o falta, los iconos
      * y cantidades del resumen comienzan a parpadear.
      *
      * No se crea ni modifica ningún estado automáticamente.
@@ -9838,7 +9838,7 @@ function actualizarResumenAsistencia() {
                 registro && registro.estado ? registro.estado : ""
             ).toLowerCase();
 
-            return !["asistio", "atraso", "licencia", "permiso", "falta"].includes(estado);
+            return !["asistio", "atraso", "permiso", "permiso", "falta"].includes(estado);
         });
     }
 
@@ -10049,11 +10049,11 @@ function mostrarTablaAsistencia() {
                         <input
                             type="radio"
                             name="asistencia-${estudiante.id}"
-                            id="licencia-${estudiante.id}"
-                            value="licencia"
+                            id="permiso-${estudiante.id}"
+                            value="permiso"
                             onchange="guardarAsistenciaIndividual(this)"
                             ${
-                                estado === "licencia"
+                                estado === "permiso"
                                 ? "checked"
                                 : ""
                             }
@@ -10061,11 +10061,11 @@ function mostrarTablaAsistencia() {
                         >
 
                         <label
-                            for="licencia-${estudiante.id}"
-                            title="Falta con licencia"
+                            for="permiso-${estudiante.id}"
+                            title="Falta con permiso"
                         >
 
-                            <span class="boton-estado estado-licencia">
+                            <span class="boton-estado estado-permiso">
                                 📄
                             </span>
 
@@ -10100,7 +10100,7 @@ function mostrarTablaAsistencia() {
 
                         <label
                             for="falta-${estudiante.id}"
-                            title="Falta sin licencia"
+                            title="Falta sin permiso"
                         >
 
                             <span class="boton-estado estado-falta">
@@ -10313,7 +10313,7 @@ function mostrarPendientesAsistencia() {
                         ⏰ Atraso
                     </label>
                     <label class="opcion-pendiente" title="Licencia">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="licencia" ${estadoActual === "licencia" ? "checked" : ""}>
+                        <input type="radio" name="pendiente-${estudiante.id}" value="permiso" ${estadoActual === "permiso" ? "checked" : ""}>
                         📄 Licencia
                     </label>
                     <label class="opcion-pendiente" title="Falta">
@@ -11476,9 +11476,9 @@ function obtenerIconoAsistenciaActividad(
             icono: "⏰",
             titulo: "Atraso"
         },
-        licencia: {
+        permiso: {
             icono: "📄",
-            titulo: "Permiso / licencia"
+            titulo: "Permiso / permiso"
         },
         permiso: {
             icono: "📄",
@@ -13995,13 +13995,13 @@ async function prepararEstadisticas() {
         };
 
         const conteoEstado = registros => {
-            const r = { asistio: 0, atraso: 0, falta: 0, licencia: 0, permiso: 0 };
+            const r = { asistio: 0, atraso: 0, falta: 0, permiso: 0, permiso: 0 };
             (registros || []).forEach(x => {
                 const estado = String(x.estado || "").toLowerCase();
                 if (estado === "asistio") r.asistio++;
                 else if (estado === "atraso") r.atraso++;
                 else if (estado === "falta") r.falta++;
-                else if (estado === "licencia") r.licencia++;
+                else if (estado === "permiso") r.permiso++;
                 else if (estado === "permiso") r.permiso++;
             });
             return r;
@@ -14035,7 +14035,7 @@ async function prepararEstadisticas() {
                 asistencias: estadosGrupo.asistio,
                 atrasos: estadosGrupo.atraso,
                 faltas: estadosGrupo.falta,
-                licencias: estadosGrupo.licencia,
+                permisos: estadosGrupo.permiso,
                 permisos: estadosGrupo.permiso,
                 observaciones: observacionesAsistencia + observacionesActividades,
                 visitas: visitasGrupo
@@ -14074,7 +14074,7 @@ async function prepararEstadisticas() {
                             <tr><td>Asistencias</td><td>${estadisticaVarones.asistencias}</td><td>${estadisticaMujeres.asistencias}</td></tr>
                             <tr><td>Atrasos</td><td>${estadisticaVarones.atrasos}</td><td>${estadisticaMujeres.atrasos}</td></tr>
                             <tr><td>Faltas</td><td>${estadisticaVarones.faltas}</td><td>${estadisticaMujeres.faltas}</td></tr>
-                            <tr><td>Licencias</td><td>${estadisticaVarones.licencias}</td><td>${estadisticaMujeres.licencias}</td></tr>
+                            <tr><td>Licencias</td><td>${estadisticaVarones.permisos}</td><td>${estadisticaMujeres.permisos}</td></tr>
                             <tr><td>Permisos</td><td>${estadisticaVarones.permisos}</td><td>${estadisticaMujeres.permisos}</td></tr>
                             <tr><td>Observaciones</td><td>${estadisticaVarones.observaciones}</td><td>${estadisticaMujeres.observaciones}</td></tr>
                             <tr><td>Ingresos a la página</td><td>${estadisticaVarones.visitas}</td><td>${estadisticaMujeres.visitas}</td></tr>
@@ -14093,7 +14093,7 @@ async function prepararEstadisticas() {
                 {nombre:"Asistencias",valor:estados.asistio},
                 {nombre:"Atrasos",valor:estados.atraso},
                 {nombre:"Faltas",valor:estados.falta},
-                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Licencias",valor:estados.permiso},
                 {nombre:"Permisos",valor:estados.permiso}
             ])}`;
 
@@ -14211,13 +14211,13 @@ async function prepararEstadisticas() {
                 <div class="estadistica-tarjeta"><span>Asistencias</span><strong>${estados.asistio}</strong></div>
                 <div class="estadistica-tarjeta"><span>Atrasos</span><strong>${estados.atraso}</strong></div>
                 <div class="estadistica-tarjeta"><span>Faltas</span><strong>${estados.falta}</strong></div>
-                <div class="estadistica-tarjeta"><span>Licencias / permisos</span><strong>${estados.licencia + estados.permiso}</strong></div>
+                <div class="estadistica-tarjeta"><span>Licencias / permisos</span><strong>${estados.permiso + estados.permiso}</strong></div>
             </div>
             ${prepararGraficaEstadistica("Asistencia general", [
                 {nombre:"Asistencias",valor:estados.asistio},
                 {nombre:"Atrasos",valor:estados.atraso},
                 {nombre:"Faltas",valor:estados.falta},
-                {nombre:"Licencias",valor:estados.licencia},
+                {nombre:"Licencias",valor:estados.permiso},
                 {nombre:"Permisos",valor:estados.permiso}
             ])}
             ${prepararGraficaEstadistica("Registros de asistencia por curso", cursos.map(c=>({nombre:c,valor:asistenciaPorCurso.find(x=>x.curso===c)?.asistio||0})))}
@@ -14452,7 +14452,7 @@ async function cargarInformeGeneral() {
     */
     let encabezado1 = `<tr><th>Nº</th><th class="nombre-col">Nombre</th><th class="acceso-estudiante-general">Link</th>`;
     fechasAsistencia.forEach(f => encabezado1 += `<th class="asistencia-fecha">${escapeHTML(formatearFechaActividad(f))}</th>`);
-    encabezado1 += `<th>Total Asistencias</th><th>Total atrasos</th><th>Total licencias</th><th>Total faltas</th>`;
+    encabezado1 += `<th>Total Asistencias</th><th>Total atrasos</th><th>Total permisos</th><th>Total faltas</th>`;
 
     const agregarEncabezadosActividades = (lista, claseCategoria) => {
         lista.forEach(a => {
@@ -14477,7 +14477,7 @@ async function cargarInformeGeneral() {
     
     let cuerpo = "";
     estudiantesCurso.forEach(estudiante => {
-        const totales = {asistio:0, atraso:0, licencia:0, falta:0};
+        const totales = {asistio:0, atraso:0, permiso:0, falta:0};
         fechasAsistencia.forEach(f => { const r=mapaAsistenciaInforme[estudiante.id+"_"+f]; if(r){const e=String(r.estado||"").toLowerCase(); if(totales[e]!==undefined) totales[e]++;} });
         const promedioSER=construirDimension(estudiante,ser), promedioSABER=construirDimension(estudiante,saber), promedioHACER=construirDimension(estudiante,hacer), promedioAUTO=construirDimension(estudiante,auto);
         // 3T y Final se calculan aquí mismo al abrir/maximizar el informe.
@@ -14501,12 +14501,12 @@ async function cargarInformeGeneral() {
         cuerpo += `<tr data-estudiante="${escapeHTML(String(estudiante.id))}"><td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td><td class="nombre-col">${escapeHTML(estudiante.nombre || "")}</td><td class="acceso-estudiante-general">${linkEstudiante}</td>`;
         fechasAsistencia.forEach(f => {
             const r=mapaAsistenciaInforme[estudiante.id+"_"+f], estado=r?String(r.estado||"").toLowerCase():"";
-            let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="licencia"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
+            let simbolo="",clase=""; if(estado==="asistio"){simbolo="A";clase="estado-A";} else if(estado==="atraso"){simbolo="R";clase="estado-R";} else if(estado==="permiso"){simbolo="L";clase="estado-L";} else if(estado==="falta"){simbolo="F";clase="estado-F";}
             const obs=r?String(r.observacion||"").trim():"";
             const click=obs?`onclick="mostrarComentarioInforme('Asistencia - ${escapeHTML(formatearFechaActividad(f))}', '${escapeHTML(obs).replace(/'/g,"&#39;")}')" title="Ver observación"`:"";
             cuerpo += `<td class="asistencia-celda ${clase} ${obs?"celda-con-observacion":""}" ${click}>${simbolo}</td>`;
         });
-        cuerpo += `<td>${totales.asistio}</td><td>${totales.atraso}</td><td>${totales.licencia}</td><td>${totales.falta}</td>`;
+        cuerpo += `<td>${totales.asistio}</td><td>${totales.atraso}</td><td>${totales.permiso}</td><td>${totales.falta}</td>`;
         const agregarNotas=lista=>lista.forEach(a=>{const r=mapaCalificacionesInforme[estudiante.id+"_"+a.id]||{}, nota=r.nota===null||r.nota===undefined?"":String(r.nota),obs=String(r.observacion||""); const click=obs.trim()?`onclick="mostrarComentarioInforme('Observación - ${escapeHTML(a.nombre||"Actividad")}', '${escapeHTML(obs).replace(/'/g,"&#39;")}')" title="Ver observación"`:""; cuerpo+=`<td class="actividad-nota ${obs.trim()?"nota-con-observacion":""}" ${click}>${escapeHTML(nota)}</td>`;});
         agregarNotas(ser); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSER))}</td>`;
         agregarNotas(saber); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSABER))}</td>`;
@@ -16197,7 +16197,7 @@ async function exportarExcel() {
 
             asistio: "A",
             atraso: "R",
-            licencia: "L",
+            permiso: "L",
             falta: "F"
 
         };
@@ -18737,7 +18737,7 @@ async function prepararCalificacionQR(
             icono: "⏰",
             titulo: "Atraso"
         },
-        licencia: {
+        permiso: {
             icono: "📄",
             titulo: "Permiso"
         },
@@ -19387,7 +19387,7 @@ function textoEstadoDetalleQR(estado) {
         asistio: "Asistencia",
         atraso: "Atraso",
         falta: "Falta",
-        licencia: "Permiso / Licencia",
+        permiso: "Permiso / Licencia",
         permiso: "Permiso"
     };
     return mapa[String(estado || "").toLowerCase()] ||
@@ -19416,9 +19416,9 @@ function obtenerIconoAsistenciaActividadDetalleQR(asistencia, fecha) {
             icono: "⏰",
             titulo: "Atraso"
         },
-        licencia: {
+        permiso: {
             icono: "📄",
-            titulo: "Permiso / licencia"
+            titulo: "Permiso / permiso"
         },
         permiso: {
             icono: "📄",
@@ -19550,13 +19550,13 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             ? Math.round((nota1T + nota2T + nota3T) / 3)
             : null;
 
-    const conteos = { asistio:0, atraso:0, falta:0, licencia:0, permiso:0 };
+    const conteos = { asistio:0, atraso:0, falta:0, permiso:0, permiso:0 };
     asistencia.forEach(r => {
         const estado = String(r.estado || "").toLowerCase();
         if (conteos[estado] !== undefined) conteos[estado]++;
     });
 
-    const totalPermisos = conteos.licencia + conteos.permiso;
+    const totalPermisos = conteos.permiso + conteos.permiso;
 
     const mapaDetalleAsistencia = new Map();
     asistencia.forEach(r => {
@@ -21960,7 +21960,7 @@ function obtenerIconoEstadoAsistenciaAula(estado) {
     const mapa = {
         asistio: ["✓", "asistio", "Asistió"],
         atraso: ["⏰", "atraso", "Atraso"],
-        licencia: ["📄", "licencia", "Licencia"],
+        permiso: ["📄", "permiso", "Licencia"],
         permiso: ["📄", "permiso", "Permiso"],
         falta: ["✕", "falta", "Falta"]
     };
