@@ -1019,11 +1019,6 @@ input, select {
     margin-top: 10px;
     padding-top: 10px;
     border-top: 1px solid #ddd;
-    max-height: 180px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
-    scrollbar-width: thin;
 }
 
 .qr-actividades-anteriores-titulo {
@@ -1157,13 +1152,6 @@ td:first-child {
     border: 2px solid #ef6c00;
 }
 
-
-/* =====================================================
-   ENTREGA DE ACTIVIDADES
-===================================================== */
-.entrega-actividad { width:100%; min-width:170px; padding:7px; border:1px solid #ccc; border-radius:6px; font-size:13px; }
-.entrega-actividad:disabled { background:#eeeeee; color:#555; cursor:not-allowed; border-color:#ddd; }
-.entrega-actividad.editable { background:#fffde7; border:2px solid #ef6c00; }
 
 /* =====================================================
    OBSERVACIONES DE ACTIVIDADES
@@ -1797,29 +1785,6 @@ td:first-child {
 
 .boton-eliminar-fecha-asistencia:hover {
     background: #a91f1f;
-}
-
-.boton-volver-clase-normal {
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 7px;
-    background: #1565c0;
-    color: white;
-    font-size: 17px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.boton-volver-clase-normal:hover {
-    background: #0d47a1;
-}
-
-.boton-volver-clase-normal.oculto {
-    display: none !important;
 }
 
 
@@ -3156,78 +3121,11 @@ td,
 
 
 /* =====================================================
-   COLUMNA ENTREGA
-===================================================== */
-#contenedorActividades table th:nth-child(4),
-#contenedorActividades table td:nth-child(4) { width:180px; min-width:170px; }
-#contenedorActividades table .entrega-actividad { width:100%; min-width:165px; }
-
-@media (max-width: 600px) {
-    #contenedorActividades table th:nth-child(4),
-    #contenedorActividades table td:nth-child(4) {
-        width: 180px;
-        min-width: 170px;
-        max-width: 180px;
-    }
-
-    #contenedorActividades table th:nth-child(5),
-    #contenedorActividades table td:nth-child(5) {
-        width: 90px;
-        min-width: 85px;
-        max-width: 90px;
-    }
-}
-
-/* Columnas Entrega / obs_entrega ocultas por defecto. */
-.columna-entrega,
-.columna-obs-entrega {
-    display: none;
-}
-
-.actividad.mostrar-entrega-actividad .columna-entrega,
-.actividad.mostrar-entrega-actividad .columna-obs-entrega {
-    display: table-cell;
-}
-
-.boton-mostrar-entrega {
-    color: white;
-    width: 38px;
-    height: 34px;
-    padding: 0;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    background: #607d8b;
-    opacity: .45;
-}
-
-.boton-mostrar-entrega.activo {
-    background: #00838f;
-    opacity: 1;
-}
-
-.boton-mostrar-entrega:hover {
-    opacity: .85;
-}
-
-.obs-entrega {
-    font-weight: bold;
-    white-space: nowrap;
-    min-width: 120px;
-}
-
-/* =====================================================
    COLUMNA OBSERVACIONES
 ===================================================== */
 
-#contenedorActividades table th:nth-child(5),
-#contenedorActividades table td:nth-child(5) {
+#contenedorActividades table th:nth-child(4),
+#contenedorActividades table td:nth-child(4) {
     width: 180px;
     min-width: 150px;
 }
@@ -5210,14 +5108,6 @@ table tbody tr:nth-child(10n+10) td {
     .config-horario-asistencia { gap: 7px; }
     .config-horario-asistencia label { font-size: 12px; }
 }
-
-.detalle-presentacion-actividad {
-    display: block;
-    margin-top: 3px;
-    font-size: 11px;
-    color: #555;
-    font-weight: 600;
-}
 </style>
 
 </head>
@@ -5426,7 +5316,6 @@ Selecciona un curso
 🗑️
 
 </button>
-
 <button
     type="button"
     id="botonListaEstadoAsistencia"
@@ -5496,17 +5385,6 @@ Selecciona un curso
         onclick="seleccionarTipoDiaAsistencia('observacion')"
         title="Agregar observaciones del día">
         📝 Observaciones
-    </button>
-
-    <button
-        type="button"
-        id="botonVolverClaseNormal"
-        class="boton-volver-clase-normal oculto"
-        onclick="volverAClaseNormal()"
-        title="Volver el día seleccionado a asistencia normal">
-
-↩️
-
     </button>
 
     <button
@@ -6041,32 +5919,6 @@ Fecha de la actividad
 <input
     type="date"
     id="fechaActividad">
-
-</div>
-
-
-<div class="campo">
-
-<label>
-Hora de inicio
-</label>
-
-<input
-    type="time"
-    id="horaInicioActividad">
-
-</div>
-
-
-<div class="campo">
-
-<label>
-Hora de final
-</label>
-
-<input
-    type="time"
-    id="horaFinActividad">
 
 </div>
 
@@ -7235,13 +7087,6 @@ const LIMITES = {
 const actividadesDesbloqueadas =
 new Set();
 
-/* =====================================================
-   VISIBILIDAD DE ENTREGA / OBS_ENTREGA POR ACTIVIDAD
-   Por defecto permanece desactivada.
-===================================================== */
-const actividadesEntregaVisibles =
-new Set();
-
 
 /* =====================================================
    SESIÓN
@@ -7839,7 +7684,6 @@ document.getElementById(
         cerrarModalActividad();
 
         actividadesDesbloqueadas.clear();
-        actividadesEntregaVisibles.clear();
 
         asistenciaDesbloqueada =
         false;
@@ -8401,62 +8245,6 @@ function seleccionarTipoDiaAsistencia(tipo) {
         }
 
         setTimeout(() => campoMotivo.focus(), 50);
-    }
-}
-
-
-async function volverAClaseNormal() {
-    if (!cursoSeleccionado) {
-        alert("Primero selecciona un curso.");
-        return;
-    }
-
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!fecha) {
-        alert("Selecciona una fecha de asistencia.");
-        return;
-    }
-
-    if (![
-        "no_clases",
-        "clase_informal",
-        "observacion"
-    ].includes(tipoDiaAsistencia)) {
-        return;
-    }
-
-    const confirmar = confirm(
-        "¿Deseas volver esta fecha a asistencia normal?\n\n" +
-        "La asistencia registrada de ese día no será eliminada."
-    );
-
-    if (!confirmar) return;
-
-    try {
-        mostrarMensaje("Volviendo la fecha a clase normal...");
-
-        const { error } = await supabaseClient
-            .from("asistencia_tipos_dia")
-            .delete()
-            .eq("curso", cursoSeleccionado)
-            .eq("fecha", fecha);
-
-        if (error) throw error;
-
-        tipoDiaAsistencia = "";
-        motivoNoClases = "";
-
-        await cargarFechasAsistencia();
-        await cargarAsistencia();
-
-        mostrarMensaje("✓ La fecha volvió a asistencia normal. La asistencia registrada se conservó.");
-    } catch (error) {
-        console.error("Error al volver la fecha a clase normal:", error);
-        mostrarMensaje(
-            "✕ Error al volver la fecha a clase normal: " +
-            (error.message || error),
-            true
-        );
     }
 }
 
@@ -9583,8 +9371,6 @@ async function cargarAsistencia() {
         delete opcionesTipoDia.dataset.tipoSeleccionado;
     }
 
-    actualizarBotonVolverClaseNormal();
-
     if (botonGuardarTipoDia) {
         botonGuardarTipoDia.classList.add("oculto");
     }
@@ -9599,7 +9385,6 @@ async function cargarAsistencia() {
     }
 
     actualizarAvisoDiaEspecialAsistencia();
-    actualizarBotonVolverClaseNormal();
     mostrarTablaAsistencia();
     cambiosPendientesAsistencia = false;
     actualizarBotonGuardarAsistencia();
@@ -9647,24 +9432,6 @@ function formatearFechaGuardadaAsistencia(fecha) {
 /* =====================================================
    AVISO DE DÍA ESPECIAL
 ===================================================== */
-
-function actualizarBotonVolverClaseNormal() {
-    const boton = document.getElementById("botonVolverClaseNormal");
-    if (!boton) return;
-
-    const esDiaEspecial = [
-        "no_clases",
-        "clase_informal",
-        "observacion"
-    ].includes(tipoDiaAsistencia);
-
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    const mostrar = Boolean(fecha && cursoSeleccionado && esDiaEspecial);
-
-    boton.classList.toggle("oculto", !mostrar);
-    boton.style.display = mostrar ? "flex" : "none";
-}
-
 
 function actualizarAvisoDiaEspecialAsistencia() {
     const aviso = document.getElementById("avisoDiaEspecialAsistencia");
@@ -10703,14 +10470,6 @@ function abrirModalActividad() {
         "nombreActividad"
     ).value = "";
 
-    document.getElementById(
-        "horaInicioActividad"
-    ).value = "";
-
-    document.getElementById(
-        "horaFinActividad"
-    ).value = "";
-
 
     establecerFechaActividadActual();
 
@@ -10891,7 +10650,7 @@ async function cargarActividades() {
     await supabaseClient
     .from("actividades")
     .select(
-        "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
+        "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
     )
     .eq(
         "curso",
@@ -10988,7 +10747,7 @@ async function cargarCalificaciones() {
     await supabaseClient
     .from("calificaciones")
     .select(
-        "id,actividad_id,estudiante_id,nota,observacion,fecha_entrega"
+        "id,actividad_id,estudiante_id,nota,observacion"
     )
     .in(
         "actividad_id",
@@ -11040,10 +10799,7 @@ async function cargarCalificaciones() {
             cal.nota,
 
             observacion:
-            cal.observacion || "",
-
-            fecha_entrega:
-            cal.fecha_entrega || ""
+            cal.observacion || ""
 
         };
 
@@ -11431,144 +11187,6 @@ function obtenerIconoAsistenciaActividad(
 
 
 /* =====================================================
-   ENTREGA: OBS_ENTREGA AUTOMÁTICO
-===================================================== */
-
-/*
- * Devuelve la fecha/hora límite de la actividad.
- * Si la actividad no tiene hora de inicio, no se calcula fecha_entrega.
- */
-function obtenerFechaHoraActividad(actividad) {
-    if (!actividad || !actividad.fecha) return null;
-
-    const fechaTexto = String(actividad.fecha).slice(0, 10);
-
-    // Si la actividad tiene hora final, esa es la hora límite para
-    // considerar la presentación como puntual.
-    // Ejemplo: 18:30 a 18:50 -> atraso desde las 18:51.
-    const horaTexto = String(
-        actividad.hora_fin || actividad.hora_inicio || ""
-    ).slice(0, 5);
-
-    if (!horaTexto) return null;
-
-    const fecha = new Date(`${fechaTexto}T${horaTexto}:00`);
-    return Number.isNaN(fecha.getTime()) ? null : fecha;
-}
-
-/*
- * Calcula obs_entrega comparando la fecha/hora de fecha_entrega
- * con la fecha/hora de inicio de la actividad.
- */
-function calcularObsEntrega(actividad, fecha_entrega) {
-    const limite = obtenerFechaHoraActividad(actividad);
-    if (!limite || !fecha_entrega) return "";
-
-    const fechaEntrega = new Date(String(fecha_entrega));
-    if (Number.isNaN(fechaEntrega.getTime())) return "";
-
-    const diferenciaMs = fechaEntrega.getTime() - limite.getTime();
-
-    if (diferenciaMs <= 0) {
-        return "Puntual";
-    }
-
-    const totalMinutos = Math.floor(diferenciaMs / 60000);
-    const dias = Math.floor(totalMinutos / 1440);
-    const horas = Math.floor((totalMinutos % 1440) / 60);
-    const minutos = totalMinutos % 60;
-
-    const partes = [];
-
-    if (dias > 0) {
-        partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
-    }
-
-    if (horas > 0) {
-        partes.push(`${horas} ${horas === 1 ? "h" : "h"}`);
-    }
-
-    /*
-     * Se muestran los minutos solo cuando no hay días/horas,
-     * para no llenar la tabla con demasiado detalle.
-     */
-    if (dias === 0 && horas === 0 && minutos > 0) {
-        partes.push(`${minutos} min`);
-    }
-
-    return `Atrasado ${partes.join(" ")}`.trim();
-}
-
-function actualizarObsEntregaFila(fila, actividad) {
-    if (!fila || !actividad) return;
-
-    const celda = fila.querySelector(".obs-entrega");
-    const inputEntrega = fila.querySelector(".entrega-actividad");
-    if (!celda) return;
-
-    const tieneHora = !!obtenerFechaHoraActividad(actividad);
-    const fecha_entrega = tieneHora && inputEntrega ? inputEntrega.value : "";
-
-    celda.textContent = calcularObsEntrega(actividad, fecha_entrega);
-    celda.title = celda.textContent || "";
-}
-
-function actualizarObsEntregaActividad(actividadId) {
-    const actividad = actividades.find(
-        a => String(a.id) === String(actividadId)
-    );
-    if (!actividad) return;
-
-    document.querySelectorAll(
-        `.actividad[data-actividad-id="${actividadId}"] tr[data-estudiante]`
-    ).forEach(fila => actualizarObsEntregaFila(fila, actividad));
-}
-
-function actualizarVisibilidadEntregaActividad(bloque, actividad, boton) {
-    if (!bloque || !actividad) return;
-
-    const visible = actividadesEntregaVisibles.has(actividad.id);
-
-    bloque.classList.toggle("mostrar-entrega-actividad", visible);
-
-    if (boton) {
-        boton.classList.toggle("activo", visible);
-        boton.textContent = visible ? "📦" : "📦";
-        boton.title = visible
-            ? "Ocultar columnas Entrega y obs_entrega"
-            : "Mostrar columnas Entrega y obs_entrega";
-        boton.setAttribute("aria-pressed", visible ? "true" : "false");
-    }
-}
-
-
-/* Actualización en tiempo real de obs_entrega para edición manual. */
-document.addEventListener("input", function(event) {
-    const input = event.target;
-    if (!input || !input.classList || !input.classList.contains("entrega-actividad")) return;
-
-    const actividad = actividades.find(
-        a => String(a.id) === String(input.dataset.actividad)
-    );
-    if (actividad) {
-        actualizarObsEntregaFila(input.closest("tr"), actividad);
-    }
-});
-
-document.addEventListener("change", function(event) {
-    const input = event.target;
-    if (!input || !input.classList || !input.classList.contains("entrega-actividad")) return;
-
-    const actividad = actividades.find(
-        a => String(a.id) === String(input.dataset.actividad)
-    );
-    if (actividad) {
-        actualizarObsEntregaFila(input.closest("tr"), actividad);
-    }
-});
-
-
-/* =====================================================
    CREAR HTML ACTIVIDAD
 ===================================================== */
 
@@ -11583,9 +11201,6 @@ function crearActividadHTML(
 
     bloque.className =
     "actividad";
-
-    bloque.dataset.actividadId =
-    String(actividad.id);
 
 
     const encabezado =
@@ -11695,15 +11310,6 @@ function crearActividadHTML(
         </span>
 
 
-        <span
-            id="horario-actividad-${actividad.id}"
-            class="puntaje-actividad">
-            ${actividad.hora_inicio && actividad.hora_fin
-                ? `— ${escapeHTML(formatearHoraActividad(actividad.hora_inicio))} a ${escapeHTML(formatearHoraActividad(actividad.hora_fin))}`
-                : ""}
-        </span>
-
-
         <span class="puntaje-actividad">
 
             — máximo ${puntajeMaximo} puntos
@@ -11763,26 +11369,6 @@ function crearActividadHTML(
 
     botonBloquear.title =
     "Desbloquear notas y observaciones";
-
-
-    const botonMostrarEntrega =
-    document.createElement(
-        "button"
-    );
-
-    botonMostrarEntrega.className =
-    "boton-mostrar-entrega";
-
-    botonMostrarEntrega.textContent =
-    "📦";
-
-    botonMostrarEntrega.title =
-    "Mostrar columnas Entrega y obs_entrega";
-
-    botonMostrarEntrega.setAttribute(
-        "aria-pressed",
-        "false"
-    );
 
 
     const botonEscanearQR =
@@ -11849,10 +11435,6 @@ function crearActividadHTML(
         botonBloquear
     );
 
-    derecha.appendChild(
-        botonMostrarEntrega
-    );
-
 
     encabezado.appendChild(
         izquierda
@@ -11904,10 +11486,6 @@ function crearActividadHTML(
 
                 <th>Nota / ${puntajeMaximo}</th>
 
-                <th class="columna-entrega">fecha_entrega</th>
-
-                <th class="columna-obs-entrega">obs_entrega</th>
-
                 <th>Observaciones</th>
 
             </tr>
@@ -11937,9 +11515,7 @@ function crearActividadHTML(
     estudiante => {
 
         let nota = null;
-        let fecha_entrega = "";
         let observacion = "";
-        const actividadTieneHora = !!obtenerFechaHoraActividad(actividad);
 
 
         if (
@@ -11968,9 +11544,6 @@ function crearActividadHTML(
 
                 nota =
                 registro.nota;
-
-                fecha_entrega =
-                registro.fecha_entrega || "";
 
                 observacion =
                 registro.observacion || "";
@@ -12069,25 +11642,6 @@ function crearActividadHTML(
             </td>
 
 
-            <td class="columna-entrega">
-
-                <input
-                    type="datetime-local"
-                    class="entrega-actividad"
-                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
-                    data-estudiante="${estudiante.id}"
-                    data-actividad="${actividad.id}"
-                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
-                    oninput="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
-                    onchange="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
-                    ${actividadTieneHora ? "" : "disabled"}
-                >
-
-            </td>
-
-            <td class="columna-obs-entrega obs-entrega"></td>
-
-
             <td>
 
                 <input
@@ -12123,11 +11677,6 @@ function crearActividadHTML(
 
         tbody.appendChild(
             fila
-        );
-
-        actualizarObsEntregaFila(
-            fila,
-            actividad
         );
 
     });
@@ -12233,26 +11782,6 @@ function crearActividadHTML(
     };
 
 
-    botonMostrarEntrega.onclick =
-    function(event) {
-
-        event.stopPropagation();
-
-        if (actividadesEntregaVisibles.has(actividad.id)) {
-            actividadesEntregaVisibles.delete(actividad.id);
-        } else {
-            actividadesEntregaVisibles.add(actividad.id);
-        }
-
-        actualizarVisibilidadEntregaActividad(
-            bloque,
-            actividad,
-            botonMostrarEntrega
-        );
-
-    };
-
-
     botonBloquear.onclick =
     function() {
 
@@ -12264,7 +11793,7 @@ function crearActividadHTML(
 
         const inputs =
         bloque.querySelectorAll(
-            ".nota-input, .entrega-actividad, .observacion-actividad"
+            ".nota-input, .observacion-actividad"
         );
 
 
@@ -12331,13 +11860,6 @@ function crearActividadHTML(
     };
 
 
-    actualizarVisibilidadEntregaActividad(
-        bloque,
-        actividad,
-        botonMostrarEntrega
-    );
-
-
     botonEliminar.onclick =
     function() {
 
@@ -12350,33 +11872,6 @@ function crearActividadHTML(
 
     return bloque;
 
-}
-
-
-/* =====================================================
-   ENTREGA: FECHA Y HORA
-===================================================== */
-function formatearEntregaParaInput(valor) {
-    if (!valor) return "";
-    const fecha = new Date(String(valor));
-    if (Number.isNaN(fecha.getTime())) return String(valor).slice(0,16).replace(" ","T");
-    const p=n=>String(n).padStart(2,"0");
-    return `${fecha.getFullYear()}-${p(fecha.getMonth()+1)}-${p(fecha.getDate())}T${p(fecha.getHours())}:${p(fecha.getMinutes())}`;
-}
-function obtenerEntregaISO(valor) {
-    const texto=String(valor||"").trim(); if(!texto) return null;
-    const fecha=new Date(texto); return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString();
-}
-
-/* =====================================================
-   FORMATEAR HORA DE ACTIVIDAD (SOLO HH:MM)
-===================================================== */
-
-function formatearHoraActividad(hora) {
-
-    if (!hora) return "";
-
-    return String(hora).slice(0, 5);
 }
 
 
@@ -12467,70 +11962,9 @@ async function editarNombreActividad(
     }
 
 
-    /*
-       La hora es opcional al editar.
-       Si se deja vacía cualquiera de las dos horas, la actividad
-       queda sin horario, igual que una actividad sin hora.
-    */
-    const horaInicioActual =
-    formatearHoraActividad(actividad.hora_inicio);
-
-    const nuevaHoraInicio =
-    prompt(
-        "Escribe la hora de inicio (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
-        horaInicioActual
-    );
-
-    if (nuevaHoraInicio === null) {
-        return;
-    }
-
-    let horaInicio = nuevaHoraInicio.trim();
-
-    const horaFinActual =
-    formatearHoraActividad(actividad.hora_fin);
-
-    const nuevaHoraFin =
-    prompt(
-        "Escribe la hora final (HH:MM). Puedes dejarla vacía si la actividad no tendrá hora:",
-        horaFinActual
-    );
-
-    if (nuevaHoraFin === null) {
-        return;
-    }
-
-    let horaFin = nuevaHoraFin.trim();
-
-    /* Si falta una de las dos horas, se eliminan ambas. */
-    if (!horaInicio || !horaFin) {
-        horaInicio = null;
-        horaFin = null;
-    } else {
-
-        const horaValida =
-        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaInicio) &&
-        /^([01]\d|2[0-3]):[0-5]\d$/.test(horaFin);
-
-        if (!horaValida) {
-            alert("Las horas deben tener el formato HH:MM.\n\nEjemplo: 08:00 a 10:00.");
-            return;
-        }
-
-        if (horaFin <= horaInicio) {
-            alert("La hora final debe ser posterior a la hora de inicio.");
-            return;
-        }
-    }
-
-    const horaInicioComparar = horaInicio || "";
-    const horaFinComparar = horaFin || "";
-
     if (
         nombre === actividad.nombre &&
-        fecha === fechaActual &&
-        horaInicioComparar === horaInicioActual &&
-        horaFinComparar === horaFinActual
+        fecha === fechaActual
     ) {
         return;
     }
@@ -12552,13 +11986,7 @@ async function editarNombreActividad(
         nombre,
 
         fecha:
-        fecha,
-
-        hora_inicio:
-        horaInicio,
-
-        hora_fin:
-        horaFin
+        fecha
 
     })
     .eq(
@@ -12586,12 +12014,6 @@ async function editarNombreActividad(
 
     actividad.fecha =
     fecha;
-
-    actividad.hora_inicio =
-    horaInicio;
-
-    actividad.hora_fin =
-    horaFin;
 
 
     const elementoNombre =
@@ -12626,25 +12048,13 @@ async function editarNombreActividad(
 
     }
 
-    const elementoHorario =
-    document.getElementById(
-        "horario-actividad-" +
-        actividad.id
-    );
-
-    if (elementoHorario) {
-        elementoHorario.textContent =
-            horaInicio && horaFin
-                ? "— " + horaInicio + " a " + horaFin
-                : "";
-    }
-
 
     mostrarMensaje(
         "✓ Actividad actualizada correctamente."
     );
 
 }
+
 
 /* =====================================================
    VALIDAR NOTA
@@ -12777,16 +12187,6 @@ async function crearActividad() {
         "fechaActividad"
     ).value;
 
-    const horaInicio =
-    document.getElementById(
-        "horaInicioActividad"
-    ).value;
-
-    const horaFin =
-    document.getElementById(
-        "horaFinActividad"
-    ).value;
-
 
     const radioCategoria =
     document.querySelector(
@@ -12821,12 +12221,6 @@ async function crearActividad() {
 
         return;
 
-    }
-
-
-    if (horaInicio && horaFin && horaFin <= horaInicio) {
-        alert("La hora final debe ser posterior a la hora de inicio.");
-        return;
     }
 
 
@@ -12900,12 +12294,6 @@ async function crearActividad() {
         fecha:
         fechaActividad,
 
-        hora_inicio:
-        horaInicio || null,
-
-        hora_fin:
-        horaFin || null,
-
         orden:
         orden,
 
@@ -12967,76 +12355,6 @@ async function eliminarActividad(
 
 
     if (!confirmar) {
-        return;
-    }
-
-
-    /* Segunda confirmación informativa:
-       primero contamos las calificaciones realmente registradas
-       para esta actividad antes de permitir su eliminación. */
-    mostrarMensaje(
-        "Revisando calificaciones registradas..."
-    );
-
-    const {
-        count: cantidadCalificaciones,
-        error: errorConteoCalificaciones
-    } =
-    await supabaseClient
-    .from("calificaciones")
-    .select(
-        "id",
-        {
-            count: "exact",
-            head: true
-        }
-    )
-    .eq(
-        "actividad_id",
-        actividad.id
-    );
-
-
-    if (errorConteoCalificaciones) {
-
-        console.error(
-            "Error al contar calificaciones antes de eliminar:",
-            errorConteoCalificaciones
-        );
-
-        alert(
-            "No se pudo verificar cuántas calificaciones tiene esta actividad.\n\n" +
-            errorConteoCalificaciones.message +
-            "\n\nLa actividad no se eliminará."
-        );
-
-        return;
-
-    }
-
-
-    const totalCalificaciones =
-    Number(cantidadCalificaciones || 0);
-
-
-    const confirmarDefinitivo =
-    confirm(
-
-        "Esta actividad tiene " +
-        totalCalificaciones +
-        " calificaciones registradas.\n\n" +
-
-        "Actividad: " +
-        actividad.nombre +
-        "\n\n" +
-
-        "Si continúas, se eliminarán la actividad y todas sus calificaciones.\n\n" +
-        "¿Deseas eliminarla?"
-
-    );
-
-
-    if (!confirmarDefinitivo) {
         return;
     }
 
@@ -13829,7 +13147,7 @@ async function prepararEstadisticas() {
         const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
             cargarTodosLosRegistrosEstadisticas(
                 "matematica",
-                "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,estado,nota_1t,nota_2t",
+                "id,num_lista,ci,nombre,curso,fecha_nacimiento,gen,nota_1t,nota_2t",
                 "id"
             ),
             cargarTodosLosRegistrosEstadisticas(
@@ -13856,39 +13174,8 @@ async function prepararEstadisticas() {
             } catch (_) {}
         }
 
-        /*
-         * ESTADÍSTICAS: los cálculos relacionados con estudiantes se hacen
-         * únicamente con estudiantes EFECTIVOS. Los demás estados se
-         * mantienen aparte para mostrar la composición de la matrícula.
-         */
-        const normalizarEstadoEstudianteEstadistica = valor =>
-            String(valor ?? "").trim().toUpperCase();
-
-        const estudiantesEfectivos = est.filter(e =>
-            normalizarEstadoEstudianteEstadistica(e.estado) === "EFECTIVO"
-        );
-        const estudiantesNoIncorporados = est.filter(e =>
-            normalizarEstadoEstudianteEstadistica(e.estado) === "NO INCORPORADO"
-        );
-        const estudiantesRetiradosAbandono = est.filter(e =>
-            normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO ABANDONO"
-        );
-        const estudiantesRetiradosTraslado = est.filter(e =>
-            normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO TRASLADO"
-        );
-        const estudiantesOtrosEstados = est.filter(e => {
-            const estado = normalizarEstadoEstudianteEstadistica(e.estado);
-            return estado !== "EFECTIVO" &&
-                   estado !== "NO INCORPORADO" &&
-                   estado !== "RETIRADO ABANDONO" &&
-                   estado !== "RETIRADO TRASLADO";
-        });
-
-        const idsEfectivos = new Set(estudiantesEfectivos.map(e => String(e.id)));
-        const visitas = (registrosVisitasEstudiantes || []).filter(v => idsEfectivos.has(String(v.estudiante_id)));
-        const asistenciasEfectivas = (asistenciasTodas || []).filter(r => idsEfectivos.has(String(r.estudiante_id)));
-        const calificacionesEfectivas = (calificacionesTodas || []).filter(r => idsEfectivos.has(String(r.estudiante_id)));
-        const cursos = [...new Set(estudiantesEfectivos.map(e => e.curso).filter(Boolean))].sort();
+        const visitas = registrosVisitasEstudiantes || [];
+        const cursos = [...new Set(est.map(e => e.curso).filter(Boolean))].sort();
         const mapaEstudiante = new Map(est.map(e => [String(e.id), e]));
         const mapaCalificaciones = {};
         calificacionesTodas.forEach(r => {
@@ -13903,7 +13190,7 @@ async function prepararEstadisticas() {
         });
 
         // Calcular 3T y final para todos los estudiantes, sin necesidad de abrir un curso.
-        const estudiantesConNotas = estudiantesEfectivos.map(e => {
+        const estudiantesConNotas = est.map(e => {
             const nota1 = convertirNumero(e.nota_1t);
             const nota2 = convertirNumero(e.nota_2t);
             const nota3 = calcularNota3TEstadisticas(e.id, actividadesPorCurso[e.curso] || [], mapaCalificaciones);
@@ -13937,7 +13224,7 @@ async function prepararEstadisticas() {
         const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`;
         const visitasHoy = visitas.filter(v => obtenerFechaLocalVisita(v.fecha_hora) === hoyClave).length;
         const estudiantesConIngreso = new Set(visitas.map(v => String(v.estudiante_id))).size;
-        const estados = conteoEstado(asistenciasEfectivas);
+        const estados = conteoEstado(asistenciasTodas);
         const estudiantesConNotaFinal = estudiantesConNotas.filter(e => e.final !== null);
         const cantidadVarones = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "varon").length;
         const cantidadMujeres = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").length;
@@ -13946,10 +13233,10 @@ async function prepararEstadisticas() {
         const estadisticaGenero = (genero) => {
             const grupo = estudiantesConNotas.filter(e => obtenerGeneroEstadistica(e.gen) === genero);
             const ids = new Set(grupo.map(e => String(e.id)));
-            const asistenciasGrupo = asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id)));
+            const asistenciasGrupo = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)));
             const estadosGrupo = conteoEstado(asistenciasGrupo);
             const observacionesAsistencia = asistenciasGrupo.filter(r => String(r.observacion || '').trim()).length;
-            const calificacionesGrupo = calificacionesEfectivas.filter(r => ids.has(String(r.estudiante_id)));
+            const calificacionesGrupo = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)));
             const observacionesActividades = calificacionesGrupo.filter(r => String(r.observacion || '').trim()).length;
             const visitasGrupo = visitas.filter(v => ids.has(String(v.estudiante_id))).length;
             return {
@@ -13972,17 +13259,12 @@ async function prepararEstadisticas() {
 
         if (general) general.innerHTML = `
             <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Estudiantes efectivos</span><strong>${estudiantesEfectivos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>No incorporados</span><strong>${estudiantesNoIncorporados.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Retirados por abandono</span><strong>${estudiantesRetiradosAbandono.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Retirados por traslado</span><strong>${estudiantesRetiradosTraslado.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Otros estados</span><strong>${estudiantesOtrosEstados.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Total registrados</span><strong>${est.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Cursos efectivos</span><strong>${cursos.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos registrados</span><strong>${visitas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Estudiantes con ingreso</span><strong>${estudiantesConIngreso}</strong></div>
                 <div class="estadistica-tarjeta"><span>Ingresos de hoy</span><strong>${visitasHoy}</strong></div>
-                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasEfectivas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Registros de asistencia</span><strong>${asistenciasTodas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
                 <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
             </div>
@@ -14026,30 +13308,11 @@ async function prepararEstadisticas() {
         if (cursosPanel) cursosPanel.innerHTML = `
             <div class="estadistica-resumen">
                 <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Estudiantes efectivos</span><strong>${estudiantesEfectivos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>No incorporados</span><strong>${estudiantesNoIncorporados.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Retirados</span><strong>${estudiantesRetiradosAbandono.length + estudiantesRetiradosTraslado.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Estudiantes</span><strong>${estudiantesConNotas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>Actividades 3T</span><strong>${actividades3T.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasEfectivas.length}</strong></div>
+                <div class="estadistica-tarjeta"><span>Asistencias registradas</span><strong>${asistenciasTodas.length}</strong></div>
                 <div class="estadistica-tarjeta"><span>👦 Varones</span><strong>${cantidadVarones}</strong></div>
                 <div class="estadistica-tarjeta"><span>👧 Mujeres</span><strong>${cantidadMujeres}</strong></div>
-            </div>
-            <div class="estadistica-tabla-genero-curso">
-                <h4>👥 Estado de matrícula por curso</h4>
-                <div class="tabla-estadistica-scroll">
-                    <table class="tabla-estadistica-genero">
-                        <thead><tr><th>Curso</th><th>Efectivos</th><th>No incorporados</th><th>Ret. abandono</th><th>Ret. traslado</th><th>Otros</th><th>Total registrados</th></tr></thead>
-                        <tbody>${[...new Set(est.map(e => e.curso).filter(Boolean))].sort().map(c => {
-                            const grupo = est.filter(e => e.curso === c);
-                            const efectivos = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "EFECTIVO").length;
-                            const noInc = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "NO INCORPORADO").length;
-                            const abandono = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO ABANDONO").length;
-                            const traslado = grupo.filter(e => normalizarEstadoEstudianteEstadistica(e.estado) === "RETIRADO TRASLADO").length;
-                            const otros = grupo.length - efectivos - noInc - abandono - traslado;
-                            return `<tr><td>${escEstadistica(c)}</td><td>${efectivos}</td><td>${noInc}</td><td>${abandono}</td><td>${traslado}</td><td>${otros}</td><td>${grupo.length}</td></tr>`;
-                        }).join("")}</tbody>
-                    </table>
-                </div>
             </div>
             <div class="estadistica-tabla-genero-curso">
                 <h4>👥 Varones y mujeres por curso</h4>
@@ -14076,9 +13339,9 @@ async function prepararEstadisticas() {
                             const idsMuj = new Set(grupo.filter(e => obtenerGeneroEstadistica(e.gen) === "mujer").map(e => String(e.id)));
                             const datosGrupo = ids => {
                                 const es = grupo.filter(e => ids.has(String(e.id)));
-                                const as = conteoEstado(asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id))));
-                                const obsA = asistenciasEfectivas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
-                                const obsC = calificacionesEfectivas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const as = conteoEstado(asistenciasTodas.filter(r => ids.has(String(r.estudiante_id))));
+                                const obsA = asistenciasTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
+                                const obsC = calificacionesTodas.filter(r => ids.has(String(r.estudiante_id)) && String(r.observacion || '').trim()).length;
                                 return { n:es.length, prom:promedio(es.map(e => e.final)), asist:as.asistio, falta:as.falta, obs:obsA + obsC };
                             };
                             const v = datosGrupo(idsVar), m = datosGrupo(idsMuj);
@@ -14107,7 +13370,7 @@ async function prepararEstadisticas() {
                 const arr=estudiantesConNotas.filter(e=>e.curso===c && e.final!==null).map(e=>e.final);
                 return {nombre:c,valor:arr.length ? Number(promedio(arr)) : 0};
             }))}
-            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasEfectivas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
+            ${prepararGraficaEstadistica("Asistencias por curso", cursos.map(c => ({nombre:c,valor:asistenciasTodas.filter(r=>mapaEstudiante.get(String(r.estudiante_id))?.curso===c).length})))}
             ${prepararGraficaEstadistica("Ingresos a la página por curso", cursos.map(c => ({nombre:c,valor:visitas.filter(v=>mapaEstudiante.get(String(v.estudiante_id))?.curso===c).length})))}`;
 
         const finales = estudiantesConNotas.map(e=>e.final).filter(Number.isFinite);
@@ -14128,7 +13391,7 @@ async function prepararEstadisticas() {
             ])}`;
 
         const asistenciaPorCurso = cursos.map(c => {
-            const registros = asistenciasEfectivas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
+            const registros = asistenciasTodas.filter(r => mapaEstudiante.get(String(r.estudiante_id))?.curso === c);
             const ce = conteoEstado(registros);
             return { curso:c, ...ce };
         });
@@ -14161,7 +13424,7 @@ async function prepararEstadisticas() {
             ${prepararGraficaEstadistica("Actividades por curso", cursos.map(c=>({nombre:c,valor:(actividadesPorCurso[c]||[]).length})))}
             ${prepararGraficaEstadistica("Calificaciones registradas por curso", cursos.map(c=>{
                 const ids=new Set(estudiantesConNotas.filter(e=>e.curso===c).map(e=>String(e.id)));
-                return {nombre:c,valor:calificacionesEfectivas.filter(r=>ids.has(String(r.estudiante_id))).length};
+                return {nombre:c,valor:calificacionesTodas.filter(r=>ids.has(String(r.estudiante_id))).length};
             }))}`;
 
         // Mantener también la lista de estudiantes y sus notas sincronizadas en memoria.
@@ -14942,10 +14205,6 @@ function programarGuardadoCambioActividad(input) {
         `.nota-input[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
     );
 
-    const entregaInput = document.querySelector(
-        `.entrega-actividad[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
-    );
-
     const observacionInput = document.querySelector(
         `.observacion-actividad[data-actividad="${actividadId}"][data-estudiante="${input.dataset.estudiante}"]`
     );
@@ -14955,9 +14214,6 @@ function programarGuardadoCambioActividad(input) {
 
     const notaInicial =
         notaInput ? (notaInput.dataset.valorInicial || "").trim() : "";
-
-    const entregaActual = entregaInput ? entregaInput.value.trim() : "";
-    const entregaInicial = entregaInput ? (entregaInput.dataset.valorInicial || "").trim() : "";
 
     const observacionActual =
         observacionInput ? observacionInput.value.trim() : "";
@@ -14973,7 +14229,6 @@ function programarGuardadoCambioActividad(input) {
     */
     if (
         notaActual === notaInicial &&
-        entregaActual === entregaInicial &&
         observacionActual === observacionInicial
     ) {
         actualizarBotonGuardarActividadManual(actividadId);
@@ -15041,10 +14296,6 @@ async function guardarActividadManual(actividadId) {
         document.querySelectorAll(
             `.nota-input[data-actividad="${id}"]`
         )
-    );
-
-    const inputsEntregas = Array.from(
-        document.querySelectorAll(`.entrega-actividad[data-actividad="${id}"]`)
     );
 
     const inputsObservaciones = Array.from(
@@ -15116,22 +14367,6 @@ async function guardarActividadManual(actividadId) {
         }
     }
 
-    /* Detectar también cambios manuales en fecha_entrega. */
-    if (!hayCambios) {
-        for (const input of inputsEntregas) {
-            const actual =
-                obtenerEntregaISO(input.value) || "";
-
-            const inicial =
-                obtenerEntregaISO(input.dataset.valorInicial || "") || "";
-
-            if (actual !== inicial) {
-                hayCambios = true;
-                break;
-            }
-        }
-    }
-
     if (!hayCambios) {
         actividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
@@ -15157,11 +14392,6 @@ async function guardarActividadManual(actividadId) {
         /*
            Crear los registros únicamente de esta actividad.
         */
-        const entregasPorEstudiante = new Map();
-        inputsEntregas.forEach(input => {
-            entregasPorEstudiante.set(String(input.dataset.estudiante), obtenerEntregaISO(input.value));
-        });
-
         const observacionesPorEstudiante = new Map();
 
         inputsObservaciones.forEach(input => {
@@ -15181,11 +14411,16 @@ async function guardarActividadManual(actividadId) {
                 ? null
                 : Number(input.value);
 
-            const observacion = observacionesPorEstudiante.get(String(estudianteId)) ?? null;
-            const fecha_entrega = entregasPorEstudiante.get(String(estudianteId)) ?? null;
+            const observacion =
+                observacionesPorEstudiante.get(
+                    String(estudianteId)
+                ) ?? null;
 
             registros.push({
-                actividad_id: id, estudiante_id: estudianteId, nota, fecha_entrega, observacion
+                actividad_id: id,
+                estudiante_id: estudianteId,
+                nota,
+                observacion
             });
         });
 
@@ -15210,7 +14445,7 @@ async function guardarActividadManual(actividadId) {
         } = await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
+                "actividad_id,estudiante_id,nota,observacion"
             )
             .eq("actividad_id", id)
             .in(
@@ -15252,12 +14487,6 @@ async function guardarActividadManual(actividadId) {
                     ) ===
                     String(
                         registro.observacion ?? ""
-                    ) &&
-                    String(
-                        anterior.fecha_entrega ?? ""
-                    ) ===
-                    String(
-                        registro.fecha_entrega ?? ""
                     );
 
                 if (!igual) {
@@ -15371,8 +14600,6 @@ async function guardarActividadManual(actividadId) {
 
             calificaciones[estudianteId][id] = {
                 nota: registro.nota,
-                fecha_entrega:
-                    registro.fecha_entrega || "",
                 observacion:
                     registro.observacion || ""
             };
@@ -15397,16 +14624,6 @@ async function guardarActividadManual(actividadId) {
                             `.observacion-actividad[data-estudiante="${input.dataset.estudiante}"][data-actividad="${id}"]`
                         )?.value.trim() || ""
                 })
-            );
-        });
-
-        inputsEntregas.forEach(input => {
-            input.dataset.valorInicial =
-                input.value;
-
-            actualizarObsEntregaFila(
-                input.closest("tr"),
-                actividad
             );
         });
 
@@ -15559,12 +14776,6 @@ async function guardarNotas() {
         const estudiantesAfectados = new Set();
 
         /* Mapa de observaciones: evita hacer querySelector() por cada nota. */
-        const entregas = new Map();
-        document.querySelectorAll(".entrega-actividad").forEach(input => {
-            const clave = `${Number(input.dataset.actividad)}|${Number(input.dataset.estudiante)}`;
-            entregas.set(clave, obtenerEntregaISO(input.value));
-        });
-
         const observaciones = new Map();
         document.querySelectorAll(".observacion-actividad").forEach(input => {
             const clave = `${Number(input.dataset.actividad)}|${Number(input.dataset.estudiante)}`;
@@ -15577,10 +14788,12 @@ async function guardarNotas() {
             const nota = input.value === "" ? null : Number(input.value);
             const clave = `${actividadId}|${estudianteId}`;
             const observacion = observaciones.get(clave) ?? null;
-            const fecha_entrega = entregas.get(clave) ?? null;
 
             registros.push({
-                actividad_id: actividadId, estudiante_id: estudianteId, nota, fecha_entrega, observacion
+                actividad_id: actividadId,
+                estudiante_id: estudianteId,
+                nota,
+                observacion
             });
         }
 
@@ -15597,7 +14810,7 @@ async function guardarNotas() {
             const { data: anteriores, error: errorAnteriores } =
                 await supabaseClient
                     .from("calificaciones")
-                    .select("actividad_id,estudiante_id,nota,observacion,fecha_entrega")
+                    .select("actividad_id,estudiante_id,nota,observacion")
                     .in("actividad_id", idsActividades)
                     .in("estudiante_id", idsEstudiantes);
 
@@ -15618,8 +14831,7 @@ async function guardarNotas() {
                 const igual =
                     anterior &&
                     String(anterior.nota ?? "") === String(registro.nota ?? "") &&
-                    String(anterior.observacion ?? "") === String(registro.observacion ?? "") &&
-                    String(anterior.fecha_entrega ?? "") === String(registro.fecha_entrega ?? "");
+                    String(anterior.observacion ?? "") === String(registro.observacion ?? "");
 
                 if (!igual) estudiantesAfectados.add(Number(registro.estudiante_id));
                 return !igual;
@@ -15688,7 +14900,8 @@ async function guardarNotas() {
                 }
 
                 calificaciones[estudianteId][actividadId] = {
-                    nota: registro.nota, fecha_entrega: registro.fecha_entrega || "", observacion: registro.observacion || ""
+                    nota: registro.nota,
+                    observacion: registro.observacion || ""
                 };
             });
         }
@@ -18356,77 +17569,6 @@ function obtenerActividadesAnterioresQR(actividadActual) {
         });
 }
 
-function obtenerTextoPresentacionActividad(actividad, fechaEntrega) {
-    if (!fechaEntrega) return "";
-
-    let resultado = calcularObsEntrega(actividad, fechaEntrega);
-
-    /* Si la actividad no tiene hora de inicio, comparar igualmente por fecha. */
-    if (!resultado && actividad && actividad.fecha) {
-        const fechaActividad = new Date(`${String(actividad.fecha).slice(0, 10)}T00:00:00`);
-        const fechaEntregaSoloFecha = new Date(`${String(fechaEntrega).slice(0, 10)}T00:00:00`);
-
-        if (!Number.isNaN(fechaActividad.getTime()) && !Number.isNaN(fechaEntregaSoloFecha.getTime())) {
-            const diferenciaMs = fechaEntregaSoloFecha.getTime() - fechaActividad.getTime();
-            if (diferenciaMs <= 0) {
-                resultado = "Puntual";
-            } else {
-                const dias = Math.floor(diferenciaMs / 86400000);
-                resultado = `Atrasado ${dias} ${dias === 1 ? "día" : "días"}`;
-            }
-        }
-    }
-
-    if (!resultado) return "";
-    if (resultado === "Puntual") return "✅ Puntual";
-    return `⏰ ${resultado}`;
-}
-
-
-function obtenerPresentacionQR(actividad, nota) {
-    const notaTexto = String(nota ?? "").trim();
-
-    if (notaTexto !== "" && Number(notaTexto) === 0) {
-        return "No presentó";
-    }
-
-    if (!actividad) return "";
-
-    const limite = obtenerFechaHoraActividad(actividad);
-    if (!limite) return "";
-
-    const ahora = new Date();
-    const diferenciaMs = ahora.getTime() - limite.getTime();
-
-    if (diferenciaMs <= 0) return "✅ Puntual";
-
-    const totalMinutos = Math.floor(diferenciaMs / 60000);
-    const dias = Math.floor(totalMinutos / 1440);
-    const horas = Math.floor((totalMinutos % 1440) / 60);
-    const minutos = totalMinutos % 60;
-    const partes = [];
-
-    if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
-    if (horas > 0) partes.push(`${horas} h`);
-    if (minutos > 0 || partes.length === 0) partes.push(`${minutos} min`);
-
-    return `⏰ Atrasado ${partes.join(" ").replace(/ h/g, " h.")}`;
-}
-
-function actualizarPresentacionQR() {
-    const elemento = document.getElementById("presentacionQR");
-    if (!elemento || !actividadQRSeleccionada) return;
-
-    const notaInput = document.getElementById("notaQR");
-    const texto = obtenerPresentacionQR(
-        actividadQRSeleccionada,
-        notaInput ? notaInput.value : ""
-    );
-
-    elemento.textContent = texto || "—";
-}
-
-
 function construirActividadesAnterioresQR(estudianteId, actividadActual) {
     const checkbox = document.getElementById("mostrarActividadesAnterioresQR");
     if (!checkbox || !checkbox.checked) return "";
@@ -18449,19 +17591,9 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
             ${anteriores.map(a => {
                 const registro = registrosEstudiante[a.id];
                 const nota = registro && typeof registro === "object" ? registro.nota : registro;
-                const observacion = registro && typeof registro === "object"
-                    ? (registro.observacion || "")
-                    : "";
-                const fechaEntrega = registro && typeof registro === "object"
-                    ? (registro.fecha_entrega || "")
-                    : "";
-                const textoPresentacion = obtenerTextoPresentacionActividad(a, fechaEntrega);
                 const textoNota = nota === null || nota === undefined || String(nota).trim() === ""
                     ? "Sin nota"
                     : `${escapeHTML(String(nota))} / ${escapeHTML(String(Number(a.puntaje_maximo) || LIMITES[a.categoria] || ""))}`;
-                const textoObservacion = String(observacion).trim()
-                    ? `<small style="display:block;color:#555;font-size:11px;margin-top:2px;">📝 ${escapeHTML(String(observacion))}</small>`
-                    : "";
 
                 return `
                     <div class="qr-actividad-anterior">
@@ -18469,9 +17601,7 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
                             ${escapeHTML(a.nombre)}
                             <small style="display:block;color:#777;font-size:11px;">
                                 📅 ${escapeHTML(a.fecha || "")}
-                                ${textoPresentacion ? `<br>${escapeHTML(textoPresentacion)}` : ""}
                             </small>
-                            ${textoObservacion}
                         </span>
                         <span class="qr-actividad-anterior-nota">${textoNota}</span>
                     </div>
@@ -18648,9 +17778,6 @@ async function prepararCalificacionQR(
         <br>
         <strong>Máximo:</strong>
         ${puntajeMaximo} puntos
-        <br>
-        <strong>Presentación:</strong>
-        <span id="presentacionQR">—</span>
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
@@ -18680,8 +17807,6 @@ async function prepararCalificacionQR(
     notaActual === undefined
     ? ""
     : notaActual;
-
-    actualizarPresentacionQR();
 
     const observacionInputQR =
     document.getElementById(
@@ -18748,13 +17873,6 @@ function actualizarActividadesAnterioresQR() {
 }
 
 
-document.addEventListener("input", function(event) {
-    if (event.target && event.target.id === "notaQR") {
-        actualizarPresentacionQR();
-    }
-});
-
-
 function seleccionarNotaRapidaQR(nota) {
 
     const notaInput =
@@ -18774,7 +17892,6 @@ function seleccionarNotaRapidaQR(nota) {
     }
 
     notaInput.value = nota;
-    actualizarPresentacionQR();
 
     /* En celular, las notas rápidas no deben abrir el teclado.
        El teclado aparecerá únicamente al tocar el cuadro de calificación
@@ -18897,7 +18014,6 @@ async function guardarCalificacionQR() {
                 actividad_id: actividadQRSeleccionada.id,
                 estudiante_id: estudianteQRSeleccionado.id,
                 nota: nota,
-                fecha_entrega: new Date().toISOString(),
                 observacion: observacion || null
             },
             {
@@ -18932,7 +18048,6 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: registroAnterior.nota ?? null,
-            fecha_entrega: registroAnterior.fecha_entrega ?? null,
             observacion: registroAnterior.observacion ?? null
         }
         : null;
@@ -18941,13 +18056,11 @@ async function guardarCalificacionQR() {
             actividad_id: actividadQRSeleccionada.id,
             estudiante_id: estudianteQRSeleccionado.id,
             nota: nota,
-            fecha_entrega: new Date().toISOString(),
             observacion: observacion || null
         };
 
         if (!anteriorHistorialQR ||
             String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
-            String(anteriorHistorialQR.fecha_entrega ?? "") !== String(nuevoHistorialQR.fecha_entrega ?? "") ||
             String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
@@ -18974,9 +18087,6 @@ async function guardarCalificacionQR() {
             nota:
             nota,
 
-            fecha_entrega:
-            nuevoHistorialQR.fecha_entrega,
-
             observacion:
             observacion
         };
@@ -18992,10 +18102,6 @@ async function guardarCalificacionQR() {
         const notaTablaQR = document.querySelector(
             `.nota-input[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
         );
-        const entregaTablaQR = document.querySelector(
-            `.entrega-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
-        );
-
         const observacionTablaQR = document.querySelector(
             `.observacion-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
         );
@@ -19003,22 +18109,6 @@ async function guardarCalificacionQR() {
         if (notaTablaQR) {
             notaTablaQR.value = String(nota);
             notaTablaQR.dataset.valorInicial = String(nota);
-        }
-
-        if (entregaTablaQR) {
-            const entregaQR = nuevoHistorialQR.fecha_entrega || "";
-            entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
-            entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
-
-            const actividadQR = actividades.find(
-                a => String(a.id) === String(actividadIdGuardadaQR)
-            );
-            if (actividadQR) {
-                actualizarObsEntregaFila(
-                    entregaTablaQR.closest("tr"),
-                    actividadQR
-                );
-            }
         }
 
         if (observacionTablaQR) {
@@ -19384,12 +18474,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 .order("fecha", { ascending:false }),
 
             supabaseClient.from("actividades")
-                .select("id,curso,trimestre,categoria,nombre,fecha,hora_inicio,orden,puntaje_maximo")
+                .select("id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo")
                 .eq("curso", estudiante.curso)
                 .order("trimestre").order("orden"),
 
             supabaseClient.from("calificaciones")
-                .select("id,actividad_id,estudiante_id,nota,observacion,fecha_entrega")
+                .select("id,actividad_id,estudiante_id,nota,observacion")
                 .eq("estudiante_id", estudianteId)
         ]);
 
@@ -19411,8 +18501,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         calMap[String(c.actividad_id)] = {
             id: c.id,
             nota:c.nota,
-            observacion:c.observacion || "",
-            fecha_entrega:c.fecha_entrega || ""
+            observacion:c.observacion || ""
         };
     });
 
@@ -19502,10 +18591,6 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         const nota = registro && registro.nota !== null && registro.nota !== undefined
             ? registro.nota : "";
         const observacion = registro?.observacion || "";
-        const fechaEntrega = registro?.fecha_entrega || "";
-        const textoPresentacion = (!fechaEntrega && registro && (String(registro.nota ?? "").trim() === "" || Number(registro.nota) === 0))
-            ? "❌ No presentó"
-            : obtenerTextoPresentacionActividad(a, fechaEntrega);
 
         const categoria = String(a.categoria || "").toUpperCase();
         const claseCategoria =
@@ -19531,7 +18616,6 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 <td>
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
                     ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
-                    ${textoPresentacion ? `<small class="detalle-presentacion-actividad">${escapeHTML(textoPresentacion)}</small>` : ""}
                 </td>
                 <td class="detalle-celda-nota">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
