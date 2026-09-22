@@ -22316,7 +22316,13 @@ async function guardarAsistenciaEstudianteDesdeAula() {
         } else {
             const registroAnterior = registrosAsistencia[estudiante.id] || {};
             const horaAula = registroAnterior.hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-            const estadoAula = estadoAutomaticoPorHoraAsistencia(horaAula, estado);
+            const estadoAula = ["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo
+                ? estadoAutomaticoPorHoraAsistencia(
+                    horaAula,
+                    configuracionHorarioAsistencia.hora_entrada,
+                    configuracionHorarioAsistencia.tolerancia_minutos
+                  )
+                : estado;
             const { error } = await supabaseClient.from("asistencia").upsert({
                 estudiante_id: estudiante.id,
                 fecha,
@@ -22328,7 +22334,14 @@ async function guardarAsistenciaEstudianteDesdeAula() {
         }
 
         const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-        const nuevo = { estudiante_id: estudiante.id, fecha, estado: estadoAutomaticoPorHoraAsistencia(horaNuevoAula, estado) || null, hora: horaNuevoAula || null, observacion: observacion || null };
+        const estadoNuevoAula = ["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo
+            ? estadoAutomaticoPorHoraAsistencia(
+                horaNuevoAula,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+              )
+            : estado;
+        const nuevo = { estudiante_id: estudiante.id, fecha, estado: estadoNuevoAula || null, hora: horaNuevoAula || null, observacion: observacion || null };
         if (JSON.stringify({estado: anteriorData?.estado || null, observacion: anteriorData?.observacion || null}) !== JSON.stringify({estado: nuevo.estado, observacion: nuevo.observacion})) {
             guardarHistorialInterno({
                 table_name: "asistencia",
