@@ -5093,81 +5093,6 @@ table tbody tr:nth-child(10n+10) td {
     }
 }
 
-
-/* =====================================================
-   ADVERTENCIA ANTES DE RECARGAR LA PÁGINA
-   Solo se activa cuando existen cambios sin guardar.
-===================================================== */
-
-function obtenerDetalleCambiosPendientesRecarga() {
-    const detalles = [];
-
-    if (cambiosPendientesAsistencia) {
-        const fechaAsistencia = document.getElementById("fechaAsistencia")?.value || "";
-        if (fechaAsistencia) {
-            detalles.push(`la asistencia ${formatearFechaGuardadaAsistencia(fechaAsistencia)}`);
-        } else {
-            detalles.push("la asistencia");
-        }
-    }
-
-    if (actividadesPendientes && actividadesPendientes.size > 0) {
-        const nombres = [];
-
-        actividadesPendientes.forEach(actividadId => {
-            const actividad = actividades.find(
-                a => String(a?.id) === String(actividadId)
-            );
-
-            if (actividad) {
-                const nombre = String(actividad.nombre || actividad.titulo || "Actividad").trim();
-                const horaInicio = String(actividad.hora_inicio || actividad.horaInicio || "").trim();
-                const horaFin = String(actividad.hora_fin || actividad.horaFin || "").trim();
-
-                let texto = nombre || "Actividad";
-
-                if (horaInicio) {
-                    texto += ` (${horaInicio}${horaFin ? " - " + horaFin : ""})`;
-                }
-
-                nombres.push(texto);
-            } else {
-                nombres.push(`actividad ${actividadId}`);
-            }
-        });
-
-        if (nombres.length === 1) {
-            detalles.push(`la actividad ${nombres[0]}`);
-        } else {
-            detalles.push(`las actividades ${nombres.join(", ")}`);
-        }
-    }
-
-    return detalles;
-}
-
-function obtenerMensajeCambiosPendientesRecarga() {
-    const detalles = obtenerDetalleCambiosPendientesRecarga();
-
-    if (detalles.length === 0) {
-        return "";
-    }
-
-    return "Deseas volver a cargar el sitio?\n\nNo se guardó " + detalles.join(" y ") + ".";
-}
-
-window.addEventListener("beforeunload", function(event) {
-    const mensaje = obtenerMensajeCambiosPendientesRecarga();
-
-    if (!mensaje) {
-        return;
-    }
-
-    event.preventDefault();
-    event.returnValue = mensaje;
-    return mensaje;
-});
-
 /* =====================================================
    COPIA DE SEGURIDAD DE DATOS
 ===================================================== */
@@ -7247,6 +7172,8 @@ function actualizarEstadosGuardado() {
             tienePendiente
         );
     });
+
+    actualizarAvisoDatosSinGuardar();
 
     if (guardadoAutomatico) return;
 
@@ -22873,6 +22800,166 @@ async function recuperarCopiaBaseDatos(event) {
         input.value = "";
     }
 }
+
+
+/* =====================================================
+   AVISO ANTES DE ACTUALIZAR/CERRAR LA PÁGINA
+   Solo avisa cuando existen cambios de asistencia o
+   actividades que todavía no fueron guardados.
+===================================================== */
+
+function obtenerDetallesDatosSinGuardar() {
+    const detalles = [];
+
+    const colaQR =
+        (typeof asistenciasQRPendientesGuardar !== "undefined" &&
+         asistenciasQRPendientesGuardar)
+            ? asistenciasQRPendientesGuardar
+            : new Map();
+
+    const asistenciaPendiente =
+        !guardadoAutomatico &&
+        (
+            cambiosPendientesAsistencia === true ||
+            colaQR.size > 0
+        );
+
+    if (asistenciaPendiente) {
+        const fechaAsistencia =
+            document.getElementById("fechaAsistencia")?.value || "";
+
+        detalles.push(
+            "ASISTENCIA: " +
+            (fechaAsistencia
+                ? "fecha " + fechaAsistencia
+                : "fecha seleccionada")
+        );
+    }
+
+    const idsActividadesPendientes = new Set();
+
+    if (!guardadoAutomatico && actividadesPendientes) {
+        actividadesPendientes.forEach(id => {
+            idsActividadesPendientes.add(String(id));
+        });
+    }
+
+    if (!guardadoAutomatico && cambiosPendientesActividades) {
+        document.querySelectorAll(
+            ".estado-guardado-actividad-nombre.visible"
+        ).forEach(el => {
+            const id = String(el.dataset.actividadId || "");
+            if (id) idsActividadesPendientes.add(id);
+        });
+    }
+
+    if (idsActividadesPendientes.size > 0) {
+        const nombres = [];
+
+        idsActividadesPendientes.forEach(id => {
+            const actividad = actividades.find(
+                a => String(a?.id) === id
+            );
+
+            if (actividad) {
+                const nombre = String(actividad.nombre || "Actividad");
+                const fecha = String(actividad.fecha || "").trim();
+
+                nombres.push(
+                    fecha
+                        ? `${nombre} (${fecha})`
+                        : nombre
+                );
+            } else {
+                nombres.push("Actividad " + id);
+            }
+        });
+
+        detalles.push(
+            "ACTIVIDADES: " + nombres.join(", ")
+        );
+    } else if (!guardadoAutomatico && cambiosPendientesActividades) {
+        detalles.push("ACTIVIDADES: hay cambios pendientes de guardar");
+    }
+
+    return detalles;
+}
+
+function hayDatosSinGuardarAntesDeSalir() {
+    return obtenerDetallesDatosSinGuardar().length > 0;
+}
+
+function actualizarAvisoDatosSinGuardar() {
+    let aviso = document.getElementById("avisoDatosSinGuardar");
+
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "avisoDatosSinGuardar";
+        aviso.style.cssText = [
+            "position:fixed",
+            "left:10px",
+            "right:10px",
+            "bottom:10px",
+            "z-index:99999",
+            "padding:10px 14px",
+            "border-radius:8px",
+            "background:#fff3cd",
+            "border:1px solid #ffcc00",
+            "color:#664d03",
+            "font-weight:bold",
+            "font-size:14px",
+            "line-height:1.4",
+            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
+            "display:none"
+        ].join(";");
+
+        if (document.body) {
+            document.body.appendChild(aviso);
+        } else {
+            return;
+        }
+    }
+
+    if (guardadoAutomatico) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    const detalles = obtenerDetallesDatosSinGuardar();
+
+    if (detalles.length === 0) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    aviso.innerHTML =
+        "⚠️ <strong>Hay datos sin guardar:</strong><br>" +
+        detalles.map(d => escapeHTML(d)).join("<br>") +
+        "<br><small>Guarda los cambios antes de actualizar o cerrar la página.</small>";
+
+    aviso.style.display = "block";
+}
+
+/*
+ * Los navegadores modernos suelen mostrar un mensaje genérico propio
+ * en el cuadro de confirmación de beforeunload. El detalle específico
+ * queda visible en el aviso amarillo de la página.
+ */
+window.addEventListener("beforeunload", function (event) {
+    if (!hayDatosSinGuardarAntesDeSalir()) return;
+
+    const detalles = obtenerDetallesDatosSinGuardar();
+
+    event.preventDefault();
+
+    event.returnValue =
+        "Hay datos sin guardar: " + detalles.join(" | ") +
+        ". Guarda los cambios antes de actualizar la página.";
+
+    return event.returnValue;
+});
+
+document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
