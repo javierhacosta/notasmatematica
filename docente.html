@@ -18267,7 +18267,16 @@ async function prepararAsistenciaQR(ci) {
 
     estudianteQRAsistencia = data;
     const horaLlegadaQR = horaActualAsistencia();
-    estadoQRAsistencia = estadoAutomaticoPorHoraAsistencia(horaLlegadaQR, "asistio");
+
+    // Si no hay hora de entrada configurada, conservar el funcionamiento
+    // anterior: asistencia normal y sin guardar hora.
+    estadoQRAsistencia = configuracionHorarioAsistencia.activo
+        ? estadoAutomaticoPorHoraAsistencia(
+            horaLlegadaQR,
+            configuracionHorarioAsistencia.hora_entrada,
+            configuracionHorarioAsistencia.tolerancia_minutos
+          )
+        : "asistio";
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
@@ -18350,32 +18359,39 @@ async function continuarEscaneoAsistenciaQR() {
             ? observacionQR.value.trim()
             : ((registrosAsistencia[estudiante.id] || {}).observacion || "");
 
-        /* 
-         * Si para este curso y día NO hay una hora de entrada establecida,
-         * conservar el funcionamiento anterior: el QR guarda la asistencia
-         * sin hora. La hora actual solo se registra cuando existe un horario
-         * configurado para ese día.
-         */
-        const horaQR = configuracionHorarioAsistencia.activo
-            ? new Date().toLocaleTimeString("es-BO", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false
-              })
-            : null;
+        const horaQRActual = new Date().toLocaleTimeString("es-BO", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+        });
+
+        // Con horario configurado se guarda la hora y se calcula el estado.
+        // Sin horario configurado se vuelve al comportamiento anterior:
+        // estado seleccionado y hora vacía/null.
+        const tieneHorarioQR = !!(
+            configuracionHorarioAsistencia &&
+            configuracionHorarioAsistencia.activo &&
+            configuracionHorarioAsistencia.hora_entrada
+        );
+
+        const estadoQRGuardar = tieneHorarioQR
+            ? estadoAutomaticoPorHoraAsistencia(
+                horaQRActual,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+              )
+            : (estadoQRAsistencia || "asistio");
+
+        if (!estadoQRGuardar) {
+            throw new Error("No se pudo determinar un estado de asistencia válido.");
+        }
 
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
-            estado: configuracionHorarioAsistencia.activo
-            ? estadoAutomaticoPorHoraAsistencia(
-                horaQR,
-                configuracionHorarioAsistencia.hora_entrada,
-                configuracionHorarioAsistencia.tolerancia_minutos
-              )
-            : estadoQRAsistencia,
-            hora: horaQR,
+            estado: estadoQRGuardar,
+            hora: tieneHorarioQR ? horaQRActual : null,
             observacion: observacion || null
         };
 
