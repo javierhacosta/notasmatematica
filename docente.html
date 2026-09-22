@@ -10694,10 +10694,13 @@ async function guardarAsistencia() {
         renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
-        // Actualizar inmediatamente la asistencia que se muestra dentro de Actividades.
-        // Antes solo se actualizaba después de recargar la página.
-        await cargarAsistenciaActividades();
-        mostrarActividades();
+        /*
+         * IMPORTANTE:
+         * No reconstruir la vista de Actividades al guardar Asistencia.
+         * Cada categoría conserva su edición/guardado de forma independiente.
+         * Reconstruir Actividades aquí reemplazaba las notas aún pendientes
+         * de guardar con los valores que estaban en Supabase.
+         */
 
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
