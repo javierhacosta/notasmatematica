@@ -10643,7 +10643,12 @@ async function guardarAsistencia() {
             let horaRegistro = mostrarHoraAsistencia
                 ? ((document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`)?.value || registroLocal.hora || "").trim() || null)
                 : (registroLocal.hora || null);
-            if (seleccionado && ["asistio", "atraso"].includes(seleccionado.value) && configuracionHorarioAsistencia.activo) {
+            if (
+                seleccionado &&
+                ["asistio", "atraso"].includes(seleccionado.value) &&
+                configuracionHorarioAsistencia.activo &&
+                configuracionHorarioAsistencia.hora_entrada
+            ) {
                 horaRegistro = horaRegistro || horaActualAsistencia();
             }
             // Guardar exactamente el estado elegido para ESTE estudiante.
