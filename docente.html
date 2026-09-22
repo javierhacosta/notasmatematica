@@ -16049,7 +16049,7 @@ async function exportarExcel() {
         await supabaseClient
         .from("actividades")
         .select(
-            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
+            "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
         )
         .eq(
             "trimestre",
@@ -16888,26 +16888,39 @@ async function exportarExcel() {
             ================================================= */
             /*
              * En las hojas Obs, las columnas de entrega se crean
-             * únicamente para actividades que tienen al menos una
-             * fecha_entrega registrada.
+             * para toda actividad que tenga horario, aunque todavía
+             * no exista una fecha_entrega registrada.
              */
-            const actividadTieneEntregaExcel = actividad => {
-                return estudiantesCurso.some(estudiante => {
-                    const registro =
-                        mapaCalificaciones[
-                            estudiante.id + "_" + actividad.id
-                        ];
-                    return !!(registro && registro.fecha_entrega);
-                });
+            const actividadTieneHoraExcel = actividad => {
+                return !!(
+                    String(actividad?.hora_inicio || "").trim() ||
+                    String(actividad?.hora_fin || "").trim()
+                );
+            };
+
+            const nombreActividadExcelConHora = actividad => {
+                const nombre = String(actividad?.nombre || "");
+                if (!actividadTieneHoraExcel(actividad)) {
+                    return nombre;
+                }
+
+                const inicio = String(actividad?.hora_inicio || "").slice(0, 5);
+                const fin = String(actividad?.hora_fin || "").slice(0, 5);
+                const horario = inicio && fin
+                    ? inicio + " a " + fin
+                    : inicio || fin;
+
+                return horario ? nombre + " " + horario : nombre;
             };
 
             const columnasActividadObs = lista => {
                 return lista.flatMap(actividad => {
-                    const columnas = [actividad.nombre];
-                    if (actividadTieneEntregaExcel(actividad)) {
+                    const nombreExcel = nombreActividadExcelConHora(actividad);
+                    const columnas = [nombreExcel];
+                    if (actividadTieneHoraExcel(actividad)) {
                         columnas.push("fecha_entrega", "obs_entrega");
                     }
-                    columnas.push("OBS " + actividad.nombre);
+                    columnas.push("OBS " + nombreExcel);
                     return columnas;
                 });
             };
@@ -17010,7 +17023,7 @@ async function exportarExcel() {
 
                         filaObs.push(nota);
 
-                        if (actividadTieneEntregaExcel(actividad)) {
+                        if (actividadTieneHoraExcel(actividad)) {
                             const fechaEntrega = registro?.fecha_entrega || "";
                             const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
                             filaObs.push(fechaEntrega);
