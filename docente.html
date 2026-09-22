@@ -3331,17 +3331,6 @@ td,
     display: none !important;
 }
 
-/* Parpadeo únicamente del fondo cuando existe guardado pendiente. */
-@keyframes parpadearFondoPendiente {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.35); }
-}
-
-.titulo-asistencia.parpadeo-guardado-pendiente,
-.titulo-categoria.parpadeo-guardado-pendiente {
-    animation: parpadearFondoPendiente 0.9s ease-in-out infinite;
-}
-
 /* =====================================================
    PROGRESO DE GUARDADO
 ===================================================== */
@@ -7150,29 +7139,6 @@ function actualizarEstadosGuardado() {
         if (el) el.classList.remove("visible");
     });
 
-    /* El parpadeo se aplica únicamente a la categoría que tiene pendiente. */
-    const encabezadoAsistencia = document.querySelector(".titulo-asistencia");
-    if (encabezadoAsistencia) {
-        encabezadoAsistencia.classList.toggle(
-            "parpadeo-guardado-pendiente",
-            !guardadoAutomatico && cambiosPendientesAsistencia
-        );
-    }
-
-    document.querySelectorAll(".titulo-categoria").forEach(encabezado => {
-        const categoria = String(encabezado.dataset.categoria || "");
-        const tienePendiente = !guardadoAutomatico &&
-            actividadesPendientes.size > 0 &&
-            Array.from(actividadesPendientes).some(actividadId =>
-                String(categoriaPorActividadCache.get(String(actividadId)) || "").toUpperCase() === categoria
-            );
-
-        encabezado.classList.toggle(
-            "parpadeo-guardado-pendiente",
-            tienePendiente
-        );
-    });
-
     if (guardadoAutomatico) return;
 
     if (asistencia && cambiosPendientesAsistencia) {
@@ -10694,13 +10660,10 @@ async function guardarAsistencia() {
         renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
-        /*
-         * IMPORTANTE:
-         * No reconstruir la vista de Actividades al guardar Asistencia.
-         * Cada categoría conserva su edición/guardado de forma independiente.
-         * Reconstruir Actividades aquí reemplazaba las notas aún pendientes
-         * de guardar con los valores que estaban en Supabase.
-         */
+        // Actualizar inmediatamente la asistencia que se muestra dentro de Actividades.
+        // Antes solo se actualizaba después de recargar la página.
+        await cargarAsistenciaActividades();
+        mostrarActividades();
 
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
@@ -11315,7 +11278,6 @@ function mostrarActividades() {
         encabezado.className =
         "titulo-categoria " +
         categoria.clase;
-        encabezado.dataset.categoria = categoria.codigo;
 
         const nombreCategoria =
         document.createElement("span");
@@ -11393,7 +11355,6 @@ function mostrarActividades() {
     reconstruirIndiceInputsNotas();
 
     aplicarBloqueoEstadoEnLista(contenedor);
-    actualizarEstadosGuardado();
 }
 
 
@@ -15057,7 +15018,6 @@ function programarGuardadoCambioActividad(input) {
 
     cambiosPendientesActividades =
         actividadesPendientes.size > 0;
-    actualizarEstadosGuardado();
 }
 
 /* Muestra únicamente el botón de la actividad modificada. */
@@ -15526,7 +15486,6 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
-        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
