@@ -10640,8 +10640,9 @@ async function guardarAsistencia() {
 
             const registroLocal = registrosAsistencia[estudiante.id] || {};
 
+            const horaInput = document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`);
             let horaRegistro = mostrarHoraAsistencia
-                ? ((document.querySelector(`.hora-asistencia-input[data-estudiante="${estudiante.id}"]`)?.value || registroLocal.hora || "").trim() || null)
+                ? (horaInput ? (horaInput.value.trim() || null) : (registroLocal.hora || null))
                 : (registroLocal.hora || null);
             if (seleccionado && ["asistio", "atraso"].includes(seleccionado.value) && configuracionHorarioAsistencia.activo && configuracionHorarioAsistencia.hora_entrada) {
                 horaRegistro = horaRegistro || horaActualAsistencia();
