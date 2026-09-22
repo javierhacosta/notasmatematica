@@ -21955,10 +21955,17 @@ async function abrirModalDistribucionAula() {
     modal.classList.remove("oculto");
 }
 
-function cerrarModalDistribucionAula(event) {
+async function cerrarModalDistribucionAula(event) {
     if (event && event.target !== document.getElementById("modalDistribucionAula")) return;
     const modal = document.getElementById("modalDistribucionAula");
     if (modal) modal.classList.add("oculto");
+
+    // Al volver a Asistencia, consultar nuevamente la BD para mostrar
+    // inmediatamente los cambios realizados desde la distribución de asientos.
+    if (cursoSeleccionado) {
+        await cargarAsistencia();
+        await cargarAsistenciaActividades();
+    }
 }
 
 function obtenerIconoEstadoAsistenciaAula(estado) {
