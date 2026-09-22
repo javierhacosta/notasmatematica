@@ -18359,7 +18359,13 @@ async function continuarEscaneoAsistenciaQR() {
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
-            estado: estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia),
+            estado: configuracionHorarioAsistencia.activo
+            ? estadoAutomaticoPorHoraAsistencia(
+                horaQR,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+              )
+            : estadoQRAsistencia,
             hora: horaQR,
             observacion: observacion || null
         };
