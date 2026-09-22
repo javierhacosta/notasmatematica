@@ -10423,7 +10423,11 @@ async function guardarAsistenciaIndividual(control) {
         return;
     }
 
-    if (["asistio", "atraso"].includes(control.value) && configuracionHorarioAsistencia.activo) {
+    if (
+        ["asistio", "atraso"].includes(control.value) &&
+        configuracionHorarioAsistencia.activo &&
+        configuracionHorarioAsistencia.hora_entrada
+    ) {
         const horaInput = fila?.querySelector('.hora-asistencia-input');
         const hora = horaInput?.value?.trim() || horaActualAsistencia();
         const nuevoEstado = estadoAutomaticoPorHoraAsistencia(hora, control.value);
@@ -22327,7 +22331,13 @@ async function guardarAsistenciaEstudianteDesdeAula() {
             }
         } else {
             const registroAnterior = registrosAsistencia[estudiante.id] || {};
-            const horaAula = registroAnterior.hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
+            const horaAula = registroAnterior.hora || (
+                ["asistio", "atraso"].includes(estado) &&
+                configuracionHorarioAsistencia.activo &&
+                configuracionHorarioAsistencia.hora_entrada
+                    ? horaActualAsistencia()
+                    : null
+            );
 
             // El segundo y tercer parámetros de estadoAutomaticoPorHoraAsistencia
             // son la hora de entrada y la tolerancia, no el estado seleccionado.
@@ -22355,7 +22365,13 @@ async function guardarAsistenciaEstudianteDesdeAula() {
             if (error) throw error;
         }
 
-        const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
+        const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (
+            ["asistio", "atraso"].includes(estado) &&
+            configuracionHorarioAsistencia.activo &&
+            configuracionHorarioAsistencia.hora_entrada
+                ? horaActualAsistencia()
+                : null
+        );
         const estadoNuevoAula = configuracionHorarioAsistencia.activo && ["asistio", "atraso"].includes(estado)
             ? estadoAutomaticoPorHoraAsistencia(
                 horaNuevoAula,
