@@ -6704,7 +6704,7 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaSinMarcar" value=""><label for="estadoAulaSinMarcar">⚪<br>Sin marcar</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAsistio" value="asistio"><label for="estadoAulaAsistio">✓<br>Asistió</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAtraso" value="atraso"><label for="estadoAulaAtraso">⏰<br>Atraso</label></div>
-                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaPermiso" value="permiso"><label for="estadoAulaPermiso">📄<br>Permiso</label></div>
+                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
             <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
@@ -7172,8 +7172,6 @@ function actualizarEstadosGuardado() {
             tienePendiente
         );
     });
-
-    actualizarAvisoDatosSinGuardar();
 
     if (guardadoAutomatico) return;
 
@@ -10062,7 +10060,7 @@ function mostrarTablaAsistencia() {
 
                         <label
                             for="licencia-${estudiante.id}"
-                            title="Permiso"
+                            title="Falta con licencia"
                         >
 
                             <span class="boton-estado estado-licencia">
@@ -10312,9 +10310,9 @@ function mostrarPendientesAsistencia() {
                         <input type="radio" name="pendiente-${estudiante.id}" value="atraso" ${estadoActual === "atraso" ? "checked" : ""}>
                         ⏰ Atraso
                     </label>
-                    <label class="opcion-pendiente" title="Permiso">
+                    <label class="opcion-pendiente" title="Licencia">
                         <input type="radio" name="pendiente-${estudiante.id}" value="licencia" ${estadoActual === "licencia" ? "checked" : ""}>
-                        📄 Permiso
+                        📄 Licencia
                     </label>
                     <label class="opcion-pendiente" title="Falta">
                         <input type="radio" name="pendiente-${estudiante.id}" value="falta" ${estadoActual === "falta" ? "checked" : ""}>
@@ -16051,7 +16049,7 @@ async function exportarExcel() {
         await supabaseClient
         .from("actividades")
         .select(
-            "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
+            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
         )
         .eq(
             "trimestre",
@@ -16086,7 +16084,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
+                "actividad_id,estudiante_id,nota,observacion"
             )
             .in(
                 "actividad_id",
@@ -16125,10 +16123,8 @@ async function exportarExcel() {
                 cal.nota,
 
                 observacion:
-                cal.observacion || "",
+                cal.observacion || ""
 
-                fecha_entrega:
-                cal.fecha_entrega || ""
             };
 
         });
@@ -16888,45 +16884,6 @@ async function exportarExcel() {
                Cada actividad queda como:
                NOTA | OBSERVACIÓN
             ================================================= */
-            /*
-             * En las hojas Obs, las columnas de entrega se crean
-             * para toda actividad que tenga horario, aunque todavía
-             * no exista una fecha_entrega registrada.
-             */
-            const actividadTieneHoraExcel = actividad => {
-                return !!(
-                    String(actividad?.hora_inicio || "").trim() ||
-                    String(actividad?.hora_fin || "").trim()
-                );
-            };
-
-            const nombreActividadExcelConHora = actividad => {
-                const nombre = String(actividad?.nombre || "");
-                if (!actividadTieneHoraExcel(actividad)) {
-                    return nombre;
-                }
-
-                const inicio = String(actividad?.hora_inicio || "").slice(0, 5);
-                const fin = String(actividad?.hora_fin || "").slice(0, 5);
-                const horario = inicio && fin
-                    ? inicio + " a " + fin
-                    : inicio || fin;
-
-                return horario ? nombre + " " + horario : nombre;
-            };
-
-            const columnasActividadObs = lista => {
-                return lista.flatMap(actividad => {
-                    const nombreExcel = nombreActividadExcelConHora(actividad);
-                    const columnas = [nombreExcel];
-                    if (actividadTieneHoraExcel(actividad)) {
-                        columnas.push("fecha_entrega", "obs_entrega");
-                    }
-                    columnas.push("OBS " + nombreExcel);
-                    return columnas;
-                });
-            };
-
             const columnasObs = [
                 "Nº LISTA",
                 "NOMBRE",
@@ -16939,13 +16896,13 @@ async function exportarExcel() {
                 "TOTAL R",
                 "TOTAL L",
                 "TOTAL F",
-                ...columnasActividadObs(ser),
+                ...ser.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO SER",
-                ...columnasActividadObs(saber),
+                ...saber.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO SABER",
-                ...columnasActividadObs(hacer),
+                ...hacer.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO HACER",
-                ...columnasActividadObs(auto),
+                ...auto.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO AUTOEVALUACIÓN",
                 "NOTA 3T",
                 "NOTA FINAL"
@@ -17024,14 +16981,6 @@ async function exportarExcel() {
                             registro?.observacion || "";
 
                         filaObs.push(nota);
-
-                        if (actividadTieneHoraExcel(actividad)) {
-                            const fechaEntrega = registro?.fecha_entrega || "";
-                            const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
-                            filaObs.push(fechaEntrega);
-                            filaObs.push(obsEntrega);
-                        }
-
                         filaObs.push(observacion);
                     });
                 };
@@ -18359,10 +18308,7 @@ async function continuarEscaneoAsistenciaQR() {
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
-            estado: (() => {
-                const estadoQR = estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia);
-                return String(estadoQR || "").toLowerCase();
-            })(),
+            estado: estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia),
             hora: horaQR,
             observacion: observacion || null
         };
@@ -20252,19 +20198,9 @@ async function cerrarEscanerQR(
 
         try {
 
-            // Normalizar los estados generados por QR para que coincidan
-            // con los estados usados por la tabla de asistencia.
-            const registrosQR = colaQR.map(registro => ({
-                estudiante_id: registro.estudiante_id,
-                fecha: registro.fecha,
-                estado: String(registro.estado || "").toLowerCase(),
-                hora: registro.hora || null,
-                observacion: registro.observacion || null
-            }));
-
             const { error } = await supabaseClient
                 .from("asistencia")
-                .upsert(registrosQR, {
+                .upsert(colaQR, {
                     onConflict: "estudiante_id,fecha"
                 });
 
@@ -22813,166 +22749,6 @@ async function recuperarCopiaBaseDatos(event) {
         input.value = "";
     }
 }
-
-
-/* =====================================================
-   AVISO ANTES DE ACTUALIZAR/CERRAR LA PÁGINA
-   Solo avisa cuando existen cambios de asistencia o
-   actividades que todavía no fueron guardados.
-===================================================== */
-
-function obtenerDetallesDatosSinGuardar() {
-    const detalles = [];
-
-    const colaQR =
-        (typeof asistenciasQRPendientesGuardar !== "undefined" &&
-         asistenciasQRPendientesGuardar)
-            ? asistenciasQRPendientesGuardar
-            : new Map();
-
-    const asistenciaPendiente =
-        !guardadoAutomatico &&
-        (
-            cambiosPendientesAsistencia === true ||
-            colaQR.size > 0
-        );
-
-    if (asistenciaPendiente) {
-        const fechaAsistencia =
-            document.getElementById("fechaAsistencia")?.value || "";
-
-        detalles.push(
-            "ASISTENCIA: " +
-            (fechaAsistencia
-                ? "fecha " + fechaAsistencia
-                : "fecha seleccionada")
-        );
-    }
-
-    const idsActividadesPendientes = new Set();
-
-    if (!guardadoAutomatico && actividadesPendientes) {
-        actividadesPendientes.forEach(id => {
-            idsActividadesPendientes.add(String(id));
-        });
-    }
-
-    if (!guardadoAutomatico && cambiosPendientesActividades) {
-        document.querySelectorAll(
-            ".estado-guardado-actividad-nombre.visible"
-        ).forEach(el => {
-            const id = String(el.dataset.actividadId || "");
-            if (id) idsActividadesPendientes.add(id);
-        });
-    }
-
-    if (idsActividadesPendientes.size > 0) {
-        const nombres = [];
-
-        idsActividadesPendientes.forEach(id => {
-            const actividad = actividades.find(
-                a => String(a?.id) === id
-            );
-
-            if (actividad) {
-                const nombre = String(actividad.nombre || "Actividad");
-                const fecha = String(actividad.fecha || "").trim();
-
-                nombres.push(
-                    fecha
-                        ? `${nombre} (${fecha})`
-                        : nombre
-                );
-            } else {
-                nombres.push("Actividad " + id);
-            }
-        });
-
-        detalles.push(
-            "ACTIVIDADES: " + nombres.join(", ")
-        );
-    } else if (!guardadoAutomatico && cambiosPendientesActividades) {
-        detalles.push("ACTIVIDADES: hay cambios pendientes de guardar");
-    }
-
-    return detalles;
-}
-
-function hayDatosSinGuardarAntesDeSalir() {
-    return obtenerDetallesDatosSinGuardar().length > 0;
-}
-
-function actualizarAvisoDatosSinGuardar() {
-    let aviso = document.getElementById("avisoDatosSinGuardar");
-
-    if (!aviso) {
-        aviso = document.createElement("div");
-        aviso.id = "avisoDatosSinGuardar";
-        aviso.style.cssText = [
-            "position:fixed",
-            "left:10px",
-            "right:10px",
-            "bottom:10px",
-            "z-index:99999",
-            "padding:10px 14px",
-            "border-radius:8px",
-            "background:#fff3cd",
-            "border:1px solid #ffcc00",
-            "color:#664d03",
-            "font-weight:bold",
-            "font-size:14px",
-            "line-height:1.4",
-            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
-            "display:none"
-        ].join(";");
-
-        if (document.body) {
-            document.body.appendChild(aviso);
-        } else {
-            return;
-        }
-    }
-
-    if (guardadoAutomatico) {
-        aviso.style.display = "none";
-        return;
-    }
-
-    const detalles = obtenerDetallesDatosSinGuardar();
-
-    if (detalles.length === 0) {
-        aviso.style.display = "none";
-        return;
-    }
-
-    aviso.innerHTML =
-        "⚠️ <strong>Hay datos sin guardar:</strong><br>" +
-        detalles.map(d => escapeHTML(d)).join("<br>") +
-        "<br><small>Guarda los cambios antes de actualizar o cerrar la página.</small>";
-
-    aviso.style.display = "block";
-}
-
-/*
- * Los navegadores modernos suelen mostrar un mensaje genérico propio
- * en el cuadro de confirmación de beforeunload. El detalle específico
- * queda visible en el aviso amarillo de la página.
- */
-window.addEventListener("beforeunload", function (event) {
-    if (!hayDatosSinGuardarAntesDeSalir()) return;
-
-    const detalles = obtenerDetallesDatosSinGuardar();
-
-    event.preventDefault();
-
-    event.returnValue =
-        "Hay datos sin guardar: " + detalles.join(" | ") +
-        ". Guarda los cambios antes de actualizar la página.";
-
-    return event.returnValue;
-});
-
-document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
