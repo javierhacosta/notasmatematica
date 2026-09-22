@@ -22316,21 +22316,21 @@ async function guardarAsistenciaEstudianteDesdeAula() {
         } else {
             const registroAnterior = registrosAsistencia[estudiante.id] || {};
             const horaAula = registroAnterior.hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-            let estadoAula = estado;
 
-            if (
-                ["asistio", "atraso"].includes(estado) &&
-                configuracionHorarioAsistencia.activo &&
-                configuracionHorarioAsistencia.hora_entrada
-            ) {
-                const estadoCalculado = estadoAutomaticoPorHoraAsistencia(
+            // El segundo y tercer parámetros de estadoAutomaticoPorHoraAsistencia
+            // son la hora de entrada y la tolerancia, no el estado seleccionado.
+            // Antes se enviaba "estado" como segundo parámetro y la función devolvía
+            // una cadena vacía, provocando estado = NULL y el error NOT NULL de Supabase.
+            const estadoAula = configuracionHorarioAsistencia.activo && ["asistio", "atraso"].includes(estado)
+                ? estadoAutomaticoPorHoraAsistencia(
                     horaAula,
                     configuracionHorarioAsistencia.hora_entrada,
                     configuracionHorarioAsistencia.tolerancia_minutos
-                );
+                  )
+                : estado;
 
-                // Si el cálculo no puede realizarse, conservar el estado elegido.
-                estadoAula = estadoCalculado || estado;
+            if (!estadoAula) {
+                throw new Error("Selecciona un estado de asistencia válido.");
             }
 
             const { error } = await supabaseClient.from("asistencia").upsert({
@@ -22344,20 +22344,13 @@ async function guardarAsistenciaEstudianteDesdeAula() {
         }
 
         const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
-        let estadoNuevoAula = estado;
-
-        if (
-            ["asistio", "atraso"].includes(estado) &&
-            configuracionHorarioAsistencia.activo &&
-            configuracionHorarioAsistencia.hora_entrada
-        ) {
-            const estadoCalculadoNuevo = estadoAutomaticoPorHoraAsistencia(
+        const estadoNuevoAula = configuracionHorarioAsistencia.activo && ["asistio", "atraso"].includes(estado)
+            ? estadoAutomaticoPorHoraAsistencia(
                 horaNuevoAula,
                 configuracionHorarioAsistencia.hora_entrada,
                 configuracionHorarioAsistencia.tolerancia_minutos
-            );
-            estadoNuevoAula = estadoCalculadoNuevo || estado;
-        }
+              )
+            : estado;
         const nuevo = { estudiante_id: estudiante.id, fecha, estado: estadoNuevoAula || null, hora: horaNuevoAula || null, observacion: observacion || null };
         if (JSON.stringify({estado: anteriorData?.estado || null, observacion: anteriorData?.observacion || null}) !== JSON.stringify({estado: nuevo.estado, observacion: nuevo.observacion})) {
             guardarHistorialInterno({
@@ -22383,7 +22376,7 @@ async function guardarAsistenciaEstudianteDesdeAula() {
             delete registrosAsistencia[estudiante.id];
         } else {
             registrosAsistencia[estudiante.id] = {
-                estado: nuevo.estado || "",
+                estado: estado || null,
                 hora: nuevo.hora || "",
                 observacion: observacion || ""
             };
