@@ -16084,7 +16084,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion"
+                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
             )
             .in(
                 "actividad_id",
@@ -16123,8 +16123,10 @@ async function exportarExcel() {
                 cal.nota,
 
                 observacion:
-                cal.observacion || ""
+                cal.observacion || "",
 
+                fecha_entrega:
+                cal.fecha_entrega || ""
             };
 
         });
@@ -16884,6 +16886,32 @@ async function exportarExcel() {
                Cada actividad queda como:
                NOTA | OBSERVACIÓN
             ================================================= */
+            /*
+             * En las hojas Obs, las columnas de entrega se crean
+             * únicamente para actividades que tienen al menos una
+             * fecha_entrega registrada.
+             */
+            const actividadTieneEntregaExcel = actividad => {
+                return estudiantesCurso.some(estudiante => {
+                    const registro =
+                        mapaCalificaciones[
+                            estudiante.id + "_" + actividad.id
+                        ];
+                    return !!(registro && registro.fecha_entrega);
+                });
+            };
+
+            const columnasActividadObs = lista => {
+                return lista.flatMap(actividad => {
+                    const columnas = [actividad.nombre];
+                    if (actividadTieneEntregaExcel(actividad)) {
+                        columnas.push("fecha_entrega", "obs_entrega");
+                    }
+                    columnas.push("OBS " + actividad.nombre);
+                    return columnas;
+                });
+            };
+
             const columnasObs = [
                 "Nº LISTA",
                 "NOMBRE",
@@ -16896,21 +16924,13 @@ async function exportarExcel() {
                 "TOTAL R",
                 "TOTAL L",
                 "TOTAL F",
-                ...ser.flatMap(a => obtenerFechaHoraActividad(a)
-                    ? [a.nombre, "fecha_entrega", "obs_entrega", "OBS " + a.nombre]
-                    : [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(ser),
                 "PROMEDIO SER",
-                ...saber.flatMap(a => obtenerFechaHoraActividad(a)
-                    ? [a.nombre, "fecha_entrega", "obs_entrega", "OBS " + a.nombre]
-                    : [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(saber),
                 "PROMEDIO SABER",
-                ...hacer.flatMap(a => obtenerFechaHoraActividad(a)
-                    ? [a.nombre, "fecha_entrega", "obs_entrega", "OBS " + a.nombre]
-                    : [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(hacer),
                 "PROMEDIO HACER",
-                ...auto.flatMap(a => obtenerFechaHoraActividad(a)
-                    ? [a.nombre, "fecha_entrega", "obs_entrega", "OBS " + a.nombre]
-                    : [a.nombre, "OBS " + a.nombre]),
+                ...columnasActividadObs(auto),
                 "PROMEDIO AUTOEVALUACIÓN",
                 "NOTA 3T",
                 "NOTA FINAL"
@@ -16990,21 +17010,10 @@ async function exportarExcel() {
 
                         filaObs.push(nota);
 
-                        /* Solo las actividades que tienen hora de presentación
-                           crean las columnas fecha_entrega y obs_entrega. */
-                        if (obtenerFechaHoraActividad(actividad)) {
-                            const fechaEntrega =
-                                registro?.fecha_entrega || "";
-
-                            const fechaEntregaExcel = fechaEntrega
-                                ? formatearEntregaParaInput(fechaEntrega).replace("T", " ")
-                                : "";
-
-                            const obsEntrega = fechaEntrega
-                                ? calcularObsEntrega(actividad, fechaEntrega)
-                                : "";
-
-                            filaObs.push(fechaEntregaExcel);
+                        if (actividadTieneEntregaExcel(actividad)) {
+                            const fechaEntrega = registro?.fecha_entrega || "";
+                            const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
+                            filaObs.push(fechaEntrega);
                             filaObs.push(obsEntrega);
                         }
 
