@@ -7173,6 +7173,8 @@ function actualizarEstadosGuardado() {
         );
     });
 
+    actualizarAvisoDatosSinGuardar();
+
     if (guardadoAutomatico) return;
 
     if (asistencia && cambiosPendientesAsistencia) {
@@ -22805,30 +22807,159 @@ async function recuperarCopiaBaseDatos(event) {
    Solo avisa cuando existen cambios de asistencia o
    actividades que todavía no fueron guardados.
 ===================================================== */
-function hayDatosSinGuardarAntesDeSalir() {
+
+function obtenerDetallesDatosSinGuardar() {
+    const detalles = [];
+
+    const colaQR =
+        (typeof asistenciasQRPendientesGuardar !== "undefined" &&
+         asistenciasQRPendientesGuardar)
+            ? asistenciasQRPendientesGuardar
+            : new Map();
+
     const asistenciaPendiente =
         !guardadoAutomatico &&
         (
             cambiosPendientesAsistencia === true ||
-            asistenciasQRPendientesGuardar.size > 0
+            colaQR.size > 0
         );
 
-    const actividadesPendientesSinGuardar =
-        !guardadoAutomatico &&
-        (
-            cambiosPendientesActividades === true ||
-            (actividadesPendientes && actividadesPendientes.size > 0)
-        );
+    if (asistenciaPendiente) {
+        const fechaAsistencia =
+            document.getElementById("fechaAsistencia")?.value || "";
 
-    return asistenciaPendiente || actividadesPendientesSinGuardar;
+        detalles.push(
+            "ASISTENCIA: " +
+            (fechaAsistencia
+                ? "fecha " + fechaAsistencia
+                : "fecha seleccionada")
+        );
+    }
+
+    const idsActividadesPendientes = new Set();
+
+    if (!guardadoAutomatico && actividadesPendientes) {
+        actividadesPendientes.forEach(id => {
+            idsActividadesPendientes.add(String(id));
+        });
+    }
+
+    if (!guardadoAutomatico && cambiosPendientesActividades) {
+        document.querySelectorAll(
+            ".estado-guardado-actividad-nombre.visible"
+        ).forEach(el => {
+            const id = String(el.dataset.actividadId || "");
+            if (id) idsActividadesPendientes.add(id);
+        });
+    }
+
+    if (idsActividadesPendientes.size > 0) {
+        const nombres = [];
+
+        idsActividadesPendientes.forEach(id => {
+            const actividad = actividades.find(
+                a => String(a?.id) === id
+            );
+
+            if (actividad) {
+                const nombre = String(actividad.nombre || "Actividad");
+                const fecha = String(actividad.fecha || "").trim();
+
+                nombres.push(
+                    fecha
+                        ? `${nombre} (${fecha})`
+                        : nombre
+                );
+            } else {
+                nombres.push("Actividad " + id);
+            }
+        });
+
+        detalles.push(
+            "ACTIVIDADES: " + nombres.join(", ")
+        );
+    } else if (!guardadoAutomatico && cambiosPendientesActividades) {
+        detalles.push("ACTIVIDADES: hay cambios pendientes de guardar");
+    }
+
+    return detalles;
 }
 
+function hayDatosSinGuardarAntesDeSalir() {
+    return obtenerDetallesDatosSinGuardar().length > 0;
+}
+
+function actualizarAvisoDatosSinGuardar() {
+    let aviso = document.getElementById("avisoDatosSinGuardar");
+
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "avisoDatosSinGuardar";
+        aviso.style.cssText = [
+            "position:fixed",
+            "left:10px",
+            "right:10px",
+            "bottom:10px",
+            "z-index:99999",
+            "padding:10px 14px",
+            "border-radius:8px",
+            "background:#fff3cd",
+            "border:1px solid #ffcc00",
+            "color:#664d03",
+            "font-weight:bold",
+            "font-size:14px",
+            "line-height:1.4",
+            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
+            "display:none"
+        ].join(";");
+
+        if (document.body) {
+            document.body.appendChild(aviso);
+        } else {
+            return;
+        }
+    }
+
+    if (guardadoAutomatico) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    const detalles = obtenerDetallesDatosSinGuardar();
+
+    if (detalles.length === 0) {
+        aviso.style.display = "none";
+        return;
+    }
+
+    aviso.innerHTML =
+        "⚠️ <strong>Hay datos sin guardar:</strong><br>" +
+        detalles.map(d => escapeHTML(d)).join("<br>") +
+        "<br><small>Guarda los cambios antes de actualizar o cerrar la página.</small>";
+
+    aviso.style.display = "block";
+}
+
+/*
+ * Los navegadores modernos suelen mostrar un mensaje genérico propio
+ * en el cuadro de confirmación de beforeunload. El detalle específico
+ * queda visible en el aviso amarillo de la página.
+ */
 window.addEventListener("beforeunload", function (event) {
     if (!hayDatosSinGuardarAntesDeSalir()) return;
 
+    const detalles = obtenerDetallesDatosSinGuardar();
+
     event.preventDefault();
-    event.returnValue = "";
+
+    event.returnValue =
+        "Hay datos sin guardar: " + detalles.join(" | ") +
+        ". Guarda los cambios antes de actualizar la página.";
+
+    return event.returnValue;
 });
+
+document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
