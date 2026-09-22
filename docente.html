@@ -1526,12 +1526,6 @@ td:first-child {
     display: inline-block;
 }
 
-.calendario-dia-asistencia .icono-horario-actividad-calendario {
-    font-size: 8px;
-    line-height: 10px;
-    display: inline-block;
-}
-
 .calendario-dia-asistencia .contador-categoria-actividad {
     font-size: 6px;
     line-height: 1;
@@ -3329,17 +3323,6 @@ td,
 #botonGuardarAsistenciaTabla,
 #contenedorActividades .boton-guardar-tabla {
     display: none !important;
-}
-
-/* Parpadeo únicamente del fondo cuando existe guardado pendiente. */
-@keyframes parpadearFondoPendiente {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.35); }
-}
-
-.titulo-asistencia.parpadeo-guardado-pendiente,
-.titulo-categoria.parpadeo-guardado-pendiente {
-    animation: parpadearFondoPendiente 0.9s ease-in-out infinite;
 }
 
 /* =====================================================
@@ -7150,29 +7133,6 @@ function actualizarEstadosGuardado() {
         if (el) el.classList.remove("visible");
     });
 
-    /* El parpadeo se aplica únicamente a la categoría que tiene pendiente. */
-    const encabezadoAsistencia = document.querySelector(".titulo-asistencia");
-    if (encabezadoAsistencia) {
-        encabezadoAsistencia.classList.toggle(
-            "parpadeo-guardado-pendiente",
-            !guardadoAutomatico && cambiosPendientesAsistencia
-        );
-    }
-
-    document.querySelectorAll(".titulo-categoria").forEach(encabezado => {
-        const categoria = String(encabezado.dataset.categoria || "");
-        const tienePendiente = !guardadoAutomatico &&
-            actividadesPendientes.size > 0 &&
-            Array.from(actividadesPendientes).some(actividadId =>
-                String(categoriaPorActividadCache.get(String(actividadId)) || "").toUpperCase() === categoria
-            );
-
-        encabezado.classList.toggle(
-            "parpadeo-guardado-pendiente",
-            tienePendiente
-        );
-    });
-
     if (guardadoAutomatico) return;
 
     if (asistencia && cambiosPendientesAsistencia) {
@@ -8787,33 +8747,6 @@ function renderizarCalendarioFechasAsistencia() {
                 icono.title = nombresCategoria[categoria] || categoria;
                 marcaActividad.appendChild(icono);
             });
-
-            /* Icono pequeño adicional para indicar que la actividad tiene horario de presentación. */
-            const actividadesConHorario = actividades.filter(a =>
-                String(a?.fecha || "") === clave &&
-                (String(a?.hora_inicio || "").trim() || String(a?.hora_fin || "").trim())
-            );
-
-            if (actividadesConHorario.length > 0) {
-                const iconoHorarioActividad = document.createElement("span");
-                iconoHorarioActividad.className = "icono-horario-actividad-calendario";
-                iconoHorarioActividad.textContent = "🕐";
-
-                const horarios = actividadesConHorario
-                    .map(a => {
-                        const inicio = String(a?.hora_inicio || "").slice(0, 5);
-                        const fin = String(a?.hora_fin || "").slice(0, 5);
-                        if (inicio && fin) return inicio + " a " + fin;
-                        return inicio || fin;
-                    })
-                    .filter(Boolean);
-
-                iconoHorarioActividad.title = horarios.length
-                    ? "Actividad con hora de presentación: " + horarios.join(", ")
-                    : "Actividad con hora de presentación";
-
-                marcaActividad.appendChild(iconoHorarioActividad);
-            }
 
             boton.appendChild(marcaActividad);
         }
@@ -10694,13 +10627,10 @@ async function guardarAsistencia() {
         renderizarCalendarioFechasAsistencia();
         await cargarAsistencia();
 
-        /*
-         * IMPORTANTE:
-         * No reconstruir la vista de Actividades al guardar Asistencia.
-         * Cada categoría conserva su edición/guardado de forma independiente.
-         * Reconstruir Actividades aquí reemplazaba las notas aún pendientes
-         * de guardar con los valores que estaban en Supabase.
-         */
+        // Actualizar inmediatamente la asistencia que se muestra dentro de Actividades.
+        // Antes solo se actualizaba después de recargar la página.
+        await cargarAsistenciaActividades();
+        mostrarActividades();
 
         actualizarProgresoGuardado("asistencia", 100, false);
         mostrarMensaje("✓ Asistencia guardada correctamente.");
@@ -11315,7 +11245,6 @@ function mostrarActividades() {
         encabezado.className =
         "titulo-categoria " +
         categoria.clase;
-        encabezado.dataset.categoria = categoria.codigo;
 
         const nombreCategoria =
         document.createElement("span");
@@ -11393,7 +11322,6 @@ function mostrarActividades() {
     reconstruirIndiceInputsNotas();
 
     aplicarBloqueoEstadoEnLista(contenedor);
-    actualizarEstadosGuardado();
 }
 
 
@@ -15057,7 +14985,6 @@ function programarGuardadoCambioActividad(input) {
 
     cambiosPendientesActividades =
         actividadesPendientes.size > 0;
-    actualizarEstadosGuardado();
 }
 
 /* Muestra únicamente el botón de la actividad modificada. */
@@ -15526,7 +15453,6 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
-        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
@@ -16049,7 +15975,7 @@ async function exportarExcel() {
         await supabaseClient
         .from("actividades")
         .select(
-            "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
+            "id,curso,trimestre,categoria,nombre,fecha,orden,puntaje_maximo"
         )
         .eq(
             "trimestre",
@@ -16084,7 +16010,7 @@ async function exportarExcel() {
             await supabaseClient
             .from("calificaciones")
             .select(
-                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
+                "actividad_id,estudiante_id,nota,observacion"
             )
             .in(
                 "actividad_id",
@@ -16123,10 +16049,8 @@ async function exportarExcel() {
                 cal.nota,
 
                 observacion:
-                cal.observacion || "",
+                cal.observacion || ""
 
-                fecha_entrega:
-                cal.fecha_entrega || ""
             };
 
         });
@@ -16886,45 +16810,6 @@ async function exportarExcel() {
                Cada actividad queda como:
                NOTA | OBSERVACIÓN
             ================================================= */
-            /*
-             * En las hojas Obs, las columnas de entrega se crean
-             * para toda actividad que tenga horario, aunque todavía
-             * no exista una fecha_entrega registrada.
-             */
-            const actividadTieneHoraExcel = actividad => {
-                return !!(
-                    String(actividad?.hora_inicio || "").trim() ||
-                    String(actividad?.hora_fin || "").trim()
-                );
-            };
-
-            const nombreActividadExcelConHora = actividad => {
-                const nombre = String(actividad?.nombre || "");
-                if (!actividadTieneHoraExcel(actividad)) {
-                    return nombre;
-                }
-
-                const inicio = String(actividad?.hora_inicio || "").slice(0, 5);
-                const fin = String(actividad?.hora_fin || "").slice(0, 5);
-                const horario = inicio && fin
-                    ? inicio + " a " + fin
-                    : inicio || fin;
-
-                return horario ? nombre + " " + horario : nombre;
-            };
-
-            const columnasActividadObs = lista => {
-                return lista.flatMap(actividad => {
-                    const nombreExcel = nombreActividadExcelConHora(actividad);
-                    const columnas = [nombreExcel];
-                    if (actividadTieneHoraExcel(actividad)) {
-                        columnas.push("fecha_entrega", "obs_entrega");
-                    }
-                    columnas.push("OBS " + nombreExcel);
-                    return columnas;
-                });
-            };
-
             const columnasObs = [
                 "Nº LISTA",
                 "NOMBRE",
@@ -16937,13 +16822,13 @@ async function exportarExcel() {
                 "TOTAL R",
                 "TOTAL L",
                 "TOTAL F",
-                ...columnasActividadObs(ser),
+                ...ser.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO SER",
-                ...columnasActividadObs(saber),
+                ...saber.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO SABER",
-                ...columnasActividadObs(hacer),
+                ...hacer.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO HACER",
-                ...columnasActividadObs(auto),
+                ...auto.flatMap(a => [a.nombre, "OBS " + a.nombre]),
                 "PROMEDIO AUTOEVALUACIÓN",
                 "NOTA 3T",
                 "NOTA FINAL"
@@ -17022,14 +16907,6 @@ async function exportarExcel() {
                             registro?.observacion || "";
 
                         filaObs.push(nota);
-
-                        if (actividadTieneHoraExcel(actividad)) {
-                            const fechaEntrega = registro?.fecha_entrega || "";
-                            const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
-                            filaObs.push(fechaEntrega);
-                            filaObs.push(obsEntrega);
-                        }
-
                         filaObs.push(observacion);
                     });
                 };
@@ -18357,7 +18234,7 @@ async function continuarEscaneoAsistenciaQR() {
         const registro = {
             estudiante_id: estudiante.id,
             fecha: fecha,
-            estado: estadoQRAsistencia,
+            estado: estadoAutomaticoPorHoraAsistencia(horaQR, estadoQRAsistencia),
             hora: horaQR,
             observacion: observacion || null
         };
