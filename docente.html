@@ -3331,6 +3331,17 @@ td,
     display: none !important;
 }
 
+/* Parpadeo únicamente del fondo cuando existe guardado pendiente. */
+@keyframes parpadearFondoPendiente {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.35); }
+}
+
+.titulo-asistencia.parpadeo-guardado-pendiente,
+.titulo-categoria.parpadeo-guardado-pendiente {
+    animation: parpadearFondoPendiente 0.9s ease-in-out infinite;
+}
+
 /* =====================================================
    PROGRESO DE GUARDADO
 ===================================================== */
@@ -7137,6 +7148,31 @@ function actualizarEstadosGuardado() {
 
     [asistencia, actividades].forEach(el => {
         if (el) el.classList.remove("visible");
+    });
+
+    /* El parpadeo se aplica únicamente a la categoría que tiene pendiente. */
+    const encabezadoAsistencia = document.querySelector(".titulo-asistencia");
+    if (encabezadoAsistencia) {
+        encabezadoAsistencia.classList.toggle(
+            "parpadeo-guardado-pendiente",
+            !guardadoAutomatico && cambiosPendientesAsistencia
+        );
+    }
+
+    document.querySelectorAll(".titulo-categoria").forEach(encabezado => {
+        const categoria = String(encabezado.dataset.categoria || "");
+        const tienePendiente = !guardadoAutomatico &&
+            actividadesPendientes.size > 0 &&
+            actividades.some(actividad =>
+                String(actividad.id) &&
+                String(actividad.categoria || "").toUpperCase() === categoria &&
+                actividadesPendientes.has(String(actividad.id))
+            );
+
+        encabezado.classList.toggle(
+            "parpadeo-guardado-pendiente",
+            tienePendiente
+        );
     });
 
     if (guardadoAutomatico) return;
@@ -11278,6 +11314,7 @@ function mostrarActividades() {
         encabezado.className =
         "titulo-categoria " +
         categoria.clase;
+        encabezado.dataset.categoria = categoria.codigo;
 
         const nombreCategoria =
         document.createElement("span");
@@ -15018,6 +15055,7 @@ function programarGuardadoCambioActividad(input) {
 
     cambiosPendientesActividades =
         actividadesPendientes.size > 0;
+    actualizarEstadosGuardado();
 }
 
 /* Muestra únicamente el botón de la actividad modificada. */
@@ -15486,6 +15524,7 @@ async function guardarActividadManual(actividadId) {
         actualizarBotonGuardarActividadManual(
             id
         );
+        actualizarEstadosGuardado();
 
         mostrarMensaje(
             registrosCambios.length > 0
