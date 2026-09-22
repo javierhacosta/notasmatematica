@@ -22799,6 +22799,37 @@ async function recuperarCopiaBaseDatos(event) {
     }
 }
 
+
+/* =====================================================
+   AVISO ANTES DE ACTUALIZAR/CERRAR LA PÁGINA
+   Solo avisa cuando existen cambios de asistencia o
+   actividades que todavía no fueron guardados.
+===================================================== */
+function hayDatosSinGuardarAntesDeSalir() {
+    const asistenciaPendiente =
+        !guardadoAutomatico &&
+        (
+            cambiosPendientesAsistencia === true ||
+            asistenciasQRPendientesGuardar.size > 0
+        );
+
+    const actividadesPendientesSinGuardar =
+        !guardadoAutomatico &&
+        (
+            cambiosPendientesActividades === true ||
+            (actividadesPendientes && actividadesPendientes.size > 0)
+        );
+
+    return asistenciaPendiente || actividadesPendientesSinGuardar;
+}
+
+window.addEventListener("beforeunload", function (event) {
+    if (!hayDatosSinGuardarAntesDeSalir()) return;
+
+    event.preventDefault();
+    event.returnValue = "";
+});
+
 </script>
 
 
