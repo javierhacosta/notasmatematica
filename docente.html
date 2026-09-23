@@ -22330,39 +22330,6 @@ async function guardarAsistenciaEstudianteDesdeAula() {
     const estado = seleccionado ? seleccionado.value : "";
     const observacion = String(document.getElementById("observacionAsistenciaAulaIndividual")?.value || "").trim();
 
-    // Si existe una hora de entrada configurada para este día y el momento
-    // actual ya superó la hora + tolerancia, no permitir cambiar manualmente
-    // un atraso a un estado distinto de "atraso" desde la distribución de asientos.
-    // La configuración horaria de Asistencia sigue siendo la que determina el estado.
-    if (
-        configuracionHorarioAsistencia?.activo &&
-        ["asistio", "atraso"].includes(estado)
-    ) {
-        const limiteHorario = sumarMinutosHoraAsistencia(
-            configuracionHorarioAsistencia.hora_entrada,
-            configuracionHorarioAsistencia.tolerancia_minutos
-        );
-        const ahora = horaActualAsistencia();
-        const ahoraSeg = horaAsegundosAsistencia(ahora);
-        const limiteSeg = horaAsegundosAsistencia(limiteHorario);
-
-        if (
-            ahoraSeg !== null &&
-            limiteSeg !== null &&
-            ahoraSeg > limiteSeg &&
-            estado !== "atraso"
-        ) {
-            alert(
-                "⚠️ ADVERTENCIA\n\n" +
-                `La hora de entrada configurada es ${configuracionHorarioAsistencia.hora_entrada} ` +
-                `con ${configuracionHorarioAsistencia.tolerancia_minutos} minuto(s) de tolerancia.\n\n` +
-                `El límite es ${limiteHorario} y ya se encuentra atrasado según la configuración de Asistencia.\n\n` +
-                "No se puede guardar este cambio como Asistencia."
-            );
-            return;
-        }
-    }
-
     try {
         const { data: anteriorData, error: anteriorError } = await supabaseClient
             .from("asistencia")
@@ -22983,23 +22950,49 @@ function hayDatosSinGuardarAntesDeSalir() {
     return obtenerDetallesDatosSinGuardar().length > 0;
 }
 
+function actualizarAvisoDatosSinGuardar() {
+    let aviso = document.getElementById("avisoDatosSinGuardar");
+
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "avisoDatosSinGuardar";
+        aviso.style.cssText = [
+            "position:fixed",
+            "left:10px",
+            "right:10px",
+            "bottom:10px",
+            "z-index:99999",
+            "padding:10px 14px",
+            "border-radius:8px",
+            "background:#fff3cd",
+            "border:1px solid #ffcc00",
+            "color:#664d03",
+            "font-weight:bold",
+            "font-size:14px",
+            "line-height:1.4",
+            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
+            "display:none"
+        ].join(";");
+
+        if (document.body) {
+            document.body.appendChild(aviso);
+        } else {
+            return;
+        }
+    }
+
+    aviso.style.display = "none";
+    return;
+}
+
 /*
- * Se conserva únicamente la advertencia del navegador al actualizar
- * o cerrar la página cuando existen datos sin guardar.
+ * Los navegadores modernos suelen mostrar un mensaje genérico propio
+ * en el cuadro de confirmación de beforeunload. El detalle específico
+ * queda visible en el aviso amarillo de la página.
  */
-window.addEventListener("beforeunload", function (event) {
-    if (!hayDatosSinGuardarAntesDeSalir()) return;
+/* No mostrar advertencia al actualizar o cerrar la página. */
 
-    const detalles = obtenerDetallesDatosSinGuardar();
-
-    event.preventDefault();
-
-    event.returnValue =
-        "Hay datos sin guardar: " + detalles.join(" | ") +
-        ". Guarda los cambios antes de actualizar la página.";
-
-    return event.returnValue;
-});
+document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
