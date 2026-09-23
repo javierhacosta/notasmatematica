@@ -18998,6 +18998,196 @@ function seleccionarNotaRapidaQR(nota) {
 }
 
 
+
+/* =====================================================
+   COLA DE GUARDADO OFFLINE PARA QR DE ACTIVIDADES
+   Solo se utiliza cuando una calificación QR no puede
+   guardarse en Supabase inmediatamente.
+===================================================== */
+const CLAVE_COLA_QR_ACTIVIDADES = "colaQRActividadesPendientes_v1";
+const TIEMPO_MAXIMO_GUARDADO_QR_MS = 2500;
+let procesandoColaQRActividades = false;
+
+function cargarColaQRActividades() {
+    try {
+        const datos = JSON.parse(
+            localStorage.getItem(CLAVE_COLA_QR_ACTIVIDADES) || "[]"
+        );
+        return Array.isArray(datos) ? datos : [];
+    } catch (e) {
+        console.warn("No se pudo leer la cola QR de actividades:", e);
+        return [];
+    }
+}
+
+function guardarColaQRActividades(cola) {
+    try {
+        if (cola.length > 0) {
+            localStorage.setItem(
+                CLAVE_COLA_QR_ACTIVIDADES,
+                JSON.stringify(cola)
+            );
+        } else {
+            localStorage.removeItem(CLAVE_COLA_QR_ACTIVIDADES);
+        }
+    } catch (e) {
+        console.warn("No se pudo guardar la cola QR de actividades:", e);
+    }
+}
+
+function claveRegistroQRActividad(registro) {
+    return String(registro.actividad_id) + "|" +
+           String(registro.estudiante_id);
+}
+
+function actualizarPendienteQRActividadUI() {
+    const cola = cargarColaQRActividades();
+
+    cola.forEach(registro => {
+        actividadesPendientes.add(String(registro.actividad_id));
+    });
+
+    cambiosPendientesActividades =
+        actividadesPendientes.size > 0;
+
+    actualizarEstadosGuardado();
+}
+
+function agregarAColaQRActividad(registro) {
+    const cola = cargarColaQRActividades();
+    const clave = claveRegistroQRActividad(registro);
+
+    const indice = cola.findIndex(
+        item => claveRegistroQRActividad(item) === clave
+    );
+
+    if (indice >= 0) {
+        cola[indice] = registro;
+    } else {
+        cola.push(registro);
+    }
+
+    guardarColaQRActividades(cola);
+
+    actividadesPendientes.add(String(registro.actividad_id));
+    cambiosPendientesActividades =
+        actividadesPendientes.size > 0;
+
+    actualizarEstadosGuardado();
+}
+
+async function intentarGuardarRegistroQRActividad(registro) {
+    const resultado = await Promise.race([
+        supabaseClient
+            .from("calificaciones")
+            .upsert(
+                registro,
+                {
+                    onConflict: "actividad_id,estudiante_id"
+                }
+            ),
+        new Promise((_, reject) =>
+            setTimeout(
+                () => reject(new Error("Tiempo de conexión agotado")),
+                TIEMPO_MAXIMO_GUARDADO_QR_MS
+            )
+        )
+    ]);
+
+    if (resultado && resultado.error) {
+        throw resultado.error;
+    }
+
+    return true;
+}
+
+async function procesarColaQRActividades() {
+    if (procesandoColaQRActividades) return;
+    if (!navigator.onLine) return;
+
+    const colaInicial = cargarColaQRActividades();
+    if (colaInicial.length === 0) {
+        actualizarPendienteQRActividadUI();
+        return;
+    }
+
+    procesandoColaQRActividades = true;
+
+    try {
+        let cola = cargarColaQRActividades();
+
+        for (const registro of cola.slice()) {
+            try {
+                await intentarGuardarRegistroQRActividad({
+                    actividad_id: registro.actividad_id,
+                    estudiante_id: registro.estudiante_id,
+                    nota: registro.nota,
+                    fecha_entrega: registro.fecha_entrega,
+                    observacion: registro.observacion || null
+                });
+
+                cola = cola.filter(
+                    item =>
+                        claveRegistroQRActividad(item) !==
+                        claveRegistroQRActividad(registro)
+                );
+
+                guardarColaQRActividades(cola);
+            } catch (error) {
+                /* Si uno falla, conservarlo y continuar con los demás.
+                   Así una nota lenta/no disponible no bloquea las otras. */
+                console.warn(
+                    "Calificación QR pendiente:",
+                    error
+                );
+            }
+        }
+
+        const actividadesConPendientesQR = new Set(
+            cola.map(item => String(item.actividad_id))
+        );
+
+        actividadesPendientes.forEach(actividadId => {
+            const actividadIdTexto = String(actividadId);
+
+            const quedanCambiosManuales = Array.from(
+                document.querySelectorAll(
+                    `.nota-input[data-actividad="${actividadIdTexto}"], ` +
+                    `.observacion-actividad[data-actividad="${actividadIdTexto}"]`
+                )
+            ).some(input => {
+                return (
+                    (input.value || "").trim() !==
+                    (input.dataset.valorInicial || "").trim()
+                );
+            });
+
+            if (
+                !actividadesConPendientesQR.has(actividadIdTexto) &&
+                !quedanCambiosManuales
+            ) {
+                actividadesPendientes.delete(actividadIdTexto);
+            }
+        });
+
+        cambiosPendientesActividades =
+            actividadesPendientes.size > 0;
+
+        actualizarEstadosGuardado();
+    } finally {
+        procesandoColaQRActividades = false;
+    }
+}
+
+window.addEventListener("online", function() {
+    procesarColaQRActividades();
+});
+
+setInterval(
+    procesarColaQRActividades,
+    5000
+);
+
 async function guardarCalificacionQR() {
 
     if (guardandoCalificacionQR) {
@@ -19022,15 +19212,11 @@ async function guardarCalificacionQR() {
     if (
         valorTexto === ""
     ) {
-
         alert(
             "Introduce una calificación."
         );
-
         notaInput.focus();
-
         return;
-
     }
 
     const nota =
@@ -19047,12 +19233,10 @@ async function guardarCalificacionQR() {
         !puntajeMaximo ||
         puntajeMaximo <= 0
     ) {
-
         puntajeMaximo =
         LIMITES[
             actividadQRSeleccionada.categoria
         ];
-
     }
 
     if (
@@ -19060,17 +19244,13 @@ async function guardarCalificacionQR() {
         nota < 0 ||
         nota > puntajeMaximo
     ) {
-
         alert(
             "La calificación debe estar entre 0 y " +
             puntajeMaximo +
             "."
         );
-
         notaInput.focus();
-
         return;
-
     }
 
     const observacionInputQR =
@@ -19088,61 +19268,79 @@ async function guardarCalificacionQR() {
         "botonGuardarQR"
     );
 
-    guardandoCalificacionQR = true;
-    boton.disabled = true;
+    const actividadIdQR =
+        Number(actividadQRSeleccionada.id);
 
-    boton.textContent =
-    "💾 Guardando...";
+    const estudianteIdQR =
+        Number(estudianteQRSeleccionado.id);
+
+    const fechaEntregaQR =
+        new Date().toISOString();
+
+    const registroQR = {
+        actividad_id: actividadIdQR,
+        estudiante_id: estudianteIdQR,
+        nota: nota,
+        fecha_entrega: fechaEntregaQR,
+        observacion: observacion || null
+    };
+
+    guardandoCalificacionQR = true;
+
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent =
+            "💾 Guardando...";
+    }
+
+    let guardadoOnline = false;
 
     try {
 
-        /* Al pulsar "Guardar" en la ventana QR de actividades,
-           guardar siempre directamente en Supabase, independientemente
-           del modo de guardado seleccionado. */
-        const {
-            error
-        } =
-        await supabaseClient
-        .from("calificaciones")
-        .upsert(
-            {
-                actividad_id: actividadQRSeleccionada.id,
-                estudiante_id: estudianteQRSeleccionado.id,
-                nota: nota,
-                fecha_entrega: new Date().toISOString(),
-                observacion: observacion || null
-            },
-            {
-                onConflict: "actividad_id,estudiante_id"
-            }
-        );
+        /*
+         * Primero se intenta guardar online, pero con un tiempo máximo
+         * corto para que una conexión lenta NO deje esperando al docente.
+         */
+        try {
+            await intentarGuardarRegistroQRActividad(
+                registroQR
+            );
+            guardadoOnline = true;
+        } catch (errorRed) {
+            console.warn(
+                "No se pudo guardar inmediatamente la calificación QR. " +
+                "Se enviará a la cola de pendientes.",
+                errorRed
+            );
 
-        if (error) {
-            throw error;
+            agregarAColaQRActividad(
+                registroQR
+            );
         }
 
         if (
             !calificaciones[
-                estudianteQRSeleccionado.id
+                estudianteIdQR
             ]
         ) {
-
             calificaciones[
-                estudianteQRSeleccionado.id
+                estudianteIdQR
             ] = {};
-
         }
 
         const registroAnterior =
         calificaciones[
-            estudianteQRSeleccionado.id
+            estudianteIdQR
         ][
-            actividadQRSeleccionada.id
+            actividadIdQR
         ];
-        const anteriorHistorialQR = registroAnterior && typeof registroAnterior === "object"
+
+        const anteriorHistorialQR =
+        registroAnterior &&
+        typeof registroAnterior === "object"
         ? {
-            actividad_id: actividadQRSeleccionada.id,
-            estudiante_id: estudianteQRSeleccionado.id,
+            actividad_id: actividadIdQR,
+            estudiante_id: estudianteIdQR,
             nota: registroAnterior.nota ?? null,
             fecha_entrega: registroAnterior.fecha_entrega ?? null,
             observacion: registroAnterior.observacion ?? null
@@ -19150,81 +19348,126 @@ async function guardarCalificacionQR() {
         : null;
 
         const nuevoHistorialQR = {
-            actividad_id: actividadQRSeleccionada.id,
-            estudiante_id: estudianteQRSeleccionado.id,
+            actividad_id: actividadIdQR,
+            estudiante_id: estudianteIdQR,
             nota: nota,
-            fecha_entrega: new Date().toISOString(),
+            fecha_entrega: fechaEntregaQR,
             observacion: observacion || null
         };
 
-        if (!anteriorHistorialQR ||
-            String(anteriorHistorialQR.nota ?? "") !== String(nuevoHistorialQR.nota ?? "") ||
-            String(anteriorHistorialQR.fecha_entrega ?? "") !== String(nuevoHistorialQR.fecha_entrega ?? "") ||
-            String(anteriorHistorialQR.observacion ?? "") !== String(nuevoHistorialQR.observacion ?? "")) {
+        if (
+            !anteriorHistorialQR ||
+            String(anteriorHistorialQR.nota ?? "") !==
+                String(nuevoHistorialQR.nota ?? "") ||
+            String(anteriorHistorialQR.fecha_entrega ?? "") !==
+                String(nuevoHistorialQR.fecha_entrega ?? "") ||
+            String(anteriorHistorialQR.observacion ?? "") !==
+                String(nuevoHistorialQR.observacion ?? "")
+        ) {
             guardarHistorialInterno({
                 table_name: "calificaciones",
-                operation: anteriorHistorialQR ? "UPDATE" : "INSERT",
+                operation: anteriorHistorialQR
+                    ? "UPDATE"
+                    : "INSERT",
                 record_id: null,
                 curso: cursoSeleccionado,
-                estudiante_id: estudianteQRSeleccionado.id,
-                estudiante_nombre: estudianteQRSeleccionado.nombre || estudianteQRSeleccionado.nombre_completo || null,
-                actividad_id: actividadQRSeleccionada.id,
-                actividad_nombre: actividadQRSeleccionada.nombre || actividadQRSeleccionada.titulo || null,
-                categoria: actividadQRSeleccionada.categoria || null,
+                estudiante_id: estudianteIdQR,
+                estudiante_nombre:
+                    estudianteQRSeleccionado.nombre ||
+                    estudianteQRSeleccionado.nombre_completo ||
+                    null,
+                actividad_id: actividadIdQR,
+                actividad_nombre:
+                    actividadQRSeleccionada.nombre ||
+                    actividadQRSeleccionada.titulo ||
+                    null,
+                categoria:
+                    actividadQRSeleccionada.categoria ||
+                    null,
                 fecha: null,
                 old_data: anteriorHistorialQR,
                 new_data: nuevoHistorialQR,
-                changed_at: new Date().toISOString()
+                changed_at:
+                    new Date().toISOString()
             });
         }
 
+        /*
+         * Actualizar inmediatamente la vista local.
+         * Esto ocurre tanto si el guardado fue online como si quedó
+         * en cola, por lo que el QR puede continuar sin esperar.
+         */
         calificaciones[
-            estudianteQRSeleccionado.id
+            estudianteIdQR
         ][
-            actividadQRSeleccionada.id
+            actividadIdQR
         ] = {
-            nota:
-            nota,
-
-            fecha_entrega:
-            nuevoHistorialQR.fecha_entrega,
-
-            observacion:
-            observacion
+            nota: nota,
+            fecha_entrega: fechaEntregaQR,
+            observacion: observacion
         };
 
-        /*
-           El guardado por QR se realiza directamente en Supabase.
-           Después de guardarlo correctamente, no debe quedar marcado
-           como "GUARDADO PENDIENTE".
-        */
-        const actividadIdGuardadaQR = String(actividadQRSeleccionada.id);
-        const estudianteIdGuardadoQR = String(estudianteQRSeleccionado.id);
+        const actividadIdGuardadaQR =
+            String(actividadIdQR);
 
-        const notaTablaQR = document.querySelector(
-            `.nota-input[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
-        );
-        const entregaTablaQR = document.querySelector(
-            `.entrega-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
+        const estudianteIdGuardadoQR =
+            String(estudianteIdQR);
+
+        const notaTablaQR =
+        document.querySelector(
+            `.nota-input[data-estudiante="${estudianteIdGuardadoQR}"]` +
+            `[data-actividad="${actividadIdGuardadaQR}"]`
         );
 
-        const observacionTablaQR = document.querySelector(
-            `.observacion-actividad[data-estudiante="${estudianteIdGuardadoQR}"][data-actividad="${actividadIdGuardadaQR}"]`
+        const entregaTablaQR =
+        document.querySelector(
+            `.entrega-actividad[data-estudiante="${estudianteIdGuardadoQR}"]` +
+            `[data-actividad="${actividadIdGuardadaQR}"]`
+        );
+
+        const observacionTablaQR =
+        document.querySelector(
+            `.observacion-actividad[data-estudiante="${estudianteIdGuardadoQR}"]` +
+            `[data-actividad="${actividadIdGuardadaQR}"]`
         );
 
         if (notaTablaQR) {
-            notaTablaQR.value = String(nota);
-            notaTablaQR.dataset.valorInicial = String(nota);
+            notaTablaQR.value =
+                String(nota);
+
+            /*
+             * Si quedó pendiente, NO actualizar valorInicial.
+             * Así se conserva correctamente el estado pendiente.
+             */
+            if (guardadoOnline) {
+                notaTablaQR.dataset.valorInicial =
+                    String(nota);
+            }
         }
 
         if (entregaTablaQR) {
-            const entregaQR = nuevoHistorialQR.fecha_entrega || "";
-            entregaTablaQR.value = formatearEntregaParaInput(entregaQR);
-            entregaTablaQR.dataset.valorInicial = formatearEntregaParaInput(entregaQR);
+            const entregaQR =
+                fechaEntregaQR || "";
 
-            const actividadQR = actividades.find(
-                a => String(a.id) === String(actividadIdGuardadaQR)
-            );
+            entregaTablaQR.value =
+                formatearEntregaParaInput(
+                    entregaQR
+                );
+
+            if (guardadoOnline) {
+                entregaTablaQR.dataset.valorInicial =
+                    formatearEntregaParaInput(
+                        entregaQR
+                    );
+            }
+
+            const actividadQR =
+                actividades.find(
+                    a =>
+                        String(a.id) ===
+                        String(actividadIdGuardadaQR)
+                );
+
             if (actividadQR) {
                 actualizarObsEntregaFila(
                     entregaTablaQR.closest("tr"),
@@ -19234,61 +19477,98 @@ async function guardarCalificacionQR() {
         }
 
         if (observacionTablaQR) {
-            observacionTablaQR.value = observacion;
-            observacionTablaQR.dataset.valorInicial = observacion;
+            observacionTablaQR.value =
+                observacion;
+
+            if (guardadoOnline) {
+                observacionTablaQR.dataset.valorInicial =
+                    observacion;
+            }
         }
 
-        /*
-           La actividad solo permanece como pendiente si todavía existe
-           algún cambio manual sin guardar en otra fila de esta actividad.
-        */
-        if (!guardadoAutomatico) {
-            const quedanCambiosActividadQR = Array.from(
-                document.querySelectorAll(
-                    `.nota-input[data-actividad="${actividadIdGuardadaQR}"], .observacion-actividad[data-actividad="${actividadIdGuardadaQR}"]`
-                )
-            ).some(input => {
-                const actual = (input.value || "").trim();
-                const inicial = (input.dataset.valorInicial || "").trim();
-                return actual !== inicial;
-            });
+        if (!guardadoOnline) {
+            /*
+             * La actividad queda marcada como pendiente y el aviso
+             * existente "datos pendientes para guardar" se muestra.
+             */
+            actividadesPendientes.add(
+                actividadIdGuardadaQR
+            );
+
+            cambiosPendientesActividades =
+                actividadesPendientes.size > 0;
+
+            actualizarEstadosGuardado();
+        } else if (!guardadoAutomatico) {
+
+            const quedanCambiosActividadQR =
+                Array.from(
+                    document.querySelectorAll(
+                        `.nota-input[data-actividad="${actividadIdGuardadaQR}"], ` +
+                        `.observacion-actividad[data-actividad="${actividadIdGuardadaQR}"]`
+                    )
+                ).some(input => {
+                    const actual =
+                        (input.value || "").trim();
+
+                    const inicial =
+                        (input.dataset.valorInicial || "").trim();
+
+                    return actual !== inicial;
+                });
 
             if (quedanCambiosActividadQR) {
-                actividadesPendientes.add(actividadIdGuardadaQR);
+                actividadesPendientes.add(
+                    actividadIdGuardadaQR
+                );
             } else {
-                actividadesPendientes.delete(actividadIdGuardadaQR);
+                actividadesPendientes.delete(
+                    actividadIdGuardadaQR
+                );
             }
 
-            cambiosPendientesActividades = actividadesPendientes.size > 0;
+            cambiosPendientesActividades =
+                actividadesPendientes.size > 0;
+
             actualizarEstadosGuardado();
         }
 
-                const nombreEstudianteQR =
-        estudianteQRSeleccionado.nombre;
+        const nombreEstudianteQR =
+            estudianteQRSeleccionado.nombre;
 
-        if (mantenerCamaraQR && streamQR) {
+        if (
+            mantenerCamaraQR &&
+            streamQR
+        ) {
 
             document.getElementById(
                 "modalCalificacionQR"
-            ).classList.add("oculto");
+            ).classList.add(
+                "oculto"
+            );
 
-            estudianteQRSeleccionado = null;
+            estudianteQRSeleccionado =
+                null;
 
             mostrarActividades();
 
-            // Volver a aplicar el estado pendiente después de reconstruir
-            // la lista de actividades, para que el aviso quede visible
-            // específicamente en esta actividad cuando el guardado manual está activo.
             actualizarEstadosGuardado();
 
             mostrarMensaje(
-                "✅ Calificación guardada para " +
-                nombreEstudianteQR +
-                ". Escanea al siguiente estudiante."
+                guardadoOnline
+                ? "✅ Calificación guardada para " +
+                  nombreEstudianteQR +
+                  ". Escanea al siguiente estudiante."
+                : "⚠️ Calificación de " +
+                  nombreEstudianteQR +
+                  " guardada localmente. Quedó en cola y se enviará cuando haya conexión. Escanea al siguiente estudiante."
             );
 
             escaneandoQR = true;
-            requestAnimationFrame(solicitarLecturaQR);
+
+            requestAnimationFrame(
+                solicitarLecturaQR
+            );
 
         } else {
 
@@ -19296,41 +19576,47 @@ async function guardarCalificacionQR() {
 
             mostrarActividades();
 
-            // Volver a aplicar el estado pendiente después de reconstruir
-            // la lista de actividades.
             actualizarEstadosGuardado();
 
             mostrarMensaje(
-                "✅ Calificación guardada para " +
-                nombreEstudianteQR +
-                "."
+                guardadoOnline
+                ? "✅ Calificación guardada para " +
+                  nombreEstudianteQR +
+                  "."
+                : "⚠️ Calificación guardada localmente. Quedó en cola para enviarse cuando haya conexión."
             );
         }
 
-    }
+    } catch(error) {
 
-    catch(error) {
-
+        /*
+         * Este bloque solo captura errores inesperados del procesamiento
+         * local. La falta de conexión ya fue convertida en una cola.
+         */
         console.error(error);
 
         alert(
-            "Error al guardar la calificación: " +
-            error.message
+            "No se pudo preparar la calificación QR: " +
+            (error.message || error)
         );
 
+    } finally {
+
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent =
+                "💾 Guardar";
+        }
+
+        guardandoCalificacionQR =
+            false;
+
+        /*
+         * Intentar inmediatamente la cola existente sin bloquear
+         * el flujo del escáner.
+         */
+        procesarColaQRActividades();
     }
-
-    finally {
-
-        boton.disabled = false;
-
-        boton.textContent =
-        "💾 Guardar";
-
-        guardandoCalificacionQR = false;
-
-    }
-
 }
 
 
