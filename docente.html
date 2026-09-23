@@ -22330,6 +22330,39 @@ async function guardarAsistenciaEstudianteDesdeAula() {
     const estado = seleccionado ? seleccionado.value : "";
     const observacion = String(document.getElementById("observacionAsistenciaAulaIndividual")?.value || "").trim();
 
+    // Si existe una hora de entrada configurada para este día y el momento
+    // actual ya superó la hora + tolerancia, no permitir cambiar manualmente
+    // un atraso a un estado distinto de "atraso" desde la distribución de asientos.
+    // La configuración horaria de Asistencia sigue siendo la que determina el estado.
+    if (
+        configuracionHorarioAsistencia?.activo &&
+        ["asistio", "atraso"].includes(estado)
+    ) {
+        const limiteHorario = sumarMinutosHoraAsistencia(
+            configuracionHorarioAsistencia.hora_entrada,
+            configuracionHorarioAsistencia.tolerancia_minutos
+        );
+        const ahora = horaActualAsistencia();
+        const ahoraSeg = horaAsegundosAsistencia(ahora);
+        const limiteSeg = horaAsegundosAsistencia(limiteHorario);
+
+        if (
+            ahoraSeg !== null &&
+            limiteSeg !== null &&
+            ahoraSeg > limiteSeg &&
+            estado !== "atraso"
+        ) {
+            alert(
+                "⚠️ ADVERTENCIA\n\n" +
+                `La hora de entrada configurada es ${configuracionHorarioAsistencia.hora_entrada} ` +
+                `con ${configuracionHorarioAsistencia.tolerancia_minutos} minuto(s) de tolerancia.\n\n` +
+                `El límite es ${limiteHorario} y ya se encuentra atrasado según la configuración de Asistencia.\n\n` +
+                "No se puede guardar este cambio como Asistencia."
+            );
+            return;
+        }
+    }
+
     try {
         const { data: anteriorData, error: anteriorError } = await supabaseClient
             .from("asistencia")
