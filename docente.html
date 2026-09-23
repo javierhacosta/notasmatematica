@@ -1133,24 +1133,6 @@ td:first-child {
 }
 
 
-
-/* ESTUDIANTES NO EFECTIVOS EN TODAS LAS TABLAS
-   Solo aplica a filas que corresponden a un estudiante cuyo estado
-   es diferente de EFECTIVO. No modifica las filas de encabezado ni
-   el sombreado alternado existente de las tablas. */
-table tbody tr.estudiante-estado-no-efectivo,
-table tbody tr.estudiante-estado-bloqueado {
-    font-weight: 700 !important;
-    opacity: .52 !important;
-    background: #d9dde1 !important;
-}
-
-table tbody tr.estudiante-estado-no-efectivo td,
-table tbody tr.estudiante-estado-bloqueado td {
-    font-weight: 700 !important;
-}
-
-
 /* =====================================================
    INPUT NOTAS
 ===================================================== */
@@ -1780,6 +1762,11 @@ table tbody tr.estudiante-estado-bloqueado td {
 .estudiante-no-efectivo { opacity:.48 !important; background:#f1f1f1 !important; cursor:not-allowed !important; }
 .estudiante-no-efectivo input, .estudiante-no-efectivo select, .estudiante-no-efectivo button, .estudiante-no-efectivo a { pointer-events:none !important; cursor:not-allowed !important; }
 .opcion-estudiante-no-efectivo { color:#888 !important; background:#f1f1f1 !important; }
+/* ESTUDIANTES NO EFECTIVOS EN ASISTENCIA: permanecen opacos incluso al desbloquear la tabla */
+#tablaAsistencia tr.estudiante-estado-bloqueado {
+    opacity: .48 !important;
+}
+
 
 .boton-cerrar-lista-estado {
     background: #777;
@@ -6970,81 +6957,7 @@ Cancelar
 <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://tecphbbkkmlgahjddcep.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://tecphbbkkmlgahjddcep.supabase.co">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-
-/* =====================================================
-   ESTADO VISUAL DE ESTUDIANTES EN TODAS LAS TABLAS
-   Los estudiantes cuyo estado no sea EFECTIVO se muestran
-   en negrilla y opacos, sin alterar el resto de la tabla.
-===================================================== */
-function aplicarEstadoVisualNoEfectivoEnTablas(contenedor = document) {
-    if (!contenedor || !Array.isArray(estudiantes) || !estudiantes.length) return;
-
-    const mapaEstudiantes = new Map(
-        estudiantes.map(e => [String(e.id), e])
-    );
-
-    const filas = contenedor.querySelectorAll
-        ? contenedor.querySelectorAll("table tbody tr")
-        : [];
-
-    filas.forEach(fila => {
-        let estudiante = null;
-
-        const id =
-            fila.dataset.estudiante ??
-            fila.dataset.estudianteId ??
-            fila.getAttribute("data-estudiante-id");
-
-        if (id != null && mapaEstudiantes.has(String(id))) {
-            estudiante = mapaEstudiantes.get(String(id));
-        }
-
-        /* Algunas tablas no llevan data-estudiante pero sí muestran
-           el nombre del estudiante. Solo se usa como respaldo. */
-        if (!estudiante) {
-            const nombreCelda = fila.querySelector(
-                ".nombre, .nombre-col, .nombre-estudiante-busqueda, " +
-                ".nombre-pendiente, .nombre-estudiante-asistencia"
-            );
-            const nombre = nombreCelda
-                ? String(nombreCelda.textContent || "").trim()
-                : "";
-
-            if (nombre) {
-                estudiante = estudiantes.find(e =>
-                    String(e.nombre || "").trim() === nombre
-                ) || null;
-            }
-        }
-
-        if (!estudiante) return;
-
-        const noEfectivo =
-            String(estudiante.estado || "").trim().toUpperCase() !== "EFECTIVO";
-
-        fila.classList.toggle("estudiante-estado-no-efectivo", noEfectivo);
-    });
-}
-
-let observadorEstadoVisualEstudiantes = null;
-
-function iniciarEstadoVisualNoEfectivoEnTablas() {
-    aplicarEstadoVisualNoEfectivoEnTablas(document);
-
-    if (observadorEstadoVisualEstudiantes) return;
-
-    observadorEstadoVisualEstudiantes = new MutationObserver(() => {
-        aplicarEstadoVisualNoEfectivoEnTablas(document);
-    });
-
-    observadorEstadoVisualEstudiantes.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-}
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- =====================================================
      LISTA DEL CURSO / ESTADO DE ESTUDIANTES
@@ -23143,11 +23056,6 @@ window.addEventListener("beforeunload", function (event) {
         </div>
     </div>
 </div>
-
-
-document.addEventListener("DOMContentLoaded", () => {
-    iniciarEstadoVisualNoEfectivoEnTablas();
-});
 
 </body>
 
