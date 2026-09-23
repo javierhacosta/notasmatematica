@@ -10713,6 +10713,14 @@ async function guardarAsistencia() {
         await cargarAsistencia();
 
         /*
+         * Sin reconstruir las tablas de Actividades (para no perder
+         * cambios de notas pendientes), actualizar inmediatamente
+         * los iconos de asistencia que ya están visibles.
+         */
+        await cargarAsistenciaActividades();
+        actualizarIconosAsistenciaEnActividades();
+
+        /*
          * IMPORTANTE:
          * No reconstruir la vista de Actividades al guardar Asistencia.
          * Cada categoría conserva su edición/guardado de forma independiente.
@@ -11463,6 +11471,36 @@ function formatearFechaActividad(
 /* =====================================================
    ICONO DE ASISTENCIA EN LA ACTIVIDAD
 ===================================================== */
+
+function actualizarIconosAsistenciaEnActividades() {
+
+    const contenedor = document.getElementById("contenedorActividades");
+    if (!contenedor) return;
+
+    contenedor.querySelectorAll(".actividad[data-actividad-id]").forEach(bloque => {
+        const actividadId = String(bloque.dataset.actividadId || "");
+        const actividad = actividades.find(a => String(a.id) === actividadId);
+        if (!actividad) return;
+
+        bloque.querySelectorAll("tbody tr[data-estudiante]").forEach(fila => {
+            const estudianteId = fila.dataset.estudiante;
+            const celdaNota = fila.querySelector("td:nth-child(3)");
+            if (!celdaNota) return;
+
+            const iconoActual = celdaNota.querySelector(".icono-asistencia-actividad");
+            if (iconoActual) iconoActual.remove();
+
+            const htmlIcono = obtenerIconoAsistenciaActividad(estudianteId, actividad.fecha);
+            if (!htmlIcono) return;
+
+            const temporal = document.createElement("span");
+            temporal.innerHTML = htmlIcono.trim();
+            const nuevoIcono = temporal.firstElementChild;
+            if (nuevoIcono) celdaNota.insertBefore(nuevoIcono, celdaNota.firstChild);
+        });
+    });
+}
+
 
 function obtenerIconoAsistenciaActividad(
     estudianteId,
