@@ -22986,13 +22986,18 @@ function actualizarAvisoDatosSinGuardar() {
 }
 
 /*
- * Los navegadores modernos suelen mostrar un mensaje genérico propio
- * en el cuadro de confirmación de beforeunload. El detalle específico
- * queda visible en el aviso amarillo de la página.
+ * Mostrar la advertencia del navegador SOLO al actualizar o cerrar
+ * cuando realmente existen datos pendientes de guardar.
+ * No se muestra ningún aviso mientras se usa normalmente la página.
  */
-/* No mostrar advertencia al actualizar o cerrar la página. */
+window.addEventListener("beforeunload", function (event) {
+    if (!hayDatosSinGuardarAntesDeSalir()) {
+        return;
+    }
 
-document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
+    event.preventDefault();
+    event.returnValue = "";
+});
 
 </script>
 
