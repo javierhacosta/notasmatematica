@@ -22983,61 +22983,9 @@ function hayDatosSinGuardarAntesDeSalir() {
     return obtenerDetallesDatosSinGuardar().length > 0;
 }
 
-function actualizarAvisoDatosSinGuardar() {
-    let aviso = document.getElementById("avisoDatosSinGuardar");
-
-    if (!aviso) {
-        aviso = document.createElement("div");
-        aviso.id = "avisoDatosSinGuardar";
-        aviso.style.cssText = [
-            "position:fixed",
-            "left:10px",
-            "right:10px",
-            "bottom:10px",
-            "z-index:99999",
-            "padding:10px 14px",
-            "border-radius:8px",
-            "background:#fff3cd",
-            "border:1px solid #ffcc00",
-            "color:#664d03",
-            "font-weight:bold",
-            "font-size:14px",
-            "line-height:1.4",
-            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
-            "display:none"
-        ].join(";");
-
-        if (document.body) {
-            document.body.appendChild(aviso);
-        } else {
-            return;
-        }
-    }
-
-    if (guardadoAutomatico) {
-        aviso.style.display = "none";
-        return;
-    }
-
-    const detalles = obtenerDetallesDatosSinGuardar();
-
-    if (detalles.length === 0) {
-        aviso.style.display = "none";
-        return;
-    }
-
-    aviso.innerHTML =
-        "⚠️ <strong>Hay datos sin guardar:</strong><br>" +
-        detalles.map(d => escapeHTML(d)).join("<br>") +
-        "<br><small>Guarda los cambios antes de actualizar o cerrar la página.</small>";
-
-    aviso.style.display = "block";
-}
-
 /*
- * Los navegadores modernos suelen mostrar un mensaje genérico propio
- * en el cuadro de confirmación de beforeunload. El detalle específico
- * queda visible en el aviso amarillo de la página.
+ * Se conserva únicamente la advertencia del navegador al actualizar
+ * o cerrar la página cuando existen datos sin guardar.
  */
 window.addEventListener("beforeunload", function (event) {
     if (!hayDatosSinGuardarAntesDeSalir()) return;
@@ -23052,8 +23000,6 @@ window.addEventListener("beforeunload", function (event) {
 
     return event.returnValue;
 });
-
-document.addEventListener("DOMContentLoaded", actualizarAvisoDatosSinGuardar);
 
 </script>
 
