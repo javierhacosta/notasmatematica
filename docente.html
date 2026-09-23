@@ -22387,6 +22387,42 @@ async function guardarAsistenciaEstudianteDesdeAula() {
     const estado = seleccionado ? seleccionado.value : "";
     const observacion = String(document.getElementById("observacionAsistenciaAulaIndividual")?.value || "").trim();
 
+    // Aviso únicamente cuando, desde la distribución de mesas, se cambia
+    // la asistencia y existe una hora de entrada + tolerancia configuradas.
+    // No impide guardar el cambio; solo informa si el estado elegido no
+    // coincide con el estado que corresponde según la hora registrada.
+    if (
+        configuracionHorarioAsistencia?.activo &&
+        ["asistio", "atraso"].includes(estado)
+    ) {
+        const registroHorario = registrosAsistencia[estudiante.id] || {};
+        const horaEvaluada = registroHorario.hora || "";
+        if (horaEvaluada) {
+            const estadoCorrespondiente = estadoAutomaticoPorHoraAsistencia(
+                horaEvaluada,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+            );
+
+            if (
+                ["asistio", "atraso"].includes(estadoCorrespondiente) &&
+                estado !== estadoCorrespondiente
+            ) {
+                const textoSeleccionado = estado === "asistio" ? "ASISTENCIA" : "ATRASO";
+                const textoCorrespondiente = estadoCorrespondiente === "asistio" ? "ASISTENCIA" : "ATRASO";
+                alert(
+                    "⚠️ AVISO DE HORARIO\n\n" +
+                    `La hora registrada del estudiante es ${horaEvaluada}.\n` +
+                    `La hora de entrada asignada es ${configuracionHorarioAsistencia.hora_entrada} ` +
+                    `con ${configuracionHorarioAsistencia.tolerancia_minutos} minuto(s) de tolerancia ` +
+                    `(límite: ${sumarMinutosHoraAsistencia(configuracionHorarioAsistencia.hora_entrada, configuracionHorarioAsistencia.tolerancia_minutos)}).\n\n` +
+                    `Seleccionaste: ${textoSeleccionado}.\n` +
+                    `Según la hora y tolerancia corresponde: ${textoCorrespondiente}.`
+                );
+            }
+        }
+    }
+
     try {
         const { data: anteriorData, error: anteriorError } = await supabaseClient
             .from("asistencia")
