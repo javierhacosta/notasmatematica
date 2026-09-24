@@ -8013,47 +8013,69 @@ async function cargarPendientesInicio() {
   const panel = document.getElementById("pendientesInicio");
   if (!panel) return;
   const hoy = new Date().toISOString().slice(0,10);
+  const listaEstudiantes = Array.isArray(estudiantes) ? estudiantes : [];
 
   try {
     const [{data: actividades, error: ea}, {data: horarios, error: eh}] = await Promise.all([
-      supabase.from("actividades").select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden")
+      supabaseClient.from("actividades").select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo")
         .gte("fecha", hoy).order("fecha",{ascending:true}).order("hora_inicio",{ascending:true}),
-      supabase.from("asistencia_horarios").select("curso,fecha,hora_entrada")
+      supabaseClient.from("asistencia_horarios").select("curso,fecha,hora_entrada")
         .gte("fecha", hoy).order("fecha",{ascending:true}).order("hora_entrada",{ascending:true})
     ]);
     if (ea) throw ea;
     if (eh) throw eh;
 
     const pendientes=[];
+    const actividadesLista=actividades||[];
 
-    for (const a of (actividades||[])) {
-      let llena=false;
-      try {
-        const {data:notas,error}=await supabase.from("actividades_notas").select("*").eq("actividad_id",a.id);
-        if (!error && Array.isArray(notas) && notas.length) {
-          llena=notas.every(n => {
-            const v=n.nota ?? n.calificacion ?? n.valor ?? n.puntaje;
-            return v!==null && v!==undefined && String(v).trim()!=="";
-          });
-        }
-      } catch (_) {}
-      if (!llena) pendientes.push({tipo:"actividad",id:a.id,curso:a.curso,nombre:a.nombre||"Actividad",fecha:a.fecha,hora:a.hora_inicio||""});
+    // Una actividad sólo deja de ser pendiente cuando TODOS los estudiantes
+    // del curso tienen una calificación registrada (nota no vacía).
+    if (actividadesLista.length) {
+      const ids=actividadesLista.map(a=>a.id).filter(Boolean);
+      const {data: calificaciones, error: ec}=await supabaseClient
+        .from("calificaciones")
+        .select("actividad_id,estudiante_id,nota")
+        .in("actividad_id", ids);
+      if (ec) throw ec;
+
+      const calMap=new Map();
+      for(const c of (calificaciones||[])) calMap.set(`${c.actividad_id}|${c.estudiante_id}`,c);
+
+      for(const a of actividadesLista){
+        const curso=String(a.curso||"").trim();
+        const alumnos=listaEstudiantes.filter(e=>String(e.curso||"").trim()===curso && e.id!=null);
+        const incompleta = alumnos.length===0 || alumnos.some(e=>{
+          const c=calMap.get(`${a.id}|${e.id}`);
+          return !c || c.nota===null || c.nota===undefined || String(c.nota).trim()==="";
+        });
+        if(incompleta) pendientes.push({tipo:"actividad",id:a.id,curso:a.curso,nombre:a.nombre||"Actividad",fecha:a.fecha,hora:a.hora_inicio||""});
+      }
     }
 
+    // Una asistencia sólo deja de ser pendiente cuando todos los estudiantes
+    // del curso tienen estado. Un tipo de día registrado también completa la fecha.
     const vistos=new Set();
-    for (const h of (horarios||[])) {
+    const horariosUnicos=[];
+    for(const h of (horarios||[])){
       const key=`${h.curso}|${h.fecha}`;
-      if(vistos.has(key)) continue;
-      vistos.add(key);
-
-      let llena=false;
-      try {
-        const {data:filas,error}=await supabase.from("asistencia").select("*").eq("curso",h.curso).eq("fecha",h.fecha);
-        if (!error && Array.isArray(filas) && filas.length) {
-          llena=filas.every(f => f.estado!==null && f.estado!==undefined && String(f.estado).trim()!=="");
-        }
-      } catch (_) {}
-      if(!llena) pendientes.push({tipo:"asistencia",curso:h.curso,nombre:"Asistencia",fecha:h.fecha,hora:h.hora_entrada||""});
+      if(!vistos.has(key)){vistos.add(key);horariosUnicos.push(h);}
+    }
+    for(const h of horariosUnicos){
+      const curso=String(h.curso||"").trim();
+      const alumnos=listaEstudiantes.filter(e=>String(e.curso||"").trim()===curso && e.id!=null);
+      const {data: filas,error:ef}=await supabaseClient
+        .from("asistencia").select("estudiante_id,estado").eq("fecha",h.fecha);
+      if(ef) throw ef;
+      const mapa=new Map((filas||[]).map(f=>[String(f.estudiante_id),f]));
+      const {data: tipoDia,error:et}=await supabaseClient
+        .from("asistencia_tipos_dia").select("tipo").eq("curso",h.curso).eq("fecha",h.fecha).maybeSingle();
+      if(et) throw et;
+      if(tipoDia && tipoDia.tipo) continue;
+      const incompleta=alumnos.length===0 || alumnos.some(e=>{
+        const f=mapa.get(String(e.id));
+        return !f || f.estado===null || f.estado===undefined || String(f.estado).trim()==="";
+      });
+      if(incompleta) pendientes.push({tipo:"asistencia",curso:h.curso,nombre:"Asistencia",fecha:h.fecha,hora:h.hora_entrada||""});
     }
 
     pendientes.sort((a,b)=>`${a.fecha}T${a.hora||"00:00"}`.localeCompare(`${b.fecha}T${b.hora||"00:00"}`));
