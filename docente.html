@@ -3934,6 +3934,87 @@ table tbody tr:nth-child(10n+10) td {
     display: block;
 }
 
+/* =====================================================
+   PENDIENTES DEL INICIO
+   Actividades y asistencias desde hoy en adelante.
+===================================================== */
+.pendientes-inicio {
+    width: 100%;
+    margin-top: 12px;
+    border: 1px solid #d8dee5;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+.pendientes-inicio.oculto { display: none !important; }
+.pendientes-inicio-cabecera {
+    padding: 10px 12px;
+    background: #f0f4f8;
+    color: #37474f;
+    font-weight: bold;
+}
+.lista-pendientes-inicio {
+    display: flex;
+    flex-direction: column;
+}
+.pendiente-inicio {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid #e5e8eb;
+}
+.pendiente-inicio:first-child { border-top: none; }
+.pendiente-inicio-info {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.pendiente-inicio-titulo {
+    font-weight: bold;
+    color: #222;
+    overflow-wrap: anywhere;
+}
+.pendiente-inicio-detalle {
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+}
+.pendiente-inicio-fecha {
+    flex-shrink: 0;
+    color: #1557a6;
+    font-weight: bold;
+    font-size: 13px;
+    text-align: right;
+}
+.pendiente-inicio-enlace {
+    flex-shrink: 0;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 10px;
+    background: #1557a6;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    cursor: pointer;
+}
+.pendiente-inicio-enlace:hover { background: #0d47a1; }
+.pendientes-inicio-vacio {
+    padding: 11px 12px;
+    color: #777;
+    font-size: 13px;
+}
+@media (max-width: 600px) {
+    .pendiente-inicio {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .pendiente-inicio-info {
+        flex-basis: calc(100% - 70px);
+    }
+    .pendiente-inicio-fecha { margin-left: auto; }
+    .pendiente-inicio-enlace { margin-left: auto; }
+}
+
 .tabla-busqueda-general-contenedor {
     max-height: 330px;
     overflow: auto;
@@ -5331,6 +5412,13 @@ Selecciona un curso
     id="resultadosBusquedaGeneral"
     class="resultados-busqueda-general"
     aria-live="polite">
+</div>
+
+<div id="pendientesInicio" class="pendientes-inicio" aria-live="polite">
+    <div class="pendientes-inicio-cabecera">📌 Pendientes</div>
+    <div id="listaPendientesInicio" class="lista-pendientes-inicio">
+        <div class="pendientes-inicio-vacio">Cargando pendientes...</div>
+    </div>
 </div>
 
 <!-- Búsqueda del curso actual: se mantiene separada y aparece al seleccionar curso -->
@@ -7337,11 +7425,16 @@ async function comprobarSesion() {
     // primer render.
     if (!cargarCacheEstudiantesQR()) {
         await cargarEstudiantes(false);
+        cargarPendientesInicio().catch(error =>
+            console.warn("No se pudieron actualizar los pendientes del inicio:", error)
+        );
     } else {
         const sincronizarEstudiantes = () => {
-            cargarEstudiantes(true).catch(error =>
-                console.warn("Sincronización de estudiantes en segundo plano:", error)
-            );
+            cargarEstudiantes(true)
+                .then(() => cargarPendientesInicio())
+                .catch(error =>
+                    console.warn("Sincronización de estudiantes en segundo plano:", error)
+                );
         };
 
         if ("requestIdleCallback" in window) {
@@ -7750,6 +7843,276 @@ function cerrarModalListaEstadoAsistencia() {
 document.addEventListener("DOMContentLoaded", configurarBotonListaEstadoAsistencia);
 
 /* =====================================================
+   PENDIENTES EN LA PANTALLA DE INICIO
+===================================================== */
+
+let destinoPendienteInicio = null;
+
+function obtenerClaveFechaLocalPendiente(fecha) {
+    const d = fecha instanceof Date ? fecha : new Date(fecha);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatearFechaPendienteInicio(fechaTexto) {
+    const clave = String(fechaTexto || "").slice(0, 10);
+    if (!clave) return "";
+
+    const hoy = new Date();
+    const hoyClave = obtenerClaveFechaLocalPendiente(hoy);
+
+    const mañana = new Date(hoy);
+    mañana.setDate(mañana.getDate() + 1);
+    const mañanaClave = obtenerClaveFechaLocalPendiente(mañana);
+
+    const pasado = new Date(hoy);
+    pasado.setDate(pasado.getDate() + 2);
+    const pasadoClave = obtenerClaveFechaLocalPendiente(pasado);
+
+    if (clave === hoyClave) return "hoy";
+    if (clave === mañanaClave) return "mañana";
+    if (clave === pasadoClave) return "pasado mañana";
+
+    const partes = clave.split("-").map(Number);
+    if (partes.length !== 3 || partes.some(Number.isNaN)) return clave;
+
+    const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+    if (Number.isNaN(fecha.getTime())) return clave;
+
+    const texto = fecha.toLocaleDateString("es-BO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long"
+    });
+
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function formatearHoraPendienteInicio(horaInicio, horaFin) {
+    const inicio = String(horaInicio || "").slice(0, 5);
+    const fin = String(horaFin || "").slice(0, 5);
+    if (inicio && fin) return `${inicio}–${fin}`;
+    return inicio || fin || "";
+}
+
+function irAPendienteInicio(tipo, id, curso, fecha) {
+    destinoPendienteInicio = {
+        tipo: String(tipo || ""),
+        id: id != null ? String(id) : "",
+        curso: String(curso || ""),
+        fecha: String(fecha || "").slice(0, 10)
+    };
+
+    const select = document.getElementById("buscarCurso");
+    if (!select || !destinoPendienteInicio.curso) return;
+
+    select.value = destinoPendienteInicio.curso;
+    select.dispatchEvent(new Event("change"));
+}
+
+function aplicarDestinoPendienteInicio() {
+    const destino = destinoPendienteInicio;
+    if (!destino) return;
+
+    if (destino.tipo === "actividad") {
+        const bloque = Array.from(
+            document.querySelectorAll(".actividad[data-actividad-id]")
+        ).find(el => String(el.dataset.actividadId || "") === destino.id);
+
+        if (bloque) {
+            bloque.scrollIntoView({ behavior: "smooth", block: "center" });
+            bloque.style.outline = "3px solid #ef6c00";
+            bloque.style.outlineOffset = "2px";
+
+            setTimeout(() => {
+                bloque.style.outline = "";
+                bloque.style.outlineOffset = "";
+            }, 2200);
+
+            destinoPendienteInicio = null;
+        }
+        return;
+    }
+
+    if (destino.tipo === "asistencia") {
+        const fecha = destino.fecha;
+
+        if (fecha) {
+            const campoFecha = document.getElementById("fechaAsistencia");
+            if (campoFecha) campoFecha.value = fecha;
+
+            if (typeof seleccionarFechaAsistencia === "function") {
+                seleccionarFechaAsistencia(fecha);
+            }
+
+            const panel = document.getElementById("panelAsistencia");
+            if (panel) {
+                panel.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+
+            destinoPendienteInicio = null;
+        }
+    }
+}
+
+async function cargarPendientesInicio() {
+    const contenedor = document.getElementById("listaPendientesInicio");
+    if (!contenedor) return;
+
+    const hoy = obtenerClaveFechaLocalPendiente(new Date());
+
+    contenedor.innerHTML =
+        '<div class="pendientes-inicio-vacio">Cargando pendientes...</div>';
+
+    try {
+        const [resultadoActividades, resultadoAsistencias] = await Promise.all([
+            supabaseClient
+                .from("actividades")
+                .select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden")
+                .gte("fecha", hoy)
+                .order("fecha", { ascending: true })
+                .order("hora_inicio", { ascending: true })
+                .order("orden", { ascending: true })
+                .limit(100),
+
+            supabaseClient
+                .from("asistencia_horarios")
+                .select("curso,fecha,hora_entrada")
+                .gte("fecha", hoy)
+                .order("fecha", { ascending: true })
+                .order("hora_entrada", { ascending: true })
+                .limit(100)
+        ]);
+
+        if (resultadoActividades.error) throw resultadoActividades.error;
+        if (resultadoAsistencias.error) throw resultadoAsistencias.error;
+
+        const pendientes = [];
+
+        (resultadoActividades.data || []).forEach(a => {
+            const fecha = String(a.fecha || "").slice(0, 10);
+            if (!fecha) return;
+
+            pendientes.push({
+                tipo: "actividad",
+                id: a.id,
+                curso: a.curso,
+                fecha,
+                nombre: a.nombre || "Actividad",
+                detalle: [
+                    a.curso ? `Curso ${a.curso}` : "",
+                    formatearHoraPendienteInicio(a.hora_inicio, a.hora_fin)
+                ].filter(Boolean).join(" · "),
+                ordenTipo: 0,
+                hora: String(a.hora_inicio || "")
+            });
+        });
+
+        // Una sola fila de asistencia por curso y fecha.
+        const asistenciaUnica = new Map();
+
+        (resultadoAsistencias.data || []).forEach(a => {
+            const fecha = String(a.fecha || "").slice(0, 10);
+            const curso = String(a.curso || "");
+            if (!fecha || !curso) return;
+
+            const clave = `${curso}__${fecha}`;
+            if (!asistenciaUnica.has(clave)) {
+                asistenciaUnica.set(clave, a);
+            }
+        });
+
+        asistenciaUnica.forEach(a => {
+            const fecha = String(a.fecha || "").slice(0, 10);
+            const curso = String(a.curso || "");
+            const hora = String(a.hora_entrada || "").slice(0, 5);
+
+            pendientes.push({
+                tipo: "asistencia",
+                id: `${curso}__${fecha}`,
+                curso,
+                fecha,
+                nombre: "Asistencia",
+                detalle: [
+                    curso ? `Curso ${curso}` : "",
+                    hora ? `Hora ${hora}` : ""
+                ].filter(Boolean).join(" · "),
+                ordenTipo: 1,
+                hora
+            });
+        });
+
+        pendientes.sort((a, b) => {
+            const fechaA = a.fecha.localeCompare(b.fecha);
+            if (fechaA !== 0) return fechaA;
+
+            const horaA = a.hora || "";
+            const horaB = b.hora || "";
+            if (horaA !== horaB) return horaA.localeCompare(horaB);
+
+            return a.ordenTipo - b.ordenTipo;
+        });
+
+        if (pendientes.length === 0) {
+            contenedor.innerHTML =
+                '<div class="pendientes-inicio-vacio">No hay actividades ni asistencias pendientes desde hoy.</div>';
+            return;
+        }
+
+        contenedor.innerHTML = pendientes.map(item => {
+            const icono = item.tipo === "actividad" ? "📝" : "🗓️";
+            const textoEnlace = item.tipo === "actividad"
+                ? "Ir a actividad"
+                : "Ir a asistencia";
+
+            return `
+                <div class="pendiente-inicio">
+                    <div class="pendiente-inicio-info">
+                        <div class="pendiente-inicio-titulo">
+                            ${icono} ${escapeHTML(item.nombre)}
+                        </div>
+                        <div class="pendiente-inicio-detalle">
+                            ${escapeHTML(item.detalle || "")}
+                        </div>
+                    </div>
+
+                    <div class="pendiente-inicio-fecha">
+                        ${escapeHTML(formatearFechaPendienteInicio(item.fecha))}
+                    </div>
+
+                    <button
+                        type="button"
+                        class="pendiente-inicio-enlace"
+                        data-tipo="${escapeHTML(item.tipo)}"
+                        data-id="${escapeHTML(String(item.id))}"
+                        data-curso="${escapeHTML(String(item.curso || ""))}"
+                        data-fecha="${escapeHTML(item.fecha)}">
+                        ${textoEnlace}
+                    </button>
+                </div>
+            `;
+        }).join("");
+
+        contenedor.querySelectorAll(".pendiente-inicio-enlace").forEach(boton => {
+            boton.addEventListener("click", () => {
+                irAPendienteInicio(
+                    boton.dataset.tipo,
+                    boton.dataset.id,
+                    boton.dataset.curso,
+                    boton.dataset.fecha
+                );
+            });
+        });
+
+    } catch (error) {
+        console.error("No se pudieron cargar los pendientes del inicio:", error);
+        contenedor.innerHTML =
+            '<div class="pendientes-inicio-vacio">No se pudieron cargar los pendientes.</div>';
+    }
+}
+
+
+/* =====================================================
    CURSOS
 ===================================================== */
 
@@ -7857,6 +8220,11 @@ document.getElementById(
             );
         }
 
+        const pendientesInicio = document.getElementById("pendientesInicio");
+        if (pendientesInicio) {
+            pendientesInicio.classList.toggle("oculto", !!cursoSeleccionado);
+        }
+
         if (cursoSeleccionado) {
             if (campoBusquedaGeneral) campoBusquedaGeneral.value = "";
             if (resultadosBusquedaGeneral) {
@@ -7936,6 +8304,10 @@ document.getElementById(
         ]);
 
         aplicarBusqueda();
+
+        requestAnimationFrame(() => {
+            setTimeout(aplicarDestinoPendienteInicio, 80);
+        });
 
         // Solo mostrar el panel. El informe pesado se carga cuando el usuario lo abre.
         mostrarPanelInforme();
@@ -14673,6 +15045,10 @@ document.addEventListener(
         if (cursoSeleccionado) {
             mostrarPanelInforme();
         }
+
+        cargarPendientesInicio().catch(error =>
+            console.warn("No se pudieron cargar los pendientes del inicio:", error)
+        );
 
     }
 );
