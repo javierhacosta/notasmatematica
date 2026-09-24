@@ -8010,175 +8010,72 @@ function aplicarDestinoPendienteInicio() {
 }
 
 async function cargarPendientesInicio() {
-    const contenedor = document.getElementById("listaPendientesInicio");
-    if (!contenedor) return;
+  const panel = document.getElementById("pendientesInicio");
+  if (!panel) return;
+  const hoy = new Date().toISOString().slice(0,10);
 
-    const hoy = obtenerClaveFechaLocalPendiente(new Date());
+  try {
+    const [{data: actividades, error: ea}, {data: horarios, error: eh}] = await Promise.all([
+      supabase.from("actividades").select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden")
+        .gte("fecha", hoy).order("fecha",{ascending:true}).order("hora_inicio",{ascending:true}),
+      supabase.from("asistencia_horarios").select("curso,fecha,hora_entrada")
+        .gte("fecha", hoy).order("fecha",{ascending:true}).order("hora_entrada",{ascending:true})
+    ]);
+    if (ea) throw ea;
+    if (eh) throw eh;
 
-    contenedor.innerHTML =
-        '<div class="pendientes-inicio-vacio">Cargando pendientes...</div>';
+    const pendientes=[];
 
-    try {
-        const [resultadoActividades, resultadoAsistencias] = await Promise.all([
-            supabaseClient
-                .from("actividades")
-                .select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden")
-                .gte("fecha", hoy)
-                .order("fecha", { ascending: true })
-                .order("hora_inicio", { ascending: true })
-                .order("orden", { ascending: true })
-                .limit(100),
-
-            supabaseClient
-                .from("asistencia_horarios")
-                .select("curso,fecha,hora_entrada")
-                .gte("fecha", hoy)
-                .order("fecha", { ascending: true })
-                .order("hora_entrada", { ascending: true })
-                .limit(100)
-        ]);
-
-        if (resultadoActividades.error) throw resultadoActividades.error;
-        if (resultadoAsistencias.error) throw resultadoAsistencias.error;
-
-        const pendientes = [];
-
-        (resultadoActividades.data || []).forEach(a => {
-            const fecha = String(a.fecha || "").slice(0, 10);
-            if (!fecha) return;
-
-            pendientes.push({
-                tipo: "actividad",
-                id: a.id,
-                curso: a.curso,
-                fecha,
-                nombre: a.nombre || "Actividad",
-                detalle: [
-                    a.curso ? `Curso ${a.curso}` : "",
-                    formatearHoraPendienteInicio(a.hora_inicio, a.hora_fin)
-                ].filter(Boolean).join(" · "),
-                ordenTipo: 0,
-                hora: String(a.hora_inicio || "")
-            });
-        });
-
-        // Una sola fila de asistencia por curso y fecha.
-        const asistenciaUnica = new Map();
-
-        (resultadoAsistencias.data || []).forEach(a => {
-            const fecha = String(a.fecha || "").slice(0, 10);
-            const curso = String(a.curso || "");
-            if (!fecha || !curso) return;
-
-            const clave = `${curso}__${fecha}`;
-            if (!asistenciaUnica.has(clave)) {
-                asistenciaUnica.set(clave, a);
-            }
-        });
-
-        asistenciaUnica.forEach(a => {
-            const fecha = String(a.fecha || "").slice(0, 10);
-            const curso = String(a.curso || "");
-            const hora = String(a.hora_entrada || "").slice(0, 5);
-
-            pendientes.push({
-                tipo: "asistencia",
-                id: `${curso}__${fecha}`,
-                curso,
-                fecha,
-                nombre: "Asistencia",
-                detalle: [
-                    curso ? `Curso ${curso}` : "",
-                    hora ? `Hora ${hora}` : ""
-                ].filter(Boolean).join(" · "),
-                ordenTipo: 1,
-                hora
-            });
-        });
-
-        pendientes.sort((a, b) => {
-            const fechaA = a.fecha.localeCompare(b.fecha);
-            if (fechaA !== 0) return fechaA;
-
-            const horaA = a.hora || "";
-            const horaB = b.hora || "";
-            if (horaA !== horaB) return horaA.localeCompare(horaB);
-
-            return a.ordenTipo - b.ordenTipo;
-        });
-
-        if (pendientes.length === 0) {
-            contenedor.innerHTML =
-                '<div class="pendientes-inicio-vacio">No hay actividades ni asistencias pendientes desde hoy.</div>';
-            return;
+    for (const a of (actividades||[])) {
+      let llena=false;
+      try {
+        const {data:notas,error}=await supabase.from("actividades_notas").select("*").eq("actividad_id",a.id);
+        if (!error && Array.isArray(notas) && notas.length) {
+          llena=notas.every(n => {
+            const v=n.nota ?? n.calificacion ?? n.valor ?? n.puntaje;
+            return v!==null && v!==undefined && String(v).trim()!=="";
+          });
         }
-
-        contenedor.innerHTML = pendientes.map(item => {
-            const icono = item.tipo === "actividad" ? "📝" : "🗓️";
-            const textoEnlace = item.tipo === "actividad"
-                ? "Ir a actividad"
-                : "Ir a asistencia";
-
-            return `
-                <div class="pendiente-inicio">
-                    <div class="pendiente-inicio-info">
-                        <div class="pendiente-inicio-titulo">
-                            ${icono} ${escapeHTML(item.nombre)}
-                        </div>
-                        <div class="pendiente-inicio-detalle">
-                            ${escapeHTML(item.detalle || "")}
-                        </div>
-                    </div>
-
-                    <div class="pendiente-inicio-fecha">
-                        ${escapeHTML(formatearFechaPendienteInicio(item.fecha))}
-                    </div>
-
-                    <div class="pendiente-inicio-acciones">
-                        <button
-                            type="button"
-                            class="pendiente-inicio-enlace"
-                            data-tipo="${escapeHTML(item.tipo)}"
-                            data-id="${escapeHTML(String(item.id))}"
-                            data-curso="${escapeHTML(String(item.curso || ""))}"
-                            data-fecha="${escapeHTML(item.fecha)}"
-                            data-abrir-qr="false">
-                            ${textoEnlace}
-                        </button>
-                        <button
-                            type="button"
-                            class="pendiente-inicio-qr"
-                            title="Abrir cámara QR"
-                            aria-label="Abrir cámara QR"
-                            data-tipo="${escapeHTML(item.tipo)}"
-                            data-id="${escapeHTML(String(item.id))}"
-                            data-curso="${escapeHTML(String(item.curso || ""))}"
-                            data-fecha="${escapeHTML(item.fecha)}"
-                            data-abrir-qr="true">
-                            📷
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join("");
-
-        contenedor.querySelectorAll(".pendiente-inicio-enlace, .pendiente-inicio-qr").forEach(boton => {
-            boton.addEventListener("click", () => {
-                irAPendienteInicio(
-                    boton.dataset.tipo,
-                    boton.dataset.id,
-                    boton.dataset.curso,
-                    boton.dataset.fecha,
-                    boton.dataset.abrirQr === "true"
-                );
-            });
-        });
-
-    } catch (error) {
-        console.error("No se pudieron cargar los pendientes del inicio:", error);
-        contenedor.innerHTML =
-            '<div class="pendientes-inicio-vacio">No se pudieron cargar los pendientes.</div>';
+      } catch (_) {}
+      if (!llena) pendientes.push({tipo:"actividad",id:a.id,curso:a.curso,nombre:a.nombre||"Actividad",fecha:a.fecha,hora:a.hora_inicio||""});
     }
+
+    const vistos=new Set();
+    for (const h of (horarios||[])) {
+      const key=`${h.curso}|${h.fecha}`;
+      if(vistos.has(key)) continue;
+      vistos.add(key);
+
+      let llena=false;
+      try {
+        const {data:filas,error}=await supabase.from("asistencia").select("*").eq("curso",h.curso).eq("fecha",h.fecha);
+        if (!error && Array.isArray(filas) && filas.length) {
+          llena=filas.every(f => f.estado!==null && f.estado!==undefined && String(f.estado).trim()!=="");
+        }
+      } catch (_) {}
+      if(!llena) pendientes.push({tipo:"asistencia",curso:h.curso,nombre:"Asistencia",fecha:h.fecha,hora:h.hora_entrada||""});
+    }
+
+    pendientes.sort((a,b)=>`${a.fecha}T${a.hora||"00:00"}`.localeCompare(`${b.fecha}T${b.hora||"00:00"}`));
+    panel.innerHTML="";
+    if(!pendientes.length){panel.style.display="none";return;}
+    panel.style.display="";
+
+    for(const p of pendientes){
+      const item=document.createElement("div");
+      item.className="pendiente-inicio-item";
+      const d=new Date(`${p.fecha}T00:00:00`), hd=new Date(`${hoy}T00:00:00`);
+      const diff=Math.round((d-hd)/86400000);
+      const etiqueta=diff===0?"hoy":diff===1?"mañana":diff===2?"pasado mañana":d.toLocaleDateString("es-BO",{weekday:"long",day:"numeric",month:"long"});
+      item.innerHTML=`<div class="pendiente-inicio-info"><strong>${p.tipo==="actividad"?"📝 "+p.nombre:"🟢 Asistencia"}</strong><span>${etiqueta}${p.hora?" · "+p.hora:""}</span></div><div class="pendiente-inicio-acciones"><button type="button" class="pendiente-ir-btn">Ir a ${p.tipo==="actividad"?"actividad":"asistencia"}</button><button type="button" class="pendiente-qr-btn" title="Abrir cámara QR" aria-label="Abrir cámara QR">📷</button></div>`;
+      item.querySelector(".pendiente-ir-btn").addEventListener("click",()=>irAPendienteInicio(p));
+      item.querySelector(".pendiente-qr-btn").addEventListener("click",()=>abrirQRPendienteInicio(p));
+      panel.appendChild(item);
+    }
+  } catch(e) {
+    console.warn("No se pudieron cargar los pendientes de inicio:",e);
+    panel.style.display="none";
+  }
 }
 
 
