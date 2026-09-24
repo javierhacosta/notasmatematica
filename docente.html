@@ -3986,6 +3986,27 @@ table tbody tr:nth-child(10n+10) td {
     font-size: 13px;
     text-align: right;
 }
+.pendiente-inicio-acciones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.pendiente-inicio-qr {
+    border: 0;
+    border-radius: 8px;
+    padding: 7px 9px;
+    cursor: pointer;
+    font-size: 17px;
+    line-height: 1;
+    background: #e8f5e9;
+}
+
+.pendiente-inicio-qr:active {
+    transform: scale(0.96);
+}
+
 .pendiente-inicio-enlace {
     flex-shrink: 0;
     border: none;
@@ -7847,6 +7868,7 @@ document.addEventListener("DOMContentLoaded", configurarBotonListaEstadoAsistenc
 ===================================================== */
 
 let destinoPendienteInicio = null;
+let abrirQRPendienteInicio = false;
 
 function obtenerClaveFechaLocalPendiente(fecha) {
     const d = fecha instanceof Date ? fecha : new Date(fecha);
@@ -7895,13 +7917,14 @@ function formatearHoraPendienteInicio(horaInicio, horaFin) {
     return inicio || fin || "";
 }
 
-function irAPendienteInicio(tipo, id, curso, fecha) {
+function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false) {
     destinoPendienteInicio = {
         tipo: String(tipo || ""),
         id: id != null ? String(id) : "",
         curso: String(curso || ""),
         fecha: String(fecha || "").slice(0, 10)
     };
+    abrirQRPendienteInicio = !!abrirQR;
 
     const select = document.getElementById("buscarCurso");
     if (!select || !destinoPendienteInicio.curso) return;
@@ -7929,7 +7952,24 @@ function aplicarDestinoPendienteInicio() {
                 bloque.style.outlineOffset = "";
             }, 2200);
 
+            const actividad = (typeof actividades !== "undefined")
+                ? actividades.find(a => String(a.id) === destino.id)
+                : null;
+            const abrirQR = abrirQRPendienteInicio;
+            if (abrirQR) {
+                window.destinoPendienteInicioDespuesQR = {
+                    tipo: "actividad",
+                    id: destino.id,
+                    curso: destino.curso,
+                    fecha: destino.fecha
+                };
+            }
             destinoPendienteInicio = null;
+            abrirQRPendienteInicio = false;
+
+            if (abrirQR && actividad && typeof abrirEscanerQR === "function") {
+                setTimeout(() => abrirEscanerQR(actividad), 250);
+            }
         }
         return;
     }
@@ -7950,7 +7990,21 @@ function aplicarDestinoPendienteInicio() {
                 panel.scrollIntoView({ behavior: "smooth", block: "center" });
             }
 
+            const abrirQR = abrirQRPendienteInicio;
+            if (abrirQR) {
+                window.destinoPendienteInicioDespuesQR = {
+                    tipo: "asistencia",
+                    id: destino.id,
+                    curso: destino.curso,
+                    fecha: destino.fecha
+                };
+            }
             destinoPendienteInicio = null;
+            abrirQRPendienteInicio = false;
+
+            if (abrirQR && typeof abrirEscanerAsistenciaQR === "function") {
+                setTimeout(() => abrirEscanerAsistenciaQR(), 250);
+            }
         }
     }
 }
@@ -8080,26 +8134,42 @@ async function cargarPendientesInicio() {
                         ${escapeHTML(formatearFechaPendienteInicio(item.fecha))}
                     </div>
 
-                    <button
-                        type="button"
-                        class="pendiente-inicio-enlace"
-                        data-tipo="${escapeHTML(item.tipo)}"
-                        data-id="${escapeHTML(String(item.id))}"
-                        data-curso="${escapeHTML(String(item.curso || ""))}"
-                        data-fecha="${escapeHTML(item.fecha)}">
-                        ${textoEnlace}
-                    </button>
+                    <div class="pendiente-inicio-acciones">
+                        <button
+                            type="button"
+                            class="pendiente-inicio-enlace"
+                            data-tipo="${escapeHTML(item.tipo)}"
+                            data-id="${escapeHTML(String(item.id))}"
+                            data-curso="${escapeHTML(String(item.curso || ""))}"
+                            data-fecha="${escapeHTML(item.fecha)}"
+                            data-abrir-qr="false">
+                            ${textoEnlace}
+                        </button>
+                        <button
+                            type="button"
+                            class="pendiente-inicio-qr"
+                            title="Abrir cámara QR"
+                            aria-label="Abrir cámara QR"
+                            data-tipo="${escapeHTML(item.tipo)}"
+                            data-id="${escapeHTML(String(item.id))}"
+                            data-curso="${escapeHTML(String(item.curso || ""))}"
+                            data-fecha="${escapeHTML(item.fecha)}"
+                            data-abrir-qr="true">
+                            📷
+                        </button>
+                    </div>
                 </div>
             `;
         }).join("");
 
-        contenedor.querySelectorAll(".pendiente-inicio-enlace").forEach(boton => {
+        contenedor.querySelectorAll(".pendiente-inicio-enlace, .pendiente-inicio-qr").forEach(boton => {
             boton.addEventListener("click", () => {
                 irAPendienteInicio(
                     boton.dataset.tipo,
                     boton.dataset.id,
                     boton.dataset.curso,
-                    boton.dataset.fecha
+                    boton.dataset.fecha,
+                    boton.dataset.abrirQr === "true"
                 );
             });
         });
@@ -21055,6 +21125,16 @@ async function cerrarEscanerQR(
                 (error.message || error)
             );
         }
+    }
+
+    // Si la cámara se abrió desde un pendiente del inicio, al cerrarla
+    // mantener al usuario en la actividad o asistencia elegida.
+    if (window.destinoPendienteInicioDespuesQR) {
+        const destino = window.destinoPendienteInicioDespuesQR;
+        window.destinoPendienteInicioDespuesQR = null;
+        destinoPendienteInicio = destino;
+        abrirQRPendienteInicio = false;
+        setTimeout(() => aplicarDestinoPendienteInicio(), 50);
     }
 
     /*
