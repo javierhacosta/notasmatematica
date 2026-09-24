@@ -875,15 +875,20 @@ input, select {
 .botones-notas-rapidas {
     display: flex;
     gap: 7px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
-    padding-bottom: 2px;
+    scrollbar-width: thin;
+    padding: 2px 2px 7px;
+    overscroll-behavior-x: contain;
 }
 
 .botones-notas-rapidas button {
-    min-height: 42px;
+    min-width: 52px;
+    min-height: 48px;
+    flex: 0 0 52px;
     border: 1px solid #1565c0;
     border-radius: 8px;
     background: #e8f1fb;
@@ -892,6 +897,8 @@ input, select {
     font-weight: bold;
     cursor: pointer;
     transition: all .15s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .botones-notas-rapidas button:hover {
@@ -908,30 +915,6 @@ input, select {
     opacity: .35;
     cursor: not-allowed;
     transform: none;
-}
-
-/* En QR, las notas rápidas solo se muestran para actividades SABER.
-   En celular se pueden recorrer horizontalmente con el dedo. */
-.qr-notas-rapidas.oculto-qr {
-    display: none !important;
-}
-
-.botones-notas-rapidas button {
-    flex: 0 0 58px;
-}
-
-@media (max-width: 600px) {
-    .botones-notas-rapidas {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        justify-content: flex-start;
-        padding-bottom: 5px;
-        scrollbar-width: thin;
-    }
-
-    .botones-notas-rapidas button {
-        flex: 0 0 58px;
-    }
 }
 
 @media (max-width: 600px) {
@@ -6628,20 +6611,28 @@ Cancelar
                 <span>Mostrar actividades anteriores</span>
             </label>
 
-            <div id="qrNotasRapidas" class="qr-notas-rapidas">
+            <div class="qr-notas-rapidas">
 
                 <label>Notas rápidas</label>
 
-                <div class="botones-notas-rapidas">
-                    <button type="button" onclick="seleccionarNotaRapidaQR(45)">45</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(40)">40</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(35)">35</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(30)">30</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(25)">25</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(20)">20</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(15)">15</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(10)">10</button>
-                    <button type="button" onclick="seleccionarNotaRapidaQR(5)">5</button>
+                <div class="botones-notas-rapidas" id="botonesNotasRapidasQR">
+                    <button type="button" data-nota-rapida="45" onclick="seleccionarNotaRapidaQR(45)">45</button>
+                    <button type="button" data-nota-rapida="40" onclick="seleccionarNotaRapidaQR(40)">40</button>
+                    <button type="button" data-nota-rapida="35" onclick="seleccionarNotaRapidaQR(35)">35</button>
+                    <button type="button" data-nota-rapida="30" onclick="seleccionarNotaRapidaQR(30)">30</button>
+                    <button type="button" data-nota-rapida="25" onclick="seleccionarNotaRapidaQR(25)">25</button>
+                    <button type="button" data-nota-rapida="20" onclick="seleccionarNotaRapidaQR(20)">20</button>
+                    <button type="button" data-nota-rapida="15" onclick="seleccionarNotaRapidaQR(15)">15</button>
+                    <button type="button" data-nota-rapida="10" onclick="seleccionarNotaRapidaQR(10)">10</button>
+                    <button type="button" data-nota-rapida="9" onclick="seleccionarNotaRapidaQR(9)">9</button>
+                    <button type="button" data-nota-rapida="8" onclick="seleccionarNotaRapidaQR(8)">8</button>
+                    <button type="button" data-nota-rapida="7" onclick="seleccionarNotaRapidaQR(7)">7</button>
+                    <button type="button" data-nota-rapida="6" onclick="seleccionarNotaRapidaQR(6)">6</button>
+                    <button type="button" data-nota-rapida="5" onclick="seleccionarNotaRapidaQR(5)">5</button>
+                    <button type="button" data-nota-rapida="4" onclick="seleccionarNotaRapidaQR(4)">4</button>
+                    <button type="button" data-nota-rapida="3" onclick="seleccionarNotaRapidaQR(3)">3</button>
+                    <button type="button" data-nota-rapida="2" onclick="seleccionarNotaRapidaQR(2)">2</button>
+                    <button type="button" data-nota-rapida="1" onclick="seleccionarNotaRapidaQR(1)">1</button>
                 </div>
 
             </div>
@@ -19473,22 +19464,6 @@ async function prepararCalificacionQR(
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
-    /* Las notas rápidas 45,40,35,30,25,20,15,10,5
-       solo aparecen al escanear actividades de SABER. */
-    const bloqueNotasRapidasQR =
-        document.getElementById("qrNotasRapidas");
-
-    if (bloqueNotasRapidasQR) {
-        const categoriaQR = String(
-            actividadQRSeleccionada.categoria || ""
-        ).trim().toLowerCase();
-
-        bloqueNotasRapidasQR.classList.toggle(
-            "oculto-qr",
-            categoriaQR !== "saber"
-        );
-    }
-
     const notaInput =
     document.getElementById(
         "notaQR"
@@ -19497,17 +19472,10 @@ async function prepararCalificacionQR(
     notaInput.max =
     puntajeMaximo;
 
-    /* Activar/desactivar las notas rápidas según el máximo de la actividad. */
-    const botonesNotasRapidasQR =
-    document.querySelectorAll(
-        ".botones-notas-rapidas button"
-    );
-
-    botonesNotasRapidasQR.forEach(
-        function(boton) {
-            const valor = Number(boton.textContent.trim());
-            boton.disabled = valor > puntajeMaximo;
-        }
+    /* Mostrar únicamente las notas rápidas correspondientes a la categoría. */
+    actualizarBotonesNotasRapidasQR(
+        actividadQRSeleccionada.categoria,
+        puntajeMaximo
     );
 
     notaInput.value =
@@ -19588,6 +19556,46 @@ document.addEventListener("input", function(event) {
         actualizarPresentacionQR();
     }
 });
+
+
+function actualizarBotonesNotasRapidasQR(categoria, puntajeMaximo) {
+
+    const botones = document.querySelectorAll(
+        "#botonesNotasRapidasQR button"
+    );
+
+    const categoriaNormalizada =
+        String(categoria || "").trim().toUpperCase();
+
+    const notasPorCategoria = {
+        SABER: [45, 40, 35, 30, 25, 20, 15, 10, 5],
+        HACER: [40, 35, 30, 25, 20, 15, 10, 5],
+        SER: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+        AUTOEVALUACION: [5, 4, 3, 2, 1]
+    };
+
+    const notasPermitidas =
+        notasPorCategoria[categoriaNormalizada] || [];
+
+    botones.forEach(boton => {
+        const valor = Number(
+            boton.dataset.notaRapida ||
+            boton.textContent.trim()
+        );
+
+        const mostrar =
+            notasPermitidas.includes(valor) &&
+            valor <= Number(puntajeMaximo || 0);
+
+        boton.style.display = mostrar ? "inline-flex" : "none";
+        boton.disabled = !mostrar;
+    });
+
+    const contenedor = document.getElementById("botonesNotasRapidasQR");
+    if (contenedor) {
+        contenedor.scrollLeft = 0;
+    }
+}
 
 
 function seleccionarNotaRapidaQR(nota) {
