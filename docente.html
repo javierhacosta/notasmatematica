@@ -502,6 +502,20 @@ input, select {
     overflow: hidden;
 }
 
+/* Actividad enfocada desde "Ir a actividad": parpadea hasta tocar un icono */
+.actividad.destacada-desde-pendiente {
+    animation: parpadearActividadPendiente .65s ease-in-out infinite;
+}
+
+@keyframes parpadearActividadPendiente {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239,108,0,0);
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(239,108,0,.65);
+    }
+}
+
 
 /* =====================================================
    ENCABEZADO ACTIVIDAD
@@ -7965,14 +7979,29 @@ function aplicarDestinoPendienteInicio() {
         ).find(el => String(el.dataset.actividadId || "") === destino.id);
 
         if (bloque) {
+            // Centrar la actividad en la pantalla del celular.
             bloque.scrollIntoView({ behavior: "smooth", block: "center" });
-            bloque.style.outline = "3px solid #ef6c00";
-            bloque.style.outlineOffset = "2px";
 
-            setTimeout(() => {
-                bloque.style.outline = "";
-                bloque.style.outlineOffset = "";
-            }, 2200);
+            // Mantener el parpadeo hasta que se pulse cualquier icono
+            // de esa actividad.
+            bloque.classList.add("destacada-desde-pendiente");
+
+            const detenerParpadeoActividad = () => {
+                bloque.classList.remove("destacada-desde-pendiente");
+            };
+
+            // Los iconos de la actividad están en el encabezado.
+            const iconosActividad = bloque.querySelectorAll(
+                ".derecha-actividad button"
+            );
+
+            iconosActividad.forEach(icono => {
+                icono.addEventListener(
+                    "click",
+                    detenerParpadeoActividad,
+                    { once: true }
+                );
+            });
 
             const actividad = (typeof actividades !== "undefined")
                 ? actividades.find(a => String(a.id) === destino.id)
