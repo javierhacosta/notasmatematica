@@ -17878,7 +17878,7 @@ async function exportarExcel() {
                         if (actividadTieneHoraExcel(actividad)) {
                             const fechaEntrega = registro?.fecha_entrega || "";
                             const obsEntrega = calcularObsEntrega(actividad, fechaEntrega);
-                            filaObs.push(fechaEntrega);
+                            filaObs.push(formatearFechaHoraEntregaExcel(fechaEntrega));
                             filaObs.push(obsEntrega);
                         }
 
@@ -18254,6 +18254,63 @@ function formatearFechaExcel(
 
     return fecha;
 
+}
+
+
+/* =====================================================
+   FORMATEAR FECHA Y HORA DE ENTREGA PARA EXCEL
+   Solo se utiliza en las hojas Obs.
+===================================================== */
+
+function formatearFechaHoraEntregaExcel(
+    fecha
+) {
+
+    if (!fecha) {
+        return "";
+    }
+
+    const fechaObj = new Date(fecha);
+
+    if (Number.isNaN(fechaObj.getTime())) {
+        return String(fecha);
+    }
+
+    const dia = String(
+        fechaObj.getDate()
+    ).padStart(2, "0");
+
+    const mes = String(
+        fechaObj.getMonth() + 1
+    ).padStart(2, "0");
+
+    const anio =
+        fechaObj.getFullYear();
+
+    let horas =
+        fechaObj.getHours();
+
+    const minutos = String(
+        fechaObj.getMinutes()
+    ).padStart(2, "0");
+
+    const periodo =
+        horas >= 12
+        ? "p.m."
+        : "a.m.";
+
+    horas =
+        horas % 12 || 12;
+
+    return (
+        dia + "/" +
+        mes + "/" +
+        anio + ", " +
+        String(horas).padStart(2, "0") +
+        ":" +
+        minutos + " " +
+        periodo
+    );
 }
 
 
