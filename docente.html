@@ -466,6 +466,30 @@ input, select {
     margin-left: 10px;
 }
 
+.boton-filtro-no-pendientes {
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    margin-right: 4px;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 18px;
+    line-height: 1;
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.boton-filtro-no-pendientes:hover {
+    background: rgba(255,255,255,.30);
+}
+
 .contenido-categoria {
     display: none;
 }
@@ -12056,6 +12080,57 @@ function aplicarBloqueoEstadoEnLista(contenedor) {
     });
 }
 
+function actividadTieneCalificacionesPendientes(actividad) {
+    if (!actividad || !cursoSeleccionado) return false;
+
+    const estudiantesEfectivos = estudiantes.filter(
+        e => e.curso === cursoSeleccionado && estudianteEsEfectivo(e)
+    );
+
+    if (estudiantesEfectivos.length === 0) return false;
+
+    return estudiantesEfectivos.some(estudiante => {
+        const registro =
+            calificaciones[estudiante.id] &&
+            calificaciones[estudiante.id][actividad.id];
+
+        const nota = registro && typeof registro === "object"
+            ? registro.nota
+            : registro;
+
+        return nota === null || nota === undefined || String(nota).trim() === "";
+    });
+}
+
+function mostrarSoloActividadesDeCategoria(contenidoCategoria, modo) {
+    if (!contenidoCategoria) return;
+
+    contenidoCategoria.querySelectorAll(".actividad").forEach(bloque => {
+        const pendiente = bloque.dataset.pendiente === "true";
+        const mostrar = modo === "pendientes" ? pendiente : !pendiente;
+        bloque.style.display = mostrar ? "" : "none";
+    });
+}
+
+function abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, modo) {
+    if (!contenidoCategoria || !iconoCategoria) return;
+
+    const yaAbierta = contenidoCategoria.classList.contains("abierta");
+    const modoActual = contenidoCategoria.dataset.modoVista || "";
+
+    if (yaAbierta && modoActual === modo) {
+        contenidoCategoria.classList.remove("abierta");
+        contenidoCategoria.dataset.modoVista = "";
+        iconoCategoria.textContent = "+";
+        return;
+    }
+
+    mostrarSoloActividadesDeCategoria(contenidoCategoria, modo);
+    contenidoCategoria.classList.add("abierta");
+    contenidoCategoria.dataset.modoVista = modo;
+    iconoCategoria.textContent = "−";
+}
+
 function mostrarActividades() {
 
     const contenedor =
@@ -12137,6 +12212,15 @@ function mostrarActividades() {
         nombreCategoria.textContent =
         categoria.nombre;
 
+        const botonNoPendientes =
+        document.createElement("button");
+
+        botonNoPendientes.type = "button";
+        botonNoPendientes.className = "boton-filtro-no-pendientes";
+        botonNoPendientes.textContent = "+";
+        botonNoPendientes.title = "Mostrar actividades no pendientes";
+        botonNoPendientes.setAttribute("aria-label", "Mostrar actividades no pendientes");
+
         const iconoCategoria =
         document.createElement("span");
 
@@ -12146,6 +12230,7 @@ function mostrarActividades() {
         iconoCategoria.textContent = "+";
 
         encabezado.appendChild(nombreCategoria);
+        encabezado.appendChild(botonNoPendientes);
         encabezado.appendChild(iconoCategoria);
 
         const contenidoCategoria =
@@ -12157,17 +12242,24 @@ function mostrarActividades() {
         lista.forEach(
         actividad => {
 
+            const bloqueActividad = crearActividadHTML(actividad);
+            bloqueActividad.dataset.pendiente =
+                actividadTieneCalificacionesPendientes(actividad) ? "true" : "false";
+
             contenidoCategoria.appendChild(
-                crearActividadHTML(
-                    actividad
-                )
+                bloqueActividad
             );
 
         });
 
-        encabezado.addEventListener("click", () => {
-            const abierta = contenidoCategoria.classList.toggle("abierta");
-            iconoCategoria.textContent = abierta ? "−" : "+";
+        encabezado.addEventListener("click", (event) => {
+            if (event.target === botonNoPendientes || event.target === iconoCategoria) return;
+            abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, "pendientes");
+        });
+
+        botonNoPendientes.addEventListener("click", (event) => {
+            event.stopPropagation();
+            abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, "no-pendientes");
         });
 
         seccion.appendChild(
