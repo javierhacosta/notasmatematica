@@ -3980,6 +3980,41 @@ table tbody tr:nth-child(10n+10) td {
     color: #37474f;
     font-weight: bold;
 }
+.pendientes-inicio-grupo {
+    border-top: 1px solid #d8dee5;
+}
+.pendientes-inicio-grupo:first-child {
+    border-top: none;
+}
+.pendientes-inicio-grupo-cabecera {
+    width: 100%;
+    border: none;
+    padding: 10px 12px;
+    background: #f7f9fb;
+    color: #37474f;
+    font-weight: bold;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+}
+.pendientes-inicio-grupo-cabecera:hover {
+    background: #eef3f7;
+}
+.icono-expandir-pendientes {
+    font-size: 24px;
+    line-height: 1;
+    font-weight: normal;
+    margin-left: 10px;
+}
+.pendientes-inicio-grupo-contenido {
+    display: none;
+}
+.pendientes-inicio-grupo-contenido.abierto {
+    display: flex;
+}
 .lista-pendientes-inicio {
     display: flex;
     flex-direction: column;
@@ -8331,54 +8366,119 @@ async function cargarPendientesInicio() {
             return;
         }
 
-        contenedor.innerHTML = pendientes.map(item => {
-            const icono = item.tipo === "actividad" ? "📝" : "🗓️";
-            const textoEnlace = item.tipo === "actividad"
-                ? "Ir a actividad"
-                : "Ir a asistencia";
+        /* =====================================================
+           AGRUPAR PENDIENTES EN HOY / MAÑANA / OTRAS
+           Las categorías aparecen solo cuando tienen pendientes.
+           Todas comienzan minimizadas y se abren con el botón +.
+        ===================================================== */
+        const manana = new Date();
+        manana.setDate(manana.getDate() + 1);
+        const claveManana = obtenerClaveFechaLocalPendiente(manana);
 
+        const gruposPendientes = {
+            hoy: pendientes.filter(item => String(item.fecha || "").slice(0, 10) === hoy),
+            manana: pendientes.filter(item => String(item.fecha || "").slice(0, 10) === claveManana),
+            otras: pendientes.filter(item => {
+                const fecha = String(item.fecha || "").slice(0, 10);
+                return fecha > claveManana;
+            })
+        };
+
+        const nombresGrupos = {
+            hoy: "Hoy",
+            manana: "Mañana",
+            otras: "Otras"
+        };
+
+        const iconosGrupos = {
+            hoy: "📅",
+            manana: "📅",
+            otras: "📋"
+        };
+
+        function renderizarPendientesGrupo(items, claveGrupo) {
             return `
-                <div class="pendiente-inicio">
-                    <div class="pendiente-inicio-info">
-                        <div class="pendiente-inicio-titulo">
-                            ${icono} ${escapeHTML(item.nombre)}
-                        </div>
-                        <div class="pendiente-inicio-detalle">
-                            ${escapeHTML(item.detalle || "")}
-                        </div>
-                    </div>
+                <div class="pendientes-inicio-grupo">
+                    <button
+                        type="button"
+                        class="pendientes-inicio-grupo-cabecera"
+                        data-grupo="${claveGrupo}"
+                        aria-expanded="false">
+                        <span>${iconosGrupos[claveGrupo]} ${nombresGrupos[claveGrupo]}</span>
+                        <span class="icono-expandir-pendientes">+</span>
+                    </button>
+                    <div class="lista-pendientes-inicio pendientes-inicio-grupo-contenido">
+                        ${items.map(item => {
+                            const icono = item.tipo === "actividad" ? "📝" : "🗓️";
+                            const textoEnlace = item.tipo === "actividad"
+                                ? "Ir a actividad"
+                                : "Ir a asistencia";
 
-                    <div class="pendiente-inicio-fecha">
-                        ${escapeHTML(formatearFechaPendienteInicio(item.fecha))}
-                    </div>
+                            return `
+                                <div class="pendiente-inicio">
+                                    <div class="pendiente-inicio-info">
+                                        <div class="pendiente-inicio-titulo">
+                                            ${icono} ${escapeHTML(item.nombre)}
+                                        </div>
+                                        <div class="pendiente-inicio-detalle">
+                                            ${escapeHTML(item.detalle || "")}
+                                        </div>
+                                    </div>
 
-                    <div class="pendiente-inicio-acciones">
-                        <button
-                            type="button"
-                            class="pendiente-inicio-enlace"
-                            data-tipo="${escapeHTML(item.tipo)}"
-                            data-id="${escapeHTML(String(item.id))}"
-                            data-curso="${escapeHTML(String(item.curso || ""))}"
-                            data-fecha="${escapeHTML(item.fecha)}"
-                            data-abrir-qr="false">
-                            ${textoEnlace}
-                        </button>
-                        <button
-                            type="button"
-                            class="pendiente-inicio-qr"
-                            title="Abrir cámara QR"
-                            aria-label="Abrir cámara QR"
-                            data-tipo="${escapeHTML(item.tipo)}"
-                            data-id="${escapeHTML(String(item.id))}"
-                            data-curso="${escapeHTML(String(item.curso || ""))}"
-                            data-fecha="${escapeHTML(item.fecha)}"
-                            data-abrir-qr="true">
-                            📷
-                        </button>
+                                    <div class="pendiente-inicio-fecha">
+                                        ${escapeHTML(formatearFechaPendienteInicio(item.fecha))}
+                                    </div>
+
+                                    <div class="pendiente-inicio-acciones">
+                                        <button
+                                            type="button"
+                                            class="pendiente-inicio-enlace"
+                                            data-tipo="${escapeHTML(item.tipo)}"
+                                            data-id="${escapeHTML(String(item.id))}"
+                                            data-curso="${escapeHTML(String(item.curso || ""))}"
+                                            data-fecha="${escapeHTML(item.fecha)}"
+                                            data-abrir-qr="false">
+                                            ${textoEnlace}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="pendiente-inicio-qr"
+                                            title="Abrir cámara QR"
+                                            aria-label="Abrir cámara QR"
+                                            data-tipo="${escapeHTML(item.tipo)}"
+                                            data-id="${escapeHTML(String(item.id))}"
+                                            data-curso="${escapeHTML(String(item.curso || ""))}"
+                                            data-fecha="${escapeHTML(item.fecha)}"
+                                            data-abrir-qr="true">
+                                            📷
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join("")}
                     </div>
                 </div>
             `;
-        }).join("");
+        }
+
+        contenedor.innerHTML = [
+            gruposPendientes.hoy.length > 0 ? renderizarPendientesGrupo(gruposPendientes.hoy, "hoy") : "",
+            gruposPendientes.manana.length > 0 ? renderizarPendientesGrupo(gruposPendientes.manana, "manana") : "",
+            gruposPendientes.otras.length > 0 ? renderizarPendientesGrupo(gruposPendientes.otras, "otras") : ""
+        ].join("");
+
+        contenedor.querySelectorAll(".pendientes-inicio-grupo-cabecera").forEach(cabecera => {
+            cabecera.addEventListener("click", () => {
+                const grupo = cabecera.parentElement;
+                const contenido = grupo.querySelector(".pendientes-inicio-grupo-contenido");
+                const icono = cabecera.querySelector(".icono-expandir-pendientes");
+                const abierto = grupo.classList.toggle("abierto");
+
+                cabecera.setAttribute("aria-expanded", abierto ? "true" : "false");
+                if (icono) icono.textContent = abierto ? "−" : "+";
+                if (contenido) contenido.classList.toggle("abierto", abierto);
+            });
+        });
 
         contenedor.querySelectorAll(".pendiente-inicio-enlace, .pendiente-inicio-qr").forEach(boton => {
             boton.addEventListener("click", () => {
