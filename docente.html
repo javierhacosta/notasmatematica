@@ -8148,7 +8148,7 @@ async function cargarPendientesInicio() {
         const [resultadoActividades, resultadoAsistencias] = await Promise.all([
             supabaseClient
                 .from("actividades")
-                .select("id,curso,nombre,fecha,hora_inicio,hora_fin,orden")
+                .select("id,curso,nombre,categoria,fecha,hora_inicio,hora_fin,orden")
                 .gte("fecha", hoy)
                 .order("fecha", { ascending: true })
                 .order("hora_inicio", { ascending: true })
@@ -8237,7 +8237,8 @@ async function cargarPendientesInicio() {
                     formatearHoraPendienteInicio(a.hora_inicio, a.hora_fin)
                 ].filter(Boolean).join(" · "),
                 ordenTipo: 0,
-                hora: String(a.hora_inicio || "")
+                hora: String(a.hora_inicio || ""),
+                categoria: String(a.categoria || "").trim().toUpperCase()
             });
         });
 
@@ -8397,6 +8398,39 @@ async function cargarPendientesInicio() {
         };
 
         function renderizarPendientesGrupo(items, claveGrupo) {
+            const iconosCategoriaPendiente = {
+                SER: "❤️",
+                SABER: "🧠",
+                HACER: "🛠️",
+                AUTOEVALUACION: "⭐"
+            };
+
+            const cursosPendientes = [];
+            const mapaCursosPendientes = new Map();
+
+            items.forEach(item => {
+                const curso = String(item.curso || "").trim();
+                if (!curso) return;
+
+                if (!mapaCursosPendientes.has(curso)) {
+                    const registroCurso = { curso, iconos: [] };
+                    mapaCursosPendientes.set(curso, registroCurso);
+                    cursosPendientes.push(registroCurso);
+                }
+
+                const registroCurso = mapaCursosPendientes.get(curso);
+                const categoria = String(item.categoria || "").trim().toUpperCase();
+                const icono = item.tipo === "actividad"
+                    ? (iconosCategoriaPendiente[categoria] || "📌")
+                    : "🗓️";
+
+                registroCurso.iconos.push(icono);
+            });
+
+            const resumenCursos = cursosPendientes
+                .map(registro => `${escapeHTML(registro.curso)} ${registro.iconos.join(" ")}`)
+                .join("   ");
+
             return `
                 <div class="pendientes-inicio-grupo">
                     <button
@@ -8404,7 +8438,7 @@ async function cargarPendientesInicio() {
                         class="pendientes-inicio-grupo-cabecera"
                         data-grupo="${claveGrupo}"
                         aria-expanded="false">
-                        <span>${iconosGrupos[claveGrupo]} ${nombresGrupos[claveGrupo]} ${items.length}</span>
+                        <span>${iconosGrupos[claveGrupo]} ${nombresGrupos[claveGrupo]} ${items.length}${resumenCursos ? `: ${resumenCursos}` : ""}</span>
                         <span class="icono-expandir-pendientes">+</span>
                     </button>
                     <div class="lista-pendientes-inicio pendientes-inicio-grupo-contenido">
