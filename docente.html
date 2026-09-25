@@ -7513,28 +7513,22 @@ async function comprobarSesion() {
 
     establecerFechaActual();
 
-    // ARRANQUE RÁPIDO:
-    // 1) Si hay estudiantes en caché, se muestran sin esperar a Supabase.
-    // 2) Los pendientes se calculan inmediatamente con esa lista local.
-    // 3) La actualización de estudiantes se hace después del primer pintado.
-    // Esto evita que la carga inicial quede bloqueada por la consulta remota.
-    const hayCacheEstudiantes = cargarCacheEstudiantesQR();
-
-    if (hayCacheEstudiantes) {
+    // Arranque rápido: si existe la lista local, la interfaz queda utilizable
+    // inmediatamente. La sincronización con Supabase se hace después de que el
+    // navegador tenga tiempo de pintar la pantalla, evitando competir con el
+    // primer render.
+    if (!cargarCacheEstudiantesQR()) {
+        await cargarEstudiantes(false);
         cargarPendientesInicio().catch(error =>
-            console.warn("No se pudieron cargar los pendientes locales:", error)
+            console.warn("No se pudieron actualizar los pendientes del inicio:", error)
         );
-
-        const sincronizarEstudiantes = async () => {
-            try {
-                const huboCambios = await cargarEstudiantes(true);
-                // Solo recalcular pendientes si la lista remota realmente cambió.
-                if (huboCambios) {
-                    await cargarPendientesInicio();
-                }
-            } catch (error) {
-                console.warn("Sincronización de estudiantes en segundo plano:", error);
-            }
+    } else {
+        const sincronizarEstudiantes = () => {
+            cargarEstudiantes(true)
+                .then(() => cargarPendientesInicio())
+                .catch(error =>
+                    console.warn("Sincronización de estudiantes en segundo plano:", error)
+                );
         };
 
         if ("requestIdleCallback" in window) {
@@ -7542,13 +7536,6 @@ async function comprobarSesion() {
         } else {
             setTimeout(sincronizarEstudiantes, 1200);
         }
-    } else {
-        // Primera apertura sin caché: aquí sí necesitamos la lista remota antes
-        // de poder determinar qué actividades/asistencias están pendientes.
-        await cargarEstudiantes(false);
-        cargarPendientesInicio().catch(error =>
-            console.warn("No se pudieron actualizar los pendientes del inicio:", error)
-        );
     }
 
 }
@@ -7696,44 +7683,23 @@ async function cargarEstudiantes(esSegundoPlano = false) {
         if (!esSegundoPlano) {
             if (cargarCacheEstudiantesQR()) {
                 mostrarMensaje("📶 Sin conexión: usando la lista de estudiantes guardada en este dispositivo.");
-                return false;
+                return;
             }
             alert("Error al cargar estudiantes: " + error.message);
         }
-        return false;
+        return;
     }
 
-    const nuevosEstudiantes = data || [];
 
-    // Evita reconstruir índices, guardar localStorage y redibujar si la lista
-    // remota es idéntica a la que ya está en memoria.
-    const listaAnterior = estudiantes || [];
-    let huboCambios = listaAnterior.length !== nuevosEstudiantes.length;
-    if (!huboCambios) {
-        for (let i = 0; i < nuevosEstudiantes.length; i++) {
-            const anterior = listaAnterior[i];
-            const nuevo = nuevosEstudiantes[i];
-            if (
-                String(anterior?.id ?? "") !== String(nuevo?.id ?? "") ||
-                String(anterior?.num_lista ?? "") !== String(nuevo?.num_lista ?? "") ||
-                String(anterior?.curso ?? "") !== String(nuevo?.curso ?? "") ||
-                String(anterior?.estado ?? "") !== String(nuevo?.estado ?? "")
-            ) {
-                huboCambios = true;
-                break;
-            }
-        }
-    }
-
-    if (!huboCambios) return false;
-
-    estudiantes = nuevosEstudiantes;
+    estudiantes =
+    data || [];
 
     reconstruirIndiceEstudiantes();
     reconstruirIndiceEstudiantesQR();
     guardarCacheEstudiantesQR();
 
     cargarCursos();
+
     cargarCursosInforme();
 
     // Si la búsqueda general está abierta, actualizar la tabla con los estudiantes cargados.
@@ -7741,7 +7707,6 @@ async function cargarEstudiantes(esSegundoPlano = false) {
         mostrarResultadosBusquedaGeneral();
     }
 
-    return true;
 }
 
 
@@ -8207,18 +8172,6 @@ async function cargarPendientesInicio() {
 
         const pendientes = [];
 
-        // Índice local por curso: evita recorrer toda la lista de estudiantes
-        // una vez por cada actividad/asistencia.
-        const estudiantesEfectivosPorCurso = new Map();
-        (estudiantes || []).forEach(estudiante => {
-            if (!estudiante || !estudianteEsEfectivo(estudiante)) return;
-            const curso = String(estudiante.curso || "");
-            if (!estudiantesEfectivosPorCurso.has(curso)) {
-                estudiantesEfectivosPorCurso.set(curso, []);
-            }
-            estudiantesEfectivosPorCurso.get(curso).push(estudiante);
-        });
-
         /* =====================================================
            ACTIVIDADES PENDIENTES
         ===================================================== */
@@ -8251,8 +8204,10 @@ async function cargarPendientesInicio() {
             const fecha = String(a.fecha || "").slice(0, 10);
             if (!fecha) return;
 
-            const estudiantesCurso =
-                estudiantesEfectivosPorCurso.get(String(a.curso || "")) || [];
+            const estudiantesCurso = estudiantes.filter(e =>
+                String(e.curso || "") === String(a.curso || "") &&
+                estudianteEsEfectivo(e)
+            );
 
             /*
              * Una actividad solo aparece si existe al menos un estudiante
@@ -8309,7 +8264,11 @@ async function cargarPendientesInicio() {
         const idsEstudiantesAsistencia = [
             ...new Set(
                 horariosPendientes.flatMap(a =>
-                    (estudiantesEfectivosPorCurso.get(String(a.curso || "")) || [])
+                    estudiantes
+                        .filter(e =>
+                            String(e.curso || "") === String(a.curso || "") &&
+                            estudianteEsEfectivo(e)
+                        )
                         .map(e => Number(e.id))
                         .filter(Number.isFinite)
                 )
@@ -8354,8 +8313,10 @@ async function cargarPendientesInicio() {
             const curso = String(a.curso || "");
             if (!fecha || !curso) return;
 
-            const estudiantesCurso =
-                estudiantesEfectivosPorCurso.get(curso) || [];
+            const estudiantesCurso = estudiantes.filter(e =>
+                String(e.curso || "") === curso &&
+                estudianteEsEfectivo(e)
+            );
 
             /*
              * La asistencia desaparece de Pendientes únicamente cuando
@@ -14829,19 +14790,6 @@ function calcularEdadEstadistica(fechaNacimiento) {
     return edad >= 0 && edad <= 100 ? edad : null;
 }
 
-/* =====================================================
-   CARGA OPTIMIZADA DE ESTADÍSTICAS
-   - Evita repetir consultas mientras una carga ya está en curso.
-   - Conserva los datos durante un breve período para cambiar de pestaña
-     sin volver a descargar todo.
-   - Se mantiene la carga bajo demanda: las estadísticas sólo se consultan
-     cuando el usuario abre Estadísticas.
-===================================================== */
-let estadisticasCargaEnCurso = null;
-let estadisticasCache = null;
-let estadisticasCacheTiempo = 0;
-const ESTADISTICAS_CACHE_MS = 30000;
-
 async function prepararEstadisticas() {
     const general = document.getElementById("estadisticaGeneral");
     const cursosPanel = document.getElementById("estadisticaCursos");
@@ -14849,24 +14797,11 @@ async function prepararEstadisticas() {
     const asistenciaPanel = document.getElementById("estadisticaAsistencia");
     const actividadesPanel = document.getElementById("estadisticaActividades");
 
-    /* Si otra pestaña ya está cargando estadísticas, reutilizar esa misma
-       promesa en lugar de lanzar cuatro consultas completas nuevamente. */
-    if (estadisticasCargaEnCurso) {
-        return estadisticasCargaEnCurso;
-    }
-
-    /* Si los datos son recientes, no volver a descargarlos sólo por cambiar
-       entre General, Cursos, Rendimiento, Asistencia o Actividades. */
-    if (estadisticasCache && (Date.now() - estadisticasCacheTiempo) < ESTADISTICAS_CACHE_MS) {
-        return estadisticasCache;
-    }
-
     [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => {
         if (el) el.innerHTML = '<div class="estadistica-vacio">⏳ Cargando todas las estadísticas...</div>';
     });
 
-    estadisticasCargaEnCurso = (async () => {
-      try {
+    try {
         // Las estadísticas se cargan independientemente del curso seleccionado.
         // Se obtienen todas las páginas para no quedar limitados a los primeros 1000 registros.
         const [est, asistenciasTodas, actividadesTodas, calificacionesTodas] = await Promise.all([
@@ -15216,20 +15151,10 @@ async function prepararEstadisticas() {
             }
         });
 
-      } catch (error) {
+    } catch (error) {
         console.error("Error al cargar todas las estadísticas:", error);
         const mensaje = `<div class="estadistica-vacio">⚠️ No se pudieron cargar todas las estadísticas.<br><small>${escEstadistica(error.message || error)}</small></div>`;
         [general, cursosPanel, rendimiento, asistenciaPanel, actividadesPanel].forEach(el => { if (el) el.innerHTML = mensaje; });
-        throw error;
-      }
-    })();
-
-    try {
-        await estadisticasCargaEnCurso;
-        estadisticasCache = true;
-        estadisticasCacheTiempo = Date.now();
-    } finally {
-        estadisticasCargaEnCurso = null;
     }
 }
 
@@ -15596,8 +15521,9 @@ document.addEventListener(
             mostrarPanelInforme();
         }
 
-        /* Los pendientes ya se cargan desde comprobarSesion().
-           Evita una segunda consulta duplicada al iniciar la aplicación. */
+        cargarPendientesInicio().catch(error =>
+            console.warn("No se pudieron cargar los pendientes del inicio:", error)
+        );
 
     }
 );
