@@ -1927,118 +1927,42 @@ td:first-child {
 }
 
 .azar-asistencia-numero {
+    position: relative;
+    width: 100%;
+    min-height: 1.05em;
     font-size: clamp(150px, 38vh, 300px);
     line-height: .82;
     font-weight: 900;
     color: #1557a6;
-    min-height: .82em;
     display: flex;
     align-items: center;
     justify-content: center;
-    user-select: none;
-}
-
-.azar-asistencia-numero {
-    cursor: grab;
-    touch-action: pan-y;
-    -webkit-tap-highlight-color: transparent;
-    transition: transform .16s cubic-bezier(.22,.61,.36,1), opacity .16s ease;
-    will-change: transform, opacity;
-    overflow: visible;
-}
-
-.azar-asistencia-numero:active { cursor: grabbing; }
-.azar-asistencia-numero.numero-deslizando-izquierda { animation: numeroCambioIzquierda .18s cubic-bezier(.22,.61,.36,1); }
-.azar-asistencia-numero.numero-deslizando-derecha { animation: numeroCambioDerecha .18s cubic-bezier(.22,.61,.36,1); }
-
-@keyframes numeroCambioIzquierda {
-    0% { transform: translateX(70px) scale(.97); opacity: .15; }
-    42% { transform: translateX(0) scale(1); opacity: 1; }
-    100% { transform: translateX(-18px) scale(1); opacity: 1; }
-}
-@keyframes numeroCambioDerecha {
-    0% { transform: translateX(-70px) scale(.97); opacity: .15; }
-    42% { transform: translateX(0) scale(1); opacity: 1; }
-    100% { transform: translateX(18px) scale(1); opacity: 1; }
-}
-
-.azar-asistencia-numero.animando {
-    animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
-}
-
-.azar-asistencia-numero {
-    position: relative;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 1em;
+    user-select: none;
+    touch-action: pan-y;
+    cursor: grab;
+    -webkit-tap-highlight-color: transparent;
 }
-.azar-numero-contenido {
+.azar-asistencia-numero:active { cursor: grabbing; }
+.azar-numero-actual, .azar-numero-entrante {
     position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
     left: 0;
+    right: 0;
+    top: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    line-height: .82;
-    font-size: inherit;
-    font-weight: 900;
+    transform: translateY(-50%);
     white-space: nowrap;
     will-change: transform, opacity;
 }
-.azar-numero-contenido.azar-numero-entrando-izquierda {
-    animation: azarEntraDesdeIzquierda .34s cubic-bezier(.22,.61,.36,1) both;
+.azar-numero-entrante { opacity: 0; }
+.azar-asistencia-numero.animando .azar-numero-actual {
+    animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
 }
-.azar-numero-contenido.azar-numero-entrando-derecha {
-    animation: azarEntraDesdeDerecha .34s cubic-bezier(.22,.61,.36,1) both;
-}
-.azar-numero-contenido.azar-numero-saliendo-izquierda {
-    animation: azarSaleHaciaIzquierda .34s cubic-bezier(.55,.06,.68,.19) both;
-}
-.azar-numero-contenido.azar-numero-saliendo-derecha {
-    animation: azarSaleHaciaDerecha .34s cubic-bezier(.55,.06,.68,.19) both;
-}
-@keyframes azarEntraDesdeIzquierda {
-    from { transform: translateX(-105%); opacity: 1; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes azarEntraDesdeDerecha {
-    from { transform: translateX(105%); opacity: 1; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes azarSaleHaciaIzquierda {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(-105%); opacity: 1; }
-}
-@keyframes azarSaleHaciaDerecha {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(105%); opacity: 1; }
-}
-.azar-asistencia-numero.deslizando-izquierda,
-.azar-asistencia-numero.deslizando-derecha { animation: none; }
-.azar-asistencia-numero.revelando { animation: revelarNumeroAzar .28s ease-out; }
-
 @keyframes pulsoNumeroAzar {
-    from { transform: scale(.98); opacity: .78; }
-    to { transform: scale(1.02); opacity: 1; }
-}
-@keyframes numeroDeslizaIzquierda {
-    0% { transform: translateX(0) scale(1); opacity: 1; }
-    45% { transform: translateX(-24px) scale(.98); opacity: .35; }
-    100% { transform: translateX(0) scale(1); opacity: 1; }
-}
-@keyframes numeroDeslizaDerecha {
-    0% { transform: translateX(0) scale(1); opacity: 1; }
-    45% { transform: translateX(24px) scale(.98); opacity: .35; }
-    100% { transform: translateX(0) scale(1); opacity: 1; }
-}
-@keyframes revelarNumeroAzar {
-    0% { transform: scale(.72); opacity: 0; filter: blur(7px); }
-    55% { transform: scale(1.10); opacity: .65; filter: blur(2px); }
-    100% { transform: scale(1); opacity: 1; filter: blur(0); }
+    from { opacity: .78; }
+    to { opacity: 1; }
 }
 
 .azar-asistencia-nombre {
@@ -2083,6 +2007,14 @@ td:first-child {
     font-size: 14px;
 }
 
+.boton-elegir-azar {
+    background: #7b1fa2;
+    color: white;
+    font-size: 30px !important;
+    padding: 16px 24px !important;
+
+}
+
 .boton-ver-elegidos {
     background: #1565c0;
     color: white;
@@ -2099,6 +2031,11 @@ td:first-child {
     padding: 7px 24px !important;
 
 
+}
+
+.boton-elegir-azar:disabled {
+    opacity: .55;
+    cursor: wait;
 }
 
 .azar-asistencia-lista {
@@ -2204,6 +2141,13 @@ td:first-child {
     .azar-asistencia-acciones button {
         flex: 1 1 0;
         min-width: 130px;
+    }
+
+    .boton-elegir-azar {
+        flex: 0 0 100% !important;
+        width: 100% !important;
+        font-size: 18px !important;
+        padding: 15px 20px !important;
     }
 
 
@@ -7009,15 +6953,13 @@ Cancelar
             <div id="azarAsistenciaFecha" class="azar-asistencia-fecha"></div>
             <div id="azarAsistenciaAvisoFecha" class="azar-asistencia-aviso-fecha oculto"></div>
 
-            <div id="azarAsistenciaNumero" class="azar-asistencia-numero"
-                 role="button" tabindex="0"
-                 aria-label="Desliza el número hacia la izquierda o derecha para elegir un estudiante al azar">—</div>
+            <div id="azarAsistenciaNumero" class="azar-asistencia-numero" role="button" tabindex="0" aria-label="Desliza para elegir un estudiante"><span class="azar-numero-actual">—</span><span class="azar-numero-entrante" aria-hidden="true"></span></div>
 
             <div id="azarAsistenciaNombre" class="azar-asistencia-nombre">
-                Desliza el número hacia la izquierda o derecha
+                Presiona «Elegir al azar»
             </div>
             <div class="azar-asistencia-ayuda">
-                Desliza el número ← o → para elegir. La rapidez del deslizamiento controla la velocidad del sorteo.
+                Presiona el nombre para añadir una observación de asistencia.
             </div>
 
             <div id="azarAsistenciaLista" class="azar-asistencia-lista oculto"></div>
@@ -7025,7 +6967,13 @@ Cancelar
 
         <div class="azar-asistencia-acciones">
           
- <button type="button" class="boton-ver-por-elegir"
+ <button type="button" class="boton-elegir-azar"
+                    id="botonElegirAzarAsistencia"
+                    onclick="elegirEstudianteAzarAsistencia()">
+                🎲 Elegir al azar
+            </button>
+
+  <button type="button" class="boton-ver-por-elegir"
                     id="botonVerPorElegirAzarAsistencia"
                     onclick="mostrarPorElegirAzarAsistencia()">
                 📋 Ver por elegir
@@ -22533,7 +22481,7 @@ function aplicarTipoEleccionAzarAsistencia() {
 
     const numeroEl = document.getElementById("azarAsistenciaNumero");
     if (numeroEl && azarAsistenciaEstudianteActual) {
-        numeroEl.textContent = textoVisibleAzarAsistencia(azarAsistenciaEstudianteActual);
+        establecerNumeroAzarAsistencia(numeroEl, textoVisibleAzarAsistencia(azarAsistenciaEstudianteActual));
     }
 }
 
@@ -22633,7 +22581,7 @@ function abrirModalAzarAsistencia() {
     }
 
     if (numeroEl) {
-        numeroEl.textContent = "—";
+        establecerNumeroAzarAsistencia(numeroEl, "—");
         numeroEl.style.color = "#1557a6";
         numeroEl.classList.remove("animando");
         aplicarTamanoNumeroAzarAsistencia();
@@ -22641,7 +22589,7 @@ function abrirModalAzarAsistencia() {
     }
 
     if (nombreEl) {
-        nombreEl.innerHTML = "Desliza el número hacia la izquierda o derecha";
+        nombreEl.innerHTML = "Presiona «Elegir al azar»";
     }
 
     if (listaEl) {
@@ -22649,8 +22597,8 @@ function abrirModalAzarAsistencia() {
         listaEl.classList.add("oculto");
     }
 
-    modal.classList.remove("oculto");
     configurarGestosNumeroAzarAsistencia();
+    modal.classList.remove("oculto");
 
     if (!esHoyAzarAsistencia(fecha)) {
         alert("⚠️ Atención: la fecha de asistencia seleccionada no corresponde al día de hoy.");
@@ -22671,7 +22619,6 @@ function cerrarModalAzarAsistencia(event) {
     if (event && event.target !== modal) return;
 
     if (azarAsistenciaAnimacion) {
-        cancelAnimationFrame(azarAsistenciaAnimacion);
         azarAsistenciaAnimacion = null;
     }
     azarAsistenciaMovimientoActivo = false;
@@ -22679,17 +22626,40 @@ function cerrarModalAzarAsistencia(event) {
     modal.classList.add("oculto");
 }
 
+function establecerNumeroAzarAsistencia(numeroEl, texto) {
+    if (!numeroEl) return;
+    let actual = numeroEl.querySelector(".azar-numero-actual");
+    let entrante = numeroEl.querySelector(".azar-numero-entrante");
+    if (!actual) {
+        numeroEl.innerHTML = '<span class="azar-numero-actual"></span><span class="azar-numero-entrante" aria-hidden="true"></span>';
+        actual = numeroEl.querySelector(".azar-numero-actual");
+        entrante = numeroEl.querySelector(".azar-numero-entrante");
+    }
+    actual.textContent = texto;
+    actual.style.transform = "translateY(-50%)";
+    actual.style.opacity = "1";
+    entrante.textContent = "";
+    entrante.style.transform = "translateY(-50%)";
+    entrante.style.opacity = "0";
+}
+
+function colorNumeroAzarAsistencia(numeroEl, estudiante) {
+    if (!numeroEl) return;
+    const genero = obtenerGeneroEstadistica(estudiante?.gen);
+    numeroEl.style.color = genero === "mujer"
+        ? (configuracionAulaActual.colorMujer || "#e91e63")
+        : genero === "varon"
+            ? (configuracionAulaActual.colorVaron || "#1976d2")
+            : "#1557a6";
+}
+
 function actualizarEstadoBotonElegirAzarAsistencia() {
-    // La elección ahora se inicia deslizando el número grande.
-    const candidatos = obtenerCandidatosAzarAsistencia();
     const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const candidatos = obtenerCandidatosAzarAsistencia();
     if (numeroEl) {
-        numeroEl.setAttribute(
-            "aria-label",
-            candidatos.length
-                ? "Desliza el número hacia la izquierda o derecha para elegir un estudiante al azar"
-                : "Todos los estudiantes ya fueron elegidos para esta fecha"
-        );
+        numeroEl.setAttribute("aria-label", candidatos.length
+            ? "Desliza el número hacia la izquierda o derecha para elegir un estudiante al azar"
+            : "Todos los estudiantes ya fueron elegidos");
     }
 }
 
@@ -22698,206 +22668,164 @@ let azarAsistenciaInicioY = null;
 let azarAsistenciaInicioTiempo = 0;
 let azarAsistenciaMovimientoActivo = false;
 
-function prepararDeslizamientoAzarAsistencia(event) {
-    if (azarAsistenciaAnimacion) return;
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    if (!numeroEl) return;
-    const punto = event.touches?.[0] || event;
-    azarAsistenciaInicioX = punto.clientX;
-    azarAsistenciaInicioY = punto.clientY;
-    azarAsistenciaInicioTiempo = performance.now();
-    azarAsistenciaMovimientoActivo = true;
-}
-
-function finalizarDeslizamientoAzarAsistencia(event) {
-    if (!azarAsistenciaMovimientoActivo || azarAsistenciaAnimacion) return;
-    const punto = event.changedTouches?.[0] || event;
-    const dx = punto.clientX - azarAsistenciaInicioX;
-    const dy = punto.clientY - azarAsistenciaInicioY;
-    const distancia = Math.abs(dx);
-    const tiempo = Math.max(1, performance.now() - azarAsistenciaInicioTiempo);
-    azarAsistenciaMovimientoActivo = false;
-    azarAsistenciaInicioX = null;
-    azarAsistenciaInicioY = null;
-
-    if (distancia < 45 || distancia < Math.abs(dy) * 1.15) return;
-
-    const velocidad = distancia / tiempo;
-    const duracion = Math.max(850, Math.min(3600, 1000 + velocidad * 4200));
-    const direccion = dx < 0 ? "izquierda" : "derecha";
-    iniciarEleccionAzarPorDeslizamiento(duracion, direccion);
-}
-
 function configurarGestosNumeroAzarAsistencia() {
     const numeroEl = document.getElementById("azarAsistenciaNumero");
-    if (!numeroEl || numeroEl.dataset.gestosConfigurados === "true") return;
-    numeroEl.dataset.gestosConfigurados = "true";
-    numeroEl.addEventListener("touchstart", prepararDeslizamientoAzarAsistencia, { passive: true });
-    numeroEl.addEventListener("touchend", finalizarDeslizamientoAzarAsistencia, { passive: true });
-    numeroEl.addEventListener("pointerdown", prepararDeslizamientoAzarAsistencia);
-    numeroEl.addEventListener("pointerup", finalizarDeslizamientoAzarAsistencia);
-    numeroEl.addEventListener("keydown", event => {
-        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-            event.preventDefault();
-            if (!azarAsistenciaAnimacion) {
-                iniciarEleccionAzarPorDeslizamiento(1500, event.key === "ArrowLeft" ? "izquierda" : "derecha");
-            }
-        }
+    if (!numeroEl || numeroEl.dataset.gestoConfigurado === "1") return;
+    numeroEl.dataset.gestoConfigurado = "1";
+
+    numeroEl.addEventListener("pointerdown", function(event) {
+        if (azarAsistenciaAnimacion || obtenerCandidatosAzarAsistencia().length === 0) return;
+        azarAsistenciaInicioX = event.clientX;
+        azarAsistenciaInicioY = event.clientY;
+        azarAsistenciaInicioTiempo = performance.now();
+        azarAsistenciaMovimientoActivo = true;
+        try { numeroEl.setPointerCapture(event.pointerId); } catch (_) {}
+    });
+
+    numeroEl.addEventListener("pointerup", function(event) {
+        if (!azarAsistenciaMovimientoActivo) return;
+        azarAsistenciaMovimientoActivo = false;
+        const dx = event.clientX - azarAsistenciaInicioX;
+        const dy = event.clientY - azarAsistenciaInicioY;
+        const distancia = Math.abs(dx);
+        const tiempo = Math.max(1, performance.now() - azarAsistenciaInicioTiempo);
+        azarAsistenciaInicioX = null;
+        azarAsistenciaInicioY = null;
+        if (distancia < 45 || distancia < Math.abs(dy) * 1.15) return;
+
+        const velocidad = distancia / tiempo;
+        const duracion = Math.max(850, Math.min(3600, 3000 - velocidad * 4200));
+        iniciarEleccionAzarPorDeslizamiento(duracion, dx < 0 ? "izquierda" : "derecha");
+    });
+
+    numeroEl.addEventListener("pointercancel", function() {
+        azarAsistenciaMovimientoActivo = false;
+    });
+
+    numeroEl.addEventListener("keydown", function(event) {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        iniciarEleccionAzarPorDeslizamiento(1800, event.key === "ArrowLeft" ? "izquierda" : "derecha");
     });
 }
 
-function aplicarColorNumeroAzarAsistencia(estudiante, numeroEl) {
-    if (!numeroEl) return;
-    const genero = obtenerGeneroEstadistica(estudiante?.gen);
-    if (genero === "mujer") {
-        numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
-    } else if (genero === "varon") {
-        numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
-    } else {
-        numeroEl.style.color = "#1557a6";
-    }
+function animarCambioNumeroAzar(numeroEl, texto, direccion, duracion, esFinal = false) {
+    return new Promise(resolve => {
+        const actual = numeroEl?.querySelector(".azar-numero-actual");
+        const entrante = numeroEl?.querySelector(".azar-numero-entrante");
+        if (!actual || !entrante) { resolve(); return; }
+
+        const distancia = Math.max(120, Math.min(420, numeroEl.clientWidth * 0.72));
+        const salida = direccion === "izquierda" ? -distancia : distancia;
+        const entrada = -salida;
+        const inicio = performance.now();
+        const tiempo = Math.max(90, duracion);
+
+        entrante.textContent = texto;
+        entrante.style.transition = "none";
+        actual.style.transition = "none";
+        entrante.style.transform = `translate(calc(${entrada}px), -50%)`;
+        entrante.style.opacity = "1";
+        actual.style.transform = "translate(0, -50%)";
+        actual.style.opacity = "1";
+
+        requestAnimationFrame(() => {
+            const mover = ahora => {
+                const p = Math.min(1, (ahora - inicio) / tiempo);
+                const ease = 1 - Math.pow(1 - p, esFinal ? 3.6 : 1.8);
+                const xActual = salida * ease;
+                const xEntrante = entrada * (1 - ease);
+                actual.style.transform = `translate(${xActual}px, -50%)`;
+                actual.style.opacity = String(Math.max(0.12, 1 - ease * 0.88));
+                entrante.style.transform = `translate(${xEntrante}px, -50%)`;
+                entrante.style.opacity = String(Math.min(1, 0.15 + ease * 0.85));
+                if (p < 1) requestAnimationFrame(mover);
+                else {
+                    actual.textContent = texto;
+                    actual.style.transform = "translateY(-50%)";
+                    actual.style.opacity = "1";
+                    entrante.style.opacity = "0";
+                    entrante.style.transform = "translateY(-50%)";
+                    resolve();
+                }
+            };
+            requestAnimationFrame(mover);
+        });
+    });
 }
 
-function mostrarNumeroAzarConDeslizamiento(estudiante, numeroEl, direccion, instantaneo = false) {
-    if (!numeroEl) return;
-    const texto = textoVisibleAzarAsistencia(estudiante);
-    aplicarColorNumeroAzarAsistencia(estudiante, numeroEl);
-
-    let actual = numeroEl.querySelector(".azar-numero-contenido");
-    if (!actual) {
-        numeroEl.innerHTML = "";
-        actual = document.createElement("span");
-        actual.className = "azar-numero-contenido";
-        numeroEl.appendChild(actual);
-    }
-
-    if (instantaneo) {
-        actual.className = "azar-numero-contenido";
-        actual.textContent = texto;
-        return;
-    }
-
-    const nuevo = document.createElement("span");
-    nuevo.className = "azar-numero-contenido " +
-        (direccion === "izquierda"
-            ? "azar-numero-entrando-derecha"
-            : "azar-numero-entrando-izquierda");
-    nuevo.textContent = texto;
-    nuevo.style.color = numeroEl.style.color;
-
-    actual.classList.remove(
-        "azar-numero-entrando-izquierda",
-        "azar-numero-entrando-derecha",
-        "azar-numero-saliendo-izquierda",
-        "azar-numero-saliendo-derecha"
-    );
-    actual.classList.add(
-        direccion === "izquierda"
-            ? "azar-numero-saliendo-izquierda"
-            : "azar-numero-saliendo-derecha"
-    );
-
-    numeroEl.appendChild(nuevo);
-    setTimeout(() => {
-        if (actual.parentNode === numeroEl) actual.remove();
-        if (nuevo.parentNode === numeroEl) {
-            nuevo.className = "azar-numero-contenido";
-        }
-    }, 360);
-}
-
-function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
+async function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
     if (azarAsistenciaAnimacion) return;
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    const nombreEl = document.getElementById("azarAsistenciaNombre");
-    const listaEl = document.getElementById("azarAsistenciaLista");
     const candidatos = obtenerCandidatosAzarAsistencia();
-
     if (!candidatos.length) {
-        if (nombreEl) nombreEl.innerHTML = "✓ Ya fueron elegidos todos los estudiantes";
+        alert("✓ Ya fueron elegidos todos los estudiantes del curso para esta fecha.");
         actualizarEstadoBotonElegirAzarAsistencia();
         return;
     }
 
-    configurarGestosNumeroAzarAsistencia();
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const listaEl = document.getElementById("azarAsistenciaLista");
+    if (!numeroEl) return;
+
+    azarAsistenciaAnimacion = true;
     if (listaEl) listaEl.classList.add("oculto");
-    if (nombreEl) nombreEl.innerHTML = "🎲 Sorteando...";
-    numeroEl?.classList.remove("revelando", "deslizando-izquierda", "deslizando-derecha");
-    void numeroEl?.offsetWidth;
-    numeroEl?.classList.add(direccion === "izquierda" ? "deslizando-izquierda" : "deslizando-derecha");
-    numeroEl?.classList.add("animando");
-
-    let ultimoCambio = performance.now();
-    const inicio = performance.now();
-    const fin = inicio + duracion;
-
-    const cambiarNumeroConDeslizamiento = () => {
-        if (!numeroEl) return;
-        const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
-
-        mostrarNumeroAzarConDeslizamiento(candidato, numeroEl, direccion);
-    };
-
-    const mostrarNumeroRapido = () => {
-        const ahora = performance.now();
-        const progreso = Math.min(1, (ahora - inicio) / duracion);
-
-        // Al principio los números pasan con rapidez; al final se separan
-        // cada vez más para crear una desaceleración claramente visible.
-        const intervaloObjetivo = 115 + Math.pow(progreso, 3.2) * 430;
-        if (ahora - ultimoCambio >= intervaloObjetivo) {
-            ultimoCambio = ahora;
-            cambiarNumeroConDeslizamiento();
-        }
-
-        if (ahora < fin) {
-            azarAsistenciaAnimacion = requestAnimationFrame(mostrarNumeroRapido);
-        } else {
-            finalizarEleccionAzarAsistencia(candidatos, numeroEl, nombreEl);
-        }
-    };
-
-    const inicial = candidatos[Math.floor(Math.random() * candidatos.length)];
-    if (numeroEl) {
-        mostrarNumeroAzarConDeslizamiento(inicial, numeroEl, direccion, true);
-    }
-    azarAsistenciaAnimacion = requestAnimationFrame(mostrarNumeroRapido);
-}
-
-function finalizarEleccionAzarAsistencia(candidatos, numeroEl, nombreEl) {
-    if (azarAsistenciaAnimacion) {
-        cancelAnimationFrame(azarAsistenciaAnimacion);
-        azarAsistenciaAnimacion = null;
-    }
+    if (nombreEl) nombreEl.innerHTML = "🎲 Eligiendo...";
+    numeroEl.classList.add("animando");
 
     const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    const inicio = performance.now();
+    let ultimoCambio = inicio;
+    let ultimoTexto = numeroEl.querySelector(".azar-numero-actual")?.textContent || "—";
+    let frame = null;
+
+    await new Promise(resolve => {
+        const paso = ahora => {
+            if (!azarAsistenciaAnimacion) { resolve(); return; }
+            const transcurrido = ahora - inicio;
+            const progreso = Math.min(1, transcurrido / duracion);
+            const intervalo = 38 + Math.pow(progreso, 3.8) * 300;
+            if (ahora - ultimoCambio >= intervalo) {
+                const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
+                const texto = textoVisibleAzarAsistencia(candidato);
+                ultimoTexto = texto;
+                colorNumeroAzarAsistencia(numeroEl, candidato);
+                const tramo = Math.max(65, Math.min(180, intervalo * 0.72));
+                animarCambioNumeroAzar(numeroEl, texto, direccion, tramo, false);
+                ultimoCambio = ahora;
+            }
+            if (progreso < 1) frame = requestAnimationFrame(paso);
+            else resolve();
+        };
+        frame = requestAnimationFrame(paso);
+    });
+
+    if (frame) cancelAnimationFrame(frame);
+    if (!azarAsistenciaAnimacion) return;
+
+    colorNumeroAzarAsistencia(numeroEl, elegido);
+    await animarCambioNumeroAzar(numeroEl, textoVisibleAzarAsistencia(elegido), direccion, 520, true);
+    if (!azarAsistenciaAnimacion) return;
+
     azarAsistenciaEstudianteActual = elegido;
     const elegidos = obtenerElegidosAzarAsistencia();
     elegidos.push(String(elegido.id));
     guardarElegidosAzarAsistencia(elegidos);
 
-    if (numeroEl) {
-        numeroEl.classList.remove("animando", "deslizando-izquierda", "deslizando-derecha", "revelando");
-        mostrarNumeroAzarConDeslizamiento(elegido, numeroEl, "derecha");
-        numeroEl.classList.add("revelando");
-    }
-
+    numeroEl.classList.remove("animando");
     if (nombreEl) {
         nombreEl.innerHTML = "";
         const botonNombre = document.createElement("button");
         botonNombre.type = "button";
         botonNombre.textContent = construirNombreCortoAula(elegido);
         botonNombre.title = "Añadir una observación de asistencia";
-        botonNombre.addEventListener("click", function() {
-            abrirAsistenciaDesdeAzar(elegido.id);
-        });
+        botonNombre.addEventListener("click", function() { abrirAsistenciaDesdeAzar(elegido.id); });
         nombreEl.appendChild(botonNombre);
     }
-
+    azarAsistenciaAnimacion = null;
     actualizarEstadoBotonElegirAzarAsistencia();
 }
 
-// Compatibilidad con cualquier llamada interna existente.
 function elegirEstudianteAzarAsistencia() {
     iniciarEleccionAzarPorDeslizamiento(2000, "derecha");
 }
