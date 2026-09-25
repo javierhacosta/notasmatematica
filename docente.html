@@ -251,7 +251,7 @@ input, select {
 .progreso-espera-azar-asistencia {
     width: 0%;
     height: 100%;
-    background: rgba(255,255,255,.5);
+    background: rgba(255,255,255,.2);
     transition: width linear;
 }
 .config-azar-tipo-eleccion {
@@ -7030,6 +7030,14 @@ Cancelar
                    min="1" max="60" step="1" value="2"
                    oninput="actualizarVistaTiempoAzarAsistencia(this.value)">
             <div id="valorTiempoNumeroAzarAsistencia" class="config-azar-valor">2 segundos</div>
+
+            <label for="velocidadNumeroAzarAsistencia" class="config-azar-tiempo-label">Velocidad de mezcla</label>
+            <input id="velocidadNumeroAzarAsistencia"
+                   class="config-azar-control"
+                   type="range"
+                   min="0" max="1" step="0.1" value="0"
+                   oninput="actualizarVistaVelocidadAzarAsistencia(this.value)">
+            <div id="valorVelocidadNumeroAzarAsistencia" class="config-azar-valor">0 segundos</div>
 
             <div class="config-azar-tipo-eleccion">
                 <label>Forma de elección</label>
@@ -22470,10 +22478,13 @@ function obtenerCandidatosAzarAsistencia() {
 const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
 const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
 const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoNumeroAzarAsistencia";
+const CLAVE_VELOCIDAD_AZAR_ASISTENCIA = "velocidadNumeroAzarAsistencia";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
 let tiempoNumeroAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
+let velocidadNumeroAzarAsistencia = Math.max(0, Math.min(1, Number(localStorage.getItem(CLAVE_VELOCIDAD_AZAR_ASISTENCIA)) || 0));
 let azarAsistenciaTiempoFinalizacion = null;
+let azarAsistenciaUltimoCambio = 0;
 
 function obtenerTipoEleccionAzarAsistencia() {
     const tiposValidos = ["numero", "inicial", "varones", "mujeres"];
@@ -22526,6 +22537,11 @@ function abrirConfigTamanoAzarAsistencia() {
         controlTiempo.value = String(tiempoNumeroAzarAsistencia);
         actualizarVistaTiempoAzarAsistencia(controlTiempo.value);
     }
+    const controlVelocidad = document.getElementById("velocidadNumeroAzarAsistencia");
+    if (controlVelocidad) {
+        controlVelocidad.value = String(velocidadNumeroAzarAsistencia);
+        actualizarVistaVelocidadAzarAsistencia(controlVelocidad.value);
+    }
     aplicarTipoEleccionAzarAsistencia();
     modal.classList.remove("oculto");
 }
@@ -22545,14 +22561,23 @@ function actualizarVistaTiempoAzarAsistencia(valor) {
     if (valorEl) valorEl.textContent = `${tiempo} ${tiempo === 1 ? "segundo" : "segundos"}`;
 }
 
+function actualizarVistaVelocidadAzarAsistencia(valor) {
+    const velocidad = Math.max(0, Math.min(1, Number(valor) || 0));
+    const valorEl = document.getElementById("valorVelocidadNumeroAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${velocidad.toFixed(1)} segundos`;
+}
+
 function guardarTamanoAzarAsistencia() {
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
     const controlTiempo = document.getElementById("tiempoNumeroAzarAsistencia");
     const tiempo = Math.max(1, Math.min(60, Number(controlTiempo?.value) || 2));
+    const controlVelocidad = document.getElementById("velocidadNumeroAzarAsistencia");
+    const velocidad = Math.max(0, Math.min(1, Number(controlVelocidad?.value) || 0));
 
     tamanoNumeroAzarAsistencia = numero;
     tiempoNumeroAzarAsistencia = tiempo;
+    velocidadNumeroAzarAsistencia = velocidad;
 
     const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
     const tipoSeleccionado = radioSeleccionado?.value || "numero";
@@ -22563,6 +22588,7 @@ function guardarTamanoAzarAsistencia() {
     localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
     localStorage.setItem(CLAVE_TIPO_AZAR_ASISTENCIA, tipoEleccionAzarAsistencia);
     localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempo));
+    localStorage.setItem(CLAVE_VELOCIDAD_AZAR_ASISTENCIA, String(velocidad));
 
     aplicarTamanoNumeroAzarAsistencia();
     aplicarTipoEleccionAzarAsistencia();
@@ -22681,14 +22707,13 @@ function cerrarModalAzarAsistencia(event) {
     if (!modal) return;
     if (event && event.target !== modal) return;
 
-    if (azarAsistenciaAnimacion) {
-        clearInterval(azarAsistenciaAnimacion);
-        azarAsistenciaAnimacion = null;
+    if (azarAsistenciaAnimacionFrame) {
+        cancelAnimationFrame(azarAsistenciaAnimacionFrame);
+        azarAsistenciaAnimacionFrame = null;
     }
-    if (azarAsistenciaTiempoFinalizacion) {
-        clearTimeout(azarAsistenciaTiempoFinalizacion);
-        azarAsistenciaTiempoFinalizacion = null;
-    }
+    azarAsistenciaAnimacion = null;
+    azarAsistenciaTiempoFinalizacion = null;
+    azarAsistenciaUltimoCambio = 0;
     reiniciarBarraEsperaAzarAsistencia();
 
     modal.classList.add("oculto");
@@ -22742,6 +22767,7 @@ function elegirEstudianteAzarAsistencia() {
 
     iniciarBarraEsperaAzarAsistencia();
     mostrarNumeroRapido();
+    azarAsistenciaUltimoCambio = performance.now();
     const duracion = tiempoNumeroAzarAsistencia * 1000;
     azarAsistenciaTiempoFinalizacion = performance.now() + duracion;
     azarAsistenciaAnimacion = true;
@@ -22782,7 +22808,13 @@ function elegirEstudianteAzarAsistencia() {
             return;
         }
 
-        mostrarNumeroRapido();
+        if (
+            velocidadNumeroAzarAsistencia === 0 ||
+            ahora - azarAsistenciaUltimoCambio >= velocidadNumeroAzarAsistencia * 1000
+        ) {
+            mostrarNumeroRapido();
+            azarAsistenciaUltimoCambio = ahora;
+        }
         azarAsistenciaAnimacionFrame = requestAnimationFrame(mezclar);
     };
 
