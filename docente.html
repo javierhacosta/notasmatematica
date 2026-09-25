@@ -230,6 +230,21 @@ input, select {
     font-weight: bold;
     color: #1557a6;
 }
+.azar-asistencia-progreso {
+    width: 100%;
+    height: 2px;
+    background: #e9e9e9;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.azar-asistencia-progreso-barra {
+    width: 0%;
+    height: 100%;
+    background: #7b1fa2;
+    transition: width 0s linear;
+}
+
 .config-azar-tipo-eleccion {
     margin-top: 18px;
     border-top: 1px solid #eee;
@@ -6924,8 +6939,8 @@ Cancelar
             <div style="display:flex;align-items:center;gap:6px;">
                 <button type="button" class="boton-config-azar"
                         onclick="abrirConfigTamanoAzarAsistencia()"
-                        title="Configurar tamaño del número"
-                        aria-label="Configurar tamaño del número">⚙️</button>
+                        title="Configurar estudiante al azar"
+                        aria-label="Configurar estudiante al azar">⚙️</button>
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalAzarAsistencia()">×</button>
             </div>
@@ -6935,6 +6950,9 @@ Cancelar
             <div id="azarAsistenciaFecha" class="azar-asistencia-fecha"></div>
             <div id="azarAsistenciaAvisoFecha" class="azar-asistencia-aviso-fecha oculto"></div>
 
+            <div class="azar-asistencia-progreso" aria-hidden="true">
+                <div id="azarAsistenciaProgresoBarra" class="azar-asistencia-progreso-barra"></div>
+            </div>
             <div id="azarAsistenciaNumero" class="azar-asistencia-numero">—</div>
 
             <div id="azarAsistenciaNombre" class="azar-asistencia-nombre">
@@ -6981,7 +6999,7 @@ Cancelar
      onclick="cerrarConfigTamanoAzarAsistencia(event)">
     <div class="modal-config-azar" onclick="event.stopPropagation()">
         <div class="modal-cabecera">
-            <h3>⚙️ Tamaño del número</h3>
+            <h3>⚙️ Configuración del azar</h3>
             <button type="button" class="boton-cerrar-modal"
                     onclick="cerrarConfigTamanoAzarAsistencia()">×</button>
         </div>
@@ -6993,6 +7011,14 @@ Cancelar
                    min="80" max="320" step="5" value="200"
                    oninput="actualizarVistaTamanoAzarAsistencia(this.value)">
             <div id="valorTamanoNumeroAzarAsistencia" class="config-azar-valor">200 px</div>
+
+            <label for="tiempoAzarAsistencia" style="margin-top:18px;">Tiempo</label>
+            <input id="tiempoAzarAsistencia"
+                   class="config-azar-control"
+                   type="range"
+                   min="1" max="60" step="1" value="2"
+                   oninput="actualizarVistaTiempoAzarAsistencia(this.value)">
+            <div id="valorTiempoAzarAsistencia" class="config-azar-valor">2 seg</div>
 
             <div class="config-azar-tipo-eleccion">
                 <label>Forma de elección</label>
@@ -7447,6 +7473,7 @@ let configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, 
 let azarAsistenciaCursoFecha = "";
 let azarAsistenciaEstudianteActual = null;
 let azarAsistenciaAnimacion = null;
+let azarAsistenciaTemporizador = null;
 
 
 /* =====================================================
@@ -8915,7 +8942,8 @@ function iniciarPulsacionLargaHoraAsistencia(event) {
         pulsacionLargaHoraAsistencia = true;
         const controlesHora = document.getElementById("controlesHoraAsistencia");
         if (controlesHora) controlesHora.classList.remove("oculto");
-    }, 2000);
+        azarAsistenciaTemporizador = null;
+    }, tiempoAzarAsistencia * 1000);
 }
 
 function finalizarPulsacionHoraAsistencia() {
@@ -22432,6 +22460,8 @@ function obtenerCandidatosAzarAsistencia() {
 
 const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
 const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
+const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoAzarAsistencia";
+let tiempoAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
 
@@ -22475,6 +22505,9 @@ function aplicarTamanoNumeroAzarAsistencia() {
 }
 
 function abrirConfigTamanoAzarAsistencia() {
+    const tiempoControl = document.getElementById("tiempoAzarAsistencia");
+    if (tiempoControl) tiempoControl.value = tiempoAzarAsistencia;
+    actualizarVistaTiempoAzarAsistencia(tiempoAzarAsistencia);
     const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     if (!modal || !control) return;
@@ -22494,7 +22527,15 @@ function actualizarVistaTamanoAzarAsistencia(valor) {
     if (numeroEl) numeroEl.style.fontSize = `${numero}px`;
 }
 
+function actualizarVistaTiempoAzarAsistencia(valor) {
+    const tiempo = Math.max(1, Math.min(60, Number(valor) || 2));
+    const valorEl = document.getElementById("valorTiempoAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${tiempo} seg`;
+}
+
 function guardarTamanoAzarAsistencia() {
+    tiempoAzarAsistencia = Math.max(1, Math.min(60, Number(document.getElementById("tiempoAzarAsistencia")?.value) || 2));
+    localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempoAzarAsistencia));
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
 
@@ -22516,6 +22557,9 @@ function guardarTamanoAzarAsistencia() {
 }
 
 function cerrarConfigTamanoAzarAsistencia(event) {
+    const tiempoControl = document.getElementById("tiempoAzarAsistencia");
+    if (tiempoControl) tiempoControl.value = tiempoAzarAsistencia;
+    actualizarVistaTiempoAzarAsistencia(tiempoAzarAsistencia);
     const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
     if (!modal) return;
     if (event && event.target !== modal) return;
@@ -22527,6 +22571,8 @@ function cerrarConfigTamanoAzarAsistencia(event) {
 }
 
 function abrirModalAzarAsistencia() {
+    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
+    if (progresoBarra) { progresoBarra.style.transition = "none"; progresoBarra.style.width = "0%"; }
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -22595,6 +22641,9 @@ function abrirModalAzarAsistencia() {
 }
 
 function cerrarModalAzarAsistencia(event) {
+    if (azarAsistenciaTemporizador) { clearTimeout(azarAsistenciaTemporizador); azarAsistenciaTemporizador = null; }
+    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
+    if (progresoBarra) { progresoBarra.style.transition = "none"; progresoBarra.style.width = "0%"; }
     const modal = document.getElementById("modalAzarAsistencia");
     if (!modal) return;
     if (event && event.target !== modal) return;
@@ -22663,7 +22712,17 @@ function elegirEstudianteAzarAsistencia() {
     mostrarNumeroRapido();
     azarAsistenciaAnimacion = setInterval(mostrarNumeroRapido, 65);
 
-    setTimeout(() => {
+    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
+    if (progresoBarra) {
+        progresoBarra.style.transition = "none";
+        progresoBarra.style.width = "0%";
+        requestAnimationFrame(() => {
+            progresoBarra.style.transition = `width ${tiempoAzarAsistencia}s linear`;
+            progresoBarra.style.width = "100%";
+        });
+    }
+
+    azarAsistenciaTemporizador = setTimeout(() => {
         if (azarAsistenciaAnimacion) {
             clearInterval(azarAsistenciaAnimacion);
             azarAsistenciaAnimacion = null;
