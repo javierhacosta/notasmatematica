@@ -1965,7 +1965,8 @@ td:first-child {
 }
 
 .azar-asistencia-numero.animando {
-    animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
+    animation: none;
+    will-change: transform;
 }
 
 @keyframes pulsoNumeroAzar {
@@ -22753,6 +22754,8 @@ function elegirEstudianteAzarAsistencia() {
     if (listaEl) listaEl.classList.add("oculto");
     if (nombreEl) nombreEl.innerHTML = "🎲 Eligiendo...";
     if (numeroEl) {
+        numeroEl.style.transform = "translateX(0)";
+        numeroEl.style.transition = "none";
         numeroEl.classList.add("animando");
         const velocidadParpadeo = velocidadNumeroAzarAsistencia > 0
             ? velocidadNumeroAzarAsistencia
@@ -22780,12 +22783,29 @@ function elegirEstudianteAzarAsistencia() {
     azarAsistenciaTiempoFinalizacion = performance.now() + duracion;
     azarAsistenciaAnimacion = true;
 
+    // El número se desplaza horizontalmente como una ruleta.
+    // La velocidad se mantiene alta al principio y disminuye progresivamente
+    // al acercarse al final, haciendo que se detenga suavemente en el elegido.
+    const elegidoFinal = candidatos[Math.floor(Math.random() * candidatos.length)];
+    const duracionTotal = tiempoNumeroAzarAsistencia * 1000;
+    const inicioAnimacion = performance.now();
+    let ultimoDesplazamiento = inicioAnimacion;
+    let posicionDesplazamiento = 0;
+
     const mezclar = (ahora) => {
-        if (ahora >= azarAsistenciaTiempoFinalizacion) {
+        const transcurrido = ahora - inicioAnimacion;
+        const progreso = Math.min(1, transcurrido / duracionTotal);
+        const desaceleracion = progreso * progreso;
+        const intervaloInicial = velocidadNumeroAzarAsistencia > 0
+            ? velocidadNumeroAzarAsistencia * 1000
+            : 55;
+        const intervaloActual = intervaloInicial + (260 - intervaloInicial) * desaceleracion;
+
+        if (progreso >= 1) {
             azarAsistenciaAnimacionFrame = null;
             azarAsistenciaAnimacion = null;
 
-            const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+            const elegido = elegidoFinal;
             azarAsistenciaEstudianteActual = elegido;
             const elegidos = obtenerElegidosAzarAsistencia();
             elegidos.push(String(elegido.id));
@@ -22793,6 +22813,7 @@ function elegirEstudianteAzarAsistencia() {
 
             if (numeroEl) {
                 numeroEl.textContent = textoVisibleAzarAsistencia(elegido);
+                numeroEl.style.transform = "translateX(0)";
                 const generoElegido = obtenerGeneroEstadistica(elegido.gen);
                 numeroEl.style.color = generoElegido === "mujer"
                     ? (configuracionAulaActual.colorMujer || "#e91e63")
@@ -22817,13 +22838,18 @@ function elegirEstudianteAzarAsistencia() {
             return;
         }
 
-        if (
-            velocidadNumeroAzarAsistencia === 0 ||
-            ahora - azarAsistenciaUltimoCambio >= velocidadNumeroAzarAsistencia * 1000
-        ) {
+        if (ahora - ultimoDesplazamiento >= intervaloActual) {
             mostrarNumeroRapido();
-            azarAsistenciaUltimoCambio = ahora;
+
+            // Deslizamiento de izquierda a derecha.
+            posicionDesplazamiento = posicionDesplazamiento >= 1 ? -1 : posicionDesplazamiento + 0.25;
+            if (numeroEl) {
+                numeroEl.style.transform = `translateX(${posicionDesplazamiento * 34}px)`;
+                numeroEl.style.transition = `transform ${Math.max(45, intervaloActual * 0.75)}ms ease-out`;
+            }
+            ultimoDesplazamiento = ahora;
         }
+
         azarAsistenciaAnimacionFrame = requestAnimationFrame(mezclar);
     };
 
