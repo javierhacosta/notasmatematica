@@ -1932,41 +1932,19 @@ td:first-child {
     font-weight: 900;
     color: #1557a6;
     min-height: .82em;
-    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
     user-select: none;
-    -webkit-user-select: none;
-    touch-action: pan-y;
-    cursor: grab;
-    -webkit-tap-highlight-color: transparent;
 }
 
 .azar-asistencia-numero.animando {
-    cursor: grabbing;
+    animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
 }
 
-.azar-numero-pista {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
-
-.azar-numero-item {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: max-content;
-    white-space: nowrap;
-    transform: translate(-50%, -50%);
-    will-change: transform, opacity;
-    pointer-events: none;
-    line-height: .82;
+@keyframes pulsoNumeroAzar {
+    from { transform: scale(.98); opacity: .78; }
+    to { transform: scale(1.02); opacity: 1; }
 }
 
 .azar-asistencia-nombre {
@@ -6960,7 +6938,7 @@ Cancelar
             <div id="azarAsistenciaNumero" class="azar-asistencia-numero">—</div>
 
             <div id="azarAsistenciaNombre" class="azar-asistencia-nombre">
-                Desliza el número grande ← →
+                Presiona «Elegir al azar»
             </div>
             <div class="azar-asistencia-ayuda">
                 Presiona el nombre para añadir una observación de asistencia.
@@ -6970,7 +6948,14 @@ Cancelar
         </div>
 
         <div class="azar-asistencia-acciones">
-<button type="button" class="boton-ver-por-elegir"
+          
+ <button type="button" class="boton-elegir-azar"
+                    id="botonElegirAzarAsistencia"
+                    onclick="elegirEstudianteAzarAsistencia()">
+                🎲 Elegir al azar
+            </button>
+
+  <button type="button" class="boton-ver-por-elegir"
                     id="botonVerPorElegirAzarAsistencia"
                     onclick="mostrarPorElegirAzarAsistencia()">
                 📋 Ver por elegir
@@ -22586,7 +22571,7 @@ function abrirModalAzarAsistencia() {
     }
 
     if (nombreEl) {
-        nombreEl.innerHTML = "Desliza el número grande ← →";
+        nombreEl.innerHTML = "Presiona «Elegir al azar»";
     }
 
     if (listaEl) {
@@ -22595,7 +22580,6 @@ function abrirModalAzarAsistencia() {
     }
 
     modal.classList.remove("oculto");
-    prepararGestoAzarAsistencia();
 
     if (!esHoyAzarAsistencia(fecha)) {
         alert("⚠️ Atención: la fecha de asistencia seleccionada no corresponde al día de hoy.");
@@ -22616,177 +22600,37 @@ function cerrarModalAzarAsistencia(event) {
     if (event && event.target !== modal) return;
 
     if (azarAsistenciaAnimacion) {
-        cancelAnimationFrame(azarAsistenciaAnimacion);
+        clearInterval(azarAsistenciaAnimacion);
         azarAsistenciaAnimacion = null;
     }
 
     modal.classList.add("oculto");
 }
 
-let azarAsistenciaGestoInicioX = 0;
-let azarAsistenciaGestoInicioY = 0;
-let azarAsistenciaGestoInicioTiempo = 0;
-let azarAsistenciaGestoActivo = false;
-let azarAsistenciaGestoPointerId = null;
-
-function colorNumeroAzarAsistencia(elemento, estudiante) {
-    if (!elemento) return;
-    const genero = obtenerGeneroEstadistica(estudiante?.gen);
-    if (genero === "mujer") {
-        elemento.style.color = configuracionAulaActual.colorMujer || "#e91e63";
-    } else if (genero === "varon") {
-        elemento.style.color = configuracionAulaActual.colorVaron || "#1976d2";
-    } else {
-        elemento.style.color = "#1557a6";
-    }
-}
-
-function prepararGestoAzarAsistencia() {
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    if (!numeroEl || numeroEl.dataset.gestoPreparado === "1") return;
-    numeroEl.dataset.gestoPreparado = "1";
-    numeroEl.addEventListener("pointerdown", iniciarGestoAzarAsistencia, {passive:false});
-    numeroEl.addEventListener("pointermove", moverGestoAzarAsistencia, {passive:false});
-    numeroEl.addEventListener("pointerup", terminarGestoAzarAsistencia, {passive:false});
-    numeroEl.addEventListener("pointercancel", terminarGestoAzarAsistencia, {passive:false});
-}
-
-function iniciarGestoAzarAsistencia(event) {
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    if (!numeroEl || numeroEl.classList.contains("animando")) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (!obtenerCandidatosAzarAsistencia().length) return;
-
-    azarAsistenciaGestoPointerId = event.pointerId;
-    azarAsistenciaGestoInicioX = event.clientX;
-    azarAsistenciaGestoInicioY = event.clientY;
-    azarAsistenciaGestoInicioTiempo = performance.now();
-    azarAsistenciaGestoActivo = true;
-    try { numeroEl.setPointerCapture(event.pointerId); } catch (_) {}
-    event.preventDefault();
-}
-
-function moverGestoAzarAsistencia(event) {
-    if (!azarAsistenciaGestoActivo || event.pointerId !== azarAsistenciaGestoPointerId) return;
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    const candidatos = obtenerCandidatosAzarAsistencia();
-    if (!numeroEl || !candidatos.length) return;
-
-    const dx = event.clientX - azarAsistenciaGestoInicioX;
-    const dy = event.clientY - azarAsistenciaGestoInicioY;
-    if (Math.abs(dy) > Math.abs(dx) * 1.25 && Math.abs(dx) < 20) return;
-
-    const direccion = dx < 0 ? -1 : 1;
-    const ancho = Math.max(numeroEl.clientWidth || 320, 320);
-    const desplazamiento = Math.max(-ancho, Math.min(ancho, dx));
-
-    let pista = numeroEl.querySelector(".azar-numero-pista");
-    let actual = pista?.children?.[0];
-    let siguiente = pista?.children?.[1];
-
-    // Crear la pareja solo al comenzar a arrastrar: número actual + siguiente.
-    if (!pista || !actual || !siguiente || siguiente.dataset.dir !== String(direccion)) {
-        const textoActual = numeroEl.textContent && numeroEl.textContent !== "—"
-            ? numeroEl.textContent
-            : textoVisibleAzarAsistencia(candidatos[0]);
-        let indice = candidatos.findIndex(c => textoVisibleAzarAsistencia(c) === textoActual);
-        if (indice < 0) indice = 0;
-        const indiceSiguiente = (indice + (direccion < 0 ? 1 : -1) + candidatos.length) % candidatos.length;
-
-        pista = document.createElement("div");
-        pista.className = "azar-numero-pista";
-        actual = document.createElement("div");
-        actual.className = "azar-numero-item";
-        actual.textContent = textoActual;
-        actual.style.transform = "translate(-50%, -50%)";
-        const estudianteActual = candidatos[indice];
-        colorNumeroAzarAsistencia(actual, estudianteActual);
-
-        siguiente = document.createElement("div");
-        siguiente.className = "azar-numero-item";
-        siguiente.textContent = textoVisibleAzarAsistencia(candidatos[indiceSiguiente]);
-        colorNumeroAzarAsistencia(siguiente, candidatos[indiceSiguiente]);
-        siguiente.dataset.dir = String(direccion);
-        const entrada = direccion < 0 ? ancho : -ancho;
-        siguiente.style.transform = `translate(calc(-50% + ${entrada}px), -50%)`;
-        siguiente.style.opacity = ".35";
-
-        pista.append(actual, siguiente);
-        numeroEl.replaceChildren(pista);
-    }
-
-    const entrada = direccion < 0 ? ancho + desplazamiento : -ancho + desplazamiento;
-    actual.style.transition = "none";
-    siguiente.style.transition = "none";
-    actual.style.transform = `translate(calc(-50% + ${desplazamiento}px), -50%)`;
-    siguiente.style.transform = `translate(calc(-50% + ${entrada}px), -50%)`;
-
-    const progreso = Math.min(1, Math.abs(desplazamiento) / Math.max(100, ancho * .72));
-    actual.style.opacity = String(1 - progreso * .18);
-    siguiente.style.opacity = String(.35 + progreso * .65);
-    event.preventDefault();
-}
-
-function terminarGestoAzarAsistencia(event) {
-    if (!azarAsistenciaGestoActivo || event.pointerId !== azarAsistenciaGestoPointerId) return;
-
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    const distancia = event.clientX - azarAsistenciaGestoInicioX;
-    const distanciaAbs = Math.abs(distancia);
-    const tiempo = Math.max(1, performance.now() - azarAsistenciaGestoInicioTiempo);
-
-    azarAsistenciaGestoActivo = false;
-    azarAsistenciaGestoPointerId = null;
-    if (numeroEl) {
-        try { numeroEl.releasePointerCapture(event.pointerId); } catch (_) {}
-    }
-
-    // Tocar no hace nada: tiene que existir un deslizamiento horizontal.
-    if (distanciaAbs < 35) {
-        if (numeroEl) {
-            const pista = numeroEl.querySelector(".azar-numero-pista");
-            const actual = pista?.children?.[0];
-            const siguiente = pista?.children?.[1];
-            const ancho = Math.max(numeroEl.clientWidth || 320, 320);
-            const dir = siguiente?.dataset.dir === "-1" ? -1 : 1;
-            if (actual) {
-                actual.style.transition = "transform 180ms ease, opacity 180ms ease";
-                actual.style.transform = "translate(-50%, -50%)";
-                actual.style.opacity = "1";
-            }
-            if (siguiente) {
-                siguiente.style.transition = "transform 180ms ease, opacity 180ms ease";
-                const entrada = dir < 0 ? ancho : -ancho;
-                siguiente.style.transform = `translate(calc(-50% + ${entrada}px), -50%)`;
-                siguiente.style.opacity = ".35";
-            }
-        }
-        return;
-    }
-
-    const velocidad = distanciaAbs / tiempo;
-    const duracion = Math.round(Math.max(1000, Math.min(8000, 1000 + velocidad * 7000)));
-    elegirEstudianteAzarAsistencia(distancia < 0 ? -1 : 1, duracion);
-}
-
 function actualizarEstadoBotonElegirAzarAsistencia() {
-    const numeroEl = document.getElementById("azarAsistenciaNumero");
-    if (!numeroEl) return;
+    const boton = document.getElementById("botonElegirAzarAsistencia");
+    if (!boton) return;
+
     const candidatos = obtenerCandidatosAzarAsistencia();
-    numeroEl.style.cursor = candidatos.length ? "grab" : "not-allowed";
-    numeroEl.setAttribute("aria-label", candidatos.length
-        ? "Desliza el número hacia la izquierda o derecha para hacer el sorteo"
-        : "Todos los estudiantes ya fueron elegidos");
+    boton.disabled = candidatos.length === 0;
+
+    if (candidatos.length === 0) {
+        boton.textContent = "✓ Todos elegidos";
+    } else {
+        boton.textContent = "🎲 Elegir al azar";
+    }
 }
 
-function elegirEstudianteAzarAsistencia(direccion = 1, duracionForzada = 1000) {
+function elegirEstudianteAzarAsistencia() {
     if (azarAsistenciaAnimacion) return;
 
     const numeroEl = document.getElementById("azarAsistenciaNumero");
     const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const boton = document.getElementById("botonElegirAzarAsistencia");
     const listaEl = document.getElementById("azarAsistenciaLista");
+
     const candidatos = obtenerCandidatosAzarAsistencia();
-    if (!numeroEl) return;
+
     if (!candidatos.length) {
         alert("✓ Ya fueron elegidos todos los estudiantes del curso para esta fecha.");
         actualizarEstadoBotonElegirAzarAsistencia();
@@ -22795,123 +22639,123 @@ function elegirEstudianteAzarAsistencia(direccion = 1, duracionForzada = 1000) {
 
     if (listaEl) listaEl.classList.add("oculto");
     if (nombreEl) nombreEl.innerHTML = "🎲 Eligiendo...";
-    numeroEl.classList.add("animando");
-
-    const duracion = Math.max(1000, Math.min(8000, Number(duracionForzada) || 1000));
-    const sentido = direccion < 0 ? -1 : 1;
-    const ancho = Math.max(numeroEl.clientWidth || 320, 320);
-    const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
-
-    let textoActual = numeroEl.textContent && numeroEl.textContent !== "—"
-        ? numeroEl.textContent
-        : textoVisibleAzarAsistencia(candidatos[0]);
-    let indiceActual = candidatos.findIndex(c => textoVisibleAzarAsistencia(c) === textoActual);
-    if (indiceActual < 0) indiceActual = 0;
-
-    const pista = document.createElement("div");
-    pista.className = "azar-numero-pista";
-    let actual = document.createElement("div");
-    actual.className = "azar-numero-item";
-    actual.textContent = textoActual;
-    colorNumeroAzarAsistencia(actual, candidatos[indiceActual]);
-    let siguiente = document.createElement("div");
-    siguiente.className = "azar-numero-item";
-    let indiceSiguiente = (indiceActual + (sentido < 0 ? 1 : -1) + candidatos.length) % candidatos.length;
-    siguiente.textContent = textoVisibleAzarAsistencia(candidatos[indiceSiguiente]);
-    colorNumeroAzarAsistencia(siguiente, candidatos[indiceSiguiente]);
-    siguiente.style.transform = `translate(calc(-50% + ${sentido < 0 ? ancho : -ancho}px), -50%)`;
-    siguiente.style.opacity = ".2";
-    pista.append(actual, siguiente);
-    numeroEl.replaceChildren(pista);
-
-    const pasos = Math.max(5, Math.min(32, Math.round(duracion / 250)));
-    const pasoMs = Math.max(125, Math.floor((duracion * .78) / pasos));
-    const inicio = performance.now();
-    let hechos = 0;
-
-    function avanzar(ahora) {
-        if (!azarAsistenciaAnimacion) return;
-        if (ahora - inicio >= duracion * .78 || hechos >= pasos) {
-            finalizar();
-            return;
-        }
-        hechos++;
-        const viejo = actual;
-        const nuevo = siguiente;
-        viejo.style.transition = `transform ${pasoMs}ms cubic-bezier(.22,.61,.36,1), opacity ${Math.min(220,pasoMs)}ms ease`;
-        nuevo.style.transition = `transform ${pasoMs}ms cubic-bezier(.22,.61,.36,1), opacity ${Math.min(220,pasoMs)}ms ease`;
-        viejo.style.transform = `translate(calc(-50% + ${sentido * ancho}px), -50%)`;
-        viejo.style.opacity = ".08";
-        nuevo.style.transform = "translate(-50%, -50%)";
-        nuevo.style.opacity = "1";
-
-        indiceActual = indiceSiguiente;
-        indiceSiguiente = (indiceActual + (sentido < 0 ? 1 : -1) + candidatos.length) % candidatos.length;
-
-        setTimeout(() => {
-            if (!azarAsistenciaAnimacion) return;
-            const nuevoSiguiente = document.createElement("div");
-            nuevoSiguiente.className = "azar-numero-item";
-            nuevoSiguiente.textContent = textoVisibleAzarAsistencia(candidatos[indiceSiguiente]);
-            colorNumeroAzarAsistencia(nuevoSiguiente, candidatos[indiceSiguiente]);
-            nuevoSiguiente.style.transform = `translate(calc(-50% + ${sentido < 0 ? ancho : -ancho}px), -50%)`;
-            nuevoSiguiente.style.opacity = ".2";
-            pista.replaceChildren(nuevo, nuevoSiguiente);
-            actual = nuevo;
-            siguiente = nuevoSiguiente;
-        }, Math.max(0, pasoMs - 20));
-
-        azarAsistenciaAnimacion = requestAnimationFrame(avanzar);
+    if (numeroEl) numeroEl.classList.add("animando");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "🎲 Eligiendo...";
     }
 
-    function finalizar() {
+    const mostrarNumeroRapido = () => {
+        const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
+        if (numeroEl) {
+            numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
+            const generoCandidato = obtenerGeneroEstadistica(candidato.gen);
+            if (generoCandidato === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoCandidato === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
+        }
+    };
+
+    mostrarNumeroRapido();
+    azarAsistenciaAnimacion = setInterval(mostrarNumeroRapido, 65);
+
+    setTimeout(() => {
         if (azarAsistenciaAnimacion) {
-            cancelAnimationFrame(azarAsistenciaAnimacion);
+            clearInterval(azarAsistenciaAnimacion);
             azarAsistenciaAnimacion = null;
         }
-        const finalEl = document.createElement("div");
-        finalEl.className = "azar-numero-item";
-        finalEl.textContent = textoVisibleAzarAsistencia(elegido);
-        colorNumeroAzarAsistencia(finalEl, elegido);
-        finalEl.style.transform = `translate(calc(-50% + ${sentido < 0 ? ancho : -ancho}px), -50%)`;
-        finalEl.style.opacity = ".15";
-        pista.appendChild(finalEl);
 
-        requestAnimationFrame(() => {
-            const finalMs = Math.max(650, Math.min(1100, duracion * .22));
-            actual.style.transition = `transform ${finalMs}ms cubic-bezier(.2,.75,.25,1), opacity ${finalMs}ms ease`;
-            finalEl.style.transition = `transform ${finalMs}ms cubic-bezier(.2,.75,.25,1), opacity ${finalMs}ms ease`;
-            actual.style.transform = `translate(calc(-50% + ${sentido * ancho}px), -50%)`;
-            actual.style.opacity = ".05";
-            finalEl.style.transform = "translate(-50%, -50%)";
-            finalEl.style.opacity = "1";
-        });
+        const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+        azarAsistenciaEstudianteActual = elegido;
 
-        setTimeout(() => {
-            numeroEl.classList.remove("animando");
+        const elegidos = obtenerElegidosAzarAsistencia();
+        elegidos.push(String(elegido.id));
+        guardarElegidosAzarAsistencia(elegidos);
+
+        if (numeroEl) {
             numeroEl.textContent = textoVisibleAzarAsistencia(elegido);
-            colorNumeroAzarAsistencia(numeroEl, elegido);
-            azarAsistenciaEstudianteActual = elegido;
-            const elegidos = obtenerElegidosAzarAsistencia();
-            if (!elegidos.some(id => String(id) === String(elegido.id))) {
-                elegidos.push(String(elegido.id));
-                guardarElegidosAzarAsistencia(elegidos);
+            const generoElegido = obtenerGeneroEstadistica(elegido.gen);
+            if (generoElegido === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoElegido === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
             }
-            if (nombreEl) {
-                nombreEl.innerHTML = "";
-                const botonNombre = document.createElement("button");
-                botonNombre.type = "button";
-                botonNombre.textContent = construirNombreCortoAula(elegido);
-                botonNombre.title = "Añadir una observación de asistencia";
-                botonNombre.addEventListener("click", () => abrirAsistenciaDesdeAzar(elegido.id));
-                nombreEl.appendChild(botonNombre);
-            }
-            actualizarEstadoBotonElegirAzarAsistencia();
-        }, Math.max(700, Math.min(1200, duracion * .24)));
+            numeroEl.classList.remove("animando");
+        }
+
+        if (nombreEl) {
+            nombreEl.innerHTML = "";
+            const botonNombre = document.createElement("button");
+            botonNombre.type = "button";
+            botonNombre.textContent = construirNombreCortoAula(elegido);
+            botonNombre.title = "Añadir una observación de asistencia";
+            botonNombre.addEventListener("click", function() {
+                abrirAsistenciaDesdeAzar(elegido.id);
+            });
+            nombreEl.appendChild(botonNombre);
+        }
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+    }, 2000);
+}
+
+function abrirAsistenciaDesdeAzar(estudianteId) {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona primero una fecha de asistencia.");
+        return;
     }
 
-    azarAsistenciaAnimacion = requestAnimationFrame(avanzar);
+    const modalAzar = document.getElementById("modalAzarAsistencia");
+    if (modalAzar) {
+        modalAzar.dataset.azarlOcultoTemporalmente = "true";
+        modalAzar.style.display = "none";
+    }
+
+    abrirAsistenciaEstudianteDesdeAula(estudianteId);
+
+    setTimeout(() => {
+        const modalAsistencia = document.getElementById("modalAsistenciaEstudianteAula");
+        if (modalAsistencia) {
+            modalAsistencia.style.zIndex = "10050";
+
+            if (modalAsistencia.dataset.azarlVigilando !== "true") {
+                modalAsistencia.dataset.azarlVigilando = "true";
+
+                const observer = new MutationObserver(() => {
+                    const visible = getComputedStyle(modalAsistencia).display !== "none";
+
+                    if (!visible) {
+                        observer.disconnect();
+                        delete modalAsistencia.dataset.azarlVigilando;
+
+                        const azar = document.getElementById("modalAzarAsistencia");
+                        if (azar && azar.dataset.azarlOcultoTemporalmente === "true") {
+                            azar.style.display = "flex";
+                            azar.style.zIndex = "10100";
+                            delete azar.dataset.azarlOcultoTemporalmente;
+                        }
+                    }
+                });
+
+                observer.observe(modalAsistencia, {
+                    attributes: true,
+                    attributeFilter: ["style", "class"]
+                });
+            }
+        }
+
+        const campo = document.getElementById("observacionAsistenciaAulaIndividual");
+        if (campo) campo.focus();
+    }, 80);
 }
+
 
 function mostrarPorElegirAzarAsistencia() {
     const listaEl = document.getElementById("azarAsistenciaLista");
