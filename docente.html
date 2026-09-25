@@ -16894,25 +16894,50 @@ async function exportarExcel() {
         }
 
 
-        const {
-            data: todasActividades,
-            error: errorActividades
-        } =
-        await supabaseClient
-        .from("actividades")
-        .select(
-            "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
-        )
-        .eq(
-            "trimestre",
-            3
-        )
-        .order("orden");
+        /*
+         * Supabase puede devolver como máximo el primer bloque de filas
+         * si no se pagina la consulta. En la exportación esto hacía que
+         * asistencias y actividades posteriores quedaran fuera del Excel.
+         * Solo se corrige aquí la exportación, cargando todos los registros
+         * por bloques antes de construir las hojas.
+         */
+        const obtenerTodosLosRegistrosExcel = async (crearConsulta) => {
+            const resultados = [];
+            const tamanoPagina = 1000;
+            let desde = 0;
+
+            while (true) {
+                const { data, error } = await crearConsulta()
+                    .range(desde, desde + tamanoPagina - 1);
+
+                if (error) {
+                    throw error;
+                }
+
+                const bloque = data || [];
+                resultados.push(...bloque);
+
+                if (bloque.length < tamanoPagina) {
+                    break;
+                }
+
+                desde += tamanoPagina;
+            }
+
+            return resultados;
+        };
 
 
-        if (errorActividades) {
-            throw errorActividades;
-        }
+        const todasActividades =
+            await obtenerTodosLosRegistrosExcel(() =>
+                supabaseClient
+                    .from("actividades")
+                    .select(
+                        "id,curso,trimestre,categoria,nombre,fecha,hora_inicio,hora_fin,orden,puntaje_maximo"
+                    )
+                    .eq("trimestre", 3)
+                    .order("orden")
+            );
 
 
         const idsActividades =
@@ -16929,28 +16954,15 @@ async function exportarExcel() {
             idsActividades.length > 0
         ) {
 
-            const {
-                data,
-                error
-            } =
-            await supabaseClient
-            .from("calificaciones")
-            .select(
-                "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
-            )
-            .in(
-                "actividad_id",
-                idsActividades
-            );
-
-
-            if (error) {
-                throw error;
-            }
-
-
             todasCalificaciones =
-            data || [];
+                await obtenerTodosLosRegistrosExcel(() =>
+                    supabaseClient
+                        .from("calificaciones")
+                        .select(
+                            "actividad_id,estudiante_id,nota,observacion,fecha_entrega"
+                        )
+                        .in("actividad_id", idsActividades)
+                );
 
         }
 
@@ -16997,29 +17009,16 @@ async function exportarExcel() {
             idsEstudiantes.length > 0
         ) {
 
-            const {
-                data,
-                error
-            } =
-            await supabaseClient
-            .from("asistencia")
-            .select(
-                "estudiante_id,fecha,estado,hora,observacion"
-            )
-            .in(
-                "estudiante_id",
-                idsEstudiantes
-            )
-            .order("fecha");
-
-
-            if (error) {
-                throw error;
-            }
-
-
             todaAsistencia =
-            data || [];
+                await obtenerTodosLosRegistrosExcel(() =>
+                    supabaseClient
+                        .from("asistencia")
+                        .select(
+                            "estudiante_id,fecha,estado,hora,observacion"
+                        )
+                        .in("estudiante_id", idsEstudiantes)
+                        .order("fecha")
+                );
 
         }
 
@@ -17028,19 +17027,13 @@ async function exportarExcel() {
         // Se consultan aparte porque no generan registros en la tabla asistencia.
         let todosTiposDiaAsistencia = [];
 
-        const {
-            data: dataTiposDiaAsistencia,
-            error: errorTiposDiaAsistencia
-        } = await supabaseClient
-            .from("asistencia_tipos_dia")
-            .select("curso,fecha,tipo")
-            .order("fecha");
-
-        if (errorTiposDiaAsistencia) {
-            throw errorTiposDiaAsistencia;
-        }
-
-        todosTiposDiaAsistencia = dataTiposDiaAsistencia || [];
+        todosTiposDiaAsistencia =
+            await obtenerTodosLosRegistrosExcel(() =>
+                supabaseClient
+                    .from("asistencia_tipos_dia")
+                    .select("curso,fecha,tipo")
+                    .order("fecha")
+            );
 
 
         const codigoAsistencia = {
