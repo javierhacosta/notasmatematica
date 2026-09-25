@@ -1942,11 +1942,25 @@ td:first-child {
     cursor: grab;
     touch-action: pan-y;
     -webkit-tap-highlight-color: transparent;
-    transition: transform .12s ease, opacity .12s ease;
+    transition: transform .16s cubic-bezier(.22,.61,.36,1), opacity .16s ease;
     will-change: transform, opacity;
+    overflow: visible;
 }
 
 .azar-asistencia-numero:active { cursor: grabbing; }
+.azar-asistencia-numero.numero-deslizando-izquierda { animation: numeroCambioIzquierda .18s cubic-bezier(.22,.61,.36,1); }
+.azar-asistencia-numero.numero-deslizando-derecha { animation: numeroCambioDerecha .18s cubic-bezier(.22,.61,.36,1); }
+
+@keyframes numeroCambioIzquierda {
+    0% { transform: translateX(70px) scale(.97); opacity: .15; }
+    42% { transform: translateX(0) scale(1); opacity: 1; }
+    100% { transform: translateX(-18px) scale(1); opacity: 1; }
+}
+@keyframes numeroCambioDerecha {
+    0% { transform: translateX(-70px) scale(.97); opacity: .15; }
+    42% { transform: translateX(0) scale(1); opacity: 1; }
+    100% { transform: translateX(18px) scale(1); opacity: 1; }
+}
 
 .azar-asistencia-numero.animando {
     animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
@@ -22606,9 +22620,10 @@ function cerrarModalAzarAsistencia(event) {
     if (event && event.target !== modal) return;
 
     if (azarAsistenciaAnimacion) {
-        clearInterval(azarAsistenciaAnimacion);
+        cancelAnimationFrame(azarAsistenciaAnimacion);
         azarAsistenciaAnimacion = null;
     }
+    azarAsistenciaMovimientoActivo = false;
 
     modal.classList.add("oculto");
 }
@@ -22717,18 +22732,33 @@ function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
     const inicio = performance.now();
     const fin = inicio + duracion;
 
+    const cambiarNumeroConDeslizamiento = () => {
+        if (!numeroEl) return;
+        const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
+
+        numeroEl.classList.remove("numero-deslizando-izquierda", "numero-deslizando-derecha");
+        void numeroEl.offsetWidth;
+        numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
+        aplicarColorNumeroAzarAsistencia(candidato, numeroEl);
+        numeroEl.classList.add(
+            direccion === "izquierda"
+                ? "numero-deslizando-izquierda"
+                : "numero-deslizando-derecha"
+        );
+    };
+
     const mostrarNumeroRapido = () => {
         const ahora = performance.now();
         const progreso = Math.min(1, (ahora - inicio) / duracion);
-        const intervaloObjetivo = 38 + Math.pow(progreso, 3) * 260;
+
+        // Al principio los números pasan con rapidez; al final se separan
+        // cada vez más para crear una desaceleración claramente visible.
+        const intervaloObjetivo = 115 + Math.pow(progreso, 3.2) * 430;
         if (ahora - ultimoCambio >= intervaloObjetivo) {
             ultimoCambio = ahora;
-            const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
-            if (numeroEl) {
-                numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
-                aplicarColorNumeroAzarAsistencia(candidato, numeroEl);
-            }
+            cambiarNumeroConDeslizamiento();
         }
+
         if (ahora < fin) {
             azarAsistenciaAnimacion = requestAnimationFrame(mostrarNumeroRapido);
         } else {
