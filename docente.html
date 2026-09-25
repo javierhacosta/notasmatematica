@@ -230,21 +230,30 @@ input, select {
     font-weight: bold;
     color: #1557a6;
 }
-.azar-asistencia-progreso {
+.config-azar-tiempo-label {
+    margin-top: 18px;
+}
+.azar-titulo-con-espera {
+    min-width: 0;
+    flex: 1;
+}
+.azar-titulo-con-espera h3 {
+    margin: 0;
+}
+.barra-espera-azar-asistencia {
     width: 100%;
     height: 2px;
-    background: #e9e9e9;
-    flex-shrink: 0;
+    margin-top: 5px;
+    background: rgba(255,255,255,.25);
     overflow: hidden;
+    border-radius: 2px;
 }
-
-.azar-asistencia-progreso-barra {
+.progreso-espera-azar-asistencia {
     width: 0%;
     height: 100%;
-    background: #7b1fa2;
-    transition: width 0s linear;
+    background: white;
+    transition: width linear;
 }
-
 .config-azar-tipo-eleccion {
     margin-top: 18px;
     border-top: 1px solid #eee;
@@ -6935,12 +6944,17 @@ Cancelar
      onclick="cerrarModalAzarAsistencia(event)">
     <div class="modal-azar-asistencia" onclick="event.stopPropagation()">
         <div class="modal-cabecera">
-            <h3 id="tituloAzarAsistencia">🎲 Estudiante al azar</h3>
+            <div class="azar-titulo-con-espera">
+                <h3 id="tituloAzarAsistencia">🎲 Estudiante al azar</h3>
+                <div id="barraEsperaAzarAsistencia" class="barra-espera-azar-asistencia" aria-hidden="true">
+                    <div id="progresoEsperaAzarAsistencia" class="progreso-espera-azar-asistencia"></div>
+                </div>
+            </div>
             <div style="display:flex;align-items:center;gap:6px;">
                 <button type="button" class="boton-config-azar"
                         onclick="abrirConfigTamanoAzarAsistencia()"
-                        title="Configurar estudiante al azar"
-                        aria-label="Configurar estudiante al azar">⚙️</button>
+                        title="Configurar tamaño del número"
+                        aria-label="Configurar tamaño del número">⚙️</button>
                 <button type="button" class="boton-cerrar-modal"
                         onclick="cerrarModalAzarAsistencia()">×</button>
             </div>
@@ -6950,9 +6964,6 @@ Cancelar
             <div id="azarAsistenciaFecha" class="azar-asistencia-fecha"></div>
             <div id="azarAsistenciaAvisoFecha" class="azar-asistencia-aviso-fecha oculto"></div>
 
-            <div class="azar-asistencia-progreso" aria-hidden="true">
-                <div id="azarAsistenciaProgresoBarra" class="azar-asistencia-progreso-barra"></div>
-            </div>
             <div id="azarAsistenciaNumero" class="azar-asistencia-numero">—</div>
 
             <div id="azarAsistenciaNombre" class="azar-asistencia-nombre">
@@ -6999,7 +7010,7 @@ Cancelar
      onclick="cerrarConfigTamanoAzarAsistencia(event)">
     <div class="modal-config-azar" onclick="event.stopPropagation()">
         <div class="modal-cabecera">
-            <h3>⚙️ Configuración del azar</h3>
+            <h3>⚙️ Tamaño del número</h3>
             <button type="button" class="boton-cerrar-modal"
                     onclick="cerrarConfigTamanoAzarAsistencia()">×</button>
         </div>
@@ -7012,13 +7023,13 @@ Cancelar
                    oninput="actualizarVistaTamanoAzarAsistencia(this.value)">
             <div id="valorTamanoNumeroAzarAsistencia" class="config-azar-valor">200 px</div>
 
-            <label for="tiempoAzarAsistencia" style="margin-top:18px;">Tiempo</label>
-            <input id="tiempoAzarAsistencia"
+            <label for="tiempoNumeroAzarAsistencia" class="config-azar-tiempo-label">Tiempo</label>
+            <input id="tiempoNumeroAzarAsistencia"
                    class="config-azar-control"
                    type="range"
                    min="1" max="60" step="1" value="2"
                    oninput="actualizarVistaTiempoAzarAsistencia(this.value)">
-            <div id="valorTiempoAzarAsistencia" class="config-azar-valor">2 seg</div>
+            <div id="valorTiempoNumeroAzarAsistencia" class="config-azar-valor">2 segundos</div>
 
             <div class="config-azar-tipo-eleccion">
                 <label>Forma de elección</label>
@@ -7473,7 +7484,6 @@ let configuracionHorarioAsistencia = { hora_entrada: "", tolerancia_minutos: 0, 
 let azarAsistenciaCursoFecha = "";
 let azarAsistenciaEstudianteActual = null;
 let azarAsistenciaAnimacion = null;
-let azarAsistenciaTemporizador = null;
 
 
 /* =====================================================
@@ -8942,8 +8952,7 @@ function iniciarPulsacionLargaHoraAsistencia(event) {
         pulsacionLargaHoraAsistencia = true;
         const controlesHora = document.getElementById("controlesHoraAsistencia");
         if (controlesHora) controlesHora.classList.remove("oculto");
-        azarAsistenciaTemporizador = null;
-    }, tiempoAzarAsistencia * 1000);
+    }, tiempoNumeroAzarAsistencia * 1000);
 }
 
 function finalizarPulsacionHoraAsistencia() {
@@ -22460,10 +22469,11 @@ function obtenerCandidatosAzarAsistencia() {
 
 const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
 const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
-const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoAzarAsistencia";
-let tiempoAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
+const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoNumeroAzarAsistencia";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
+let tiempoNumeroAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
+let azarAsistenciaTiempoFinalizacion = null;
 
 function obtenerTipoEleccionAzarAsistencia() {
     const tiposValidos = ["numero", "inicial", "varones", "mujeres"];
@@ -22505,15 +22515,17 @@ function aplicarTamanoNumeroAzarAsistencia() {
 }
 
 function abrirConfigTamanoAzarAsistencia() {
-    const tiempoControl = document.getElementById("tiempoAzarAsistencia");
-    if (tiempoControl) tiempoControl.value = tiempoAzarAsistencia;
-    actualizarVistaTiempoAzarAsistencia(tiempoAzarAsistencia);
     const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     if (!modal || !control) return;
 
     control.value = String(tamanoNumeroAzarAsistencia);
     actualizarVistaTamanoAzarAsistencia(control.value);
+    const controlTiempo = document.getElementById("tiempoNumeroAzarAsistencia");
+    if (controlTiempo) {
+        controlTiempo.value = String(tiempoNumeroAzarAsistencia);
+        actualizarVistaTiempoAzarAsistencia(controlTiempo.value);
+    }
     aplicarTipoEleccionAzarAsistencia();
     modal.classList.remove("oculto");
 }
@@ -22529,17 +22541,18 @@ function actualizarVistaTamanoAzarAsistencia(valor) {
 
 function actualizarVistaTiempoAzarAsistencia(valor) {
     const tiempo = Math.max(1, Math.min(60, Number(valor) || 2));
-    const valorEl = document.getElementById("valorTiempoAzarAsistencia");
-    if (valorEl) valorEl.textContent = `${tiempo} seg`;
+    const valorEl = document.getElementById("valorTiempoNumeroAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${tiempo} ${tiempo === 1 ? "segundo" : "segundos"}`;
 }
 
 function guardarTamanoAzarAsistencia() {
-    tiempoAzarAsistencia = Math.max(1, Math.min(60, Number(document.getElementById("tiempoAzarAsistencia")?.value) || 2));
-    localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempoAzarAsistencia));
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
+    const controlTiempo = document.getElementById("tiempoNumeroAzarAsistencia");
+    const tiempo = Math.max(1, Math.min(60, Number(controlTiempo?.value) || 2));
 
     tamanoNumeroAzarAsistencia = numero;
+    tiempoNumeroAzarAsistencia = tiempo;
 
     const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
     const tipoSeleccionado = radioSeleccionado?.value || "numero";
@@ -22549,6 +22562,7 @@ function guardarTamanoAzarAsistencia() {
 
     localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
     localStorage.setItem(CLAVE_TIPO_AZAR_ASISTENCIA, tipoEleccionAzarAsistencia);
+    localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempo));
 
     aplicarTamanoNumeroAzarAsistencia();
     aplicarTipoEleccionAzarAsistencia();
@@ -22557,9 +22571,6 @@ function guardarTamanoAzarAsistencia() {
 }
 
 function cerrarConfigTamanoAzarAsistencia(event) {
-    const tiempoControl = document.getElementById("tiempoAzarAsistencia");
-    if (tiempoControl) tiempoControl.value = tiempoAzarAsistencia;
-    actualizarVistaTiempoAzarAsistencia(tiempoAzarAsistencia);
     const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
     if (!modal) return;
     if (event && event.target !== modal) return;
@@ -22567,12 +22578,35 @@ function cerrarConfigTamanoAzarAsistencia(event) {
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     if (control) control.value = String(tamanoNumeroAzarAsistencia);
     actualizarVistaTamanoAzarAsistencia(tamanoNumeroAzarAsistencia);
+    const controlTiempo = document.getElementById("tiempoNumeroAzarAsistencia");
+    if (controlTiempo) {
+        controlTiempo.value = String(tiempoNumeroAzarAsistencia);
+        actualizarVistaTiempoAzarAsistencia(tiempoNumeroAzarAsistencia);
+    }
     modal.classList.add("oculto");
 }
 
+function reiniciarBarraEsperaAzarAsistencia() {
+    const progreso = document.getElementById("progresoEsperaAzarAsistencia");
+    if (!progreso) return;
+    progreso.style.transition = "none";
+    progreso.style.width = "0%";
+}
+
+function iniciarBarraEsperaAzarAsistencia() {
+    const progreso = document.getElementById("progresoEsperaAzarAsistencia");
+    if (!progreso) return;
+    progreso.style.transition = "none";
+    progreso.style.width = "0%";
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            progreso.style.transition = `width ${tiempoNumeroAzarAsistencia}s linear`;
+            progreso.style.width = "100%";
+        });
+    });
+}
+
 function abrirModalAzarAsistencia() {
-    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
-    if (progresoBarra) { progresoBarra.style.transition = "none"; progresoBarra.style.width = "0%"; }
     if (!cursoSeleccionado) {
         alert("Primero selecciona un curso.");
         return;
@@ -22608,6 +22642,8 @@ function abrirModalAzarAsistencia() {
             : "⚠️ La fecha seleccionada no corresponde al día de hoy. El azar se guardará igualmente para la fecha seleccionada.";
     }
 
+    reiniciarBarraEsperaAzarAsistencia();
+
     if (numeroEl) {
         numeroEl.textContent = "—";
         numeroEl.style.color = "#1557a6";
@@ -22641,9 +22677,6 @@ function abrirModalAzarAsistencia() {
 }
 
 function cerrarModalAzarAsistencia(event) {
-    if (azarAsistenciaTemporizador) { clearTimeout(azarAsistenciaTemporizador); azarAsistenciaTemporizador = null; }
-    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
-    if (progresoBarra) { progresoBarra.style.transition = "none"; progresoBarra.style.width = "0%"; }
     const modal = document.getElementById("modalAzarAsistencia");
     if (!modal) return;
     if (event && event.target !== modal) return;
@@ -22652,6 +22685,11 @@ function cerrarModalAzarAsistencia(event) {
         clearInterval(azarAsistenciaAnimacion);
         azarAsistenciaAnimacion = null;
     }
+    if (azarAsistenciaTiempoFinalizacion) {
+        clearTimeout(azarAsistenciaTiempoFinalizacion);
+        azarAsistenciaTiempoFinalizacion = null;
+    }
+    reiniciarBarraEsperaAzarAsistencia();
 
     modal.classList.add("oculto");
 }
@@ -22710,19 +22748,11 @@ function elegirEstudianteAzarAsistencia() {
     };
 
     mostrarNumeroRapido();
+    iniciarBarraEsperaAzarAsistencia();
     azarAsistenciaAnimacion = setInterval(mostrarNumeroRapido, 65);
 
-    const progresoBarra = document.getElementById("azarAsistenciaProgresoBarra");
-    if (progresoBarra) {
-        progresoBarra.style.transition = "none";
-        progresoBarra.style.width = "0%";
-        requestAnimationFrame(() => {
-            progresoBarra.style.transition = `width ${tiempoAzarAsistencia}s linear`;
-            progresoBarra.style.width = "100%";
-        });
-    }
-
-    azarAsistenciaTemporizador = setTimeout(() => {
+    azarAsistenciaTiempoFinalizacion = setTimeout(() => {
+        azarAsistenciaTiempoFinalizacion = null;
         if (azarAsistenciaAnimacion) {
             clearInterval(azarAsistenciaAnimacion);
             azarAsistenciaAnimacion = null;
