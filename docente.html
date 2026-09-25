@@ -22147,83 +22147,1987 @@ async function restaurarCambioHistorial(historialId) {
 
 
 /* =====================================================
-   CARGA DIFERIDA DE AZAR Y ASIENTOS
-   Estos módulos no se descargan/ejecutan al iniciar la aplicación.
-   Se cargan únicamente cuando se abre cada función.
+   NUEVO: ELECCIÓN ALEATORIA DE ESTUDIANTE EN ASISTENCIA
 ===================================================== */
+
+function claveAzarAsistencia() {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    return `${String(cursoSeleccionado || "").trim()}__${fecha}`;
+}
 
 const TABLA_AZAR_ASISTENCIA_BD = "azar_estudiantes_elegidos";
 const TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD = "azar_estudiantes_descartados";
-const TABLA_DISTRIBUCION_AULA_BD = "distribuciones_aula";
 
-let moduloAzarCargando = null;
-let moduloAsientosCargando = null;
+function obtenerDescartadosAzarAsistencia() {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return [];
 
-function cargarScriptDiferido(src, id) {
-    return new Promise((resolve, reject) => {
-        const existente = document.getElementById(id);
-        if (existente) {
-            if (existente.dataset.cargado === "true") {
-                resolve();
-                return;
-            }
-            existente.addEventListener("load", () => resolve(), { once: true });
-            existente.addEventListener("error", () => reject(new Error("No se pudo cargar " + src)), { once: true });
-            return;
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaDescartados") || "{}");
+        const lista = datos[clave];
+        return Array.isArray(lista) ? lista.map(String) : [];
+    } catch (error) {
+        console.warn("No se pudo leer la lista de estudiantes descartados del azar:", error);
+        return [];
+    }
+}
+
+async function guardarDescartadosAzarAsistencia(lista) {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return;
+
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
+    // Guardar en Supabase primero. Así, si la BD rechaza la operación,
+    // no se oculta el error sobrescribiendo el estado local.
+    await sincronizarDescartadosAzarAsistenciaBD(listaNormalizada);
+
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaDescartados") || "{}");
+        datos[clave] = listaNormalizada;
+        localStorage.setItem("azarAsistenciaDescartados", JSON.stringify(datos));
+    } catch (error) {
+        console.warn("No se pudo guardar la lista de estudiantes descartados del azar:", error);
+    }
+}
+
+async function cargarDescartadosAzarAsistenciaBD() {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+            .select("estudiante_id")
+            .eq("curso", curso)
+            .eq("fecha", fecha);
+
+        if (error) throw error;
+
+        const listaBD = (data || []).map(r => String(r.estudiante_id));
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaDescartados") || "{}");
+        datos[`${curso}__${fecha}`] = listaBD;
+        localStorage.setItem("azarAsistenciaDescartados", JSON.stringify(datos));
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+
+        const listaEl = document.getElementById("azarAsistenciaLista");
+        if (listaEl && !listaEl.classList.contains("oculto")) {
+            mostrarPorElegirAzarAsistencia();
         }
+    } catch (error) {
+        console.warn("No se pudo cargar desde BD la lista de descartados del azar:", error);
+    }
+}
 
-        const script = document.createElement("script");
-        script.src = src;
-        script.id = id;
-        script.async = true;
-        script.onload = () => {
-            script.dataset.cargado = "true";
-            resolve();
-        };
-        script.onerror = () => reject(new Error("No se pudo cargar " + src));
-        document.head.appendChild(script);
+async function sincronizarDescartadosAzarAsistenciaBD(lista) {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
+    // Sincronización completa sin depender de una restricción UNIQUE.
+    const { data: existentes, error: errorExistentes } = await supabaseClient
+        .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+        .select("estudiante_id")
+        .eq("curso", curso)
+        .eq("fecha", fecha);
+
+    if (errorExistentes) throw errorExistentes;
+
+    const idsNuevos = new Set(listaNormalizada);
+    const idsEliminar = (existentes || [])
+        .map(r => String(r.estudiante_id))
+        .filter(id => !idsNuevos.has(id));
+
+    if (idsEliminar.length > 0) {
+        const { error: errorEliminar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+            .delete()
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .in("estudiante_id", idsEliminar);
+
+        if (errorEliminar) throw errorEliminar;
+    }
+
+    const idsExistentes = new Set((existentes || []).map(r => String(r.estudiante_id)));
+    const idsInsertar = listaNormalizada.filter(id => !idsExistentes.has(id));
+
+    if (idsInsertar.length > 0) {
+        const registros = idsInsertar.map(estudianteId => ({
+            curso,
+            fecha,
+            estudiante_id: estudianteId
+        }));
+
+        const { error: errorGuardar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_DESCARTADOS_BD)
+            .insert(registros);
+
+        if (errorGuardar) throw errorGuardar;
+    }
+}
+
+function obtenerElegidosAzarAsistencia() {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return [];
+
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        const lista = datos[clave];
+        return Array.isArray(lista) ? lista.map(String) : [];
+    } catch (error) {
+        console.warn("No se pudo leer la lista de estudiantes elegidos al azar:", error);
+        return [];
+    }
+}
+
+function guardarElegidosAzarAsistencia(lista) {
+    const clave = claveAzarAsistencia();
+    if (!clave || clave === "__") return;
+
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
+    try {
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        datos[clave] = listaNormalizada;
+        localStorage.setItem("azarAsistenciaElegidos", JSON.stringify(datos));
+    } catch (error) {
+        console.warn("No se pudo guardar la lista de estudiantes elegidos al azar:", error);
+    }
+
+    sincronizarElegidosAzarAsistenciaBD(listaNormalizada).catch(error => {
+        console.warn("No se pudo guardar en BD la lista de estudiantes elegidos al azar:", error);
     });
 }
 
-function cargarModuloAzar() {
-    if (!moduloAzarCargando) {
-        moduloAzarCargando = cargarScriptDiferido("azar.js", "moduloAzarLazy")
-            .catch(error => {
-                moduloAzarCargando = null;
-                throw error;
-            });
+async function cargarElegidosAzarAsistenciaBD() {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .select("estudiante_id,orden")
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .order("orden", { ascending: true });
+
+        if (error) throw error;
+
+        const listaBD = (data || []).map(r => String(r.estudiante_id));
+        const listaLocal = obtenerElegidosAzarAsistencia();
+
+        // Si existen elecciones antiguas guardadas localmente, se conservan y
+        // se migran a la BD la primera vez que se abre esta fecha.
+        if (listaBD.length === 0 && listaLocal.length > 0) {
+            await sincronizarElegidosAzarAsistenciaBD(listaLocal);
+            return;
+        }
+
+        const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
+        datos[`${curso}__${fecha}`] = listaBD;
+        localStorage.setItem("azarAsistenciaElegidos", JSON.stringify(datos));
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+        const listaEl = document.getElementById("azarAsistenciaLista");
+        if (listaEl && !listaEl.classList.contains("oculto")) {
+            mostrarElegidosAzarAsistencia();
+        }
+    } catch (error) {
+        console.warn("No se pudo cargar desde BD la lista de estudiantes elegidos al azar:", error);
     }
-    return moduloAzarCargando;
 }
 
-function cargarModuloAsientos() {
-    if (!moduloAsientosCargando) {
-        moduloAsientosCargando = cargarScriptDiferido("asientos.js", "moduloAsientosLazy")
-            .catch(error => {
-                moduloAsientosCargando = null;
-                throw error;
-            });
+async function sincronizarElegidosAzarAsistenciaBD(lista) {
+    const curso = String(cursoSeleccionado || "").trim();
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!curso || !fecha) return;
+
+    const listaNormalizada = [...new Set((lista || []).map(String))];
+
+    const { data: existentes, error: errorExistentes } = await supabaseClient
+        .from(TABLA_AZAR_ASISTENCIA_BD)
+        .select("estudiante_id")
+        .eq("curso", curso)
+        .eq("fecha", fecha);
+
+    if (errorExistentes) throw errorExistentes;
+
+    const idsNuevos = new Set(listaNormalizada);
+    const idsEliminar = (existentes || [])
+        .map(r => String(r.estudiante_id))
+        .filter(id => !idsNuevos.has(id));
+
+    if (idsEliminar.length > 0) {
+        const { error: errorEliminar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .delete()
+            .eq("curso", curso)
+            .eq("fecha", fecha)
+            .in("estudiante_id", idsEliminar);
+        if (errorEliminar) throw errorEliminar;
     }
-    return moduloAsientosCargando;
+
+    if (listaNormalizada.length > 0) {
+        const registros = listaNormalizada.map((estudianteId, indice) => ({
+            curso,
+            fecha,
+            estudiante_id: estudianteId,
+            orden: indice + 1
+        }));
+
+        const { error: errorGuardar } = await supabaseClient
+            .from(TABLA_AZAR_ASISTENCIA_BD)
+            .upsert(registros, { onConflict: "curso,fecha,estudiante_id" });
+
+        if (errorGuardar) throw errorGuardar;
+    }
 }
 
-// Puertas de entrada: se mantiene exactamente la llamada existente desde los botones.
-var abrirModalAzarAsistencia = async function() {
-    await cargarModuloAzar();
-    return abrirModalAzarAsistencia();
+function esHoyAzarAsistencia(fecha) {
+    if (!fecha) return false;
+    const hoy = new Date();
+    const hoyLocal = [
+        hoy.getFullYear(),
+        String(hoy.getMonth() + 1).padStart(2, "0"),
+        String(hoy.getDate()).padStart(2, "0")
+    ].join("-");
+    return fecha === hoyLocal;
+}
+
+function obtenerCandidatosAzarAsistencia() {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+
+    const estudiantesCurso = obtenerEstudiantesCursoActual()
+        .filter(estudiante => estudiante && estudiante.id != null)
+        .filter(estudiante => {
+            if (tipo === "inicial") return String(estudiante.nombre || "").trim().length > 0;
+            const numero = Number(estudiante.num_lista);
+            return Number.isFinite(numero) && numero > 0;
+        });
+
+    const elegidos = new Set(
+        obtenerElegidosAzarAsistencia().map(id => String(id))
+    );
+    const descartados = new Set(
+        obtenerDescartadosAzarAsistencia().map(id => String(id))
+    );
+
+    return estudiantesCurso.filter(estudiante => {
+        if (!estudianteEsEfectivo(estudiante)) return false;
+        if (elegidos.has(String(estudiante.id))) return false;
+        if (descartados.has(String(estudiante.id))) return false;
+
+        const genero = obtenerGeneroEstadistica(estudiante.gen);
+        if (tipo === "varones") return genero === "varon";
+        if (tipo === "mujeres") return genero === "mujer";
+        return true;
+    });
+}
+
+const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
+const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
+let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
+let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
+
+function obtenerTipoEleccionAzarAsistencia() {
+    const tiposValidos = ["numero", "inicial", "varones", "mujeres"];
+    return tiposValidos.includes(tipoEleccionAzarAsistencia)
+        ? tipoEleccionAzarAsistencia
+        : "numero";
+}
+
+function inicialEstudianteAzarAsistencia(estudiante) {
+    const nombre = String(estudiante?.nombre || "").trim();
+    if (!nombre) return "—";
+    return nombre.charAt(0).toUpperCase();
+}
+
+function textoVisibleAzarAsistencia(estudiante) {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+    return tipo === "inicial"
+        ? inicialEstudianteAzarAsistencia(estudiante)
+        : String(estudiante?.num_lista ?? "—");
+}
+
+function aplicarTipoEleccionAzarAsistencia() {
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+    document.querySelectorAll('input[name="tipoEleccionAzarAsistencia"]').forEach(input => {
+        input.checked = input.value === tipo;
+    });
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl && azarAsistenciaEstudianteActual) {
+        numeroEl.textContent = textoVisibleAzarAsistencia(azarAsistenciaEstudianteActual);
+    }
+}
+
+function aplicarTamanoNumeroAzarAsistencia() {
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl) {
+        numeroEl.style.fontSize = `${tamanoNumeroAzarAsistencia}px`;
+    }
+}
+
+function abrirConfigTamanoAzarAsistencia() {
+    const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    if (!modal || !control) return;
+
+    control.value = String(tamanoNumeroAzarAsistencia);
+    actualizarVistaTamanoAzarAsistencia(control.value);
+    aplicarTipoEleccionAzarAsistencia();
+    modal.classList.remove("oculto");
+}
+
+function actualizarVistaTamanoAzarAsistencia(valor) {
+    const numero = Math.max(80, Math.min(320, Number(valor) || 200));
+    const valorEl = document.getElementById("valorTamanoNumeroAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${numero} px`;
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    if (numeroEl) numeroEl.style.fontSize = `${numero}px`;
+}
+
+function guardarTamanoAzarAsistencia() {
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
+
+    tamanoNumeroAzarAsistencia = numero;
+
+    const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
+    const tipoSeleccionado = radioSeleccionado?.value || "numero";
+    tipoEleccionAzarAsistencia = ["numero", "inicial", "varones", "mujeres"].includes(tipoSeleccionado)
+        ? tipoSeleccionado
+        : "numero";
+
+    localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
+    localStorage.setItem(CLAVE_TIPO_AZAR_ASISTENCIA, tipoEleccionAzarAsistencia);
+
+    aplicarTamanoNumeroAzarAsistencia();
+    aplicarTipoEleccionAzarAsistencia();
+    actualizarEstadoBotonElegirAzarAsistencia();
+    cerrarConfigTamanoAzarAsistencia();
+}
+
+function cerrarConfigTamanoAzarAsistencia(event) {
+    const modal = document.getElementById("modalConfigTamanoAzarAsistencia");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+
+    const control = document.getElementById("tamanoNumeroAzarAsistencia");
+    if (control) control.value = String(tamanoNumeroAzarAsistencia);
+    actualizarVistaTamanoAzarAsistencia(tamanoNumeroAzarAsistencia);
+    modal.classList.add("oculto");
+}
+
+function abrirModalAzarAsistencia() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona primero una fecha de asistencia.");
+        return;
+    }
+
+    const modal = document.getElementById("modalAzarAsistencia");
+    if (!modal) return;
+
+    azarAsistenciaCursoFecha = claveAzarAsistencia();
+    azarAsistenciaEstudianteActual = null;
+
+    const fechaEl = document.getElementById("azarAsistenciaFecha");
+    const avisoFecha = document.getElementById("azarAsistenciaAvisoFecha");
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const listaEl = document.getElementById("azarAsistenciaLista");
+
+    if (fechaEl) {
+        fechaEl.textContent = `Curso: ${cursoSeleccionado} · ${formatearFechaGuardadaAsistencia(fecha)}`;
+    }
+
+    if (avisoFecha) {
+        const esHoy = esHoyAzarAsistencia(fecha);
+        avisoFecha.classList.toggle("oculto", esHoy);
+        avisoFecha.textContent = esHoy
+            ? ""
+            : "⚠️ La fecha seleccionada no corresponde al día de hoy. El azar se guardará igualmente para la fecha seleccionada.";
+    }
+
+    if (numeroEl) {
+        numeroEl.textContent = "—";
+        numeroEl.style.color = "#1557a6";
+        numeroEl.classList.remove("animando");
+        aplicarTamanoNumeroAzarAsistencia();
+        aplicarTipoEleccionAzarAsistencia();
+    }
+
+    if (nombreEl) {
+        nombreEl.innerHTML = "Presiona «Elegir al azar»";
+    }
+
+    if (listaEl) {
+        listaEl.innerHTML = "";
+        listaEl.classList.add("oculto");
+    }
+
+    modal.classList.remove("oculto");
+
+    if (!esHoyAzarAsistencia(fecha)) {
+        alert("⚠️ Atención: la fecha de asistencia seleccionada no corresponde al día de hoy.");
+    }
+
+    actualizarEstadoBotonElegirAzarAsistencia();
+    cargarElegidosAzarAsistenciaBD().catch(error => {
+        console.warn("No se pudo sincronizar la lista de elegidos al abrir el azar:", error);
+    });
+    cargarDescartadosAzarAsistenciaBD().catch(error => {
+        console.warn("No se pudo sincronizar la lista de descartados al abrir el azar:", error);
+    });
+}
+
+function cerrarModalAzarAsistencia(event) {
+    const modal = document.getElementById("modalAzarAsistencia");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+
+    if (azarAsistenciaAnimacion) {
+        clearInterval(azarAsistenciaAnimacion);
+        azarAsistenciaAnimacion = null;
+    }
+
+    modal.classList.add("oculto");
+}
+
+function actualizarEstadoBotonElegirAzarAsistencia() {
+    const boton = document.getElementById("botonElegirAzarAsistencia");
+    if (!boton) return;
+
+    const candidatos = obtenerCandidatosAzarAsistencia();
+    boton.disabled = candidatos.length === 0;
+
+    if (candidatos.length === 0) {
+        boton.textContent = "✓ Todos elegidos";
+    } else {
+        boton.textContent = "🎲 Elegir al azar";
+    }
+}
+
+function elegirEstudianteAzarAsistencia() {
+    if (azarAsistenciaAnimacion) return;
+
+    const numeroEl = document.getElementById("azarAsistenciaNumero");
+    const nombreEl = document.getElementById("azarAsistenciaNombre");
+    const boton = document.getElementById("botonElegirAzarAsistencia");
+    const listaEl = document.getElementById("azarAsistenciaLista");
+
+    const candidatos = obtenerCandidatosAzarAsistencia();
+
+    if (!candidatos.length) {
+        alert("✓ Ya fueron elegidos todos los estudiantes del curso para esta fecha.");
+        actualizarEstadoBotonElegirAzarAsistencia();
+        return;
+    }
+
+    if (listaEl) listaEl.classList.add("oculto");
+    if (nombreEl) nombreEl.innerHTML = "🎲 Eligiendo...";
+    if (numeroEl) numeroEl.classList.add("animando");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "🎲 Eligiendo...";
+    }
+
+    const mostrarNumeroRapido = () => {
+        const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
+        if (numeroEl) {
+            numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
+            const generoCandidato = obtenerGeneroEstadistica(candidato.gen);
+            if (generoCandidato === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoCandidato === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
+        }
+    };
+
+    mostrarNumeroRapido();
+    azarAsistenciaAnimacion = setInterval(mostrarNumeroRapido, 65);
+
+    setTimeout(() => {
+        if (azarAsistenciaAnimacion) {
+            clearInterval(azarAsistenciaAnimacion);
+            azarAsistenciaAnimacion = null;
+        }
+
+        const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+        azarAsistenciaEstudianteActual = elegido;
+
+        const elegidos = obtenerElegidosAzarAsistencia();
+        elegidos.push(String(elegido.id));
+        guardarElegidosAzarAsistencia(elegidos);
+
+        if (numeroEl) {
+            numeroEl.textContent = textoVisibleAzarAsistencia(elegido);
+            const generoElegido = obtenerGeneroEstadistica(elegido.gen);
+            if (generoElegido === "mujer") {
+                numeroEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+            } else if (generoElegido === "varon") {
+                numeroEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+            } else {
+                numeroEl.style.color = "#1557a6";
+            }
+            numeroEl.classList.remove("animando");
+        }
+
+        if (nombreEl) {
+            nombreEl.innerHTML = "";
+            const botonNombre = document.createElement("button");
+            botonNombre.type = "button";
+            botonNombre.textContent = construirNombreCortoAula(elegido);
+            botonNombre.title = "Añadir una observación de asistencia";
+            botonNombre.addEventListener("click", function() {
+                abrirAsistenciaDesdeAzar(elegido.id);
+            });
+            nombreEl.appendChild(botonNombre);
+        }
+
+        actualizarEstadoBotonElegirAzarAsistencia();
+    }, 2000);
+}
+
+function abrirAsistenciaDesdeAzar(estudianteId) {
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha) {
+        alert("Selecciona primero una fecha de asistencia.");
+        return;
+    }
+
+    const modalAzar = document.getElementById("modalAzarAsistencia");
+    if (modalAzar) {
+        modalAzar.dataset.azarlOcultoTemporalmente = "true";
+        modalAzar.style.display = "none";
+    }
+
+    abrirAsistenciaEstudianteDesdeAula(estudianteId);
+
+    setTimeout(() => {
+        const modalAsistencia = document.getElementById("modalAsistenciaEstudianteAula");
+        if (modalAsistencia) {
+            modalAsistencia.style.zIndex = "10050";
+
+            if (modalAsistencia.dataset.azarlVigilando !== "true") {
+                modalAsistencia.dataset.azarlVigilando = "true";
+
+                const observer = new MutationObserver(() => {
+                    const visible = getComputedStyle(modalAsistencia).display !== "none";
+
+                    if (!visible) {
+                        observer.disconnect();
+                        delete modalAsistencia.dataset.azarlVigilando;
+
+                        const azar = document.getElementById("modalAzarAsistencia");
+                        if (azar && azar.dataset.azarlOcultoTemporalmente === "true") {
+                            azar.style.display = "flex";
+                            azar.style.zIndex = "10100";
+                            delete azar.dataset.azarlOcultoTemporalmente;
+                        }
+                    }
+                });
+
+                observer.observe(modalAsistencia, {
+                    attributes: true,
+                    attributeFilter: ["style", "class"]
+                });
+            }
+        }
+
+        const campo = document.getElementById("observacionAsistenciaAulaIndividual");
+        if (campo) campo.focus();
+    }, 80);
+}
+
+
+function mostrarPorElegirAzarAsistencia() {
+    const listaEl = document.getElementById("azarAsistenciaLista");
+    if (!listaEl) return;
+
+    const tipo = obtenerTipoEleccionAzarAsistencia();
+    const elegidos = new Set(obtenerElegidosAzarAsistencia().map(id => String(id)));
+    const descartados = new Set(obtenerDescartadosAzarAsistencia().map(id => String(id)));
+
+    // Se muestran también los estudiantes bloqueados; sólo quedan fuera del sorteo.
+    const estudiantes = obtenerEstudiantesCursoActual()
+        .filter(estudiante => estudiante && estudiante.id != null)
+        .filter(estudiante => !elegidos.has(String(estudiante.id)))
+        .filter(estudiante => estudianteEsEfectivo(estudiante))
+        .filter(estudiante => {
+            if (tipo === "inicial") return String(estudiante.nombre || "").trim().length > 0;
+            const numero = Number(estudiante.num_lista);
+            return Number.isFinite(numero) && numero > 0;
+        })
+        .filter(estudiante => {
+            const genero = obtenerGeneroEstadistica(estudiante.gen);
+            if (tipo === "varones") return genero === "varon";
+            if (tipo === "mujeres") return genero === "mujer";
+            return true;
+        });
+
+    if (!estudiantes.length) {
+        listaEl.innerHTML = `<div style="padding:12px;text-align:center;color:#666;">No quedan estudiantes por elegir para esta fecha.</div>`;
+        listaEl.classList.remove("oculto");
+        return;
+    }
+
+    const filas = estudiantes.map((estudiante, indice) => {
+        const idSeguro = JSON.stringify(String(estudiante.id));
+        const bloqueado = descartados.has(String(estudiante.id));
+        return `
+        <tr${bloqueado ? ' class="azar-estudiante-bloqueado"' : ''}>
+            <td>${indice + 1}</td>
+            <td>
+                <button type="button"
+                        class="azar-asistencia-nombre-elegido"
+                        onclick='abrirAsistenciaDesdeAzar(${idSeguro})'
+                        title="Ver y modificar la asistencia y observación de este día">
+                    ${escapeHTML(String(estudiante.nombre || ""))}
+                </button>
+            </td>
+            <td><strong>${escapeHTML(textoVisibleAzarAsistencia(estudiante))}</strong></td>
+            <td>
+                <button type="button"
+                        class="boton-descartar-azar"
+                        onclick='descartarEstudianteAzarAsistencia(${idSeguro}, event)'
+                        title="${bloqueado ? "Desbloquear estudiante para el sorteo" : "Bloquear estudiante y descartarlo del sorteo"}"
+                        aria-label="${bloqueado ? "Desbloquear estudiante para el sorteo" : "Bloquear estudiante y descartarlo del sorteo"}">
+                    ${bloqueado ? "🔓" : "🔒"}
+                </button>
+            </td>
+        </tr>
+        `;
+    }).join("");
+
+    listaEl.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>${escapeHTML(
+                        tipo === "inicial"
+                            ? "Inicial"
+                            : "N.º lista"
+                    )}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+        </table>
+    `;
+    listaEl.classList.remove("oculto");
+}
+
+async function descartarEstudianteAzarAsistencia(estudianteId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const actuales = obtenerDescartadosAzarAsistencia();
+    const id = String(estudianteId);
+    const estaBloqueado = actuales.some(item => String(item) === id);
+
+    // El estudiante no se elimina: se bloquea/desbloquea y sólo se excluye o incluye en el sorteo.
+    const nuevaLista = estaBloqueado
+        ? actuales.filter(item => String(item) !== id)
+        : [...actuales, id];
+
+    try {
+        await guardarDescartadosAzarAsistencia(nuevaLista);
+    } catch (error) {
+        console.error("No se pudo guardar en BD el bloqueo/desbloqueo del estudiante:", error);
+        alert(
+            "No se pudo guardar el bloqueo en la base de datos.\n\n" +
+            (error?.message || error?.details || error?.hint || "Error desconocido")
+        );
+        return;
+    }
+
+    if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id && !estaBloqueado) {
+        azarAsistenciaEstudianteActual = null;
+    }
+
+    mostrarPorElegirAzarAsistencia();
+    actualizarEstadoBotonElegirAzarAsistencia();
+}
+
+
+function mostrarElegidosAzarAsistencia() {
+    const listaEl = document.getElementById("azarAsistenciaLista");
+    if (!listaEl) return;
+
+    const elegidosIds = obtenerElegidosAzarAsistencia();
+    const mapa = new Map(
+        obtenerEstudiantesCursoActual().map(estudiante => [String(estudiante.id), estudiante])
+    );
+
+    const elegidos = elegidosIds
+        .map(id => mapa.get(String(id)))
+        .filter(Boolean);
+
+    if (!elegidos.length) {
+        listaEl.innerHTML = `<div style="padding:12px;text-align:center;color:#666;">Todavía no se eligió ningún estudiante para esta fecha.</div>`;
+        listaEl.classList.remove("oculto");
+        return;
+    }
+
+    const filas = elegidos.map((estudiante, indice) => {
+        const idSeguro = JSON.stringify(String(estudiante.id));
+        return `
+        <tr>
+            <td>${indice + 1}</td>
+            <td>
+                <button type="button"
+                        class="azar-asistencia-nombre-elegido"
+                        onclick='abrirAsistenciaDesdeAzar(${idSeguro})'
+                        title="Ver y modificar la asistencia y observación de este día">
+                    ${escapeHTML(String(estudiante.nombre || ""))}
+                </button>
+            </td>
+            <td><strong>${escapeHTML(textoVisibleAzarAsistencia(estudiante))}</strong></td>
+            <td>
+                <button type="button"
+                        class="boton-eliminar-elegido-azar"
+                        onclick='eliminarElegidoAzarAsistencia(${idSeguro}, event)'
+                        title="Quitar de ya elegidos"
+                        aria-label="Quitar de ya elegidos">
+                    🗑️
+                </button>
+            </td>
+        </tr>
+        `;
+    }).join("");
+
+    listaEl.innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>${escapeHTML(
+                        obtenerTipoEleccionAzarAsistencia() === "inicial"
+                            ? "Inicial"
+                            : "N.º lista"
+                    )}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+        </table>
+    `;
+    listaEl.classList.remove("oculto");
+}
+
+
+async function eliminarElegidoAzarAsistencia(estudianteId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const actuales = obtenerElegidosAzarAsistencia();
+    const id = String(estudianteId);
+    const nuevas = actuales.filter(item => String(item) !== id);
+
+    if (nuevas.length === actuales.length) return;
+
+    const confirmar = confirm("¿Está seguro de eliminar a este estudiante de la lista de elegidos?\n\nEsta acción no se puede deshacer.");
+    if (!confirmar) return;
+
+    try {
+        await guardarElegidosAzarAsistencia(nuevas);
+    } catch (error) {
+        console.error("No se pudo eliminar de la BD el estudiante elegido:", error);
+        alert(
+            "No se pudo eliminar al estudiante de la base de datos.\n\n" +
+            (error?.message || error?.details || error?.hint || "Error desconocido")
+        );
+        return;
+    }
+    if (azarAsistenciaEstudianteActual && String(azarAsistenciaEstudianteActual.id) === id) {
+        azarAsistenciaEstudianteActual = null;
+    }
+
+    mostrarElegidosAzarAsistencia();
+    actualizarEstadoBotonElegirAzarAsistencia();
+}
+
+
+/* =====================================================
+   NUEVO: DISTRIBUCIÓN DEL AULA / ASIENTOS
+   No interviene en la lógica existente de asistencia.
+===================================================== */
+const CLAVE_DISTRIBUCION_AULA = "distribucion_aula_v1";
+const CLAVE_CONFIGURACION_AULA = "configuracion_aula_v1";
+const TABLA_DISTRIBUCION_AULA_BD = "distribuciones_aula";
+const ASIENTOS_AULA = [
+    [36, 35, 24, 23, 12, 11],
+    [34, 33, 22, 21, 10, 9],
+    [32, 31, 20, 19, 8, 7],
+    [30, 29, 18, 17, 6, 5],
+    [28, 27, 16, 15, 4, 3],
+    [26, 25, 14, 13, 2, 1]
+];
+
+/* Distribución tomada del PDF proporcionado para 1B. */
+const DISTRIBUCION_1B_PDF = {
+    24: 10,
+    23: 16,
+    12: 24,
+    11: 26,
+    34: 5,
+    22: 22,
+    21: 21,
+    10: 9,
+    9: 25,
+    32: 18,
+    20: 11,
+    19: 2,
+    8: 4,
+    7: 29,
+    30: 6,
+    18: 14,
+    17: 1,
+    6: 28,
+    5: 19,
+    28: 27,
+    16: 8,
+    15: 13,
+    4: 7,
+    3: 30,
+    26: 31,
+    14: 15,
+    13: 3,
+    2: 23,
+    1: 20
 };
 
-var abrirModalDistribucionAula = async function() {
-    await cargarModuloAsientos();
-    return abrirModalDistribucionAula();
-};
+let distribucionAulaActual = {};
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let distribucionAulaGuardada = {};
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
-// Esta función puede ser llamada desde Asistencia cuando el modal de Asientos ya está abierto.
-var mostrarVistaDistribucionAula = async function() {
-    await cargarModuloAsientos();
-    return mostrarVistaDistribucionAula();
-};
+function claveDistribucionAula(curso) {
+    return String(curso || "").trim();
+}
 
+function cargarDistribucionesAulaGuardadas() {
+    try {
+        return JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
+    } catch (_) {
+        return {};
+    }
+}
+
+function cargarConfiguracionesAulaGuardadas() {
+    try {
+        return JSON.parse(localStorage.getItem(CLAVE_CONFIGURACION_AULA) || "{}");
+    } catch (_) {
+        return {};
+    }
+}
+
+function normalizarConfiguracionAula(datos = {}) {
+    const columnas = Math.max(1, Math.min(10, Number(datos.columnas) || 3));
+    const filasBase = Math.max(1, Math.min(20, Number(datos.filas) || 6));
+    const filasPorColumna = Array.from({ length: columnas }, (_, indice) => {
+        const valor = Array.isArray(datos.filasPorColumna)
+            ? datos.filasPorColumna[indice]
+            : filasBase;
+        return Math.max(1, Math.min(20, Number(valor) || filasBase));
+    });
+    const anchoMesa = Math.max(60, Math.min(500, Number(datos.anchoMesa ?? datos.ancho_mesa) || 130));
+    const largoMesa = Math.max(40, Math.min(300, Number(datos.largoMesa ?? datos.largo_mesa) || 72));
+    const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
+    const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
+    const mostrarNumeroAsiento = datos.mostrarNumeroAsiento === true;
+    const colorMujer = /^#[0-9A-F]{6}$/i.test(String(datos.colorMujer || "")) ? String(datos.colorMujer) : "#e91e63";
+    const colorVaron = /^#[0-9A-F]{6}$/i.test(String(datos.colorVaron || "")) ? String(datos.colorVaron) : "#1976d2";
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
+}
+
+function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
+    const columnas = Math.max(1, Math.min(10, Number(config.columnas) || 1));
+    const filasBase = Math.max(1, Math.min(20, Number(config.filas) || 1));
+    return Array.from({ length: columnas }, (_, indice) => {
+        const valor = Array.isArray(config.filasPorColumna)
+            ? config.filasPorColumna[indice]
+            : filasBase;
+        return Math.max(1, Math.min(20, Number(valor) || filasBase));
+    });
+}
+
+function obtenerFilasMaximasAula(config = configuracionAulaActual) {
+    return Math.max(...obtenerFilasPorColumnaAula(config), 1);
+}
+
+function obtenerCantidadMesasAula(config = configuracionAulaActual) {
+    return obtenerFilasPorColumnaAula(config).reduce((total, filas) => total + filas, 0);
+}
+
+function obtenerConfiguracionAulaCurso() {
+    const todas = cargarConfiguracionesAulaGuardadas();
+    const guardada = todas[claveDistribucionAula(cursoSeleccionado)];
+    return normalizarConfiguracionAula(guardada || {});
+}
+
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2") {
+    const todas = cargarConfiguracionesAulaGuardadas();
+    const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
+    const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
+    const filasColumnas = Array.from({ length: columnasNormalizadas }, (_, indice) => {
+        const valor = Array.isArray(filasPorColumna) ? filasPorColumna[indice] : filasNormalizadas;
+        return Math.max(1, Math.min(20, Number(valor) || filasNormalizadas));
+    });
+    todas[claveDistribucionAula(cursoSeleccionado)] = {
+        filas: filasNormalizadas,
+        columnas: columnasNormalizadas,
+        filasPorColumna: filasColumnas,
+        anchoMesa,
+        largoMesa,
+        mostrarNombreCompleto: mostrarNombreCompleto === true,
+        mostrarNumeroLista: mostrarNumeroLista !== false,
+        mostrarNumeroAsiento: mostrarNumeroAsiento === true,
+        colorMujer: /^#[0-9A-F]{6}$/i.test(String(colorMujer || "")) ? String(colorMujer) : "#e91e63",
+        colorVaron: /^#[0-9A-F]{6}$/i.test(String(colorVaron || "")) ? String(colorVaron) : "#1976d2"
+    };
+    localStorage.setItem(CLAVE_CONFIGURACION_AULA, JSON.stringify(todas));
+}
+
+async function cargarConfiguracionDistribucionAulaBD() {
+    if (!cursoSeleccionado) return null;
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_DISTRIBUCION_AULA_BD)
+            .select("curso,filas,columnas,ancho_mesa,largo_mesa,distribucion")
+            .eq("curso", cursoSeleccionado)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+
+        const metadataFilas = data.distribucion &&
+            Array.isArray(data.distribucion.__filasPorColumna)
+                ? data.distribucion.__filasPorColumna
+                : null;
+        const metadataMostrarNombreCompleto = data.distribucion &&
+            data.distribucion.__mostrarNombreCompleto === true;
+        const metadataMostrarNumeroLista = !(data.distribucion &&
+            data.distribucion.__mostrarNumeroLista === false);
+        const metadataColorMujer = data.distribucion && data.distribucion.__colorMujer;
+        const metadataColorVaron = data.distribucion && data.distribucion.__colorVaron;
+
+        const config = normalizarConfiguracionAula({
+            ...data,
+            filasPorColumna: metadataFilas || undefined,
+            mostrarNombreCompleto: metadataMostrarNombreCompleto,
+            mostrarNumeroLista: metadataMostrarNumeroLista,
+            mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true,
+            colorMujer: metadataColorMujer,
+            colorVaron: metadataColorVaron
+        });
+        const distribucion = data.distribucion && typeof data.distribucion === "object"
+            ? { ...data.distribucion } : null;
+
+        if (distribucion) {
+            delete distribucion.__filasPorColumna;
+            delete distribucion.__mostrarNombreCompleto;
+            delete distribucion.__mostrarNumeroLista;
+            delete distribucion.__mostrarNumeroAsiento;
+            delete distribucion.__colorMujer;
+            delete distribucion.__colorVaron;
+        }
+
+        configuracionAulaActual = config;
+        configuracionAulaGuardada = { ...config, filasPorColumna: [...config.filasPorColumna] };
+        if (distribucion) distribucionAulaActual = distribucion;
+        if (distribucion) distribucionAulaGuardada = { ...distribucion };
+        return { ...config, distribucion };
+    } catch (error) {
+        console.warn("No se pudo cargar la distribución del aula desde la BD. Se usará la configuración local.", error);
+        return null;
+    }
+}
+
+async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) {
+    if (!cursoSeleccionado) return false;
+    const config = normalizarConfiguracionAula(configuracionAulaActual);
+    const distribucionParaGuardar = { ...(distribucion || {}) };
+    distribucionParaGuardar.__filasPorColumna = [...config.filasPorColumna];
+    distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
+    distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
+    distribucionParaGuardar.__mostrarNumeroAsiento = config.mostrarNumeroAsiento === true;
+    distribucionParaGuardar.__colorMujer = config.colorMujer;
+    distribucionParaGuardar.__colorVaron = config.colorVaron;
+
+    const datos = {
+        curso: cursoSeleccionado,
+        filas: obtenerFilasMaximasAula(config),
+        columnas: config.columnas,
+        ancho_mesa: config.anchoMesa,
+        largo_mesa: config.largoMesa,
+        distribucion: distribucionParaGuardar,
+        updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabaseClient
+        .from(TABLA_DISTRIBUCION_AULA_BD)
+        .upsert(datos, { onConflict: "curso" });
+    if (error) throw error;
+
+    guardarConfiguracionAulaCurso(
+        datos.filas,
+        config.columnas,
+        config.anchoMesa,
+        config.largoMesa,
+        config.filasPorColumna,
+        config.mostrarNombreCompleto,
+        config.mostrarNumeroLista,
+        config.mostrarNumeroAsiento,
+        config.colorMujer,
+        config.colorVaron
+    );
+    const todas = cargarDistribucionesAulaGuardadas();
+    todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
+    localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+    return true;
+}
+
+function obtenerCantidadAsientosAula() {
+    return obtenerCantidadMesasAula(configuracionAulaActual) * 2;
+}
+
+/* Genera la numeración por columna: cada columna puede tener una cantidad distinta de filas. */
+function obtenerAsientosConfiguradosAula() {
+    const filasPorColumna = obtenerFilasPorColumnaAula(configuracionAulaActual);
+    const resultado = [];
+
+    let numero = 1;
+    for (let columna = 0; columna < filasPorColumna.length; columna++) {
+        const mesasColumna = [];
+        for (let fila = 0; fila < filasPorColumna[columna]; fila++) {
+            mesasColumna.push([numero, numero + 1]);
+            numero += 2;
+        }
+        resultado.push(mesasColumna);
+    }
+
+    return resultado;
+}
+
+function esCurso1B(curso) {
+    const normalizado = String(curso || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[°º]/g, "");
+    return normalizado.includes("1b");
+}
+
+function crearDistribucionAulaInicial() {
+    const estudiantesCurso = obtenerEstudiantesCursoActual()
+        .slice()
+        .sort((a, b) => Number(a.num_lista ?? 9999) - Number(b.num_lista ?? 9999));
+
+    const mapa = {};
+    const totalAsientos = obtenerCantidadAsientosAula();
+
+    /* Para 1B se conserva el PDF cuando la configuración es la original 6 x 3. */
+    if (esCurso1B(cursoSeleccionado) && totalAsientos === 36) {
+        Object.entries(DISTRIBUCION_1B_PDF).forEach(([asiento, numLista]) => {
+            const estudiante = estudiantesCurso.find(
+                e => Number(e.num_lista) === Number(numLista)
+            );
+            if (estudiante) mapa[asiento] = estudiante.id;
+        });
+        return mapa;
+    }
+
+    /* En cualquier otra configuración, se numeran los asientos desde 1. */
+    estudiantesCurso.slice(0, totalAsientos).forEach((estudiante, indice) => {
+        mapa[String(indice + 1)] = estudiante.id;
+    });
+
+    return mapa;
+}
+
+function obtenerDistribucionAulaCurso() {
+    const todas = cargarDistribucionesAulaGuardadas();
+    const clave = claveDistribucionAula(cursoSeleccionado);
+
+    if (todas[clave] && typeof todas[clave] === "object") {
+        const distribucion = { ...todas[clave] };
+        delete distribucion.__filasPorColumna;
+        return distribucion;
+    }
+
+    return crearDistribucionAulaInicial();
+}
+
+function nombreEstudiantePorIdAula(id, mapaEstudiantes = null) {
+    if (id == null || id === "") return null;
+    if (mapaEstudiantes) return mapaEstudiantes.get(String(id)) || null;
+    return obtenerEstudiantesCursoActual().find(
+        estudiante => String(estudiante.id) === String(id)
+    ) || null;
+}
+
+function construirNombreCortoAula(estudiante) {
+    if (!estudiante) return "Asiento vacío";
+
+    const nombre = String(estudiante.nombre || estudiante.nombre_completo || "Sin nombre").trim();
+    let nombreMostrar = nombre;
+
+    if (!configuracionAulaActual.mostrarNombreCompleto) {
+        const partes = nombre.split(/\s+/).filter(Boolean);
+        // Los nombres están registrados como: APELLIDO PATERNO APELLIDO MATERNO NOMBRES.
+        // En modo corto se muestran: NOMBRES APELLIDO PATERNO.
+        if (partes.length >= 3) {
+            nombreMostrar = `${partes.slice(2).join(" ")} ${partes[0]}`;
+        }
+    }
+
+    if (configuracionAulaActual.mostrarNumeroLista !== false) {
+        const numeroLista = String(estudiante.num_lista ?? estudiante.numero_lista ?? "").trim();
+        if (numeroLista) return `${numeroLista} ${nombreMostrar}`;
+    }
+
+    return nombreMostrar;
+}
+
+async function abrirModalDistribucionAula() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const modal = document.getElementById("modalDistribucionAula");
+    if (!modal) return;
+
+    configuracionAulaActual = obtenerConfiguracionAulaCurso();
+    distribucionAulaActual = obtenerDistribucionAulaCurso();
+    await cargarConfiguracionDistribucionAulaBD();
+    distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+    configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...obtenerFilasPorColumnaAula(configuracionAulaActual)] };
+    if (!distribucionAulaActual || typeof distribucionAulaActual !== "object" || Object.keys(distribucionAulaActual).length === 0) {
+        distribucionAulaActual = obtenerDistribucionAulaCurso();
+    }
+    distribucionAulaGirado = true;
+
+    const titulo = document.getElementById("tituloDistribucionAula");
+    if (titulo) titulo.textContent = cursoSeleccionado;
+
+    actualizarSelectorDiasAsistenciaAula();
+    mostrarVistaDistribucionAula();
+    modal.classList.remove("oculto");
+}
+
+async function cerrarModalDistribucionAula(event) {
+    if (event && event.target !== document.getElementById("modalDistribucionAula")) return;
+    const modal = document.getElementById("modalDistribucionAula");
+    if (modal) modal.classList.add("oculto");
+
+    // Al volver a Asistencia, consultar nuevamente la BD para mostrar
+    // inmediatamente los cambios realizados desde la distribución de asientos.
+    if (cursoSeleccionado) {
+        await cargarAsistencia();
+        await cargarAsistenciaActividades();
+    }
+}
+
+function obtenerIconoEstadoAsistenciaAula(estado) {
+    const e = String(estado || "").toLowerCase();
+    const mapa = {
+        asistio: ["✓", "asistio", "Asistió"],
+        atraso: ["⏰", "atraso", "Atraso"],
+        licencia: ["📄", "licencia", "Licencia"],
+        permiso: ["📄", "permiso", "Permiso"],
+        falta: ["✕", "falta", "Falta"]
+    };
+    return mapa[e] || ["⚪", "", "Sin marcar"];
+}
+
+function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
+    const estudiante = nombreEstudiantePorIdAula(distribucionAulaActual[String(numero)], mapaEstudiantes);
+    const asiento = document.createElement("div");
+    const registro = estudiante ? (registrosAsistencia[estudiante.id] || {}) : {};
+    const estadoInfo = obtenerIconoEstadoAsistenciaAula(registro.estado);
+    asiento.className = "asiento-aula" + (estudiante ? "" : " vacio") + (configuracionAulaActual.mostrarNumeroAsiento === true ? "" : " sin-numero-asiento") + (estudiante && estadoInfo[1] ? ` estado-asiento-${estadoInfo[1]}` : "");
+
+    const silla = document.createElement("span");
+    silla.className = "silla-aula";
+    silla.setAttribute("aria-hidden", "true");
+    asiento.appendChild(silla);
+
+    if (configuracionAulaActual.mostrarNumeroAsiento === true) {
+        const numeroEl = document.createElement("span");
+        numeroEl.className = "numero-asiento-aula";
+        numeroEl.textContent = numero;
+        asiento.appendChild(numeroEl);
+    }
+
+    const nombreEl = document.createElement("span");
+    const generoAula = estudiante ? obtenerGeneroEstadistica(estudiante.gen) : "";
+    nombreEl.className = "nombre-asiento-aula" + (estudiante ? " clicable" : " vacio") + (generoAula ? ` genero-${generoAula}` : "");
+    nombreEl.textContent = construirNombreCortoAula(estudiante);
+    if (generoAula === "mujer") nombreEl.style.color = configuracionAulaActual.colorMujer || "#e91e63";
+    if (generoAula === "varon") nombreEl.style.color = configuracionAulaActual.colorVaron || "#1976d2";
+
+    if (estudiante) {
+        if (!estudianteEsEfectivo(estudiante)) {
+            asiento.classList.add("estudiante-no-efectivo");
+            nombreEl.classList.remove("clicable");
+            nombreEl.title = `🔒 Bloqueado: estado ${String(estudiante.estado || "SIN ESTADO")}`;
+        } else {
+            nombreEl.title = `Abrir asistencia de ${estudiante.nombre}`;
+            nombreEl.addEventListener("click", function(event) {
+                event.stopPropagation();
+                abrirAsistenciaEstudianteDesdeAula(estudiante.id);
+            });
+        }
+    }
+
+    asiento.appendChild(nombreEl);
+
+    // Mostrar un icono cuando el estudiante tiene una observación en la asistencia del día seleccionado.
+    if (estudiante && String(registro.observacion || '').trim()) {
+        const iconos = document.createElement("span");
+        iconos.className = "iconos-asistencia-asiento";
+
+        const iconoObservacion = document.createElement("span");
+        iconoObservacion.className = "icono-observacion-asiento";
+        iconoObservacion.textContent = "📝";
+        iconoObservacion.title = registro.observacion;
+        iconoObservacion.setAttribute("aria-label", "Tiene observación");
+
+        iconos.appendChild(iconoObservacion);
+        asiento.appendChild(iconos);
+    }
+
+    return asiento;
+}
+
+function mostrarVistaDistribucionAula() {
+    const vista = document.getElementById("vistaDistribucionAula");
+    const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
+    const boton = document.getElementById("botonListaAsientosConfig") || document.getElementById("botonListaAsientos");
+    if (!vista || !lista) return;
+
+    vista.style.display = "block";
+    lista.classList.remove("visible");
+    if (configuracion) configuracion.classList.remove("visible");
+    if (boton) {
+        boton.textContent = "☷";
+        boton.title = "Ver lista de estudiantes y asientos";
+    }
+
+    const tablero = document.getElementById("tableroDistribucionAula");
+    if (!tablero) return;
+    tablero.innerHTML = "";
+
+    const mesasPorColumna = obtenerAsientosConfiguradosAula();
+    const columnas = mesasPorColumna.length;
+    const mapaEstudiantes = new Map(
+        obtenerEstudiantesCursoActual().map(estudiante => [String(estudiante.id), estudiante])
+    );
+
+    tablero.style.gridTemplateColumns = `repeat(${columnas}, minmax(95px, 1fr))`;
+    tablero.style.minWidth = `${Math.max(300, columnas * 105)}px`;
+
+    for (let columna = 0; columna < columnas; columna++) {
+        const contenedor = document.createElement("div");
+        contenedor.className = "columna-mesas-aula";
+
+        /* Cada columna usa su propia cantidad de filas configurada. */
+        for (let fila = 0; fila < mesasPorColumna[columna].length; fila++) {
+            const mesa = document.createElement("div");
+            mesa.className = "mesa-aula";
+            mesa.style.width = `${Number(configuracionAulaActual.anchoMesa || 130)}px`;
+            mesa.style.height = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
+            mesa.style.minHeight = `${Number(configuracionAulaActual.largoMesa || 72)}px`;
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][0], mapaEstudiantes));
+            mesa.appendChild(crearAsientoVisualAula(mesasPorColumna[columna][fila][1], mapaEstudiantes));
+            contenedor.appendChild(mesa);
+        }
+
+        tablero.appendChild(contenedor);
+    }
+
+    const visual = document.getElementById("contenedorVisualDistribucionAula");
+    if (visual) visual.classList.toggle("girado-180", distribucionAulaGirado);
+
+    const botonGiro = document.getElementById("botonGirarDistribucionAula");
+    if (botonGiro) {
+        botonGiro.textContent = distribucionAulaGirado ? "↩️" : "🔄";
+        botonGiro.title = distribucionAulaGirado ? "Volver a orientación normal" : "Girar distribución 180°";
+    }
+
+    actualizarResumenDistribucionAula();
+}
+
+function alternarGiroDistribucionAula() {
+    distribucionAulaGirado = !distribucionAulaGirado;
+    mostrarVistaDistribucionAula();
+}
+
+function mostrarListaAsientos(asientoEnfocado = null) {
+    const vista = document.getElementById("vistaDistribucionAula");
+    const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
+    const boton = document.getElementById("botonListaAsientosConfig") || document.getElementById("botonListaAsientos");
+    if (!vista || !lista) return;
+
+    vista.style.display = "none";
+    lista.classList.add("visible");
+    if (configuracion) configuracion.classList.remove("visible");
+    if (boton) {
+        boton.textContent = "🪑";
+        boton.title = "Ver distribución de mesas";
+    }
+
+    const tbody = document.getElementById("tablaListaAsientosAula");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const estudiantesCurso = obtenerEstudiantesCursoActual()
+        .slice()
+        .sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
+
+    const totalAsientos = obtenerCantidadAsientosAula();
+    const estudiantesAsignados = new Set(
+        Object.values(distribucionAulaActual || {})
+            .filter(Boolean)
+            .map(id => String(id))
+    );
+
+    for (let numero = 1; numero <= totalAsientos; numero++) {
+        const fila = document.createElement("tr");
+
+        const tdAsiento = document.createElement("td");
+        tdAsiento.textContent = numero;
+
+        const tdNombre = document.createElement("td");
+        const select = document.createElement("select");
+        select.className = "select-asiento-aula";
+        select.dataset.asiento = String(numero);
+
+        const vacio = document.createElement("option");
+        vacio.value = "";
+        vacio.textContent = "— Asiento vacío —";
+        select.appendChild(vacio);
+
+        const estudianteAsignado = String(distribucionAulaActual[String(numero)] || "");
+        estudiantesCurso.forEach(estudiante => {
+            const idEstudiante = String(estudiante.id);
+            const yaAsignadoEnOtroAsiento =
+                estudiantesAsignados.has(idEstudiante) && idEstudiante !== estudianteAsignado;
+            if (yaAsignadoEnOtroAsiento) return;
+
+            const opcion = document.createElement("option");
+            opcion.value = idEstudiante;
+            opcion.textContent = `${estudiante.num_lista ?? ""} ${estudiante.nombre}`;
+            if (estudianteAsignado === idEstudiante) opcion.selected = true;
+            if (!estudianteEsEfectivo(estudiante)) {
+                opcion.disabled = true;
+                opcion.classList.add("opcion-estudiante-no-efectivo");
+                opcion.textContent += " 🔒";
+            }
+            select.appendChild(opcion);
+        });
+
+        select.addEventListener("change", function() {
+            const seleccionado = obtenerEstudiantesCursoActual().find(e => String(e.id) === String(this.value || ""));
+            if (seleccionado && !estudianteEsEfectivo(seleccionado)) {
+                this.value = estudianteAsignado || "";
+                alert("🔒 Este estudiante no está EFECTIVO y no puede ser designado para un asiento.");
+                return;
+            }
+            distribucionAulaActual[String(numero)] = this.value || null;
+            actualizarSelectsDistribucionAula();
+            actualizarBotonGuardarDistribucionAula();
+        });
+
+        tdNombre.appendChild(select);
+
+        const botonBorrar = document.createElement("button");
+        botonBorrar.type = "button";
+        botonBorrar.className = "boton-borrar-asiento-aula";
+        botonBorrar.textContent = "🗑️";
+        botonBorrar.title = "Borrar estudiante de este asiento";
+        botonBorrar.addEventListener("click", function() {
+            distribucionAulaActual[String(numero)] = null;
+            mostrarListaAsientos(numero);
+            actualizarBotonGuardarDistribucionAula();
+        });
+        tdNombre.appendChild(botonBorrar);
+
+        const tdCurso = document.createElement("td");
+        tdCurso.textContent = cursoSeleccionado || "—";
+
+        fila.appendChild(tdAsiento);
+        fila.appendChild(tdNombre);
+        fila.appendChild(tdCurso);
+        tbody.appendChild(fila);
+    }
+
+    actualizarSelectsDistribucionAula();
+
+    if (asientoEnfocado != null) {
+        const select = document.querySelector(`.select-asiento-aula[data-asiento="${asientoEnfocado}"]`);
+        if (select) {
+            select.focus();
+            select.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+    }
+}
+
+function actualizarSelectorDiasAsistenciaAula() {
+    const selector = document.getElementById("selectorDiasAsistenciaAula");
+    if (!selector) return;
+
+    const fechaActual = document.getElementById("fechaAsistencia")?.value || "";
+    const fechas = [...new Set((fechasAsistenciaGuardadas || []).map(String).filter(Boolean))];
+    if (fechaActual && !fechas.includes(fechaActual)) fechas.unshift(fechaActual);
+
+    selector.innerHTML = "";
+    const opcionBase = document.createElement("option");
+    opcionBase.value = "";
+    opcionBase.textContent = "📅 Días";
+    selector.appendChild(opcionBase);
+
+    fechas.forEach(fecha => {
+        const opcion = document.createElement("option");
+        opcion.value = fecha;
+        opcion.textContent = formatearFechaGuardadaAsistencia(fecha);
+        selector.appendChild(opcion);
+    });
+
+    selector.value = fechaActual && fechas.includes(fechaActual) ? fechaActual : "";
+}
+
+async function seleccionarDiaAsistenciaDesdeAula(fecha) {
+    if (!fecha) return;
+    seleccionarFechaAsistencia(fecha);
+    const selector = document.getElementById("selectorDiasAsistenciaAula");
+    if (selector) selector.value = fecha;
+}
+
+function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    const modal = document.getElementById("modalAsistenciaEstudianteAula");
+    const titulo = document.getElementById("tituloAsistenciaEstudianteAula");
+    const subtitulo = document.getElementById("subtituloAsistenciaEstudianteAula");
+    const observacion = document.getElementById("observacionAsistenciaAulaIndividual");
+    if (!estudiante || !modal) return;
+
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    const registro = registrosAsistencia[estudiante.id] || {};
+    const estado = String(registro.estado || "");
+
+    modal.dataset.estudianteId = String(estudiante.id);
+    const nombreAsistencia = construirNombreCortoAula(estudiante);
+    if (titulo) titulo.textContent = `👤 ${nombreAsistencia}`;
+    if (subtitulo) subtitulo.textContent = fecha
+        ? `Asistencia del ${formatearFechaGuardadaAsistencia(fecha)}`
+        : "Selecciona un día de asistencia.";
+
+    document.querySelectorAll('input[name="estadoAsistenciaAulaIndividual"]').forEach(input => {
+        input.checked = input.value === estado;
+    });
+    const sinMarcar = document.getElementById("estadoAulaSinMarcar");
+    if (!estado && sinMarcar) sinMarcar.checked = true;
+    if (observacion) observacion.value = registro.observacion || "";
+
+    modal.classList.remove("oculto");
+}
+
+function cerrarModalAsistenciaEstudianteAula(event) {
+    const modal = document.getElementById("modalAsistenciaEstudianteAula");
+    if (!modal) return;
+    if (event && event.target !== modal) return;
+    modal.classList.add("oculto");
+}
+
+async function guardarAsistenciaEstudianteDesdeAula() {
+    const modal = document.getElementById("modalAsistenciaEstudianteAula");
+    if (!modal) return;
+
+    const estudianteId = modal.dataset.estudianteId;
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!cursoSeleccionado || !estudianteId || !fecha) {
+        alert("Selecciona un curso y un día de asistencia.");
+        return;
+    }
+
+    const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+    if (!estudiante) return;
+
+    if (esDiaSinClasesAsistencia()) {
+        alert("No se puede registrar asistencia porque este día no se pasó clases.");
+        return;
+    }
+
+    const seleccionado = document.querySelector('input[name="estadoAsistenciaAulaIndividual"]:checked');
+    const estado = seleccionado ? seleccionado.value : "";
+    const observacion = String(document.getElementById("observacionAsistenciaAulaIndividual")?.value || "").trim();
+
+    // Aviso únicamente cuando, desde la distribución de mesas, se cambia
+    // la asistencia y existe una hora de entrada + tolerancia configuradas.
+    // No impide guardar el cambio; solo informa si el estado elegido no
+    // coincide con el estado que corresponde según la hora registrada.
+    if (
+        configuracionHorarioAsistencia?.activo &&
+        ["asistio", "atraso"].includes(estado)
+    ) {
+        const registroHorario = registrosAsistencia[estudiante.id] || {};
+        const horaEvaluada = registroHorario.hora || "";
+        if (horaEvaluada) {
+            const estadoCorrespondiente = estadoAutomaticoPorHoraAsistencia(
+                horaEvaluada,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+            );
+
+            if (
+                ["asistio", "atraso"].includes(estadoCorrespondiente) &&
+                estado !== estadoCorrespondiente
+            ) {
+                const textoSeleccionado = estado === "asistio" ? "ASISTENCIA" : "ATRASO";
+                const textoCorrespondiente = estadoCorrespondiente === "asistio" ? "ASISTENCIA" : "ATRASO";
+                alert(
+                    "⚠️ AVISO DE HORARIO\n\n" +
+                    `La hora registrada del estudiante es ${horaEvaluada}.\n` +
+                    `La hora de entrada asignada es ${configuracionHorarioAsistencia.hora_entrada} ` +
+                    `con ${configuracionHorarioAsistencia.tolerancia_minutos} minuto(s) de tolerancia ` +
+                    `(límite: ${sumarMinutosHoraAsistencia(configuracionHorarioAsistencia.hora_entrada, configuracionHorarioAsistencia.tolerancia_minutos)}).\n\n` +
+                    `Seleccionaste: ${textoSeleccionado}.\n` +
+                    `Según la hora y tolerancia corresponde: ${textoCorrespondiente}.`
+                );
+            }
+        }
+    }
+
+    try {
+        const { data: anteriorData, error: anteriorError } = await supabaseClient
+            .from("asistencia")
+            .select("estudiante_id,fecha,estado,hora,observacion")
+            .eq("fecha", fecha)
+            .eq("estudiante_id", estudiante.id)
+            .maybeSingle();
+        if (anteriorError) throw anteriorError;
+
+        if (!estado && !observacion) {
+            if (anteriorData) {
+                const { error } = await supabaseClient.from("asistencia")
+                    .delete().eq("fecha", fecha).eq("estudiante_id", estudiante.id);
+                if (error) throw error;
+            }
+        } else {
+            const registroAnterior = registrosAsistencia[estudiante.id] || {};
+            const horaAula = registroAnterior.hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
+
+            // El segundo y tercer parámetros de estadoAutomaticoPorHoraAsistencia
+            // son la hora de entrada y la tolerancia, no el estado seleccionado.
+            // Antes se enviaba "estado" como segundo parámetro y la función devolvía
+            // una cadena vacía, provocando estado = NULL y el error NOT NULL de Supabase.
+            const estadoAula = configuracionHorarioAsistencia.activo && ["asistio", "atraso"].includes(estado)
+                ? estadoAutomaticoPorHoraAsistencia(
+                    horaAula,
+                    configuracionHorarioAsistencia.hora_entrada,
+                    configuracionHorarioAsistencia.tolerancia_minutos
+                  )
+                : estado;
+
+            if (!estadoAula) {
+                throw new Error("Selecciona un estado de asistencia válido.");
+            }
+
+            const { error } = await supabaseClient.from("asistencia").upsert({
+                estudiante_id: estudiante.id,
+                fecha,
+                estado: estadoAula,
+                hora: horaAula || null,
+                observacion: observacion || null
+            }, { onConflict: "estudiante_id,fecha" });
+            if (error) throw error;
+        }
+
+        const horaNuevoAula = (registrosAsistencia[estudiante.id] || {}).hora || (["asistio", "atraso"].includes(estado) && configuracionHorarioAsistencia.activo ? horaActualAsistencia() : null);
+        const estadoNuevoAula = configuracionHorarioAsistencia.activo && ["asistio", "atraso"].includes(estado)
+            ? estadoAutomaticoPorHoraAsistencia(
+                horaNuevoAula,
+                configuracionHorarioAsistencia.hora_entrada,
+                configuracionHorarioAsistencia.tolerancia_minutos
+              )
+            : estado;
+        const nuevo = { estudiante_id: estudiante.id, fecha, estado: estadoNuevoAula || null, hora: horaNuevoAula || null, observacion: observacion || null };
+        if (JSON.stringify({estado: anteriorData?.estado || null, observacion: anteriorData?.observacion || null}) !== JSON.stringify({estado: nuevo.estado, observacion: nuevo.observacion})) {
+            guardarHistorialInterno({
+                table_name: "asistencia",
+                operation: anteriorData ? "UPDATE" : "INSERT",
+                record_id: null,
+                curso: cursoSeleccionado,
+                estudiante_id: estudiante.id,
+                estudiante_nombre: estudiante.nombre || estudiante.nombre_completo || null,
+                actividad_id: null,
+                actividad_nombre: null,
+                categoria: null,
+                fecha,
+                old_data: anteriorData,
+                new_data: nuevo,
+                changed_at: new Date().toISOString()
+            });
+        }
+
+        // Ya conocemos el nuevo registro; actualizar la memoria local evita
+        // dos consultas completas y hace que la distribución responda al instante.
+        if (!estado && !observacion) {
+            delete registrosAsistencia[estudiante.id];
+        } else {
+            registrosAsistencia[estudiante.id] = {
+                estado: estado || null,
+                hora: nuevo.hora || "",
+                observacion: observacion || ""
+            };
+        }
+        if (!fechasAsistenciaGuardadas.includes(fecha)) {
+            fechasAsistenciaGuardadas.push(fecha);
+            fechasAsistenciaGuardadas.sort((a, b) => String(b).localeCompare(String(a)));
+        }
+        actualizarSelectorDiasAsistenciaAula();
+        cerrarModalAsistenciaEstudianteAula();
+        mostrarVistaDistribucionAula();
+        mostrarMensaje("✓ Asistencia del estudiante guardada correctamente.");
+    } catch (error) {
+        console.error("Error al guardar asistencia individual desde distribución:", error);
+        alert("No se pudo guardar la asistencia: " + (error.message || error));
+    }
+}
+
+function editarAsientoDesdeDistribucion(numero) {
+    mostrarListaAsientos(numero);
+}
+
+function mostrarConfiguracionAula() {
+    const vista = document.getElementById("vistaDistribucionAula");
+    const lista = document.getElementById("vistaListaAsientos");
+    const configuracion = document.getElementById("vistaConfiguracionAula");
+    const botonLista = document.getElementById("botonListaAsientosConfig") || document.getElementById("botonListaAsientos");
+    if (!vista || !configuracion) return;
+
+    vista.style.display = "none";
+    lista.classList.remove("visible");
+    configuracion.classList.add("visible");
+    if (botonLista) {
+        botonLista.textContent = "🪑";
+        botonLista.title = "Ver distribución de mesas";
+    }
+
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    const inputAnchoMesa = document.getElementById("anchoMesasAula");
+    const inputLargoMesa = document.getElementById("largoMesasAula");
+    const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
+    const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
+    const inputMostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    const inputColorMujer = document.getElementById("colorMujerAula");
+    const inputColorVaron = document.getElementById("colorVaronAula");
+
+    if (inputColumnas) inputColumnas.value = configuracionAulaActual.columnas;
+    if (inputAnchoMesa) inputAnchoMesa.value = configuracionAulaActual.anchoMesa || 130;
+    if (inputLargoMesa) inputLargoMesa.value = configuracionAulaActual.largoMesa || 72;
+    if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
+    if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
+    if (inputMostrarNumeroAsiento) inputMostrarNumeroAsiento.checked = configuracionAulaActual.mostrarNumeroAsiento === true;
+    if (inputColorMujer) inputColorMujer.value = configuracionAulaActual.colorMujer || "#e91e63";
+    if (inputColorVaron) inputColorVaron.value = configuracionAulaActual.colorVaron || "#1976d2";
+
+    renderizarFilasPorColumnaAula();
+
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputColorMujer, inputColorVaron].forEach(input => {
+        if (input) input.oninput = function() {
+            if (input === inputColumnas) renderizarFilasPorColumnaAula();
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        };
+        input.onchange = function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        };
+    });
+
+    actualizarResumenConfiguracionAula();
+    actualizarBotonAplicarConfiguracionAula();
+}
+
+function renderizarFilasPorColumnaAula() {
+    const contenedor = document.getElementById("filasPorColumnaAula");
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    if (!contenedor || !inputColumnas) return;
+
+    const columnas = Math.max(1, Math.min(10, Number(inputColumnas.value) || 1));
+    const actuales = obtenerFilasPorColumnaAula(configuracionAulaActual);
+
+    contenedor.innerHTML = "";
+
+    for (let columna = 0; columna < columnas; columna++) {
+        const campo = document.createElement("div");
+        campo.className = "fila-columna-aula";
+
+        const label = document.createElement("label");
+        label.textContent = `Columna ${columna + 1}`;
+        label.htmlFor = `filasColumnaAula_${columna}`;
+        campo.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.id = `filasColumnaAula_${columna}`;
+        input.min = "1";
+        input.max = "20";
+        input.step = "1";
+        input.value = Math.max(1, Math.min(20, Number(actuales[columna] || configuracionAulaActual.filas || 1)));
+        input.dataset.columna = String(columna);
+        input.addEventListener("input", function() {
+            actualizarResumenConfiguracionAula();
+            actualizarBotonAplicarConfiguracionAula();
+        });
+        campo.appendChild(input);
+        contenedor.appendChild(campo);
+    }
+
+    actualizarResumenConfiguracionAula();
+    actualizarBotonAplicarConfiguracionAula();
+}
+
+function obtenerFilasConfiguradasDesdeFormularioAula() {
+    const inputColumnas = document.getElementById("cantidadColumnasAula");
+    const columnas = Math.max(1, Math.min(10, Number(inputColumnas?.value) || 1));
+    const base = obtenerFilasPorColumnaAula(configuracionAulaActual);
+    return Array.from({ length: columnas }, (_, indice) => {
+        const input = document.getElementById(`filasColumnaAula_${indice}`);
+        const valor = input ? input.value : base[indice];
+        return Math.max(1, Math.min(20, Number(valor) || 1));
+    });
+}
+
+function actualizarResumenConfiguracionAula() {
+    const resumen = document.getElementById("resumenConfiguracionAula");
+    if (!resumen) return;
+
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
+    const columnas = filasPorColumna.length;
+    const mesas = filasPorColumna.reduce((total, filas) => total + filas, 0);
+    const asientos = mesas * 2;
+    const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
+    const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
+
+    resumen.innerHTML = `<strong>${mesas}</strong> mesas · <strong>${asientos}</strong> asientos · <strong>${columnas}</strong> columnas · filas: <strong>${filasPorColumna.join(" / ")}</strong> · tamaño: <strong>${anchoMesa} × ${largoMesa} px</strong>`;
+}
+
+function aplicarConfiguracionAula() {
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
+    const columnas = filasPorColumna.length;
+    const filasMaximas = Math.max(...filasPorColumna, 1);
+    const filas = filasMaximas;
+    const anchoMesa = Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130));
+    const largoMesa = Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72));
+    const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
+    const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
+    const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula")?.checked === true;
+    const colorMujer = document.getElementById("colorMujerAula")?.value || "#e91e63";
+    const colorVaron = document.getElementById("colorVaronAula")?.value || "#1976d2";
+    const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
+    const totalAnterior = obtenerCantidadAsientosAula();
+
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
+    configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
+
+    Object.keys(distribucionAulaActual).forEach(numero => {
+        if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
+    });
+
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron);
+    guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
+
+    if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
+        distribucionAulaActual = crearDistribucionAulaInicial();
+    }
+    distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+
+    mostrarMensaje(`✓ Aula configurada: ${columnas} columnas con ${filasPorColumna.join(", ")} filas = ${totalNuevo} asientos.`);
+    mostrarVistaDistribucionAula();
+}
+
+function distribucionesAulaSonIguales(a = {}, b = {}) {
+    const normalizar = objeto => Object.fromEntries(
+        Object.entries(objeto || {})
+            .map(([k, v]) => [String(k), v ? String(v) : null])
+            .sort(([ka], [kb]) => ka.localeCompare(kb, undefined, { numeric: true }))
+    );
+    return JSON.stringify(normalizar(a)) === JSON.stringify(normalizar(b));
+}
+
+function actualizarBotonGuardarDistribucionAula() {
+    const boton = document.getElementById("botonGuardarDistribucionAula");
+    if (!boton) return;
+    boton.style.display = distribucionesAulaSonIguales(distribucionAulaActual, distribucionAulaGuardada) ? "none" : "inline-flex";
+}
+
+function configuracionesAulaSonIguales(a = {}, b = {}) {
+    const filasA = obtenerFilasPorColumnaAula(a);
+    const filasB = obtenerFilasPorColumnaAula(b);
+    return Number(a.columnas) === Number(b.columnas) &&
+           JSON.stringify(filasA) === JSON.stringify(filasB) &&
+           Number(a.anchoMesa) === Number(b.anchoMesa) &&
+           Number(a.largoMesa) === Number(b.largoMesa) &&
+           (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
+           (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false) &&
+           (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true) &&
+           String(a.colorMujer || "#e91e63").toLowerCase() === String(b.colorMujer || "#e91e63").toLowerCase() &&
+           String(a.colorVaron || "#1976d2").toLowerCase() === String(b.colorVaron || "#1976d2").toLowerCase();
+}
+
+function actualizarBotonAplicarConfiguracionAula() {
+    const boton = document.getElementById("botonAplicarConfiguracionAula");
+    if (!boton) return;
+    const filasPorColumna = obtenerFilasConfiguradasDesdeFormularioAula();
+    const actual = {
+        filas: Math.max(...filasPorColumna, 1),
+        columnas: filasPorColumna.length,
+        filasPorColumna,
+        anchoMesa: Math.max(60, Math.min(500, Number(document.getElementById("anchoMesasAula")?.value) || 130)),
+        largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72)),
+        mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true,
+        mostrarNumeroLista: document.getElementById("mostrarNumeroListaAula")?.checked !== false,
+        mostrarNumeroAsiento: document.getElementById("mostrarNumeroAsientoAula")?.checked === true
+    };
+    boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
+}
+
+function actualizarSelectsDistribucionAula() {
+    const selects = Array.from(document.querySelectorAll(".select-asiento-aula"));
+    const seleccionados = new Set(
+        Object.values(distribucionAulaActual || {}).filter(Boolean).map(String)
+    );
+
+    selects.forEach(select => {
+        const valorPropio = String(select.value || "");
+        Array.from(select.options).forEach(opcion => {
+            if (!opcion.value) {
+                opcion.disabled = false;
+                opcion.hidden = false;
+                return;
+            }
+            const asignadoEnOtroAsiento = seleccionados.has(String(opcion.value)) && String(opcion.value) !== valorPropio;
+            opcion.disabled = false;
+            opcion.hidden = asignadoEnOtroAsiento;
+        });
+    });
+
+    actualizarResumenDistribucionAula();
+}
+
+function actualizarResumenDistribucionAula() {
+    const resumen = document.getElementById("resumenDistribucionAula");
+    if (!resumen) return;
+
+    const totalEstudiantes = obtenerEstudiantesCursoActual().length;
+    const totalAsientos = obtenerCantidadAsientosAula();
+    const ocupados = Object.keys(distribucionAulaActual || {})
+        .filter(numero => Number(numero) <= totalAsientos)
+        .map(numero => distribucionAulaActual[numero])
+        .filter(Boolean).length;
+    const libres = Math.max(totalAsientos - ocupados, 0);
+    resumen.innerHTML = `<strong>${ocupados}</strong> asientos ocupados · <strong>${libres}</strong> libres · <strong>${totalEstudiantes}</strong> estudiantes en el curso`;
+}
+
+
+
+async function vaciarAsientosAula() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const confirmar = confirm(
+        "⚠️ ADVERTENCIA\n\n" +
+        "Se borrará la distribución actual de todos los estudiantes de este curso.\n\n" +
+        "¿Deseas vaciar todos los asientos?"
+    );
+
+    if (!confirmar) return;
+
+    const totalAsientos = obtenerCantidadAsientosAula();
+    distribucionAulaActual = {};
+    for (let numero = 1; numero <= totalAsientos; numero++) {
+        distribucionAulaActual[String(numero)] = null;
+    }
+
+    try {
+        await guardarDistribucionAulaBD();
+        distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+        actualizarBotonGuardarDistribucionAula();
+        mostrarMensaje("✓ Se vaciaron todos los asientos de la distribución actual.");
+        mostrarVistaDistribucionAula();
+    } catch (error) {
+        console.error("Error al vaciar distribución del aula:", error);
+        alert("No se pudo vaciar la distribución de asientos en este dispositivo.");
+    }
+}
+
+async function guardarDistribucionAula() {
+    if (!cursoSeleccionado) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    const selects = Array.from(document.querySelectorAll(".select-asiento-aula"));
+    if (selects.length) {
+        const usados = new Set();
+        for (const select of selects) {
+            const valor = select.value;
+            if (!valor) {
+                distribucionAulaActual[select.dataset.asiento] = null;
+                continue;
+            }
+            if (usados.has(valor)) {
+                alert("⚠️ Un estudiante no puede ocupar dos asientos.");
+                return;
+            }
+            usados.add(valor);
+            distribucionAulaActual[select.dataset.asiento] = valor;
+        }
+    }
+
+    try {
+        await guardarDistribucionAulaBD();
+        distribucionAulaGuardada = JSON.parse(JSON.stringify(distribucionAulaActual || {}));
+        actualizarBotonGuardarDistribucionAula();
+        mostrarMensaje("✓ Distribución de asientos guardada correctamente.");
+        mostrarVistaDistribucionAula();
+    } catch (error) {
+        console.error("Error al guardar distribución del aula:", error);
+        alert("No se pudo guardar la distribución de asientos en este dispositivo.");
+    }
+}
 
 /* =====================================================
    INICIAR
