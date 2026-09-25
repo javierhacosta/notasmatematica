@@ -1966,8 +1966,51 @@ td:first-child {
     animation: pulsoNumeroAzar .08s ease-in-out infinite alternate;
 }
 
-.azar-asistencia-numero.deslizando-izquierda { animation: numeroDeslizaIzquierda .16s ease-out; }
-.azar-asistencia-numero.deslizando-derecha { animation: numeroDeslizaDerecha .16s ease-out; }
+.azar-asistencia-numero {
+    position: relative;
+    overflow: hidden;
+}
+.azar-numero-contenido {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    will-change: transform, opacity;
+}
+.azar-numero-contenido.azar-numero-entrando-izquierda {
+    animation: azarEntraDesdeIzquierda .24s cubic-bezier(.22,.61,.36,1) both;
+}
+.azar-numero-contenido.azar-numero-entrando-derecha {
+    animation: azarEntraDesdeDerecha .24s cubic-bezier(.22,.61,.36,1) both;
+}
+.azar-numero-contenido.azar-numero-saliendo-izquierda {
+    animation: azarSaleHaciaIzquierda .24s cubic-bezier(.55,.06,.68,.19) both;
+}
+.azar-numero-contenido.azar-numero-saliendo-derecha {
+    animation: azarSaleHaciaDerecha .24s cubic-bezier(.55,.06,.68,.19) both;
+}
+@keyframes azarEntraDesdeIzquierda {
+    from { transform: translateX(-105%); opacity: 1; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes azarEntraDesdeDerecha {
+    from { transform: translateX(105%); opacity: 1; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes azarSaleHaciaIzquierda {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-105%); opacity: 1; }
+}
+@keyframes azarSaleHaciaDerecha {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(105%); opacity: 1; }
+}
+.azar-asistencia-numero.deslizando-izquierda,
+.azar-asistencia-numero.deslizando-derecha { animation: none; }
 .azar-asistencia-numero.revelando { animation: revelarNumeroAzar .28s ease-out; }
 
 @keyframes pulsoNumeroAzar {
@@ -22707,6 +22750,54 @@ function aplicarColorNumeroAzarAsistencia(estudiante, numeroEl) {
     }
 }
 
+function mostrarNumeroAzarConDeslizamiento(estudiante, numeroEl, direccion, instantaneo = false) {
+    if (!numeroEl) return;
+    const texto = textoVisibleAzarAsistencia(estudiante);
+    aplicarColorNumeroAzarAsistencia(estudiante, numeroEl);
+
+    let actual = numeroEl.querySelector(".azar-numero-contenido");
+    if (!actual) {
+        numeroEl.innerHTML = "";
+        actual = document.createElement("span");
+        actual.className = "azar-numero-contenido";
+        numeroEl.appendChild(actual);
+    }
+
+    if (instantaneo) {
+        actual.className = "azar-numero-contenido";
+        actual.textContent = texto;
+        return;
+    }
+
+    const nuevo = document.createElement("span");
+    nuevo.className = "azar-numero-contenido " +
+        (direccion === "izquierda"
+            ? "azar-numero-entrando-derecha"
+            : "azar-numero-entrando-izquierda");
+    nuevo.textContent = texto;
+    nuevo.style.color = numeroEl.style.color;
+
+    actual.classList.remove(
+        "azar-numero-entrando-izquierda",
+        "azar-numero-entrando-derecha",
+        "azar-numero-saliendo-izquierda",
+        "azar-numero-saliendo-derecha"
+    );
+    actual.classList.add(
+        direccion === "izquierda"
+            ? "azar-numero-saliendo-izquierda"
+            : "azar-numero-saliendo-derecha"
+    );
+
+    numeroEl.appendChild(nuevo);
+    setTimeout(() => {
+        if (actual.parentNode === numeroEl) actual.remove();
+        if (nuevo.parentNode === numeroEl) {
+            nuevo.className = "azar-numero-contenido";
+        }
+    }, 250);
+}
+
 function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
     if (azarAsistenciaAnimacion) return;
     const numeroEl = document.getElementById("azarAsistenciaNumero");
@@ -22736,15 +22827,7 @@ function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
         if (!numeroEl) return;
         const candidato = candidatos[Math.floor(Math.random() * candidatos.length)];
 
-        numeroEl.classList.remove("numero-deslizando-izquierda", "numero-deslizando-derecha");
-        void numeroEl.offsetWidth;
-        numeroEl.textContent = textoVisibleAzarAsistencia(candidato);
-        aplicarColorNumeroAzarAsistencia(candidato, numeroEl);
-        numeroEl.classList.add(
-            direccion === "izquierda"
-                ? "numero-deslizando-izquierda"
-                : "numero-deslizando-derecha"
-        );
+        mostrarNumeroAzarConDeslizamiento(candidato, numeroEl, direccion);
     };
 
     const mostrarNumeroRapido = () => {
@@ -22768,8 +22851,7 @@ function iniciarEleccionAzarPorDeslizamiento(duracion, direccion) {
 
     const inicial = candidatos[Math.floor(Math.random() * candidatos.length)];
     if (numeroEl) {
-        numeroEl.textContent = textoVisibleAzarAsistencia(inicial);
-        aplicarColorNumeroAzarAsistencia(inicial, numeroEl);
+        mostrarNumeroAzarConDeslizamiento(inicial, numeroEl, direccion, true);
     }
     azarAsistenciaAnimacion = requestAnimationFrame(mostrarNumeroRapido);
 }
@@ -22788,10 +22870,8 @@ function finalizarEleccionAzarAsistencia(candidatos, numeroEl, nombreEl) {
 
     if (numeroEl) {
         numeroEl.classList.remove("animando", "deslizando-izquierda", "deslizando-derecha", "revelando");
-        void numeroEl.offsetWidth;
+        mostrarNumeroAzarConDeslizamiento(elegido, numeroEl, "derecha");
         numeroEl.classList.add("revelando");
-        numeroEl.textContent = textoVisibleAzarAsistencia(elegido);
-        aplicarColorNumeroAzarAsistencia(elegido, numeroEl);
     }
 
     if (nombreEl) {
