@@ -502,17 +502,19 @@ input, select {
     overflow: hidden;
 }
 
-/* Actividad enfocada desde "Ir a actividad": parpadea hasta tocar un icono */
-.actividad.destacada-desde-pendiente {
-    animation: parpadearActividadPendiente .65s ease-in-out infinite;
+/* ACTIVIDAD DESTACADA AL IR DESDE PENDIENTES */
+.actividad.destacada-desde-pendientes {
+    animation: parpadearActividadDesdePendientes .75s ease-in-out infinite;
+    position: relative;
+    z-index: 2;
 }
 
-@keyframes parpadearActividadPendiente {
+@keyframes parpadearActividadDesdePendientes {
     0%, 100% {
-        box-shadow: 0 0 0 0 rgba(239,108,0,0);
+        box-shadow: 0 0 0 3px rgba(239,108,0,.95), 0 8px 24px rgba(239,108,0,.20);
     }
     50% {
-        box-shadow: 0 0 0 5px rgba(239,108,0,.65);
+        box-shadow: 0 0 0 3px rgba(239,108,0,.15), 0 8px 24px rgba(239,108,0,.05);
     }
 }
 
@@ -7979,29 +7981,59 @@ function aplicarDestinoPendienteInicio() {
         ).find(el => String(el.dataset.actividadId || "") === destino.id);
 
         if (bloque) {
-            // Centrar la actividad en la pantalla del celular.
-            bloque.scrollIntoView({ behavior: "smooth", block: "center" });
+            /*
+             * Igual que si el docente hubiera pulsado manualmente el "+"
+             * de la categoría: primero abrimos la categoría para que la
+             * actividad sea realmente visible.
+             */
+            const contenidoCategoria = bloque.closest(".categoria")?.querySelector(".contenido-categoria");
+            const encabezadoCategoria = bloque.closest(".categoria")?.querySelector(".titulo-categoria");
+            const iconoCategoria = encabezadoCategoria?.querySelector(".icono-expandir-categoria");
 
-            // Mantener el parpadeo hasta que se pulse cualquier icono
-            // de esa actividad.
-            bloque.classList.add("destacada-desde-pendiente");
+            if (contenidoCategoria && !contenidoCategoria.classList.contains("abierta")) {
+                contenidoCategoria.classList.add("abierta");
+                if (iconoCategoria) iconoCategoria.textContent = "−";
+            }
 
-            const detenerParpadeoActividad = () => {
-                bloque.classList.remove("destacada-desde-pendiente");
+            /*
+             * La actividad queda en el centro de la pantalla del celular
+             * y parpadea hasta que se pulse uno de sus iconos/botones.
+             */
+            document.querySelectorAll(".actividad.destacada-desde-pendientes").forEach(otra => {
+                otra.classList.remove("destacada-desde-pendientes");
+            });
+
+            bloque.classList.add("destacada-desde-pendientes");
+
+            const detenerParpadeo = () => {
+                bloque.classList.remove("destacada-desde-pendientes");
+                bloque.removeEventListener("click", detenerParpadeo);
+                delete bloque.__detenerParpadeoPendiente;
             };
 
-            // Los iconos de la actividad están en el encabezado.
-            const iconosActividad = bloque.querySelectorAll(
-                ".derecha-actividad button"
-            );
+            if (bloque.__detenerParpadeoPendiente) {
+                bloque.removeEventListener("click", bloque.__detenerParpadeoPendiente);
+            }
 
-            iconosActividad.forEach(icono => {
-                icono.addEventListener(
-                    "click",
-                    detenerParpadeoActividad,
-                    { once: true }
-                );
-            });
+            bloque.__detenerParpadeoPendiente = (event) => {
+                /*
+                 * Solo se detiene al pulsar un icono/botón de la actividad.
+                 * Tocar una zona vacía de la actividad no lo detiene.
+                 */
+                if (event.target.closest("button")) {
+                    detenerParpadeo();
+                }
+            };
+
+            bloque.addEventListener("click", bloque.__detenerParpadeoPendiente);
+
+            setTimeout(() => {
+                bloque.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "nearest"
+                });
+            }, 60);
 
             const actividad = (typeof actividades !== "undefined")
                 ? actividades.find(a => String(a.id) === destino.id)
