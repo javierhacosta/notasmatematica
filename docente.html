@@ -12165,22 +12165,26 @@ function mostrarSoloActividadesDeCategoria(contenidoCategoria, modo) {
     });
 }
 
-function abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, modo) {
+function abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria) {
     if (!contenidoCategoria || !iconoCategoria) return;
 
     const yaAbierta = contenidoCategoria.classList.contains("abierta");
-    const modoActual = contenidoCategoria.dataset.modoVista || "";
 
-    if (yaAbierta && modoActual === modo) {
+    if (yaAbierta) {
         contenidoCategoria.classList.remove("abierta");
         contenidoCategoria.dataset.modoVista = "";
         iconoCategoria.textContent = "+";
         return;
     }
 
-    mostrarSoloActividadesDeCategoria(contenidoCategoria, modo);
+    // El icono + muestra todas las actividades de esta categoría,
+    // sean antiguas o futuras.
+    contenidoCategoria.querySelectorAll(".actividad").forEach(bloque => {
+        bloque.style.display = "";
+    });
+
     contenidoCategoria.classList.add("abierta");
-    contenidoCategoria.dataset.modoVista = modo;
+    contenidoCategoria.dataset.modoVista = "todas";
     iconoCategoria.textContent = "−";
 }
 
@@ -12352,14 +12356,12 @@ function mostrarActividades() {
 
         });
 
-        encabezado.addEventListener("click", (event) => {
-            if (event.target === iconoCategoria) return;
-            abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, "pendientes");
-        });
+        // Solo el icono + / − controla la categoría.
+        encabezado.style.cursor = "default";
 
         iconoCategoria.addEventListener("click", (event) => {
             event.stopPropagation();
-            abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, "no-pendientes");
+            abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria);
         });
 
         seccion.appendChild(
