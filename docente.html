@@ -7286,6 +7286,10 @@ let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
 let actividadesPendientes = new Set();
 
+// Fecha usada para filtrar las actividades al pulsar un día del calendario.
+// Solo se activa desde el calendario; el resto del funcionamiento se mantiene igual.
+let fechaFiltroActividadesCalendario = "";
+
 //
 // Índices de rendimiento.
 // Se reconstruyen únicamente cuando cambian estudiantes/actividades o se vuelve
@@ -9744,7 +9748,7 @@ function renderizarCalendarioFechasAsistencia() {
         }
 
         boton.onclick = function() {
-            seleccionarFechaAsistencia(clave);
+            seleccionarFechaAsistencia(clave, true);
         };
 
         contenedor.appendChild(boton);
@@ -9891,7 +9895,7 @@ async function cargarFechasAsistencia() {
 }
 
 
-async function seleccionarFechaAsistencia(fechaSeleccionada = "") {
+async function seleccionarFechaAsistencia(fechaSeleccionada = "", filtrarActividadesCalendario = false) {
 
     const barraCargaAula = document.getElementById("barraCargaFechaAsistenciaAula");
     if (barraCargaAula) barraCargaAula.classList.add("activa");
@@ -9923,6 +9927,10 @@ async function seleccionarFechaAsistencia(fechaSeleccionada = "") {
     await cargarAsistencia();
     if (barraCargaAula) barraCargaAula.classList.remove("activa");
     actualizarSelectorDiasAsistenciaAula();
+
+    if (filtrarActividadesCalendario) {
+        mostrarActividadesPorFechaCalendario(fechaSeleccionada);
+    }
 
     const modalDistribucion = document.getElementById("modalDistribucionAula");
     if (modalDistribucion && !modalDistribucion.classList.contains("oculto")) {
@@ -12146,8 +12154,14 @@ function mostrarSoloActividadesDeCategoria(contenidoCategoria, modo) {
 
     contenidoCategoria.querySelectorAll(".actividad").forEach(bloque => {
         const pendiente = bloque.dataset.pendiente === "true";
-        const mostrar = modo === "pendientes" ? pendiente : !pendiente;
-        bloque.style.display = mostrar ? "" : "none";
+        const actividadId = String(bloque.dataset.actividadId || "");
+        const actividad = actividades.find(a => String(a?.id) === actividadId);
+
+        const coincideFecha = !fechaFiltroActividadesCalendario ||
+            String(actividad?.fecha || "").slice(0, 10) === fechaFiltroActividadesCalendario;
+
+        const mostrarPorModo = modo === "pendientes" ? pendiente : !pendiente;
+        bloque.style.display = (coincideFecha && mostrarPorModo) ? "" : "none";
     });
 }
 
@@ -12168,6 +12182,63 @@ function abrirCategoriaConFiltro(contenidoCategoria, iconoCategoria, modo) {
     contenidoCategoria.classList.add("abierta");
     contenidoCategoria.dataset.modoVista = modo;
     iconoCategoria.textContent = "−";
+}
+
+function mostrarActividadesPorFechaCalendario(fecha) {
+    fechaFiltroActividadesCalendario = String(fecha || "").slice(0, 10);
+
+    const contenedor = document.getElementById("contenedorActividades");
+    if (!contenedor || !fechaFiltroActividadesCalendario) return;
+
+    let primeraActividad = null;
+
+    contenedor.querySelectorAll(".categoria").forEach(seccion => {
+        const contenido = seccion.querySelector(".contenido-categoria");
+        const encabezado = seccion.querySelector(".titulo-categoria");
+        const icono = encabezado?.querySelector(".icono-expandir-categoria");
+        if (!contenido) return;
+
+        let tieneActividadFecha = false;
+
+        contenido.querySelectorAll(".actividad").forEach(bloque => {
+            const actividadId = String(bloque.dataset.actividadId || "");
+            const actividad = actividades.find(a => String(a?.id) === actividadId);
+            const coincide = String(actividad?.fecha || "").slice(0, 10) === fechaFiltroActividadesCalendario;
+
+            bloque.style.display = coincide ? "" : "none";
+
+            if (coincide) {
+                tieneActividadFecha = true;
+                if (!primeraActividad) primeraActividad = bloque;
+                bloque.classList.add("destacada-desde-pendientes");
+            } else {
+                bloque.classList.remove("destacada-desde-pendientes");
+            }
+        });
+
+        // Mostrar únicamente las categorías que contienen actividades de ese día.
+        seccion.style.display = tieneActividadFecha ? "" : "none";
+
+        if (tieneActividadFecha) {
+            contenido.classList.add("abierta");
+            contenido.dataset.modoVista = "fecha-calendario";
+            if (icono) icono.textContent = "−";
+        } else {
+            contenido.classList.remove("abierta");
+            contenido.dataset.modoVista = "";
+            if (icono) icono.textContent = "+";
+        }
+    });
+
+    if (primeraActividad) {
+        setTimeout(() => {
+            primeraActividad.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+                inline: "nearest"
+            });
+        }, 80);
+    }
 }
 
 function mostrarActividades() {
@@ -12329,6 +12400,10 @@ function mostrarActividades() {
 
     aplicarBloqueoEstadoEnLista(contenedor);
     actualizarEstadosGuardado();
+
+    if (fechaFiltroActividadesCalendario) {
+        mostrarActividadesPorFechaCalendario(fechaFiltroActividadesCalendario);
+    }
 }
 
 
