@@ -12229,6 +12229,19 @@ function mostrarActividadesPorFechaCalendario(fecha) {
     const contenedor = document.getElementById("contenedorActividades");
     if (!contenedor || !fechaFiltroActividadesCalendario) return;
 
+    // Si el día pulsado no tiene actividades, conservar/restaurar la vista completa.
+    const hayActividadesEnFecha = actividades.some(actividad =>
+        String(actividad?.fecha || "").slice(0, 10) === fechaFiltroActividadesCalendario
+    );
+
+    if (!hayActividadesEnFecha) {
+        fechaFiltroActividadesCalendario = "";
+        const botonMostrarTodas = document.getElementById("botonMostrarTodasActividadesCalendario");
+        if (botonMostrarTodas) botonMostrarTodas.classList.add("oculto");
+        mostrarActividades();
+        return;
+    }
+
     let primeraActividad = null;
 
     contenedor.querySelectorAll(".categoria").forEach(seccion => {
@@ -12255,8 +12268,11 @@ function mostrarActividadesPorFechaCalendario(fecha) {
             }
         });
 
-        // Mostrar únicamente las categorías que contienen actividades de ese día.
-        seccion.style.display = tieneActividadFecha ? "" : "none";
+        // Si el día no tiene actividades, no ocultar las actividades que ya estaban visibles.
+        // El filtro de calendario sólo se aplica cuando existe al menos una actividad en esa fecha.
+        if (tieneActividadFecha) {
+            seccion.style.display = "";
+        }
 
         if (tieneActividadFecha) {
             contenido.classList.add("abierta");
