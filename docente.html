@@ -12195,6 +12195,46 @@ function mostrarActividadesPorFechaCalendario(fecha) {
     if (!contenedor || !fechaFiltroActividadesCalendario) return;
 
     let primeraActividad = null;
+    let existeActividadEnLaFecha = false;
+
+    // Comprobar primero si el día seleccionado tiene alguna actividad.
+    contenedor.querySelectorAll(".actividad").forEach(bloque => {
+        const actividadId = String(bloque.dataset.actividadId || "");
+        const actividad = actividades.find(a => String(a?.id) === actividadId);
+        const coincide = String(actividad?.fecha || "").slice(0, 10) === fechaFiltroActividadesCalendario;
+
+        if (coincide) {
+            existeActividadEnLaFecha = true;
+            if (!primeraActividad) primeraActividad = bloque;
+        }
+    });
+
+    // Si no hay actividad ese día, restaurar la vista inicial completa.
+    if (!existeActividadEnLaFecha) {
+        fechaFiltroActividadesCalendario = "";
+
+        contenedor.querySelectorAll(".categoria").forEach(seccion => {
+            const contenido = seccion.querySelector(".contenido-categoria");
+            const encabezado = seccion.querySelector(".titulo-categoria");
+            const icono = encabezado?.querySelector(".icono-expandir-categoria");
+
+            seccion.style.display = "";
+
+            if (contenido) {
+                contenido.querySelectorAll(".actividad").forEach(bloque => {
+                    bloque.style.display = "";
+                    bloque.classList.remove("destacada-desde-pendientes");
+                });
+
+                contenido.classList.remove("abierta");
+                contenido.dataset.modoVista = "";
+            }
+
+            if (icono) icono.textContent = "+";
+        });
+
+        return;
+    }
 
     contenedor.querySelectorAll(".categoria").forEach(seccion => {
         const contenido = seccion.querySelector(".contenido-categoria");
