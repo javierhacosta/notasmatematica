@@ -2287,11 +2287,25 @@ async function mostrarDetalles() {
                             : "";
 
 
-                        const notaSinPresentar =
+                        const notaVacia =
                             nota === null ||
                             nota === undefined ||
-                            nota === "" ||
+                            nota === "";
+
+                        const notaCero =
+                            !notaVacia &&
                             Number(nota) === 0;
+
+                        const estadoNota =
+                            notaVacia
+                            ? "📝 Calificación Pendiente"
+                            : notaCero
+                            ? (
+                                categoria.codigo === "SABER"
+                                ? "❌ No realizó"
+                                : "❌ No presentó"
+                            )
+                            : "";
 
                         const valor =
                             nota === null ||
@@ -2328,10 +2342,10 @@ async function mostrarDetalles() {
                                     </span>
 
                                     ${
-                                        notaSinPresentar
+                                        estadoNota
                                         ? `
                                     <span class="actividad-estado-entrega actividad-estado-no-presento">
-                                        ❌ No presentó
+                                        ${estadoNota}
                                     </span>
                                         `
                                         : fechaEntrega
