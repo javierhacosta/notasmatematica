@@ -23081,29 +23081,36 @@ function elegirEstudianteAzarAsistencia() {
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
                 const usarVozWeb = ["mujer_web", "varon_web"].includes(generoVozAzarAsistencia);
 
-                // Voz web: usa Microsoft Edge TTS por Internet. Si no hay conexión
-                // o el navegador bloquea el servicio, vuelve automáticamente a Android.
+                // Voz web: se obtiene el audio directamente por Internet.
+                // Esto evita depender de WebSocket de Edge TTS, que puede ser bloqueado
+                // por Chrome/Android. Si no hay conexión o el audio no puede reproducirse,
+                // se usa automáticamente la voz del dispositivo.
                 if (usarVozWeb) {
                     (async () => {
+                        let urlAudio = null;
                         try {
-                            const moduloTTS = await import("https://cdn.jsdelivr.net/npm/edge-tts-universal@1.3.0/dist/browser.js");
-                            const EdgeTTS = moduloTTS.EdgeTTS;
-                            if (!EdgeTTS) throw new Error("Motor web no disponible");
+                            const textoWeb = `${nombreParaVoz} ${palabraElegido}`;
+                            const idiomaWeb = acentoVozAzarAsistencia === "latino" ? "es-419" : "es";
+                            const urlTTS = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(idiomaWeb)}&q=${encodeURIComponent(textoWeb)}`;
 
-                            const vozWeb = acentoVozAzarAsistencia === "latino"
-                                ? (generoVozAzarAsistencia === "varon_web" ? "es-MX-JorgeNeural" : "es-MX-DaliaNeural")
-                                : (generoVozAzarAsistencia === "varon_web" ? "es-ES-AlvaroNeural" : "es-ES-ElviraNeural");
+                            const respuestaAudio = await fetch(urlTTS, { mode: "cors", cache: "no-store" });
+                            if (!respuestaAudio.ok) throw new Error(`TTS web HTTP ${respuestaAudio.status}`);
 
-                            const ttsWeb = new EdgeTTS(`${nombreParaVoz} ${palabraElegido}`, vozWeb, {
-                                rate: "-5%",
-                                pitch: generoVozAzarAsistencia === "varon_web" ? "-8Hz" : "+0Hz"
-                            });
-                            const resultadoTTS = await ttsWeb.synthesize();
-                            const urlAudio = URL.createObjectURL(resultadoTTS.audio);
-                            const audioWeb = new Audio(urlAudio);
-                            audioWeb.onended = () => URL.revokeObjectURL(urlAudio);
+                            const blobAudio = await respuestaAudio.blob();
+                            if (!blobAudio.size) throw new Error("TTS web sin audio");
+
+                            urlAudio = URL.createObjectURL(blobAudio);
+                            const audioWeb = new Audio();
+                            audioWeb.preload = "auto";
+                            audioWeb.src = urlAudio;
+                            audioWeb.volume = 1;
+                            audioWeb.playsInline = true;
+                            audioWeb.onended = () => {
+                                if (urlAudio) URL.revokeObjectURL(urlAudio);
+                            };
                             await audioWeb.play();
                         } catch (error) {
+                            if (urlAudio) URL.revokeObjectURL(urlAudio);
                             console.warn("Voz web no disponible; se usará la voz del dispositivo.", error);
                             hablarAzarAsistenciaConVozLocal(nombreParaVoz, palabraElegido);
                         }
