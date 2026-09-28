@@ -5443,11 +5443,11 @@ table tbody tr:nth-child(10n+10) td {
 
 .boton-anotaciones-asistencia{width:34px;height:34px;border:none;border-radius:7px;background:#00838f;color:white;font-size:18px;cursor:pointer;opacity:.45;}
 .boton-anotaciones-asistencia.tiene-anotacion{opacity:1;background:#00838f;}
+.marca-anotacion-calendario{position:absolute;right:2px;bottom:1px;font-size:8px;line-height:1;pointer-events:none;}
 .modal-anotacion{width:100%;max-width:560px;background:white;border-radius:14px;overflow:hidden;box-shadow:0 10px 35px rgba(0,0,0,.3)}
 #textoAnotacionCurso{width:100%;min-height:140px;resize:vertical;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px}
 .anotaciones-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.anotaciones-filtros>*{flex:1;min-width:130px}
 .tabla-anotaciones{width:100%;border-collapse:collapse}.tabla-anotaciones th,.tabla-anotaciones td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}.tabla-anotaciones th{background:#f0f0f0}
-.marca-anotacion-calendario{position:absolute;right:2px;bottom:1px;font-size:8px;line-height:1}
 </style>
 
 </head>
@@ -9565,6 +9565,9 @@ let fechasHorarioAsistenciaGuardadas = new Set();
 let mesCalendarioAsistencia = new Date();
 mesCalendarioAsistencia.setDate(1);
 
+// Anotaciones del curso actual, indexadas por fecha YYYY-MM-DD.
+window.anotacionesCalendarioGuardadas = {};
+
 function fechaClaveCalendarioAsistencia(ano, mes, dia) {
     return String(ano) + "-" +
            String(mes + 1).padStart(2, "0") + "-" +
@@ -9632,7 +9635,13 @@ function renderizarCalendarioFechasAsistencia() {
         const tipoDia = String(tiposDias[clave] || "");
         const observacionDia = String(observacionesDiasAsistenciaGuardadas[clave] || "").trim();
         // La marca de anotación se añade tras consultar la tabla.
-        if (window.anotacionesCalendarioGuardadas && window.anotacionesCalendarioGuardadas[clave]) { const m=document.createElement("span"); m.className="marca-anotacion-calendario"; m.textContent="🗒️"; boton.appendChild(m); }
+        if (window.anotacionesCalendarioGuardadas && String(window.anotacionesCalendarioGuardadas[clave] || "").trim()) {
+            const marcaAnotacion = document.createElement("span");
+            marcaAnotacion.className = "marca-anotacion-calendario";
+            marcaAnotacion.textContent = "🗒️";
+            marcaAnotacion.title = "Hay una anotación en esta fecha";
+            boton.appendChild(marcaAnotacion);
+        }
         boton.title = tipoDia === "no_clases"
             ? "No se pasó clases: " + formatearFechaGuardadaAsistencia(clave)
             : tipoDia === "clase_informal"
@@ -9787,6 +9796,7 @@ async function cargarFechasAsistencia() {
     observacionesDiasAsistenciaGuardadas = {};
     fechasAzarAsistenciaGuardadas = new Set();
     fechasHorarioAsistenciaGuardadas = new Set();
+    window.anotacionesCalendarioGuardadas = {};
 
     if (!cursoSeleccionado) {
         renderizarCalendarioFechasAsistencia();
@@ -9805,7 +9815,7 @@ async function cargarFechasAsistencia() {
     }
 
     // Las dos consultas no dependen entre sí. Ejecutarlas juntas reduce la latencia total.
-    const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades, resultadoHorarios] = await Promise.all([
+    const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades, resultadoHorarios, resultadoAnotaciones] = await Promise.all([
         supabaseClient
             .from("asistencia")
             .select("fecha")
@@ -9831,6 +9841,11 @@ async function cargarFechasAsistencia() {
             .select("fecha,hora_entrada")
             .eq("curso", cursoSeleccionado)
             .not("hora_entrada", "is", null)
+            .order("fecha", { ascending: false }),
+        supabaseClient
+            .from("anotaciones")
+            .select("fecha,anotacion")
+            .eq("curso", cursoSeleccionado)
             .order("fecha", { ascending: false })
     ]);
 
@@ -9839,6 +9854,7 @@ async function cargarFechasAsistencia() {
     const { data: dataAzar, error: errorAzar } = resultadoAzar;
     const { data: dataActividades, error: errorActividades } = resultadoActividades;
     const { data: dataHorarios, error: errorHorarios } = resultadoHorarios;
+    const { data: dataAnotaciones, error: errorAnotaciones } = resultadoAnotaciones;
 
     if (errorAsistencia) {
         console.error(errorAsistencia);
@@ -9866,6 +9882,10 @@ async function cargarFechasAsistencia() {
         console.warn("No se pudieron cargar las fechas con horario de asistencia:", errorHorarios);
     }
 
+    if (errorAnotaciones) {
+        console.warn("No se pudieron cargar las anotaciones del calendario:", errorAnotaciones);
+    }
+
     fechasHorarioAsistenciaGuardadas = new Set(
         (dataHorarios || []).map(r => String(r.fecha)).filter(Boolean)
     );
@@ -9877,6 +9897,15 @@ async function cargarFechasAsistencia() {
     fechasActividadesAsistenciaGuardadas = new Set(
         (dataActividades || []).map(r => String(r.fecha)).filter(Boolean)
     );
+
+    window.anotacionesCalendarioGuardadas = {};
+    (dataAnotaciones || []).forEach(r => {
+        const fecha = String(r?.fecha || "").trim();
+        const texto = String(r?.anotacion || "").trim();
+        if (fecha && texto) {
+            window.anotacionesCalendarioGuardadas[fecha] = texto;
+        }
+    });
 
     tiposDiasAsistenciaGuardados = {};
     (dataTipos || []).forEach(r => {
@@ -9938,6 +9967,9 @@ async function seleccionarFechaAsistencia(fechaSeleccionada = "", filtrarActivid
     }
 
     renderizarCalendarioFechasAsistencia();
+    actualizarBotonAnotacionesAsistencia(
+        !!String(window.anotacionesCalendarioGuardadas?.[fechaSeleccionada] || "").trim()
+    );
 
     // Esperar a que se carguen los registros del día seleccionado antes de
     // volver a pintar la distribución, para evitar mostrar temporalmente las
@@ -10037,6 +10069,9 @@ document.getElementById(
         }
         renderizarCalendarioFechasAsistencia();
         actualizarSelectorDiasAsistenciaAula();
+        actualizarBotonAnotacionesAsistencia(
+            !!String(window.anotacionesCalendarioGuardadas?.[valorFecha] || "").trim()
+        );
 
         if (!cursoSeleccionado) {
             return;
@@ -24670,6 +24705,17 @@ async function cargarAnotacionesCurso() {
         return null;
     }
 
+    // Usar primero la copia ya cargada con el calendario para que cambiar de
+    // día sea inmediato y no dependa de otra consulta a Supabase.
+    if (window.anotacionesCalendarioGuardadas &&
+        Object.prototype.hasOwnProperty.call(window.anotacionesCalendarioGuardadas, fecha)) {
+        const texto = String(window.anotacionesCalendarioGuardadas[fecha] || "").trim();
+        const dataLocal = texto ? { curso, fecha, anotacion: texto } : null;
+        actualizarBotonAnotacionesAsistencia(!!texto);
+        return dataLocal;
+    }
+
+    // Respaldo para el caso en que todavía no se haya cargado el calendario.
     const { data, error } = await supabaseClient
         .from("anotaciones")
         .select("id,curso,fecha,anotacion")
@@ -24683,6 +24729,9 @@ async function cargarAnotacionesCurso() {
         return null;
     }
 
+    if (data && String(data.anotacion || "").trim()) {
+        window.anotacionesCalendarioGuardadas[fecha] = String(data.anotacion).trim();
+    }
     actualizarBotonAnotacionesAsistencia(!!(data && String(data.anotacion || "").trim()));
     return data;
 }
@@ -24751,24 +24800,131 @@ async function guardarAnotacionCurso() {
         return;
     }
 
+    if (anotacion) {
+        window.anotacionesCalendarioGuardadas[fecha] = anotacion;
+    } else {
+        delete window.anotacionesCalendarioGuardadas[fecha];
+    }
+
     anotacionCursoActual = anotacion
         ? { curso, fecha, anotacion }
         : null;
 
     actualizarBotonAnotacionesAsistencia(!!anotacion);
-
-    if (typeof renderizarCalendarioFechasAsistencia === "function") {
-        renderizarCalendarioFechasAsistencia();
-    }
-
+    renderizarCalendarioFechasAsistencia();
     document.getElementById("modalAnotacionCurso")?.classList.add("oculto");
 
+    // Actualizar el resumen de Inicio sin bloquear el guardado.
+    if (typeof actualizarResumenAnotacionesInicio === "function") {
+        actualizarResumenAnotacionesInicio();
+    }
     if (typeof cargarListadoAnotaciones === "function") {
-        cargarListadoAnotaciones();
+        cargarListadoAnotaciones(true);
     }
 }
-async function cargarListadoAnotaciones(){const {data,error}=await supabaseClient.from("anotaciones").select("curso,fecha,anotacion").order("fecha",{ascending:false});if(error)return;const body=document.getElementById("tablaAnotaciones");if(!body)return;const fc=document.getElementById("filtroAnotacionesCurso");const cursos=[...new Set(data.map(x=>x.curso))];fc.innerHTML='<option value="">Todos</option>'+cursos.map(c=>`<option>${c}</option>`).join("");const render=()=>{const f=fc.value,b=document.getElementById("buscarAnotaciones").value.toLowerCase();body.innerHTML=data.filter(x=>(!f||x.curso===f)&&(!b||String(x.anotacion).toLowerCase().includes(b))).map(x=>`<tr><td>${x.curso}</td><td>${x.fecha}</td><td>${x.anotacion}</td></tr>`).join("")};fc.onchange=render;document.getElementById("buscarAnotaciones").oninput=render;render();document.getElementById("listaAnotacionesInicio").textContent=data.length?`${data.length} anotación(es) guardada(s)`:"Sin anotaciones";}
-function abrirListadoAnotaciones(){document.getElementById("modalListadoAnotaciones").classList.remove("oculto");cargarListadoAnotaciones()};function cerrarListadoAnotaciones(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalListadoAnotaciones").classList.add("oculto")}
+
+let anotacionesCacheGlobal = null;
+let cargandoAnotacionesGlobal = null;
+
+async function obtenerAnotacionesGlobales(force = false) {
+    if (anotacionesCacheGlobal && !force) return anotacionesCacheGlobal;
+    if (cargandoAnotacionesGlobal && !force) return cargandoAnotacionesGlobal;
+
+    cargandoAnotacionesGlobal = supabaseClient
+        .from("anotaciones")
+        .select("curso,fecha,anotacion")
+        .order("fecha", { ascending: false })
+        .then(({ data, error }) => {
+            if (error) throw error;
+            anotacionesCacheGlobal = data || [];
+            return anotacionesCacheGlobal;
+        })
+        .finally(() => {
+            cargandoAnotacionesGlobal = null;
+        });
+
+    return cargandoAnotacionesGlobal;
+}
+
+function actualizarResumenAnotacionesInicio(data) {
+    const el = document.getElementById("listaAnotacionesInicio");
+    if (!el) return;
+    const lista = Array.isArray(data) ? data : (anotacionesCacheGlobal || []);
+    el.textContent = lista.length
+        ? `${lista.length} anotación(es) guardada(s)`
+        : "Sin anotaciones";
+}
+
+async function cargarResumenAnotacionesInicio() {
+    const el = document.getElementById("listaAnotacionesInicio");
+    if (!el) return;
+    el.textContent = "Cargando anotaciones...";
+    try {
+        const data = await obtenerAnotacionesGlobales();
+        actualizarResumenAnotacionesInicio(data);
+    } catch (error) {
+        console.warn("No se pudieron cargar las anotaciones de Inicio:", error);
+        el.textContent = "No se pudieron cargar";
+    }
+}
+
+async function cargarListadoAnotaciones(force = false) {
+    const modal = document.getElementById("modalListadoAnotaciones");
+    const body = document.getElementById("tablaAnotaciones");
+
+    // El resumen de Inicio debe actualizarse aunque la tabla todavía no exista/
+    // esté oculta. La carga completa se mantiene separada de la apertura del modal.
+    let data;
+    try {
+        data = await obtenerAnotacionesGlobales(force);
+    } catch (error) {
+        console.warn("Anotaciones:", error);
+        actualizarResumenAnotacionesInicio([]);
+        return;
+    }
+
+    actualizarResumenAnotacionesInicio(data);
+    if (!body) return;
+
+    const fc = document.getElementById("filtroAnotacionesCurso");
+    const buscador = document.getElementById("buscarAnotaciones");
+    if (!fc || !buscador) return;
+
+    const cursos = [...new Set(data.map(x => x.curso).filter(Boolean))];
+    fc.innerHTML = '<option value="">Todos</option>' + cursos.map(c => `<option>${c}</option>`).join("");
+
+    const render = () => {
+        const f = fc.value;
+        const b = buscador.value.toLowerCase();
+        body.innerHTML = data
+            .filter(x => (!f || x.curso === f) && (!b || String(x.anotacion).toLowerCase().includes(b)))
+            .map(x => `<tr><td>${x.curso}</td><td>${x.fecha}</td><td>${x.anotacion}</td></tr>`)
+            .join("");
+    };
+
+    fc.onchange = render;
+    buscador.oninput = render;
+    render();
+}
+
+function abrirListadoAnotaciones() {
+    const modal = document.getElementById("modalListadoAnotaciones");
+    if (modal) modal.classList.remove("oculto");
+    // Abrir el modal inmediatamente; la tabla se llena de forma asíncrona.
+    cargarListadoAnotaciones();
+}
+
+function cerrarListadoAnotaciones(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById("modalListadoAnotaciones")?.classList.add("oculto");
+}
+
+// No bloquea la carga inicial de la aplicación: solo actualiza el pequeño resumen.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", cargarResumenAnotacionesInicio, { once: true });
+} else {
+    setTimeout(cargarResumenAnotacionesInicio, 0);
+}
 </script>
 
 
