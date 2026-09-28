@@ -23046,14 +23046,27 @@ function elegirEstudianteAzarAsistencia() {
                     const vocesIdioma = vocesDisponibles.filter(voz =>
                         acentoVozAzarAsistencia === "latino" ? esLatino(voz) : esEspanol(voz)
                     );
-                    const patronesMujer = /female|mujer|woman|femenina|femenino|female voice|paulina|monica|helena|luciana|sofia|elena/i;
-                    const patronesVaron = /male|varon|hombre|masculino|male voice|jorge|diego|carlos|miguel|juan/i;
-                    const vocesGenero = vocesIdioma.filter(voz =>
-                        generoVozAzarAsistencia === "mujer" ? patronesMujer.test(voz.name) : patronesVaron.test(voz.name)
-                    );
-                    const vozSeleccionada = vocesGenero[0] || vocesIdioma[0] ||
-                        vocesDisponibles.find(voz => /^es/i.test(voz.lang || ""));
+                    // Android/Chrome no siempre indica el sexo en voice.name;
+                    // también lo indica en voiceURI (por ejemplo, #male_1-local).
+                    const datosVoz = voz => `${voz.name || ""} ${voz.voiceURI || ""}`;
+                    const patronesMujer = /female|mujer|woman|femenina|femenino|female[_ -]?voice|#female|_female|\bfem\b|paulina|monica|helena|luciana|sofia|elena/i;
+                    const patronesVaron = /male|varon|hombre|masculino|male[_ -]?voice|#male|_male|\bmasc\b|jorge|diego|carlos|miguel|juan|pablo|raul|roberto|fernando/i;
+                    const vocesGenero = vocesIdioma.filter(voz => {
+                        const datos = datosVoz(voz);
+                        return generoVozAzarAsistencia === "mujer"
+                            ? patronesMujer.test(datos)
+                            : patronesVaron.test(datos) && !patronesMujer.test(datos);
+                    });
+
+                    // Si se pidió varón y Android no expone una voz masculina
+                    // explícita, no elegimos una voz femenina por descarte.
+                    // Usamos una voz española disponible y un tono más grave.
+                    const vozSeleccionada = vocesGenero[0] ||
+                        (generoVozAzarAsistencia === "mujer" ? vocesIdioma[0] :
+                            vocesIdioma.find(voz => !patronesMujer.test(datosVoz(voz))) ||
+                            vocesDisponibles.find(voz => /^es/i.test(voz.lang || "") && !patronesMujer.test(datosVoz(voz))));
                     if (vozSeleccionada) vozElegido.voice = vozSeleccionada;
+                    if (generoVozAzarAsistencia === "varon") vozElegido.pitch = 0.72;
                     window.speechSynthesis.speak(vozElegido);
                 };
 
