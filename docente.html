@@ -7053,6 +7053,25 @@ Cancelar
             <div id="valorVelocidadNumeroAzarAsistencia" class="config-azar-valor">0 segundos</div>
 
             <div class="config-azar-tipo-eleccion">
+                <label>Voz</label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="generoVozAzarAsistencia" value="mujer" checked>
+                    <span>👩 Mujer</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="generoVozAzarAsistencia" value="varon">
+                    <span>👨 Varón</span>
+                </label>
+                <label>Idioma / acento</label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="acentoVozAzarAsistencia" value="latino" checked>
+                    <span>🌎 Latino</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="acentoVozAzarAsistencia" value="espanol">
+                    <span>🇪🇸 Español</span>
+                </label>
+
                 <label>Forma de elección</label>
                 <label class="config-azar-opcion">
                     <input type="radio" name="tipoEleccionAzarAsistencia"
@@ -22628,6 +22647,14 @@ const CLAVE_TAMANO_AZAR_ASISTENCIA = "tamanoNumeroAzarAsistencia";
 const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
 const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoNumeroAzarAsistencia";
 const CLAVE_VELOCIDAD_AZAR_ASISTENCIA = "velocidadNumeroAzarAsistencia";
+const CLAVE_GENERO_VOZ_AZAR_ASISTENCIA = "generoVozAzarAsistencia";
+const CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA = "acentoVozAzarAsistencia";
+let generoVozAzarAsistencia = ["mujer", "varon"].includes(localStorage.getItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA))
+    ? localStorage.getItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA)
+    : "mujer";
+let acentoVozAzarAsistencia = ["latino", "espanol"].includes(localStorage.getItem(CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA))
+    ? localStorage.getItem(CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA)
+    : "latino";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
 let tiempoNumeroAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
@@ -22692,6 +22719,14 @@ function abrirConfigTamanoAzarAsistencia() {
         actualizarVistaVelocidadAzarAsistencia(controlVelocidad.value);
     }
     aplicarTipoEleccionAzarAsistencia();
+
+    document.querySelectorAll('input[name="generoVozAzarAsistencia"]').forEach(input => {
+        input.checked = input.value === generoVozAzarAsistencia;
+    });
+    document.querySelectorAll('input[name="acentoVozAzarAsistencia"]').forEach(input => {
+        input.checked = input.value === acentoVozAzarAsistencia;
+    });
+
     modal.classList.remove("oculto");
 }
 
@@ -22734,10 +22769,22 @@ function guardarTamanoAzarAsistencia() {
         ? tipoSeleccionado
         : "numero";
 
+    const generoVozSeleccionado = document.querySelector('input[name="generoVozAzarAsistencia"]:checked')?.value || "mujer";
+    generoVozAzarAsistencia = ["mujer", "varon"].includes(generoVozSeleccionado)
+        ? generoVozSeleccionado
+        : "mujer";
+
+    const acentoVozSeleccionado = document.querySelector('input[name="acentoVozAzarAsistencia"]:checked')?.value || "latino";
+    acentoVozAzarAsistencia = ["latino", "espanol"].includes(acentoVozSeleccionado)
+        ? acentoVozSeleccionado
+        : "latino";
+
     localStorage.setItem(CLAVE_TAMANO_AZAR_ASISTENCIA, String(numero));
     localStorage.setItem(CLAVE_TIPO_AZAR_ASISTENCIA, tipoEleccionAzarAsistencia);
     localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempo));
     localStorage.setItem(CLAVE_VELOCIDAD_AZAR_ASISTENCIA, String(velocidad));
+    localStorage.setItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA, generoVozAzarAsistencia);
+    localStorage.setItem(CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA, acentoVozAzarAsistencia);
 
     aplicarTamanoNumeroAzarAsistencia();
     aplicarTipoEleccionAzarAsistencia();
@@ -22981,9 +23028,26 @@ function elegirEstudianteAzarAsistencia() {
                 const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
                 const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
-                vozElegido.lang = "es-ES";
+                const idiomaVoz = acentoVozAzarAsistencia === "latino" ? "es-419" : "es-ES";
+                vozElegido.lang = idiomaVoz;
                 vozElegido.rate = 0.95;
-                vozElegido.pitch = 1;
+                vozElegido.pitch = generoVozAzarAsistencia === "mujer" ? 1.08 : 0.92;
+
+                const vocesDisponibles = window.speechSynthesis.getVoices();
+                const esLatino = voz => /^(es-419|es-MX|es-US|es-AR|es-BO|es-CL|es-CO|es-PE|es-VE)/i.test(voz.lang || "");
+                const esEspanol = voz => /^es-ES/i.test(voz.lang || "");
+                const vocesIdioma = vocesDisponibles.filter(voz =>
+                    acentoVozAzarAsistencia === "latino" ? esLatino(voz) : esEspanol(voz)
+                );
+                const patronesMujer = /female|mujer|woman|femenina|femenino|female voice|paulina|monica|helena|luciana|sofia|elena/i;
+                const patronesVaron = /male|varon|hombre|masculino|male voice|jorge|diego|carlos|miguel|juan/i;
+                const vocesGenero = vocesIdioma.filter(voz =>
+                    generoVozAzarAsistencia === "mujer" ? patronesMujer.test(voz.name) : patronesVaron.test(voz.name)
+                );
+                const vozSeleccionada = vocesGenero[0] || vocesIdioma[0] ||
+                    vocesDisponibles.find(voz => /^es/i.test(voz.lang || ""));
+                if (vozSeleccionada) vozElegido.voice = vozSeleccionada;
+
                 window.speechSynthesis.speak(vozElegido);
             }
 
