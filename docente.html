@@ -24634,15 +24634,139 @@ window.addEventListener("beforeunload", function (event) {
 
 
 let anotacionCursoActual = null;
-async function cargarAnotacionesCurso(){
- const curso=typeof cursoSeleccionado!="undefined"?cursoSeleccionado:null; const fecha=typeof fechaAsistenciaSeleccionada!="undefined"?fechaAsistenciaSeleccionada:null;
- if(!curso||!fecha)return null;
- const {data,error}=await supabaseClient.from("anotaciones").select("id,curso,fecha,anotacion").eq("curso",curso).eq("fecha",fecha).maybeSingle();
- if(error){console.warn("Anotaciones:",error);return null} return data;
+
+/* Obtener siempre el curso y la fecha que están realmente seleccionados
+   en la pantalla de asistencia. No depender de una variable inexistente. */
+function obtenerContextoAnotacionCurso() {
+    const curso =
+        (typeof cursoSeleccionado !== "undefined" && cursoSeleccionado)
+            ? String(cursoSeleccionado).trim()
+            : String(document.getElementById("buscarCurso")?.value || "").trim();
+
+    const fecha =
+        (typeof fechaAsistenciaSeleccionada !== "undefined" && fechaAsistenciaSeleccionada)
+            ? String(fechaAsistenciaSeleccionada).trim()
+            : String(document.getElementById("fechaAsistencia")?.value || "").trim();
+
+    return { curso, fecha };
 }
-async function abrirAnotacionCurso(){const d=await cargarAnotacionesCurso();anotacionCursoActual=d;document.getElementById("textoAnotacionCurso").value=d?.anotacion||"";document.getElementById("modalAnotacionCurso").classList.remove("oculto");}
-function cerrarAnotacionCurso(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalAnotacionCurso").classList.add("oculto");}
-async function guardarAnotacionCurso(){const curso=typeof cursoSeleccionado!="undefined"?cursoSeleccionado:null;const fecha=typeof fechaAsistenciaSeleccionada!="undefined"?fechaAsistenciaSeleccionada:null;const anotacion=document.getElementById("textoAnotacionCurso").value.trim();if(!curso||!fecha){alert("Selecciona un curso y un día.");return}let q=supabaseClient.from("anotaciones");let r=anotacion?await q.upsert({curso,fecha,anotacion},{onConflict:"curso,fecha"}):await q.delete().eq("curso",curso).eq("fecha",fecha);if(r.error){alert("No se pudo guardar la anotación: "+r.error.message);return}cerrarAnotacionCurso();if(typeof renderizarCalendarioFechasAsistencia==="function")renderizarCalendarioFechasAsistencia();cargarListadoAnotaciones();}
+
+function actualizarBotonAnotacionesAsistencia(tieneAnotacion) {
+    const boton = document.getElementById("botonAnotacionesAsistencia");
+    if (!boton) return;
+
+    boton.classList.toggle("tiene-anotacion", !!tieneAnotacion);
+    boton.style.opacity = tieneAnotacion ? "1" : ".45";
+    boton.title = tieneAnotacion
+        ? "Editar anotación del curso y día"
+        : "Añadir anotación del curso y día";
+}
+
+async function cargarAnotacionesCurso() {
+    const { curso, fecha } = obtenerContextoAnotacionCurso();
+
+    if (!curso || !fecha) {
+        actualizarBotonAnotacionesAsistencia(false);
+        return null;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("anotaciones")
+        .select("id,curso,fecha,anotacion")
+        .eq("curso", curso)
+        .eq("fecha", fecha)
+        .maybeSingle();
+
+    if (error) {
+        console.warn("Anotaciones:", error);
+        actualizarBotonAnotacionesAsistencia(false);
+        return null;
+    }
+
+    actualizarBotonAnotacionesAsistencia(!!(data && String(data.anotacion || "").trim()));
+    return data;
+}
+
+async function abrirAnotacionCurso() {
+    const { curso, fecha } = obtenerContextoAnotacionCurso();
+
+    if (!curso) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    if (!fecha) {
+        alert("Selecciona un día de asistencia.");
+        return;
+    }
+
+    const d = await cargarAnotacionesCurso();
+    anotacionCursoActual = d;
+
+    const campo = document.getElementById("textoAnotacionCurso");
+    if (campo) campo.value = d?.anotacion || "";
+
+    document.getElementById("modalAnotacionCurso")?.classList.remove("oculto");
+}
+
+function cerrarAnotacionCurso(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById("modalAnotacionCurso")?.classList.add("oculto");
+}
+
+async function guardarAnotacionCurso() {
+    const { curso, fecha } = obtenerContextoAnotacionCurso();
+    const campo = document.getElementById("textoAnotacionCurso");
+    const anotacion = campo ? campo.value.trim() : "";
+
+    if (!curso) {
+        alert("Primero selecciona un curso.");
+        return;
+    }
+
+    if (!fecha) {
+        alert("Selecciona un día de asistencia.");
+        return;
+    }
+
+    let resultado;
+
+    if (anotacion) {
+        resultado = await supabaseClient
+            .from("anotaciones")
+            .upsert(
+                { curso, fecha, anotacion },
+                { onConflict: "curso,fecha" }
+            );
+    } else {
+        resultado = await supabaseClient
+            .from("anotaciones")
+            .delete()
+            .eq("curso", curso)
+            .eq("fecha", fecha);
+    }
+
+    if (resultado.error) {
+        alert("No se pudo guardar la anotación: " + resultado.error.message);
+        return;
+    }
+
+    anotacionCursoActual = anotacion
+        ? { curso, fecha, anotacion }
+        : null;
+
+    actualizarBotonAnotacionesAsistencia(!!anotacion);
+
+    if (typeof renderizarCalendarioFechasAsistencia === "function") {
+        renderizarCalendarioFechasAsistencia();
+    }
+
+    document.getElementById("modalAnotacionCurso")?.classList.add("oculto");
+
+    if (typeof cargarListadoAnotaciones === "function") {
+        cargarListadoAnotaciones();
+    }
+}
 async function cargarListadoAnotaciones(){const {data,error}=await supabaseClient.from("anotaciones").select("curso,fecha,anotacion").order("fecha",{ascending:false});if(error)return;const body=document.getElementById("tablaAnotaciones");if(!body)return;const fc=document.getElementById("filtroAnotacionesCurso");const cursos=[...new Set(data.map(x=>x.curso))];fc.innerHTML='<option value="">Todos</option>'+cursos.map(c=>`<option>${c}</option>`).join("");const render=()=>{const f=fc.value,b=document.getElementById("buscarAnotaciones").value.toLowerCase();body.innerHTML=data.filter(x=>(!f||x.curso===f)&&(!b||String(x.anotacion).toLowerCase().includes(b))).map(x=>`<tr><td>${x.curso}</td><td>${x.fecha}</td><td>${x.anotacion}</td></tr>`).join("")};fc.onchange=render;document.getElementById("buscarAnotaciones").oninput=render;render();document.getElementById("listaAnotacionesInicio").textContent=data.length?`${data.length} anotación(es) guardada(s)`:"Sin anotaciones";}
 function abrirListadoAnotaciones(){document.getElementById("modalListadoAnotaciones").classList.remove("oculto");cargarListadoAnotaciones()};function cerrarListadoAnotaciones(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalListadoAnotaciones").classList.add("oculto")}
 </script>
