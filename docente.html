@@ -22961,6 +22961,16 @@ function elegirEstudianteAzarAsistencia() {
                 nombreEl.appendChild(botonNombre);
             }
 
+            if ("speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                const nombreElegido = String(elegido.nombre || elegido.nombre_completo || "Estudiante").trim().toUpperCase();
+                const vozElegido = new SpeechSynthesisUtterance(`${nombreElegido} ELEGIDO`);
+                vozElegido.lang = "es-ES";
+                vozElegido.rate = 0.95;
+                vozElegido.pitch = 1;
+                window.speechSynthesis.speak(vozElegido);
+            }
+
             actualizarEstadoBotonElegirAzarAsistencia();
             return;
         }
