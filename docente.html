@@ -19553,6 +19553,10 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
+    hablarConVozAzarAsistencia(
+        `${data.nombre} ${estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE"}`
+    );
+
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
         <br>
@@ -19958,6 +19962,8 @@ async function prepararCalificacionQR(
 
     estudianteQRSeleccionado =
     data;
+
+    hablarConVozAzarAsistencia(data.nombre);
 
     let puntajeMaximo =
     Number(
@@ -22688,6 +22694,30 @@ let velocidadNumeroAzarAsistencia = Math.max(0, Math.min(0.5, Number(localStorag
 let vozAzarAsistenciaActiva = localStorage.getItem(CLAVE_VOZ_AZAR_ASISTENCIA) === "true";
 let velocidadVozAzarAsistencia = Math.max(0.5, Math.min(2, Number(localStorage.getItem(CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA)) || 0.95));
 let tonoVozAzarAsistencia = Math.max(0, Math.min(2, Number(localStorage.getItem(CLAVE_TONO_VOZ_AZAR_ASISTENCIA)) || 1));
+
+// Pronuncia los nombres como palabras completas usando exactamente la misma
+// configuración de voz de "Estudiantes elegidos".
+function prepararNombreParaVozAsistencia(nombre) {
+    return String(nombre || "")
+        .replace(/\bJH(?=[AEIOUÁÉÍÓÚÜ])/gi, "Y")
+        .replace(/\bBRIDGET\b/gi, "BRIYET")
+        .replace(/[.\-_/,;:]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLocaleLowerCase("es-ES");
+}
+
+function hablarConVozAzarAsistencia(texto) {
+    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
+    const textoVoz = prepararNombreParaVozAsistencia(texto);
+    if (!textoVoz) return;
+    window.speechSynthesis.cancel();
+    const voz = new SpeechSynthesisUtterance(textoVoz);
+    voz.lang = "es-ES";
+    voz.rate = velocidadVozAzarAsistencia;
+    voz.pitch = tonoVozAzarAsistencia;
+    window.speechSynthesis.speak(voz);
+}
 let azarAsistenciaTiempoFinalizacion = null;
 let azarAsistenciaUltimoCambio = 0;
 
@@ -23080,29 +23110,11 @@ function elegirEstudianteAzarAsistencia() {
                 nombreEl.appendChild(botonNombre);
             }
 
-            if (vozAzarAsistenciaActiva && "speechSynthesis" in window) {
-                window.speechSynthesis.cancel();
-
-                // Para la voz usamos el nombre mostrado, sin número de lista
-                // ni signos que algunos motores pueden interpretar como letras.
-                let nombreParaVoz = construirNombreCortoAula(elegido)
-                    .replace(/^\s*\d+\s+/, "")
-                    .replace(/[.\-_/,;:]+/g, " ")
-                    // Normalizamos nombres especiales para que el motor de voz
-                    // los pronuncie como palabras y no como letras separadas.
-                    .replace(/\bJH(?=[AEIOUÁÉÍÓÚÜ])/gi, "Y")
-                    .replace(/\bBRIDGET\b/gi, "BRIYET")
-                    .replace(/\s+/g, " ")
-                    .trim()
-                    .toLowerCase();
-
+            if (vozAzarAsistenciaActiva) {
                 const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
-                const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
-                vozElegido.lang = "es-ES";
-                vozElegido.rate = velocidadVozAzarAsistencia;
-                vozElegido.pitch = tonoVozAzarAsistencia;
-                window.speechSynthesis.speak(vozElegido);
+                const nombreParaVoz = construirNombreCortoAula(elegido).replace(/^\s*\d+\s+/, "");
+                hablarConVozAzarAsistencia(`${nombreParaVoz} ${palabraElegido}`);
             }
 
             actualizarEstadoBotonElegirAzarAsistencia();
