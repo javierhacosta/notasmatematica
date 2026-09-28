@@ -19553,6 +19553,11 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
+    if (vozAzarAsistenciaActiva) {
+        const textoEstadoVoz = estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE";
+        hablarConVozAzarAsistencia(`${String(data.nombre || "").trim()} ${textoEstadoVoz}`);
+    }
+
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
         <br>
@@ -19958,6 +19963,10 @@ async function prepararCalificacionQR(
 
     estudianteQRSeleccionado =
     data;
+
+    if (vozAzarAsistenciaActiva) {
+        hablarConVozAzarAsistencia(String(data.nombre || "").trim());
+    }
 
     let puntajeMaximo =
     Number(
@@ -22691,6 +22700,23 @@ let tonoVozAzarAsistencia = Math.max(0, Math.min(2, Number(localStorage.getItem(
 let azarAsistenciaTiempoFinalizacion = null;
 let azarAsistenciaUltimoCambio = 0;
 
+/* Usa exactamente la misma voz y características configuradas para
+   "Estudiantes elegidos" también en los escaneos QR. */
+function hablarConVozAzarAsistencia(texto) {
+    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
+
+    const textoVoz = String(texto || "").trim();
+    if (!textoVoz) return;
+
+    window.speechSynthesis.cancel();
+
+    const voz = new SpeechSynthesisUtterance(textoVoz);
+    voz.lang = "es-ES";
+    voz.rate = velocidadVozAzarAsistencia;
+    voz.pitch = tonoVozAzarAsistencia;
+    window.speechSynthesis.speak(voz);
+}
+
 function obtenerTipoEleccionAzarAsistencia() {
     const tiposValidos = ["numero", "inicial", "varones", "mujeres"];
     return tiposValidos.includes(tipoEleccionAzarAsistencia)
@@ -23081,10 +23107,8 @@ function elegirEstudianteAzarAsistencia() {
             }
 
             if (vozAzarAsistenciaActiva && "speechSynthesis" in window) {
-                window.speechSynthesis.cancel();
-
-                // Para la voz usamos el nombre mostrado, sin número de lista
-                // ni signos que algunos motores pueden interpretar como letras.
+                // Mantener exactamente la misma voz/configuración utilizada
+                // por "Estudiantes elegidos".
                 let nombreParaVoz = construirNombreCortoAula(elegido)
                     .replace(/^\s*\d+\s+/, "")
                     .replace(/[.\-_/,;:]+/g, " ")
@@ -23092,18 +23116,11 @@ function elegirEstudianteAzarAsistencia() {
                     .replace(/\bBRIDGET\b/gi, "BRIYET")
                     .replace(/\s+/g, " ")
                     .trim()
-                    // Los nombres en MAYÚSCULAS pueden hacer que algunos
-                    // motores de voz los interpreten como letras separadas.
-                    // Para la voz solamente, los pasamos a minúsculas.
                     .toLowerCase();
 
                 const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
-                const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
-                vozElegido.lang = "es-ES";
-                vozElegido.rate = velocidadVozAzarAsistencia;
-                vozElegido.pitch = tonoVozAzarAsistencia;
-                window.speechSynthesis.speak(vozElegido);
+                hablarConVozAzarAsistencia(`${nombreParaVoz} ${palabraElegido}`);
             }
 
             actualizarEstadoBotonElegirAzarAsistencia();
