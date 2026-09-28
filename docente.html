@@ -22705,19 +22705,25 @@ function prepararNombreParaVozAsistencia(nombre) {
         .split(" ")
         .filter(Boolean);
 
+    // En asistencia QR se conserva el estado al final: NOMBRES + APELLIDO + ESTADO.
+    const estado = /^(PRESENTE|ATRASO)$/i.test(partes[partes.length - 1] || "")
+        ? partes.pop().toUpperCase()
+        : "";
+
     // Para los QR: APELLIDO PATERNO + APELLIDO MATERNO + NOMBRES
     // se pronuncia como NOMBRES + APELLIDO PATERNO.
-    let nombreVoz = partes.length >= 3
+    const nombreVoz = partes.length >= 3
         ? [...partes.slice(2), partes[0]]
         : partes;
 
-    return nombreVoz
+    return [...nombreVoz, ...(estado ? [estado] : [])]
         .join(" ")
         .replace(/\bJH(?=[AEIOUÁÉÍÓÚÜ])/gi, "Y")
         .replace(/\bBRIDGET\b/gi, "BRIYET")
         .replace(/\s+/g, " ")
         .trim()
-        .toLocaleLowerCase("es-ES");
+        .toLocaleLowerCase("es-ES")
+        .replace(/\b(presente|atraso)$/i, (_, estadoFinal) => estadoFinal.toUpperCase());
 }
 
 function hablarConVozAzarAsistencia(texto) {
