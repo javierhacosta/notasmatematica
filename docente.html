@@ -22698,10 +22698,23 @@ let tonoVozAzarAsistencia = Math.max(0, Math.min(2, Number(localStorage.getItem(
 // Pronuncia los nombres como palabras completas usando exactamente la misma
 // configuración de voz de "Estudiantes elegidos".
 function prepararNombreParaVozAsistencia(nombre) {
-    return String(nombre || "")
+    const partes = String(nombre || "")
+        .replace(/[.\-_/,;:]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(" ")
+        .filter(Boolean);
+
+    // Para los QR: APELLIDO PATERNO + APELLIDO MATERNO + NOMBRES
+    // se pronuncia como NOMBRES + APELLIDO PATERNO.
+    let nombreVoz = partes.length >= 3
+        ? [...partes.slice(2), partes[0]]
+        : partes;
+
+    return nombreVoz
+        .join(" ")
         .replace(/\bJH(?=[AEIOUÁÉÍÓÚÜ])/gi, "Y")
         .replace(/\bBRIDGET\b/gi, "BRIYET")
-        .replace(/[.\-_/,;:]+/g, " ")
         .replace(/\s+/g, " ")
         .trim()
         .toLocaleLowerCase("es-ES");
