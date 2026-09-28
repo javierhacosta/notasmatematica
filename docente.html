@@ -235,6 +235,30 @@ input, select {
     font-weight: bold;
     color: #1557a6;
 }
+
+.config-azar-voz-controles {
+    display: none;
+    margin-top: 8px;
+    padding: 9px;
+    border: 1px solid #e3e3e3;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.config-azar-voz-controles.visible {
+    display: block;
+}
+
+.config-azar-voz-control {
+    width: 100%;
+}
+
+.config-azar-voz-subtitulo {
+    margin: 8px 0 4px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #444;
+}
 .config-azar-tiempo-label {
     margin-top: 10px;
 }
@@ -7058,9 +7082,26 @@ Cancelar
             <div class="config-azar-tipo-eleccion">
                 <label>Voz</label>
                 <label class="config-azar-opcion">
-                    <input type="checkbox" id="vozAzarAsistencia">
+                    <input type="checkbox" id="vozAzarAsistencia"
+                           onchange="mostrarControlesVozAzarAsistencia(this.checked)">
                     <span>Voz</span>
                 </label>
+
+                <div id="controlesVozAzarAsistencia" class="config-azar-voz-controles">
+                    <div class="config-azar-voz-subtitulo">Velocidad de voz</div>
+                    <input id="velocidadVozAzarAsistencia"
+                           class="config-azar-voz-control"
+                           type="range" min="0.5" max="2" step="0.05" value="0.95"
+                           oninput="actualizarVistaVelocidadVozAzarAsistencia(this.value)">
+                    <div id="valorVelocidadVozAzarAsistencia" class="config-azar-valor">0.95×</div>
+
+                    <div class="config-azar-voz-subtitulo">Tono de voz</div>
+                    <input id="tonoVozAzarAsistencia"
+                           class="config-azar-voz-control"
+                           type="range" min="0" max="2" step="0.05" value="1"
+                           oninput="actualizarVistaTonoVozAzarAsistencia(this.value)">
+                    <div id="valorTonoVozAzarAsistencia" class="config-azar-valor">1.00</div>
+                </div>
 
                 <label>Forma de elección</label>
                 <label class="config-azar-opcion">
@@ -22638,11 +22679,15 @@ const CLAVE_TIPO_AZAR_ASISTENCIA = "tipoEleccionAzarAsistencia";
 const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoNumeroAzarAsistencia";
 const CLAVE_VELOCIDAD_AZAR_ASISTENCIA = "velocidadNumeroAzarAsistencia";
 const CLAVE_VOZ_AZAR_ASISTENCIA = "vozAzarAsistencia";
+const CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA = "velocidadVozAzarAsistencia";
+const CLAVE_TONO_VOZ_AZAR_ASISTENCIA = "tonoVozAzarAsistencia";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
 let tiempoNumeroAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
 let velocidadNumeroAzarAsistencia = Math.max(0, Math.min(0.5, Number(localStorage.getItem(CLAVE_VELOCIDAD_AZAR_ASISTENCIA)) || 0));
 let vozAzarAsistenciaActiva = localStorage.getItem(CLAVE_VOZ_AZAR_ASISTENCIA) === "true";
+let velocidadVozAzarAsistencia = Math.max(0.5, Math.min(2, Number(localStorage.getItem(CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA)) || 0.95));
+let tonoVozAzarAsistencia = Math.max(0, Math.min(2, Number(localStorage.getItem(CLAVE_TONO_VOZ_AZAR_ASISTENCIA)) || 1));
 let azarAsistenciaTiempoFinalizacion = null;
 let azarAsistenciaUltimoCambio = 0;
 
@@ -22707,6 +22752,17 @@ function abrirConfigTamanoAzarAsistencia() {
     if (controlVoz) {
         controlVoz.checked = vozAzarAsistenciaActiva;
     }
+    const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
+    if (controlVelocidadVoz) {
+        controlVelocidadVoz.value = String(velocidadVozAzarAsistencia);
+        actualizarVistaVelocidadVozAzarAsistencia(controlVelocidadVoz.value);
+    }
+    const controlTonoVoz = document.getElementById("tonoVozAzarAsistencia");
+    if (controlTonoVoz) {
+        controlTonoVoz.value = String(tonoVozAzarAsistencia);
+        actualizarVistaTonoVozAzarAsistencia(controlTonoVoz.value);
+    }
+    mostrarControlesVozAzarAsistencia(vozAzarAsistenciaActiva);
 
     aplicarTipoEleccionAzarAsistencia();
     modal.classList.remove("oculto");
@@ -22733,6 +22789,23 @@ function actualizarVistaVelocidadAzarAsistencia(valor) {
     if (valorEl) valorEl.textContent = `${velocidad.toFixed(3)} segundos`;
 }
 
+function mostrarControlesVozAzarAsistencia(activo) {
+    const controles = document.getElementById("controlesVozAzarAsistencia");
+    if (controles) controles.classList.toggle("visible", !!activo);
+}
+
+function actualizarVistaVelocidadVozAzarAsistencia(valor) {
+    const velocidad = Math.max(0.5, Math.min(2, Number(valor) || 0.95));
+    const valorEl = document.getElementById("valorVelocidadVozAzarAsistencia");
+    if (valorEl) valorEl.textContent = `${velocidad.toFixed(2)}×`;
+}
+
+function actualizarVistaTonoVozAzarAsistencia(valor) {
+    const tono = Math.max(0, Math.min(2, Number(valor) || 1));
+    const valorEl = document.getElementById("valorTonoVozAzarAsistencia");
+    if (valorEl) valorEl.textContent = tono.toFixed(2);
+}
+
 function guardarTamanoAzarAsistencia() {
     const control = document.getElementById("tamanoNumeroAzarAsistencia");
     const numero = Math.max(80, Math.min(320, Number(control?.value) || 200));
@@ -22742,11 +22815,17 @@ function guardarTamanoAzarAsistencia() {
     const velocidad = Math.max(0, Math.min(0.5, Number(controlVelocidad?.value) || 0));
     const controlVoz = document.getElementById("vozAzarAsistencia");
     const vozActiva = !!controlVoz?.checked;
+    const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
+    const velocidadVoz = Math.max(0.5, Math.min(2, Number(controlVelocidadVoz?.value) || 0.95));
+    const controlTonoVoz = document.getElementById("tonoVozAzarAsistencia");
+    const tonoVoz = Math.max(0, Math.min(2, Number(controlTonoVoz?.value) || 1));
 
     tamanoNumeroAzarAsistencia = numero;
     tiempoNumeroAzarAsistencia = tiempo;
     velocidadNumeroAzarAsistencia = velocidad;
     vozAzarAsistenciaActiva = vozActiva;
+    velocidadVozAzarAsistencia = velocidadVoz;
+    tonoVozAzarAsistencia = tonoVoz;
 
     const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
     const tipoSeleccionado = radioSeleccionado?.value || "numero";
@@ -22759,6 +22838,8 @@ function guardarTamanoAzarAsistencia() {
     localStorage.setItem(CLAVE_TIEMPO_AZAR_ASISTENCIA, String(tiempo));
     localStorage.setItem(CLAVE_VELOCIDAD_AZAR_ASISTENCIA, String(velocidad));
     localStorage.setItem(CLAVE_VOZ_AZAR_ASISTENCIA, String(vozAzarAsistenciaActiva));
+    localStorage.setItem(CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA, String(velocidadVoz));
+    localStorage.setItem(CLAVE_TONO_VOZ_AZAR_ASISTENCIA, String(tonoVoz));
 
     aplicarTamanoNumeroAzarAsistencia();
     aplicarTipoEleccionAzarAsistencia();
@@ -22784,6 +22865,17 @@ function cerrarConfigTamanoAzarAsistencia(event) {
     if (controlVoz) {
         controlVoz.checked = vozAzarAsistenciaActiva;
     }
+    const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
+    if (controlVelocidadVoz) {
+        controlVelocidadVoz.value = String(velocidadVozAzarAsistencia);
+        actualizarVistaVelocidadVozAzarAsistencia(controlVelocidadVoz.value);
+    }
+    const controlTonoVoz = document.getElementById("tonoVozAzarAsistencia");
+    if (controlTonoVoz) {
+        controlTonoVoz.value = String(tonoVozAzarAsistencia);
+        actualizarVistaTonoVozAzarAsistencia(controlTonoVoz.value);
+    }
+    mostrarControlesVozAzarAsistencia(vozAzarAsistenciaActiva);
 
     modal.classList.add("oculto");
 }
@@ -23009,8 +23101,8 @@ function elegirEstudianteAzarAsistencia() {
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
                 const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
                 vozElegido.lang = "es-ES";
-                vozElegido.rate = 0.95;
-                vozElegido.pitch = 1;
+                vozElegido.rate = velocidadVozAzarAsistencia;
+                vozElegido.pitch = tonoVozAzarAsistencia;
                 window.speechSynthesis.speak(vozElegido);
             }
 
