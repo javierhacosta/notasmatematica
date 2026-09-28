@@ -7068,6 +7068,14 @@ Cancelar
                     <input type="radio" name="generoVozAzarAsistencia" value="varon">
                     <span>👨 Varón</span>
                 </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="generoVozAzarAsistencia" value="mujer_web">
+                    <span>🌐👩 Mujer web</span>
+                </label>
+                <label class="config-azar-opcion">
+                    <input type="radio" name="generoVozAzarAsistencia" value="varon_web">
+                    <span>🌐👨 Varón web</span>
+                </label>
                 <label>Idioma / acento</label>
                 <label class="config-azar-opcion">
                     <input type="radio" name="acentoVozAzarAsistencia" value="latino" checked>
@@ -22655,7 +22663,7 @@ const CLAVE_TIEMPO_AZAR_ASISTENCIA = "tiempoNumeroAzarAsistencia";
 const CLAVE_VELOCIDAD_AZAR_ASISTENCIA = "velocidadNumeroAzarAsistencia";
 const CLAVE_GENERO_VOZ_AZAR_ASISTENCIA = "generoVozAzarAsistencia";
 const CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA = "acentoVozAzarAsistencia";
-let generoVozAzarAsistencia = ["mujer", "varon"].includes(localStorage.getItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA))
+let generoVozAzarAsistencia = ["mujer", "varon", "mujer_web", "varon_web"].includes(localStorage.getItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA))
     ? localStorage.getItem(CLAVE_GENERO_VOZ_AZAR_ASISTENCIA)
     : "mujer";
 let acentoVozAzarAsistencia = ["latino", "espanol"].includes(localStorage.getItem(CLAVE_ACENTO_VOZ_AZAR_ASISTENCIA))
@@ -22936,6 +22944,44 @@ function actualizarEstadoBotonElegirAzarAsistencia() {
     }
 }
 
+function hablarAzarAsistenciaConVozLocal(nombreParaVoz, palabraElegido) {
+    if (!("speechSynthesis" in window)) return;
+
+    window.speechSynthesis.cancel();
+    const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
+    const generoLocal = ["varon", "varon_web"].includes(generoVozAzarAsistencia) ? "varon" : "mujer";
+    vozElegido.lang = acentoVozAzarAsistencia === "latino" ? "es-419" : "es-ES";
+    vozElegido.rate = generoLocal === "mujer" ? 0.95 : 0.90;
+    vozElegido.pitch = generoLocal === "mujer" ? 1.08 : 0.62;
+
+    const seleccionar = () => {
+        const voces = window.speechSynthesis.getVoices();
+        const idioma = voces.filter(v => acentoVozAzarAsistencia === "latino"
+            ? /^(es-419|es-MX|es-US|es-AR|es-BO|es-CL|es-CO|es-PE|es-VE)/i.test(v.lang || "")
+            : /^es-ES/i.test(v.lang || ""));
+        const datos = v => `${v.name || ""} ${v.voiceURI || ""}`;
+        const fem = /female|mujer|woman|femenina|femenino|#female|_female|paulina|monica|helena|luciana|sofia|elena/i;
+        const masc = /male|varon|hombre|masculino|#male|_male|jorge|diego|carlos|miguel|juan|pablo|raul|roberto|fernando/i;
+        const candidatas = idioma.filter(v => generoLocal === "mujer" ? fem.test(datos(v)) : masc.test(datos(v)) && !fem.test(datos(v)));
+        if (candidatas[0]) vozElegido.voice = candidatas[0];
+        window.speechSynthesis.speak(vozElegido);
+    };
+
+    const vocesIniciales = window.speechSynthesis.getVoices();
+    if (vocesIniciales.length) seleccionar();
+    else {
+        const cargar = () => {
+            window.speechSynthesis.removeEventListener("voiceschanged", cargar);
+            seleccionar();
+        };
+        window.speechSynthesis.addEventListener("voiceschanged", cargar);
+        setTimeout(() => {
+            window.speechSynthesis.removeEventListener("voiceschanged", cargar);
+            if (!window.speechSynthesis.speaking) seleccionar();
+        }, 800);
+    }
+}
+
 function elegirEstudianteAzarAsistencia() {
     if (azarAsistenciaAnimacion) return;
 
@@ -23033,61 +23079,37 @@ function elegirEstudianteAzarAsistencia() {
 
                 const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                 const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
-                const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
-                const idiomaVoz = acentoVozAzarAsistencia === "latino" ? "es-419" : "es-ES";
-                vozElegido.lang = idiomaVoz;
-                vozElegido.rate = 0.95;
-                vozElegido.pitch = generoVozAzarAsistencia === "mujer" ? 1.08 : 0.62;
+                const usarVozWeb = ["mujer_web", "varon_web"].includes(generoVozAzarAsistencia);
 
-                const seleccionarVozAzarAsistencia = () => {
-                    const vocesDisponibles = window.speechSynthesis.getVoices();
-                    const esLatino = voz => /^(es-419|es-MX|es-US|es-AR|es-BO|es-CL|es-CO|es-PE|es-VE)/i.test(voz.lang || "");
-                    const esEspanol = voz => /^es-ES/i.test(voz.lang || "");
-                    const vocesIdioma = vocesDisponibles.filter(voz =>
-                        acentoVozAzarAsistencia === "latino" ? esLatino(voz) : esEspanol(voz)
-                    );
-                    // Android/Chrome no siempre indica el sexo en voice.name;
-                    // también lo indica en voiceURI (por ejemplo, #male_1-local).
-                    const datosVoz = voz => `${voz.name || ""} ${voz.voiceURI || ""}`;
-                    const patronesMujer = /female|mujer|woman|femenina|femenino|female[_ -]?voice|#female|_female|\bfem\b|paulina|monica|helena|luciana|sofia|elena/i;
-                    const patronesVaron = /male|varon|hombre|masculino|male[_ -]?voice|#male|_male|\bmasc\b|jorge|diego|carlos|miguel|juan|pablo|raul|roberto|fernando/i;
-                    const vocesGenero = vocesIdioma.filter(voz => {
-                        const datos = datosVoz(voz);
-                        return generoVozAzarAsistencia === "mujer"
-                            ? patronesMujer.test(datos)
-                            : patronesVaron.test(datos) && !patronesMujer.test(datos);
-                    });
+                // Voz web: usa Microsoft Edge TTS por Internet. Si no hay conexión
+                // o el navegador bloquea el servicio, vuelve automáticamente a Android.
+                if (usarVozWeb) {
+                    (async () => {
+                        try {
+                            const moduloTTS = await import("https://cdn.jsdelivr.net/npm/edge-tts-universal@1.3.0/dist/browser.js");
+                            const EdgeTTS = moduloTTS.EdgeTTS;
+                            if (!EdgeTTS) throw new Error("Motor web no disponible");
 
-                    // Si se pidió varón y Android no expone una voz masculina
-                    // explícita, no elegimos una voz femenina por descarte.
-                    // Usamos una voz española disponible y un tono más grave.
-                    const vozSeleccionada = vocesGenero[0] ||
-                        (generoVozAzarAsistencia === "mujer" ? vocesIdioma[0] :
-                            vocesIdioma.find(voz => !patronesMujer.test(datosVoz(voz))) ||
-                            vocesDisponibles.find(voz => /^es/i.test(voz.lang || "") && !patronesMujer.test(datosVoz(voz))));
-                    if (vozSeleccionada) vozElegido.voice = vozSeleccionada;
-                    if (generoVozAzarAsistencia === "varon") {
-                        vozElegido.pitch = 0.62;
-                        vozElegido.rate = 0.90;
-                    }
-                    window.speechSynthesis.speak(vozElegido);
-                };
+                            const vozWeb = acentoVozAzarAsistencia === "latino"
+                                ? (generoVozAzarAsistencia === "varon_web" ? "es-MX-JorgeNeural" : "es-MX-DaliaNeural")
+                                : (generoVozAzarAsistencia === "varon_web" ? "es-ES-AlvaroNeural" : "es-ES-ElviraNeural");
 
-                // En Android las voces pueden cargarse después de llamar a getVoices().
-                // Esperamos a que estén disponibles para que la selección de voz sí se aplique.
-                const vocesIniciales = window.speechSynthesis.getVoices();
-                if (vocesIniciales.length) {
-                    seleccionarVozAzarAsistencia();
+                            const ttsWeb = new EdgeTTS(`${nombreParaVoz} ${palabraElegido}`, vozWeb, {
+                                rate: "-5%",
+                                pitch: generoVozAzarAsistencia === "varon_web" ? "-8Hz" : "+0Hz"
+                            });
+                            const resultadoTTS = await ttsWeb.synthesize();
+                            const urlAudio = URL.createObjectURL(resultadoTTS.audio);
+                            const audioWeb = new Audio(urlAudio);
+                            audioWeb.onended = () => URL.revokeObjectURL(urlAudio);
+                            await audioWeb.play();
+                        } catch (error) {
+                            console.warn("Voz web no disponible; se usará la voz del dispositivo.", error);
+                            hablarAzarAsistenciaConVozLocal(nombreParaVoz, palabraElegido);
+                        }
+                    })();
                 } else {
-                    const cargarVoces = () => {
-                        window.speechSynthesis.removeEventListener("voiceschanged", cargarVoces);
-                        seleccionarVozAzarAsistencia();
-                    };
-                    window.speechSynthesis.addEventListener("voiceschanged", cargarVoces);
-                    setTimeout(() => {
-                        window.speechSynthesis.removeEventListener("voiceschanged", cargarVoces);
-                        if (!vozElegido.voice) seleccionarVozAzarAsistencia();
-                    }, 800);
+                    hablarAzarAsistenciaConVozLocal(nombreParaVoz, palabraElegido);
                 }
             }
 
