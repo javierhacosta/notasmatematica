@@ -22963,8 +22963,18 @@ function elegirEstudianteAzarAsistencia() {
 
             if ("speechSynthesis" in window) {
                 window.speechSynthesis.cancel();
-                const nombreElegido = String(elegido.nombre || elegido.nombre_completo || "Estudiante").trim().toUpperCase();
-                const vozElegido = new SpeechSynthesisUtterance(`${nombreElegido} ELEGIDO`);
+
+                // Para la voz usamos el nombre mostrado, sin número de lista
+                // ni signos que algunos motores pueden interpretar como letras.
+                const nombreParaVoz = construirNombreCortoAula(elegido)
+                    .replace(/^\s*\d+\s+/, "")
+                    .replace(/[.\-_/,;:]+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
+                const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
+                const vozElegido = new SpeechSynthesisUtterance(`${nombreParaVoz} ${palabraElegido}`);
                 vozElegido.lang = "es-ES";
                 vozElegido.rate = 0.95;
                 vozElegido.pitch = 1;
