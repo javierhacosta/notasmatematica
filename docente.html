@@ -208,14 +208,20 @@ input, select {
     width: 100%;
     max-width: 390px;
     width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
     box-sizing: border-box;
     background: white;
     border-radius: 14px;
     box-shadow: 0 10px 35px rgba(0,0,0,.30);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 .config-azar-cuerpo {
     padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 .config-azar-cuerpo label {
     display: block;
@@ -23033,22 +23039,40 @@ function elegirEstudianteAzarAsistencia() {
                 vozElegido.rate = 0.95;
                 vozElegido.pitch = generoVozAzarAsistencia === "mujer" ? 1.08 : 0.92;
 
-                const vocesDisponibles = window.speechSynthesis.getVoices();
-                const esLatino = voz => /^(es-419|es-MX|es-US|es-AR|es-BO|es-CL|es-CO|es-PE|es-VE)/i.test(voz.lang || "");
-                const esEspanol = voz => /^es-ES/i.test(voz.lang || "");
-                const vocesIdioma = vocesDisponibles.filter(voz =>
-                    acentoVozAzarAsistencia === "latino" ? esLatino(voz) : esEspanol(voz)
-                );
-                const patronesMujer = /female|mujer|woman|femenina|femenino|female voice|paulina|monica|helena|luciana|sofia|elena/i;
-                const patronesVaron = /male|varon|hombre|masculino|male voice|jorge|diego|carlos|miguel|juan/i;
-                const vocesGenero = vocesIdioma.filter(voz =>
-                    generoVozAzarAsistencia === "mujer" ? patronesMujer.test(voz.name) : patronesVaron.test(voz.name)
-                );
-                const vozSeleccionada = vocesGenero[0] || vocesIdioma[0] ||
-                    vocesDisponibles.find(voz => /^es/i.test(voz.lang || ""));
-                if (vozSeleccionada) vozElegido.voice = vozSeleccionada;
+                const seleccionarVozAzarAsistencia = () => {
+                    const vocesDisponibles = window.speechSynthesis.getVoices();
+                    const esLatino = voz => /^(es-419|es-MX|es-US|es-AR|es-BO|es-CL|es-CO|es-PE|es-VE)/i.test(voz.lang || "");
+                    const esEspanol = voz => /^es-ES/i.test(voz.lang || "");
+                    const vocesIdioma = vocesDisponibles.filter(voz =>
+                        acentoVozAzarAsistencia === "latino" ? esLatino(voz) : esEspanol(voz)
+                    );
+                    const patronesMujer = /female|mujer|woman|femenina|femenino|female voice|paulina|monica|helena|luciana|sofia|elena/i;
+                    const patronesVaron = /male|varon|hombre|masculino|male voice|jorge|diego|carlos|miguel|juan/i;
+                    const vocesGenero = vocesIdioma.filter(voz =>
+                        generoVozAzarAsistencia === "mujer" ? patronesMujer.test(voz.name) : patronesVaron.test(voz.name)
+                    );
+                    const vozSeleccionada = vocesGenero[0] || vocesIdioma[0] ||
+                        vocesDisponibles.find(voz => /^es/i.test(voz.lang || ""));
+                    if (vozSeleccionada) vozElegido.voice = vozSeleccionada;
+                    window.speechSynthesis.speak(vozElegido);
+                };
 
-                window.speechSynthesis.speak(vozElegido);
+                // En Android las voces pueden cargarse después de llamar a getVoices().
+                // Esperamos a que estén disponibles para que la selección de voz sí se aplique.
+                const vocesIniciales = window.speechSynthesis.getVoices();
+                if (vocesIniciales.length) {
+                    seleccionarVozAzarAsistencia();
+                } else {
+                    const cargarVoces = () => {
+                        window.speechSynthesis.removeEventListener("voiceschanged", cargarVoces);
+                        seleccionarVozAzarAsistencia();
+                    };
+                    window.speechSynthesis.addEventListener("voiceschanged", cargarVoces);
+                    setTimeout(() => {
+                        window.speechSynthesis.removeEventListener("voiceschanged", cargarVoces);
+                        if (!vozElegido.voice) seleccionarVozAzarAsistencia();
+                    }, 800);
+                }
             }
 
             actualizarEstadoBotonElegirAzarAsistencia();
