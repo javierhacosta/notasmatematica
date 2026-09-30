@@ -20113,8 +20113,6 @@ async function prepararCalificacionQR(
     estudianteQRSeleccionado =
     data;
 
-    hablarConVozAzarAsistencia(data.nombre);
-
     let puntajeMaximo =
     Number(
         actividadQRSeleccionada.puntaje_maximo
@@ -20263,6 +20261,10 @@ async function prepararCalificacionQR(
 
     actualizarPresentacionQR();
 
+    /* Voz del QR de actividades: primero el nombre y, si ya tiene nota,
+       la nota. Usa exactamente la misma voz/configuración existente. */
+    hablarCalificacionQR(data.nombre, notaActual, true);
+
     const observacionInputQR =
     document.getElementById(
         "observacionQR"
@@ -20328,9 +20330,63 @@ function actualizarActividadesAnterioresQR() {
 }
 
 
+let temporizadorVozNotaQR = null;
+
+function numeroNotaParaVozQR(valor) {
+    const texto = String(valor ?? "").trim().replace(",", ".");
+    if (texto === "" || !isFinite(Number(texto))) return "";
+
+    const numero = Number(texto);
+    if (!Number.isInteger(numero) || numero < 0 || numero > 100) return texto;
+
+    const unidades = [
+        "cero","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve",
+        "diez","once","doce","trece","catorce","quince","dieciséis","diecisiete",
+        "dieciocho","diecinueve","veinte"
+    ];
+    if (numero <= 20) return unidades[numero];
+    if (numero < 30) {
+        const especiales = {
+            21: "veintiuno", 22: "veintidós", 23: "veintitrés", 24: "veinticuatro",
+            25: "veinticinco", 26: "veintiséis", 27: "veintisiete",
+            28: "veintiocho", 29: "veintinueve"
+        };
+        return especiales[numero];
+    }
+
+    const decenas = {30:"treinta",40:"cuarenta",50:"cincuenta",60:"sesenta",
+        70:"setenta",80:"ochenta",90:"noventa",100:"cien"};
+    const decena = Math.floor(numero / 10) * 10;
+    return numero % 10 === 0 ? decenas[decena] : `${decenas[decena]} y ${unidades[numero % 10]}`;
+}
+
+function hablarCalificacionQR(nombre, nota, incluirNombre = false) {
+    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
+
+    const nombreVoz = prepararNombreParaVozAsistencia(nombre);
+    const notaVoz = numeroNotaParaVozQR(nota);
+    const textoVoz = incluirNombre
+        ? [nombreVoz, notaVoz].filter(Boolean).join(" ")
+        : (notaVoz ? `Nota ${notaVoz}` : "");
+    if (!textoVoz) return;
+
+    window.speechSynthesis.cancel();
+    const voz = new SpeechSynthesisUtterance(textoVoz);
+    voz.lang = "es-ES";
+    voz.rate = velocidadVozAzarAsistencia;
+    voz.pitch = tonoVozAzarAsistencia;
+    window.speechSynthesis.speak(voz);
+}
+
 document.addEventListener("input", function(event) {
     if (event.target && event.target.id === "notaQR") {
         actualizarPresentacionQR();
+        clearTimeout(temporizadorVozNotaQR);
+        temporizadorVozNotaQR = setTimeout(function() {
+            if (!estudianteQRSeleccionado) return;
+            const valor = event.target.value.trim();
+            if (valor !== "") hablarCalificacionQR(estudianteQRSeleccionado.nombre, valor, false);
+        }, 2000);
     }
 });
 
@@ -20393,8 +20449,14 @@ function seleccionarNotaRapidaQR(nota) {
         return;
     }
 
+    clearTimeout(temporizadorVozNotaQR);
     notaInput.value = nota;
     actualizarPresentacionQR();
+
+    /* Las notas rápidas se leen inmediatamente. */
+    if (estudianteQRSeleccionado) {
+        hablarCalificacionQR(estudianteQRSeleccionado.nombre, nota, false);
+    }
 
     /* En celular, las notas rápidas no deben abrir el teclado.
        El teclado aparecerá únicamente al tocar el cuadro de calificación
