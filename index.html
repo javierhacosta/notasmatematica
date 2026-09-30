@@ -1191,7 +1191,38 @@ async function consultarNota() {
 
 function formatearFechaHoraPresentacion(fechaHora) {
     if (!fechaHora) return "";
+
     const texto = String(fechaHora).trim();
+
+    // Si Supabase entrega un timestamp con zona horaria (por ejemplo UTC),
+    // convertirlo a la hora local de Bolivia antes de mostrarlo.
+    const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(texto);
+
+    if (tieneZonaHoraria) {
+        const fecha = new Date(texto);
+        if (isNaN(fecha.getTime())) return texto;
+
+        const partes = new Intl.DateTimeFormat("es-BO", {
+            timeZone: "America/La_Paz",
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).formatToParts(fecha);
+
+        const valores = {};
+        partes.forEach(parte => {
+            if (parte.type !== "literal") valores[parte.type] = parte.value;
+        });
+
+        const diaSemana = valores.weekday.charAt(0).toUpperCase() + valores.weekday.slice(1);
+        return `${diaSemana} ${valores.day}/${valores.month}/${valores.year} ${valores.hour}:${valores.minute}`;
+    }
+
+    // Si no trae zona horaria, conservar exactamente la hora registrada.
     const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
     if (!match) return texto;
 
