@@ -21219,90 +21219,159 @@ async function cargarTodosLosRegistrosDetalleQR(tabla, seleccion = "*") {
 
 async function cargarDatosFamiliaresDetalleQR(estudiante) {
     /*
-       OPTIMIZACIÓN:
-       Antes se descargaban por bloques TODAS las filas de matematica y
-       listageneral para localizar hermanos. Ahora sólo se consultan filas
-       que coinciden con los apellidos del estudiante.
+       Caché local de la sección "Hermanos".
+       Se guarda el resultado ya procesado por combinación de apellidos,
+       para no volver a descargar matematica/listageneral cada vez que se
+       consulta al mismo estudiante o a otro hermano de la misma familia.
     */
-    const paternoBase = String(estudiante?.paterno || '').trim();
-    const maternoBase = String(estudiante?.materno || '').trim();
-    const ciActual = normalizarTextoHermanoDetalleQR(estudiante?.ci);
-    const idActual = String(estudiante?.id ?? '');
-
-    if (!paternoBase || !maternoBase) {
-        return { hermanos: [], estadoLectura: { matematica: { registros: 0, error: null }, listageneral: { registros: 0, error: null } } };
-    }
+    const CLAVE_CACHE_HERMANOS_DETALLE_QR = "detalle_hermanos_qr_cache_v1";
 
     const obtenerCampoHermano = (fila, nombres) => {
         for (const nombre of nombres) {
-            if (fila && fila[nombre] !== undefined && fila[nombre] !== null && String(fila[nombre]).trim() !== '') return fila[nombre];
+            if (fila && fila[nombre] !== undefined && fila[nombre] !== null && String(fila[nombre]).trim() !== "") {
+                return fila[nombre];
+            }
         }
-        return '';
+        return "";
     };
 
     const obtenerPaterno = fila => {
-        const valor = obtenerCampoHermano(fila, ['paterno','apellido_paterno','ap_paterno','apellidoPaterno','apPaterno']);
+        const valor = obtenerCampoHermano(fila, [
+            "paterno", "apellido_paterno", "ap_paterno", "apellidoPaterno", "apPaterno"
+        ]);
         if (valor) return valor;
-        const partes = String(obtenerCampoHermano(fila, ['nombre','nombres','name']) || '').trim().split(/\s+/).filter(Boolean);
-        return partes.length >= 2 ? partes[0] : '';
+        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
+        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+        return partes.length >= 2 ? partes[0] : "";
     };
-
     const obtenerMaterno = fila => {
-        const valor = obtenerCampoHermano(fila, ['materno','apellido_materno','ap_materno','apellidoMaterno','apMaterno']);
+        const valor = obtenerCampoHermano(fila, [
+            "materno", "apellido_materno", "ap_materno", "apellidoMaterno", "apMaterno"
+        ]);
         if (valor) return valor;
-        const partes = String(obtenerCampoHermano(fila, ['nombre','nombres','name']) || '').trim().split(/\s+/).filter(Boolean);
-        return partes.length >= 2 ? partes[1] : '';
+        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
+        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+        return partes.length >= 2 ? partes[1] : "";
     };
 
-    const consultarHermanos = async tabla => {
-        const { data, error } = await supabaseClient
-            .from(tabla)
-            .select('*')
-            .eq('paterno', paternoBase)
-            .eq('materno', maternoBase);
-        if (error) throw error;
-        return Array.isArray(data) ? data.map(x => ({ ...x, __tablaHermano: tabla })) : [];
-    };
+    const paternoCache = normalizarTextoHermanoDetalleQR(obtenerPaterno(estudiante));
+    const maternoCache = normalizarTextoHermanoDetalleQR(obtenerMaterno(estudiante));
 
+    /* Primero consultar la caché del celular. */
+    if (paternoCache && maternoCache) {
+        try {
+            const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_HERMANOS_DETALLE_QR) || "null");
+            const clave = paternoCache + "|" + maternoCache;
+            const registroCache = cache && cache[clave];
+            if (registroCache && Array.isArray(registroCache.hermanos)) {
+                return {
+                    hermanos: registroCache.hermanos,
+                    estadoLectura: registroCache.estadoLectura || {
+                        matematica: { registros: 0, error: null },
+                        listageneral: { registros: 0, error: null }
+                    }
+                };
+            }
+        } catch (e) {
+            console.warn("No se pudo leer la caché de hermanos:", e);
+        }
+    }
+
+    // Leer por bloques para superar el límite de 1000 filas por consulta.
     const resultados = await Promise.allSettled([
-        consultarHermanos('matematica'),
-        consultarHermanos('listageneral')
+        cargarTodosLosRegistrosDetalleQR("matematica"),
+        cargarTodosLosRegistrosDetalleQR("listageneral")
     ]);
 
-    const rMat = resultados[0].status === 'fulfilled' ? { data: resultados[0].value, error: null } : { data: [], error: resultados[0].reason };
-    const rLista = resultados[1].status === 'fulfilled' ? { data: resultados[1].value, error: null } : { data: [], error: resultados[1].reason };
+    const rMat = resultados[0].status === "fulfilled"
+        ? { data: resultados[0].value, error: null }
+        : { data: [], error: resultados[0].reason };
+    const rLista = resultados[1].status === "fulfilled"
+        ? { data: resultados[1].value, error: null }
+        : { data: [], error: resultados[1].reason };
 
-    if (rMat.error) console.warn('No se pudo consultar hermanos en matematica:', rMat.error);
-    if (rLista.error) console.warn('No se pudo consultar hermanos en listageneral:', rLista.error);
+    if (rMat.error) console.warn("No se pudo leer matematica para hermanos:", rMat.error);
+    if (rLista.error) console.warn("No se pudo leer listageneral para hermanos:", rLista.error);
 
     const todos = [
-        ...(Array.isArray(rMat.data) ? rMat.data : []),
-        ...(Array.isArray(rLista.data) ? rLista.data : [])
+        ...(Array.isArray(rMat.data) ? rMat.data.map(x => ({...x, __tablaHermano:"matematica"})) : []),
+        ...(Array.isArray(rLista.data) ? rLista.data.map(x => ({...x, __tablaHermano:"listageneral"})) : [])
     ];
 
-    const hermanos = todos.filter(x => {
-        const mismoRegistro =
+    // El estudiante ya fue recargado desde matematica en mostrarDetalleEstudianteQR.
+    // Si por alguna razón faltan paterno/materno allí, también se intenta obtenerlos
+    // de los registros de ambas tablas usando CI o id.
+    let paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
+    let maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
+
+    if (!paternoActual || !maternoActual) {
+        const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
+        const idActual = String(estudiante.id ?? "");
+        const registroActual = todos.find(x =>
             (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual) ||
-            (idActual && String(x.id ?? '') === idActual);
-        return !mismoRegistro;
+            (idActual && String(x.id ?? "") === idActual)
+        );
+        if (registroActual) {
+            paternoActual = normalizarTextoHermanoDetalleQR(obtenerPaterno(registroActual));
+            maternoActual = normalizarTextoHermanoDetalleQR(obtenerMaterno(registroActual));
+        }
+    }
+
+    if (!paternoActual || !maternoActual) {
+        return { hermanos: [] };
+    }
+
+    const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
+    const idActual = String(estudiante.id ?? "");
+
+    const hermanos = todos.filter(x => {
+        const mismoApellido =
+            normalizarTextoHermanoDetalleQR(obtenerPaterno(x)) === paternoActual &&
+            normalizarTextoHermanoDetalleQR(obtenerMaterno(x)) === maternoActual;
+
+        const mismoRegistro =
+            (idActual && String(x.id ?? "") === idActual &&
+             (!ciActual || normalizarTextoHermanoDetalleQR(x.ci) === ciActual)) ||
+            (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual);
+
+        return mismoApellido && !mismoRegistro;
     }).map(x => ({
         ...x,
         paterno: obtenerPaterno(x),
         materno: obtenerMaterno(x),
-        nombres: obtenerCampoHermano(x, ['nombres','nombre','name']),
-        nombre: obtenerCampoHermano(x, ['nombre','nombres','name']),
-        nivel: obtenerCampoHermano(x, ['nivel','grado','nivel_educativo']),
-        curso: obtenerCampoHermano(x, ['curso','paralelo']),
-        ue: obtenerCampoHermano(x, ['ue','unidad_educativa','unidadEducativa'])
+        nombres: obtenerCampoHermano(x, ["nombres", "nombre", "name"]),
+        nombre: obtenerCampoHermano(x, ["nombre", "nombres", "name"]),
+        nivel: obtenerCampoHermano(x, ["nivel", "grado", "nivel_educativo"]),
+        curso: obtenerCampoHermano(x, ["curso", "paralelo"]),
+        ue: obtenerCampoHermano(x, ["ue", "unidad_educativa", "unidadEducativa"])
     }));
 
-    return {
-        hermanos,
-        estadoLectura: {
-            matematica: { registros: Array.isArray(rMat.data) ? rMat.data.length : 0, error: rMat.error ? (rMat.error.message || String(rMat.error)) : null },
-            listageneral: { registros: Array.isArray(rLista.data) ? rLista.data.length : 0, error: rLista.error ? (rLista.error.message || String(rLista.error)) : null }
+    const estadoLectura = {
+        matematica: {
+            registros: Array.isArray(rMat.data) ? rMat.data.length : 0,
+            error: rMat.error ? (rMat.error.message || String(rMat.error)) : null
+        },
+        listageneral: {
+            registros: Array.isArray(rLista.data) ? rLista.data.length : 0,
+            error: rLista.error ? (rLista.error.message || String(rLista.error)) : null
         }
     };
+
+    const resultado = { hermanos, estadoLectura };
+
+    /* Guardar el resultado final en la caché del celular. */
+    if (paternoActual && maternoActual) {
+        try {
+            const cacheActual = JSON.parse(localStorage.getItem(CLAVE_CACHE_HERMANOS_DETALLE_QR) || "{}");
+            const clave = paternoActual + "|" + maternoActual;
+            cacheActual[clave] = resultado;
+            localStorage.setItem(CLAVE_CACHE_HERMANOS_DETALLE_QR, JSON.stringify(cacheActual));
+        } catch (e) {
+            console.warn("No se pudo guardar la caché de hermanos:", e);
+        }
+    }
+
+    return resultado;
 }
 
 async function mostrarEstadisticaUE(nombreUE, boton) {
