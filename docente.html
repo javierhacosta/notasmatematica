@@ -21194,16 +21194,43 @@ function generoEstadistica(valor) {
     return "Otros";
 }
 
+async function cargarTodosLosRegistrosDetalleQR(tabla, seleccion = "*") {
+    const tamanoPagina = 1000;
+    const registros = [];
+    let inicio = 0;
+
+    while (true) {
+        const { data, error } = await supabaseClient
+            .from(tabla)
+            .select(seleccion)
+            .range(inicio, inicio + tamanoPagina - 1);
+
+        if (error) throw error;
+
+        const lote = Array.isArray(data) ? data : [];
+        registros.push(...lote);
+
+        if (lote.length < tamanoPagina) break;
+        inicio += tamanoPagina;
+    }
+
+    return registros;
+}
+
 async function cargarDatosFamiliaresDetalleQR(estudiante) {
-    // No asumir que ambas tablas tienen exactamente las mismas columnas.
-    // Se leen completas y se buscan los apellidos usando varios nombres
-    // posibles de columna para que funcione tanto en matematica como en listageneral.
-    const [rMat, rLista] = await Promise.all([
-        supabaseClient.from("matematica").select("*"),
-        supabaseClient.from("listageneral").select("*")
+    // Leer por bloques para superar el límite de 1000 filas por consulta.
+    const resultados = await Promise.allSettled([
+        cargarTodosLosRegistrosDetalleQR("matematica"),
+        cargarTodosLosRegistrosDetalleQR("listageneral")
     ]);
 
-    // Una tabla puede no estar disponible sin impedir la búsqueda en la otra.
+    const rMat = resultados[0].status === "fulfilled"
+        ? { data: resultados[0].value, error: null }
+        : { data: [], error: resultados[0].reason };
+    const rLista = resultados[1].status === "fulfilled"
+        ? { data: resultados[1].value, error: null }
+        : { data: [], error: resultados[1].reason };
+
     if (rMat.error) console.warn("No se pudo leer matematica para hermanos:", rMat.error);
     if (rLista.error) console.warn("No se pudo leer listageneral para hermanos:", rLista.error);
 
