@@ -21183,9 +21183,7 @@ function normalizarTextoHermanoDetalleQR(valor) {
 
 function normalizarUEEstadistica(valor) {
     return normalizarTextoHermanoDetalleQR(valor)
-        .replace(/^(U\.?\s*E\.?|UNIDAD\s+EDUCATIVA)\s*/i, "")
-        .replace(/[^A-Z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/^U\.?E\.?\s*/i, "")
         .trim();
 }
 
@@ -21197,28 +21195,98 @@ function generoEstadistica(valor) {
 }
 
 async function cargarDatosFamiliaresDetalleQR(estudiante) {
-    const seleccion = "id,ci,nombre,paterno,materno,nombres,rude,ppff,cel1,cel2,curso,nivel,ue,gen,fecha_nacimiento";
+    // No asumir que ambas tablas tienen exactamente las mismas columnas.
+    // Se leen completas y se buscan los apellidos usando varios nombres
+    // posibles de columna para que funcione tanto en matematica como en listageneral.
     const [rMat, rLista] = await Promise.all([
-        supabaseClient.from("matematica").select(seleccion),
-        supabaseClient.from("listageneral").select(seleccion)
+        supabaseClient.from("matematica").select("*"),
+        supabaseClient.from("listageneral").select("*")
     ]);
-    if (rMat.error) throw rMat.error;
-    if (rLista.error) throw rLista.error;
 
-    const todos = [...(rMat.data || []), ...(rLista.data || [])];
+    // Una tabla puede no estar disponible sin impedir la búsqueda en la otra.
+    if (rMat.error) console.warn("No se pudo leer matematica para hermanos:", rMat.error);
+    if (rLista.error) console.warn("No se pudo leer listageneral para hermanos:", rLista.error);
 
-    const paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
-    const maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
+    const todos = [
+        ...(Array.isArray(rMat.data) ? rMat.data.map(x => ({...x, __tablaHermano:"matematica"})) : []),
+        ...(Array.isArray(rLista.data) ? rLista.data.map(x => ({...x, __tablaHermano:"listageneral"})) : [])
+    ];
 
-    const hermanos = paternoActual && maternoActual
-        ? todos.filter(x => {
-            const mismoApellido = normalizarTextoHermanoDetalleQR(x.paterno) === paternoActual &&
-                                  normalizarTextoHermanoDetalleQR(x.materno) === maternoActual;
-            const mismoRegistro = String(x.id ?? "") === String(estudiante.id ?? "") &&
-                                  normalizarTextoHermanoDetalleQR(x.ci) === normalizarTextoHermanoDetalleQR(estudiante.ci);
-            return mismoApellido && !mismoRegistro;
-        })
-        : [];
+    const obtenerCampoHermano = (fila, nombres) => {
+        for (const nombre of nombres) {
+            if (fila && fila[nombre] !== undefined && fila[nombre] !== null && String(fila[nombre]).trim() !== "") {
+                return fila[nombre];
+            }
+        }
+        return "";
+    };
+
+    const obtenerPaterno = fila => {
+        const valor = obtenerCampoHermano(fila, [
+            "paterno", "apellido_paterno", "ap_paterno", "apellidoPaterno", "apPaterno"
+        ]);
+        if (valor) return valor;
+        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
+        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+        return partes.length >= 2 ? partes[0] : "";
+    };
+    const obtenerMaterno = fila => {
+        const valor = obtenerCampoHermano(fila, [
+            "materno", "apellido_materno", "ap_materno", "apellidoMaterno", "apMaterno"
+        ]);
+        if (valor) return valor;
+        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
+        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+        return partes.length >= 2 ? partes[1] : "";
+    };
+
+    // El estudiante ya fue recargado desde matematica en mostrarDetalleEstudianteQR.
+    // Si por alguna razón faltan paterno/materno allí, también se intenta obtenerlos
+    // de los registros de ambas tablas usando CI o id.
+    let paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
+    let maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
+
+    if (!paternoActual || !maternoActual) {
+        const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
+        const idActual = String(estudiante.id ?? "");
+        const registroActual = todos.find(x =>
+            (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual) ||
+            (idActual && String(x.id ?? "") === idActual)
+        );
+        if (registroActual) {
+            paternoActual = normalizarTextoHermanoDetalleQR(obtenerPaterno(registroActual));
+            maternoActual = normalizarTextoHermanoDetalleQR(obtenerMaterno(registroActual));
+        }
+    }
+
+    if (!paternoActual || !maternoActual) {
+        return { hermanos: [] };
+    }
+
+    const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
+    const idActual = String(estudiante.id ?? "");
+
+    const hermanos = todos.filter(x => {
+        const mismoApellido =
+            normalizarTextoHermanoDetalleQR(obtenerPaterno(x)) === paternoActual &&
+            normalizarTextoHermanoDetalleQR(obtenerMaterno(x)) === maternoActual;
+
+        const mismoRegistro =
+            (idActual && String(x.id ?? "") === idActual &&
+             (!ciActual || normalizarTextoHermanoDetalleQR(x.ci) === ciActual)) ||
+            (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual);
+
+        return mismoApellido && !mismoRegistro;
+    }).map(x => ({
+        ...x,
+        paterno: obtenerPaterno(x),
+        materno: obtenerMaterno(x),
+        nombres: obtenerCampoHermano(x, ["nombres", "nombre", "name"]),
+        nombre: obtenerCampoHermano(x, ["nombre", "nombres", "name"]),
+        nivel: obtenerCampoHermano(x, ["nivel", "grado", "nivel_educativo"]),
+        curso: obtenerCampoHermano(x, ["curso", "paralelo"]),
+        ue: obtenerCampoHermano(x, ["ue", "unidad_educativa", "unidadEducativa"])
+    }));
 
     return { hermanos };
 }
@@ -21242,18 +21310,11 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
         if (rMat.error) throw rMat.error;
         if (rLista.error) throw rLista.error;
 
-        const datosMatematica = rMat.data || [];
-        const datosListaGeneral = rLista.data || [];
-        const todos = [...datosMatematica, ...datosListaGeneral];
+        const todos = [...(rMat.data || []), ...(rLista.data || [])];
         const objetivo = normalizarUEEstadistica(nombreUE);
-
-        // Comparar la U.E. de forma tolerante para que los registros de
-        // listageneral se incluyan aunque tengan diferencias de formato
-        // (U.E., UE, UNIDAD EDUCATIVA, puntos, guiones o espacios).
-        const estudiantes = todos.filter(e => {
-            const ue = normalizarUEEstadistica(e.ue);
-            return ue === objetivo;
-        });
+        const estudiantes = todos.filter(e =>
+            normalizarUEEstadistica(e.ue) === objetivo
+        );
 
         const contar = lista => ({
             total: lista.length,
