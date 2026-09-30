@@ -21258,12 +21258,6 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
         return cacheFamiliaresDetalleQR.get(clave);
     }
 
-    const cacheLocalFamiliares = leerCacheLocalFamiliaresDetalleQR(clave);
-    if (cacheLocalFamiliares) {
-        cacheFamiliaresDetalleQR.set(clave, cacheLocalFamiliares);
-        return cacheLocalFamiliares;
-    }
-
     const paternoOriginal = String(estudiante?.paterno || "").trim();
     const maternoOriginal = String(estudiante?.materno || "").trim();
 
@@ -21276,7 +21270,6 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
             }
         };
         cacheFamiliaresDetalleQR.set(clave, vacio);
-        guardarCacheLocalFamiliaresDetalleQR(clave, vacio);
         return vacio;
     }
 
@@ -21383,7 +21376,6 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
     };
 
     cacheFamiliaresDetalleQR.set(clave, resultado);
-    guardarCacheLocalFamiliaresDetalleQR(clave, resultado);
     return resultado;
 }
 
@@ -21501,51 +21493,6 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
 }
 
 const cacheDetalleEstudianteQR = new Map();
-const CLAVE_CACHE_DETALLE_ESTUDIANTE_OFFLINE_QR = "detalle_estudiante_offline_qr_v1";
-const CLAVE_CACHE_FAMILIARES_OFFLINE_QR = "familiares_detalle_offline_qr_v1";
-
-function leerCacheLocalDetalleEstudianteQR(clave) {
-    try {
-        const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_DETALLE_ESTUDIANTE_OFFLINE_QR) || "{}");
-        return cache && cache[clave] ? cache[clave] : null;
-    } catch (error) {
-        console.warn("No se pudo leer la ficha offline del estudiante:", error);
-        return null;
-    }
-}
-
-function guardarCacheLocalDetalleEstudianteQR(clave, datos) {
-    try {
-        const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_DETALLE_ESTUDIANTE_OFFLINE_QR) || "{}");
-        cache[clave] = {
-            fechaCache: Date.now(),
-            ...datos
-        };
-        localStorage.setItem(CLAVE_CACHE_DETALLE_ESTUDIANTE_OFFLINE_QR, JSON.stringify(cache));
-    } catch (error) {
-        console.warn("No se pudo guardar la ficha offline del estudiante:", error);
-    }
-}
-
-function leerCacheLocalFamiliaresDetalleQR(clave) {
-    try {
-        const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_FAMILIARES_OFFLINE_QR) || "{}");
-        return cache && cache[clave] ? cache[clave] : null;
-    } catch (error) {
-        console.warn("No se pudo leer familiares offline:", error);
-        return null;
-    }
-}
-
-function guardarCacheLocalFamiliaresDetalleQR(clave, datos) {
-    try {
-        const cache = JSON.parse(localStorage.getItem(CLAVE_CACHE_FAMILIARES_OFFLINE_QR) || "{}");
-        cache[clave] = datos;
-        localStorage.setItem(CLAVE_CACHE_FAMILIARES_OFFLINE_QR, JSON.stringify(cache));
-    } catch (error) {
-        console.warn("No se pudieron guardar familiares offline:", error);
-    }
-}
 
 async function mostrarDetalleEstudianteQR(estudiante) {
     const modal = document.getElementById("modalConsultaEstudianteQR");
@@ -21557,122 +21504,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     modal.classList.remove("oculto");
 
     const estudianteId = Number(estudiante.id);
-    const claveDetalle = `${estudianteId}|${String(estudiante.curso || "").trim()}`;
-    const sinInternet = navigator.onLine === false;
 
     /*
-     * MODO SIN INTERNET:
-     * La información es solo de consulta. Nunca se intenta contactar a
-     * Supabase mientras no haya conexión. Se usa primero la ficha guardada
-     * en el dispositivo y, como respaldo, los datos que ya estén en memoria.
+     * La búsqueda/QR ya puede traer parte de la ficha. Sólo completar
+     * los campos que faltan; así no se duplica una consulta innecesaria.
+     * La consulta sigue siendo por ID y devuelve un único registro.
      */
-    let datosOffline = sinInternet
-        ? leerCacheLocalDetalleEstudianteQR(claveDetalle)
-        : null;
-
-    if (datosOffline) {
-        estudiante = datosOffline.estudiante || estudiante;
-        detalleEstudianteQRActual = estudiante;
-        detalleEdicionQRActiva = false;
-        detalleCambiosQR = new Map();
-        detalleDatosOriginalesQR = new Map();
-
-        const familiaresOffline = datosOffline.familiares || leerCacheLocalFamiliaresDetalleQR(claveCacheFamiliaresDetalleQR(estudiante));
-        const hermanosOffline = familiaresOffline?.hermanos || [];
-        const estadoHermanosOffline = familiaresOffline?.estadoLectura || {
-            matematica: { registros: 0, error: null },
-            listageneral: { registros: 0, error: null }
-        };
-
-        const respuestaAsistencia = { data: datosOffline.asistencia || [], error: null };
-        const respuestaTiposDia = { data: datosOffline.tiposDias || [], error: null };
-        const respuestaActividades = { data: datosOffline.actividades || [], error: null };
-        const respuestaCalificaciones = { data: datosOffline.calificaciones || [], error: null };
-
-        let hermanosDetalleQR = hermanosOffline;
-        let estadoLecturaHermanosDetalleQR = estadoHermanosOffline;
-
-        const asistencia = respuestaAsistencia.data || [];
-        const tiposDiasEstudiante = respuestaTiposDia.data || [];
-        const actividadesTodas = (respuestaActividades.data || []).filter(a =>
-            String(a.curso || "").trim().toLowerCase() ===
-            String(estudiante.curso || "").trim().toLowerCase()
-        );
-        const calificacionesTodas = respuestaCalificaciones.data || [];
-
-        return renderizarDetalleEstudianteQRConDatos(
-            estudiante,
-            asistencia,
-            tiposDiasEstudiante,
-            actividadesTodas,
-            calificacionesTodas,
-            hermanosDetalleQR,
-            estadoLecturaHermanosDetalleQR,
-            contenedor
-        );
-    }
-
-    /*
-     * Si no hay Internet y todavía no existe una ficha guardada, no se hace
-     * ninguna consulta remota. Se aprovechan los datos ya cargados en memoria.
-     */
-    if (sinInternet) {
-        const estudianteLocal = (estudiantes || []).find(e => String(e.id) === String(estudianteId));
-        estudiante = { ...(estudianteLocal || {}), ...estudiante };
-
-        detalleEstudianteQRActual = estudiante;
-        detalleEdicionQRActiva = false;
-        detalleCambiosQR = new Map();
-        detalleDatosOriginalesQR = new Map();
-
-        const asistenciaLocal = Object.entries(registrosAsistencia || {})
-            .filter(([id]) => String(id) === String(estudianteId))
-            .map(([id, r]) => ({
-                id: `local-${id}`,
-                estudiante_id: estudianteId,
-                fecha: document.getElementById("fechaAsistencia")?.value || "",
-                estado: r?.estado || "",
-                hora: r?.hora || "",
-                observacion: r?.observacion || ""
-            }))
-            .filter(r => r.fecha);
-
-        const actividadesLocal = (actividades || [])
-            .filter(a => String(a.curso || "").trim().toLowerCase() === String(estudiante.curso || "").trim().toLowerCase());
-        const calificacionesLocal = [];
-        const calLocalEstudiante = calificaciones?.[estudianteId] || calificaciones?.[String(estudianteId)] || {};
-        Object.entries(calLocalEstudiante).forEach(([actividadId, r]) => {
-            if (!r) return;
-            calificacionesLocal.push({
-                id: `local-${estudianteId}-${actividadId}`,
-                actividad_id: Number(actividadId),
-                estudiante_id: estudianteId,
-                nota: typeof r === "object" ? r.nota : r,
-                observacion: typeof r === "object" ? (r.observacion || "") : "",
-                fecha_entrega: typeof r === "object" ? (r.fecha_entrega || "") : ""
-            });
-        });
-
-        const familiaresLocal = leerCacheLocalFamiliaresDetalleQR(claveCacheFamiliaresDetalleQR(estudiante));
-        const hermanosLocal = familiaresLocal?.hermanos || [];
-        const estadoHermanosLocal = familiaresLocal?.estadoLectura || {
-            matematica: { registros: 0, error: "Sin conexión y sin familiares guardados en este dispositivo." },
-            listageneral: { registros: 0, error: "Sin conexión y sin familiares guardados en este dispositivo." }
-        };
-
-        return renderizarDetalleEstudianteQRConDatos(
-            estudiante,
-            asistenciaLocal,
-            [],
-            actividadesLocal,
-            calificacionesLocal,
-            hermanosLocal,
-            estadoHermanosLocal,
-            contenedor
-        );
-    }
-
-    /* En línea: completar datos faltantes y actualizar la ficha local. */
     const necesitaDatosCompletos =
         !estudiante.paterno ||
         !estudiante.materno ||
@@ -21709,12 +21546,18 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         estadoLecturaHermanosDetalleQR = familiares.estadoLectura || estadoLecturaHermanosDetalleQR;
     } catch (error) {
         console.warn("No se pudieron cargar posibles hermanos:", error);
+        estadoLecturaHermanosDetalleQR = {
+            matematica: { registros: 0, error: error?.message || String(error) },
+            listageneral: { registros: 0, error: error?.message || String(error) }
+        };
     }
 
     detalleEstudianteQRActual = estudiante;
     detalleEdicionQRActiva = false;
     detalleCambiosQR = new Map();
     detalleDatosOriginalesQR = new Map();
+
+    const claveDetalle = `${estudianteId}|${String(estudiante.curso || "").trim()}`;
 
     let respuestasDetalle = cacheDetalleEstudianteQR.get(claveDetalle);
 
@@ -21743,7 +21586,12 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         cacheDetalleEstudianteQR.set(claveDetalle, respuestasDetalle);
     }
 
-    const [respuestaAsistencia, respuestaTiposDia, respuestaActividades, respuestaCalificaciones] = await respuestasDetalle;
+    const [
+        respuestaAsistencia,
+        respuestaTiposDia,
+        respuestaActividades,
+        respuestaCalificaciones
+    ] = await respuestasDetalle;
 
     if (respuestaAsistencia.error) throw respuestaAsistencia.error;
     if (respuestaTiposDia.error) throw respuestaTiposDia.error;
@@ -21757,47 +21605,6 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         String(estudiante.curso || "").trim().toLowerCase()
     );
     const calificacionesTodas = respuestaCalificaciones.data || [];
-
-    /* Guardar una copia local completa para que la próxima consulta pueda
-       abrirse sin Internet. No cambia el funcionamiento online. */
-    guardarCacheLocalDetalleEstudianteQR(claveDetalle, {
-        estudiante,
-        asistencia,
-        tiposDias: tiposDiasEstudiante,
-        actividades: actividadesTodas,
-        calificaciones: calificacionesTodas,
-        familiares: {
-            hermanos: hermanosDetalleQR,
-            estadoLectura: estadoLecturaHermanosDetalleQR
-        }
-    });
-
-    return renderizarDetalleEstudianteQRConDatos(
-        estudiante,
-        asistencia,
-        tiposDiasEstudiante,
-        actividadesTodas,
-        calificacionesTodas,
-        hermanosDetalleQR,
-        estadoLecturaHermanosDetalleQR,
-        contenedor
-    );
-}
-
-function renderizarDetalleEstudianteQRConDatos(
-    estudiante,
-    asistencia,
-    tiposDiasEstudiante,
-    actividadesTodas,
-    calificacionesTodas,
-    hermanosDetalleQR,
-    estadoLecturaHermanosDetalleQR,
-    contenedor
-) {
-    detalleEstudianteQRActual = estudiante;
-    detalleEdicionQRActiva = false;
-    detalleCambiosQR = new Map();
-    detalleDatosOriginalesQR = new Map();
 
     const calMap = {};
     calificacionesTodas.forEach(c => {
