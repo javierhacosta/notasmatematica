@@ -21288,7 +21288,19 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
         ue: obtenerCampoHermano(x, ["ue", "unidad_educativa", "unidadEducativa"])
     }));
 
-    return { hermanos };
+    return {
+        hermanos,
+        estadoLectura: {
+            matematica: {
+                registros: Array.isArray(rMat.data) ? rMat.data.length : 0,
+                error: rMat.error ? (rMat.error.message || String(rMat.error)) : null
+            },
+            listageneral: {
+                registros: Array.isArray(rLista.data) ? rLista.data.length : 0,
+                error: rLista.error ? (rLista.error.message || String(rLista.error)) : null
+            }
+        }
+    };
 }
 
 async function mostrarEstadisticaUE(nombreUE, boton) {
@@ -21405,11 +21417,20 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     }
 
     let hermanosDetalleQR = [];
+    let estadoLecturaHermanosDetalleQR = {
+        matematica: { registros: 0, error: null },
+        listageneral: { registros: 0, error: null }
+    };
     try {
         const familiares = await cargarDatosFamiliaresDetalleQR(estudiante);
         hermanosDetalleQR = familiares.hermanos || [];
+        estadoLecturaHermanosDetalleQR = familiares.estadoLectura || estadoLecturaHermanosDetalleQR;
     } catch (error) {
         console.warn("No se pudieron cargar posibles hermanos:", error);
+        estadoLecturaHermanosDetalleQR = {
+            matematica: { registros: 0, error: error?.message || String(error) },
+            listageneral: { registros: 0, error: error?.message || String(error) }
+        };
     }
 
     detalleEstudianteQRActual = estudiante;
@@ -21675,6 +21696,14 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             ${estudiante.cel1 ? `<div class="dato"><strong>Celular 1</strong>${escapeHTML(estudiante.cel1)}</div>` : ""}
             ${estudiante.cel2 ? `<div class="dato"><strong>Celular 2</strong>${escapeHTML(estudiante.cel2)}</div>` : ""}
 
+        </div>
+
+        <div class="detalle-seccion">
+            <h4>🔎 Lectura de datos para hermanos</h4>
+            <div class="info">
+                <div><strong>matematica:</strong> ${estadoLecturaHermanosDetalleQR.matematica.registros} registros${estadoLecturaHermanosDetalleQR.matematica.error ? ` — ⚠️ Error: ${escapeHTML(estadoLecturaHermanosDetalleQR.matematica.error)}` : " — ✅ lectura correcta"}</div>
+                <div><strong>listageneral:</strong> ${estadoLecturaHermanosDetalleQR.listageneral.registros} registros${estadoLecturaHermanosDetalleQR.listageneral.error ? ` — ⚠️ Error: ${escapeHTML(estadoLecturaHermanosDetalleQR.listageneral.error)}` : " — ✅ lectura correcta"}</div>
+            </div>
         </div>
 
         <div class="detalle-seccion">
