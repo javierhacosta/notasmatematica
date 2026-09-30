@@ -21195,263 +21195,102 @@ function generoEstadistica(valor) {
 }
 
 async function cargarDatosFamiliaresDetalleQR(estudiante) {
-    /*
-     * Cargar TODOS los registros de ambas tablas. Una consulta normal de
-     * Supabase puede quedar limitada al primer bloque de registros y por eso
-     * algunos hermanos no aparecían.
-     */
-    const seleccion = "id,ci,nombre,paterno,materno,nombres,rude,ppff,cel1,cel2,curso,nivel,ue,gen,fecha_nacimiento";
-
-    const cargarTablaFamiliares = async (tabla) => {
+    const columnas = "id,ci,nombre,paterno,materno,nombres,curso,nivel,ue,gen,fecha_nacimiento";
+    const cargar = async tabla => {
         const registros = [];
-        const tamanoPagina = 1000;
+        const limite = 1000;
         let desde = 0;
-
         while (true) {
-            const { data, error } = await supabaseClient
-                .from(tabla)
-                .select(seleccion)
-                .range(desde, desde + tamanoPagina - 1);
-
+            const { data, error } = await supabaseClient.from(tabla).select(columnas).range(desde, desde + limite - 1);
             if (error) throw error;
-
             const bloque = data || [];
-            registros.push(...bloque);
-
-            if (bloque.length < tamanoPagina) break;
-            desde += tamanoPagina;
+            registros.push(...bloque.map(r => ({...r, __tabla: tabla})));
+            if (bloque.length < limite) break;
+            desde += limite;
         }
-
-        return registros.map(x => ({ ...x, __tabla: tabla }));
+        return registros;
     };
-
-    const [matematica, listaGeneral] = await Promise.all([
-        cargarTablaFamiliares("matematica"),
-        cargarTablaFamiliares("listageneral")
-    ]);
-
+    const [matematica, listaGeneral] = await Promise.all([cargar("matematica"), cargar("listageneral")]);
     const todos = [...matematica, ...listaGeneral];
-    const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
-
-    /* Primero buscar al estudiante en MATEMATICA y luego en LISTAGENERAL.
-       Así los apellidos utilizados para encontrar hermanos son exactamente
-       los que están guardados en la BD. */
-    let estudianteFamilia = null;
-
-    if (ciActual) {
-        estudianteFamilia = todos.find(x =>
-            normalizarTextoHermanoDetalleQR(x.ci) === ciActual &&
-            normalizarTextoHermanoDetalleQR(x.paterno) &&
-            normalizarTextoHermanoDetalleQR(x.materno)
-        ) || null;
+    const norm = normalizarTextoHermanoDetalleQR;
+    const ciActual = norm(estudiante.ci);
+    let base = ciActual ? todos.find(r => norm(r.ci) === ciActual && norm(r.paterno) && norm(r.materno)) : null;
+    if (!base && estudiante.id != null) base = matematica.find(r => String(r.id) === String(estudiante.id) && norm(r.paterno) && norm(r.materno));
+    if (!base) base = estudiante;
+    const paterno = norm(base.paterno), materno = norm(base.materno);
+    console.log("[HERMANOS] Base", base);
+    if (!paterno || !materno) return { hermanos: [], estudianteFamilia: base };
+    let encontrados = todos.filter(r => norm(r.paterno) === paterno && norm(r.materno) === materno && !(ciActual && norm(r.ci) === ciActual) && !(String(r.id) === String(base.id) && r.__tabla === base.__tabla));
+    if (!encontrados.length) {
+        const consultas = await Promise.all(["matematica", "listageneral"].map(async tabla => {
+            const { data, error } = await supabaseClient.from(tabla).select(columnas).eq("paterno", base.paterno).eq("materno", base.materno);
+            if (error) { console.warn("[HERMANOS] Consulta directa", tabla, error); return []; }
+            return (data || []).map(r => ({...r, __tabla: tabla}));
+        }));
+        encontrados = consultas.flat().filter(r => !(ciActual && norm(r.ci) === ciActual) && !(String(r.id) === String(base.id) && r.__tabla === base.__tabla));
     }
-
-    if (!estudianteFamilia) {
-        estudianteFamilia = estudiante;
-    } else {
-        estudianteFamilia = { ...estudiante, ...estudianteFamilia };
-    }
-
-    const paternoActual = normalizarTextoHermanoDetalleQR(estudianteFamilia.paterno);
-    const maternoActual = normalizarTextoHermanoDetalleQR(estudianteFamilia.materno);
-
-    console.log("[HERMANOS] Estudiante:", estudianteFamilia.nombre, {
-        paterno: estudianteFamilia.paterno,
-        materno: estudianteFamilia.materno,
-        ci: estudianteFamilia.ci,
-        totalMatematica: matematica.length,
-        totalListaGeneral: listaGeneral.length
+    const unicos = [], vistos = new Set();
+    encontrados.forEach(r => {
+        const clave = norm(r.ci) || [norm(r.paterno), norm(r.materno), norm(r.nombres || r.nombre), norm(r.curso), norm(r.nivel)].join("|");
+        if (!vistos.has(clave)) { vistos.add(clave); unicos.push(r); }
     });
-
-    if (!paternoActual || !maternoActual) {
-        console.warn("[HERMANOS] Faltan paterno o materno para buscar hermanos.");
-        return { hermanos: [], estudianteFamilia };
-    }
-
-    /* IMPORTANTE: la comparación se hace exclusivamente con PATERNO y
-       MATERNO, tal como se solicitó. Esto funciona también cuando el hermano
-       está en la misma tabla MATEMATICA. */
-    const hermanos = todos.filter(x => {
-        const paterno = normalizarTextoHermanoDetalleQR(x.paterno);
-        const materno = normalizarTextoHermanoDetalleQR(x.materno);
-
-        if (!paterno || !materno) return false;
-
-        const mismoApellido =
-            paterno === paternoActual &&
-            materno === maternoActual;
-
-        if (!mismoApellido) return false;
-
-        /* Nunca mostrar al propio estudiante. El CI tiene prioridad para
-           excluirlo; también se verifica id + tabla cuando corresponde. */
-        const ciHermano = normalizarTextoHermanoDetalleQR(x.ci);
-        if (ciActual && ciHermano && ciHermano === ciActual) return false;
-
-        if (
-            String(x.id ?? "") === String(estudianteFamilia.id ?? "") &&
-            String(x.__tabla || "") === String(estudianteFamilia.__tabla || "")
-        ) return false;
-
-        return true;
-    });
-
-    /* Evitar duplicados cuando el mismo hermano está en MATEMATICA y
-       LISTAGENERAL. Si tiene CI, el CI es la clave principal. */
-    const unicos = [];
-    const vistos = new Set();
-
-    hermanos.forEach(h => {
-        const clave = normalizarTextoHermanoDetalleQR(h.ci) ||
-            [
-                normalizarTextoHermanoDetalleQR(h.paterno),
-                normalizarTextoHermanoDetalleQR(h.materno),
-                normalizarTextoHermanoDetalleQR(h.nombres || h.nombre),
-                normalizarTextoHermanoDetalleQR(h.curso),
-                normalizarTextoHermanoDetalleQR(h.nivel)
-            ].join("|");
-
-        if (!vistos.has(clave)) {
-            vistos.add(clave);
-            unicos.push(h);
-        }
-    });
-
-    console.log("[HERMANOS] Coincidencias encontradas:", unicos);
-
-    return { hermanos: unicos, estudianteFamilia };
+    console.log("[HERMANOS] Encontrados", unicos);
+    return { hermanos: unicos, estudianteFamilia: base };
 }
 
 async function mostrarEstadisticaUE(nombreUE, boton) {
     document.querySelectorAll(".estadistica-panel").forEach(p => p.classList.remove("visible"));
     document.querySelectorAll(".boton-estadistica").forEach(b => b.classList.remove("activo"));
-
     const panel = document.getElementById("estadisticaUE");
     if (!panel) return;
     panel.classList.add("visible");
     if (boton) boton.classList.add("activo");
-    panel.innerHTML = '<div class="estadistica-vacio">⏳ Cargando estudiantes de ambas tablas...</div>';
-
+    panel.innerHTML = '<div class="estadistica-vacio">⏳ Leyendo matematica y listageneral...</div>';
     try {
-        const seleccion = "id,ci,curso,nivel,gen,ue";
-
-        const cargarTablaEstadisticaUE = async (tabla) => {
-            const registros = [];
-            const tamanoPagina = 1000;
-            let desde = 0;
-
+        const columnas = "id,ci,curso,nivel,gen,ue";
+        const cargar = async tabla => {
+            const registros = []; const limite = 1000; let desde = 0;
             while (true) {
-                const { data, error } = await supabaseClient
-                    .from(tabla)
-                    .select(seleccion)
-                    .range(desde, desde + tamanoPagina - 1);
-
+                const { data, error } = await supabaseClient.from(tabla).select(columnas).range(desde, desde + limite - 1);
                 if (error) throw error;
-
                 const bloque = data || [];
-                registros.push(...bloque.map(x => ({ ...x, __tabla: tabla })));
-
-                if (bloque.length < tamanoPagina) break;
-                desde += tamanoPagina;
+                registros.push(...bloque.map(r => ({...r, __tabla: tabla})));
+                if (bloque.length < limite) break;
+                desde += limite;
             }
-
             return registros;
         };
-
-        const [matematica, listaGeneral] = await Promise.all([
-            cargarTablaEstadisticaUE("matematica"),
-            cargarTablaEstadisticaUE("listageneral")
-        ]);
-
-        const todos = [...matematica, ...listaGeneral];
-        const objetivo = normalizarUEEstadistica(nombreUE);
-
-        /* Aceptar pequeñas diferencias de escritura de la U.E., pero sin
-           mezclar instituciones distintas. */
-        const coincideUE = valor => {
-            const actual = normalizarUEEstadistica(valor);
-            if (!actual) return false;
-            if (actual === objetivo) return true;
-
-            const limpiarNombreUE = x => normalizarTextoHermanoDetalleQR(x)
-                .replace(/\bBUSCH\b/g, "")
-                .replace(/\bBUCH\b/g, "")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            return limpiarNombreUE(actual) === limpiarNombreUE(objetivo);
+        const [matematica, listaGeneral] = await Promise.all([cargar("matematica"), cargar("listageneral")]);
+        const normUE = v => normalizarTextoHermanoDetalleQR(v).replace(/[^A-Z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+        const objetivo = normUE(nombreUE);
+        const esGerman = /GERMAN/.test(objetivo) && /(BUSCH|BUCH)/.test(objetivo);
+        const esManuel = /MANUEL/.test(objetivo) && /ASCENCIO/.test(objetivo) && /PADILLA/.test(objetivo);
+        const pertenece = ue => {
+            const v = normUE(ue); if (!v) return false;
+            if (v === objetivo || v.replace(/^UE\s*/, "") === objetivo.replace(/^UE\s*/, "")) return true;
+            if (esGerman) return /GERMAN/.test(v) && /(BUSCH|BUCH)/.test(v);
+            if (esManuel) return /MANUEL/.test(v) && /ASCENCIO/.test(v) && /PADILLA/.test(v);
+            return v.includes(objetivo.replace(/^UE\s*/, ""));
         };
-
-        const estudiantes = todos.filter(e => coincideUE(e.ue));
-
-        const contar = lista => ({
-            total: lista.length,
-            varones: lista.filter(e => generoEstadistica(e.gen) === "Varones").length,
-            mujeres: lista.filter(e => generoEstadistica(e.gen) === "Mujeres").length,
-            otros: lista.filter(e => generoEstadistica(e.gen) === "Otros").length
+        const deMatematica = matematica.filter(r => pertenece(r.ue));
+        const deListaGeneral = listaGeneral.filter(r => pertenece(r.ue));
+        const mapa = new Map();
+        [...deMatematica, ...deListaGeneral].forEach(r => {
+            const ci = normalizarTextoHermanoDetalleQR(r.ci);
+            const clave = ci || `${r.__tabla}|${r.id}`;
+            if (!mapa.has(clave) || (mapa.get(clave).__tabla === "listageneral" && r.__tabla === "matematica")) mapa.set(clave, r);
         });
-
-        const total = contar(estudiantes);
-        const cursos = [...new Set(estudiantes.map(e => String(e.curso || "").trim()).filter(Boolean))]
-            .sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
-        const niveles = [...new Set(estudiantes.map(e => String(e.nivel || "").trim()).filter(Boolean))]
-            .sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
-
-        const filasCurso = cursos.map(curso => {
-            const c = contar(estudiantes.filter(e => String(e.curso || "").trim() === curso));
-            return `<tr><td>${escapeHTML(curso)}</td><td>${c.total}</td><td>${c.varones}</td><td>${c.mujeres}</td><td>${c.otros}</td></tr>`;
-        }).join("");
-
-        const filasNivel = niveles.map(nivel => {
-            const c = contar(estudiantes.filter(e => String(e.nivel || "").trim() === nivel));
-            return `<tr><td>${escapeHTML(nivel)}</td><td>${c.total}</td><td>${c.varones}</td><td>${c.mujeres}</td><td>${c.otros}</td></tr>`;
-        }).join("");
-
-        panel.innerHTML = `
-            <div class="estadistica-ue-cabecera">
-                <strong>${escapeHTML(nombreUE)}</strong>
-                <div style="margin-top:4px;color:#666;font-size:13px;">
-                    <strong>matematica:</strong> ${matematica.length} registros &nbsp; | &nbsp;
-                    <strong>listageneral:</strong> ${listaGeneral.length} registros
-                </div>
-            </div>
-            <div class="estadistica-resumen">
-                <div class="estadistica-tarjeta"><span>Total estudiantes</span><strong>${total.total}</strong></div>
-                <div class="estadistica-tarjeta"><span>Varones</span><strong>${total.varones}</strong></div>
-                <div class="estadistica-tarjeta"><span>Mujeres</span><strong>${total.mujeres}</strong></div>
-                <div class="estadistica-tarjeta"><span>Otros / sin clasificar</span><strong>${total.otros}</strong></div>
-                <div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div>
-                <div class="estadistica-tarjeta"><span>Niveles</span><strong>${niveles.length}</strong></div>
-            </div>
-
-            <div class="estadistica-ue-subtitulo">📚 Estudiantes por curso</div>
-            <div class="estadistica-ue-tabla-contenedor">
-                <table class="estadistica-ue-tabla">
-                    <thead><tr><th>Curso</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead>
-                    <tbody>${filasCurso || '<tr><td colspan="5">No hay estudiantes registrados para esta U.E.</td></tr>'}</tbody>
-                </table>
-            </div>
-
-            <div class="estadistica-ue-subtitulo">🎓 Estudiantes por nivel</div>
-            <div class="estadistica-ue-tabla-contenedor">
-                <table class="estadistica-ue-tabla">
-                    <thead><tr><th>Nivel</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead>
-                    <tbody>${filasNivel || '<tr><td colspan="5">No hay niveles registrados para esta U.E.</td></tr>'}</tbody>
-                </table>
-            </div>
-        `;
-
-        console.log("[ESTADISTICA UE]", {
-            nombreUE,
-            matematica: matematica.length,
-            listageneral: listaGeneral.length,
-            objetivo,
-            encontrados: estudiantes.length
-        });
-    } catch (error) {
-        console.error("Error al cargar estadísticas por U.E.:", error);
-        panel.innerHTML = `<div class="estadistica-vacio">⚠️ No se pudieron cargar las estadísticas.<br><small>${escapeHTML(error.message || String(error))}</small></div>`;
-    }
+        const estudiantes = [...mapa.values()];
+        const genero = v => { const g=normalizarTextoHermanoDetalleQR(v); if (["F","FEMENINO","MUJER","MUJERES","FEMENINA"].includes(g)) return "Mujeres"; if (["M","MASCULINO","VARON","HOMBRE","HOMBRES","V"].includes(g)) return "Varones"; return "Otros"; };
+        const contar = l => ({total:l.length,varones:l.filter(r=>genero(r.gen)==="Varones").length,mujeres:l.filter(r=>genero(r.gen)==="Mujeres").length,otros:l.filter(r=>genero(r.gen)==="Otros").length});
+        const total=contar(estudiantes);
+        const cursos=[...new Set(estudiantes.map(r=>String(r.curso||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        const niveles=[...new Set(estudiantes.map(r=>String(r.nivel||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        const filasCurso=cursos.map(c=>{const x=contar(estudiantes.filter(r=>String(r.curso||"").trim()===c));return `<tr><td>${escapeHTML(c)}</td><td>${x.total}</td><td>${x.varones}</td><td>${x.mujeres}</td><td>${x.otros}</td></tr>`}).join("");
+        const filasNivel=niveles.map(n=>{const x=contar(estudiantes.filter(r=>String(r.nivel||"").trim()===n));return `<tr><td>${escapeHTML(n)}</td><td>${x.total}</td><td>${x.varones}</td><td>${x.mujeres}</td><td>${x.otros}</td></tr>`}).join("");
+        panel.innerHTML=`<div class="estadistica-ue-cabecera"><strong>${escapeHTML(nombreUE)}</strong><div style="margin-top:4px;color:#666;font-size:13px;"><strong>matematica:</strong> ${deMatematica.length} &nbsp;|&nbsp; <strong>listageneral:</strong> ${deListaGeneral.length} &nbsp;|&nbsp; <strong>total:</strong> ${estudiantes.length}</div></div><div class="estadistica-resumen"><div class="estadistica-tarjeta"><span>Total estudiantes</span><strong>${total.total}</strong></div><div class="estadistica-tarjeta"><span>Varones</span><strong>${total.varones}</strong></div><div class="estadistica-tarjeta"><span>Mujeres</span><strong>${total.mujeres}</strong></div><div class="estadistica-tarjeta"><span>Otros / sin clasificar</span><strong>${total.otros}</strong></div><div class="estadistica-tarjeta"><span>Cursos</span><strong>${cursos.length}</strong></div><div class="estadistica-tarjeta"><span>Niveles</span><strong>${niveles.length}</strong></div></div><div class="estadistica-ue-subtitulo">📚 Estudiantes por curso</div><div class="estadistica-ue-tabla-contenedor"><table class="estadistica-ue-tabla"><thead><tr><th>Curso</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead><tbody>${filasCurso||'<tr><td colspan="5">No hay estudiantes registrados para esta U.E.</td></tr>'}</tbody></table></div><div class="estadistica-ue-subtitulo">🎓 Estudiantes por nivel</div><div class="estadistica-ue-tabla-contenedor"><table class="estadistica-ue-tabla"><thead><tr><th>Nivel</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead><tbody>${filasNivel||'<tr><td colspan="5">No hay niveles registrados para esta U.E.</td></tr>'}</tbody></table></div>`;
+        console.log("[ESTADISTICA UE]",{nombreUE,matematica:deMatematica.length,listageneral:deListaGeneral.length,total:estudiantes.length});
+    } catch(error) { console.error("Error al cargar estadísticas por U.E.:",error); panel.innerHTML=`<div class="estadistica-vacio">⚠️ No se pudieron cargar las estadísticas.<br><small>${escapeHTML(error.message||String(error))}</small></div>`; }
 }
 
 async function mostrarDetalleEstudianteQR(estudiante) {
