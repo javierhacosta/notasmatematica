@@ -21200,8 +21200,12 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
         supabaseClient.from("matematica").select(seleccion),
         supabaseClient.from("listageneral").select(seleccion)
     ]);
-    if (rMat.error) throw rMat.error;
-    if (rLista.error) throw rLista.error;
+    if (rMat.error) {
+        throw new Error(`No se pudo leer la tabla matematica: ${rMat.error.message || String(rMat.error)}`);
+    }
+    if (rLista.error) {
+        throw new Error(`No se pudo leer la tabla listageneral: ${rLista.error.message || String(rLista.error)}`);
+    }
 
     const todos = [...(rMat.data || []), ...(rLista.data || [])];
 
@@ -21237,8 +21241,12 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
             supabaseClient.from("matematica").select(seleccion),
             supabaseClient.from("listageneral").select(seleccion)
         ]);
-        if (rMat.error) throw rMat.error;
-        if (rLista.error) throw rLista.error;
+        if (rMat.error) {
+            throw new Error(`No se pudo leer la tabla matematica: ${rMat.error.message || String(rMat.error)}`);
+        }
+        if (rLista.error) {
+            throw new Error(`No se pudo leer la tabla listageneral: ${rLista.error.message || String(rLista.error)}`);
+        }
 
         const todos = [...(rMat.data || []), ...(rLista.data || [])];
         const objetivo = normalizarUEEstadistica(nombreUE);
