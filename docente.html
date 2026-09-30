@@ -21368,14 +21368,54 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
         const niveles = [...new Set(estudiantes.map(e => String(e.nivel || "").trim()).filter(Boolean))]
             .sort((a,b) => a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"}));
 
-        const filasCurso = cursos.map(curso => {
-            const c = contar(estudiantes.filter(e => String(e.curso || "").trim() === curso));
-            return `<tr><td>${escapeHTML(curso)}</td><td>${c.total}</td><td>${c.varones}</td><td>${c.mujeres}</td><td>${c.otros}</td></tr>`;
-        }).join("");
+        const normalizarNivelEstadisticaUE = valor =>
+            String(valor || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
 
-        const filasNivel = niveles.map(nivel => {
-            const c = contar(estudiantes.filter(e => String(e.nivel || "").trim() === nivel));
-            return `<tr><td>${escapeHTML(nivel)}</td><td>${c.total}</td><td>${c.varones}</td><td>${c.mujeres}</td><td>${c.otros}</td></tr>`;
+        const ordenNivelesEstadisticaUE = ["inicial", "primaria", "secundaria"];
+
+        const nivelesOrdenados = niveles.slice().sort((a, b) => {
+            const ia = ordenNivelesEstadisticaUE.indexOf(normalizarNivelEstadisticaUE(a));
+            const ib = ordenNivelesEstadisticaUE.indexOf(normalizarNivelEstadisticaUE(b));
+
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;
+            if (ib !== -1) return 1;
+            return a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"});
+        });
+
+        const bloquesCursoPorNivel = nivelesOrdenados.map(nivel => {
+            const estudiantesNivel = estudiantes.filter(e =>
+                String(e.nivel || "").trim() === nivel
+            );
+
+            const cursosNivel = [...new Set(
+                estudiantesNivel
+                    .map(e => String(e.curso || "").trim())
+                    .filter(Boolean)
+            )].sort((a,b) =>
+                a.localeCompare(b, undefined, {numeric:true, sensitivity:"base"})
+            );
+
+            const filas = cursosNivel.map(curso => {
+                const c = contar(estudiantesNivel.filter(e =>
+                    String(e.curso || "").trim() === curso
+                ));
+                return `<tr><td>${escapeHTML(curso)}</td><td>${c.total}</td><td>${c.varones}</td><td>${c.mujeres}</td><td>${c.otros}</td></tr>`;
+            }).join("");
+
+            return `
+                <div class="estadistica-ue-subtitulo">🎓 ${escapeHTML(nivel)}</div>
+                <div class="estadistica-ue-tabla-contenedor">
+                    <table class="estadistica-ue-tabla">
+                        <thead><tr><th>Curso</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead>
+                        <tbody>${filas || '<tr><td colspan="5">No hay estudiantes registrados para este nivel.</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
         }).join("");
 
         panel.innerHTML = `
@@ -21395,20 +21435,7 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
             </div>
 
             <div class="estadistica-ue-subtitulo">📚 Estudiantes por curso</div>
-            <div class="estadistica-ue-tabla-contenedor">
-                <table class="estadistica-ue-tabla">
-                    <thead><tr><th>Curso</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead>
-                    <tbody>${filasCurso || '<tr><td colspan="5">No hay estudiantes registrados para esta U.E.</td></tr>'}</tbody>
-                </table>
-            </div>
-
-            <div class="estadistica-ue-subtitulo">🎓 Estudiantes por nivel</div>
-            <div class="estadistica-ue-tabla-contenedor">
-                <table class="estadistica-ue-tabla">
-                    <thead><tr><th>Nivel</th><th>Total</th><th>Varones</th><th>Mujeres</th><th>Otros</th></tr></thead>
-                    <tbody>${filasNivel || '<tr><td colspan="5">No hay niveles registrados para esta U.E.</td></tr>'}</tbody>
-                </table>
-            </div>
+            ${bloquesCursoPorNivel || '<div class="estadistica-vacio">No hay estudiantes registrados para esta U.E.</div>'}
         `;
     } catch (error) {
         console.error("Error al cargar estadísticas por U.E.:", error);
