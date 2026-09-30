@@ -21218,30 +21218,25 @@ async function cargarTodosLosRegistrosDetalleQR(tabla, seleccion = "*") {
 }
 
 async function cargarDatosFamiliaresDetalleQR(estudiante) {
-    // Leer por bloques para superar el límite de 1000 filas por consulta.
-    const resultados = await Promise.allSettled([
-        cargarTodosLosRegistrosDetalleQR("matematica"),
-        cargarTodosLosRegistrosDetalleQR("listageneral")
-    ]);
-
-    const rMat = resultados[0].status === "fulfilled"
-        ? { data: resultados[0].value, error: null }
-        : { data: [], error: resultados[0].reason };
-    const rLista = resultados[1].status === "fulfilled"
-        ? { data: resultados[1].value, error: null }
-        : { data: [], error: resultados[1].reason };
-
-    if (rMat.error) console.warn("No se pudo leer matematica para hermanos:", rMat.error);
-    if (rLista.error) console.warn("No se pudo leer listageneral para hermanos:", rLista.error);
-
-    const todos = [
-        ...(Array.isArray(rMat.data) ? rMat.data.map(x => ({...x, __tablaHermano:"matematica"})) : []),
-        ...(Array.isArray(rLista.data) ? rLista.data.map(x => ({...x, __tablaHermano:"listageneral"})) : [])
-    ];
+    /*
+       Optimización:
+       Antes se descargaban TODOS los registros de matematica y listageneral
+       (por páginas) solo para encontrar posibles hermanos. Ahora se consulta
+       directamente por apellido paterno y materno. Si la tabla no permite
+       ese filtro por alguna diferencia de estructura, se conserva un
+       respaldo compatible con el comportamiento anterior.
+    */
+    const seleccionHermano =
+        "id,ci,nombre,paterno,materno,nombres,nivel,curso,ue";
 
     const obtenerCampoHermano = (fila, nombres) => {
         for (const nombre of nombres) {
-            if (fila && fila[nombre] !== undefined && fila[nombre] !== null && String(fila[nombre]).trim() !== "") {
+            if (
+                fila &&
+                fila[nombre] !== undefined &&
+                fila[nombre] !== null &&
+                String(fila[nombre]).trim() !== ""
+            ) {
                 return fila[nombre];
             }
         }
@@ -21250,81 +21245,189 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
 
     const obtenerPaterno = fila => {
         const valor = obtenerCampoHermano(fila, [
-            "paterno", "apellido_paterno", "ap_paterno", "apellidoPaterno", "apPaterno"
+            "paterno", "apellido_paterno", "ap_paterno",
+            "apellidoPaterno", "apPaterno"
         ]);
         if (valor) return valor;
-        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
-        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+
+        const nombreCompleto = obtenerCampoHermano(fila, [
+            "nombre", "nombres", "name"
+        ]);
+        const partes = String(nombreCompleto || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
         return partes.length >= 2 ? partes[0] : "";
     };
+
     const obtenerMaterno = fila => {
         const valor = obtenerCampoHermano(fila, [
-            "materno", "apellido_materno", "ap_materno", "apellidoMaterno", "apMaterno"
+            "materno", "apellido_materno", "ap_materno",
+            "apellidoMaterno", "apMaterno"
         ]);
         if (valor) return valor;
-        const nombreCompleto = obtenerCampoHermano(fila, ["nombre", "nombres", "name"]);
-        const partes = String(nombreCompleto || "").trim().split(/\s+/).filter(Boolean);
+
+        const nombreCompleto = obtenerCampoHermano(fila, [
+            "nombre", "nombres", "name"
+        ]);
+        const partes = String(nombreCompleto || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
         return partes.length >= 2 ? partes[1] : "";
     };
 
-    // El estudiante ya fue recargado desde matematica en mostrarDetalleEstudianteQR.
-    // Si por alguna razón faltan paterno/materno allí, también se intenta obtenerlos
-    // de los registros de ambas tablas usando CI o id.
-    let paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
-    let maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
-
-    if (!paternoActual || !maternoActual) {
-        const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
-        const idActual = String(estudiante.id ?? "");
-        const registroActual = todos.find(x =>
-            (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual) ||
-            (idActual && String(x.id ?? "") === idActual)
-        );
-        if (registroActual) {
-            paternoActual = normalizarTextoHermanoDetalleQR(obtenerPaterno(registroActual));
-            maternoActual = normalizarTextoHermanoDetalleQR(obtenerMaterno(registroActual));
-        }
-    }
-
-    if (!paternoActual || !maternoActual) {
-        return { hermanos: [] };
-    }
-
+    const paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
+    const maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
     const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
     const idActual = String(estudiante.id ?? "");
 
-    const hermanos = todos.filter(x => {
-        const mismoApellido =
-            normalizarTextoHermanoDetalleQR(obtenerPaterno(x)) === paternoActual &&
-            normalizarTextoHermanoDetalleQR(obtenerMaterno(x)) === maternoActual;
+    // Sin ambos apellidos no es posible hacer una búsqueda dirigida segura.
+    if (!paternoActual || !maternoActual) {
+        return {
+            hermanos: [],
+            estadoLectura: {
+                matematica: { registros: 0, error: null },
+                listageneral: { registros: 0, error: null }
+            }
+        };
+    }
 
-        const mismoRegistro =
-            (idActual && String(x.id ?? "") === idActual &&
-             (!ciActual || normalizarTextoHermanoDetalleQR(x.ci) === ciActual)) ||
-            (ciActual && normalizarTextoHermanoDetalleQR(x.ci) === ciActual);
+    async function consultarHermanosTabla(tabla) {
+        /*
+           Primero se intenta una consulta pequeña y directa.
+           Se mantienen los campos alternativos por compatibilidad con la
+           lógica anterior; el resultado final se normaliza igual que antes.
+        */
+        const variantes = [
+            { paterno: "paterno", materno: "materno" },
+            { paterno: "apellido_paterno", materno: "apellido_materno" }
+        ];
 
-        return mismoApellido && !mismoRegistro;
-    }).map(x => ({
-        ...x,
-        paterno: obtenerPaterno(x),
-        materno: obtenerMaterno(x),
-        nombres: obtenerCampoHermano(x, ["nombres", "nombre", "name"]),
-        nombre: obtenerCampoHermano(x, ["nombre", "nombres", "name"]),
-        nivel: obtenerCampoHermano(x, ["nivel", "grado", "nivel_educativo"]),
-        curso: obtenerCampoHermano(x, ["curso", "paralelo"]),
-        ue: obtenerCampoHermano(x, ["ue", "unidad_educativa", "unidadEducativa"])
-    }));
+        let ultimoError = null;
+
+        for (const variante of variantes) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from(tabla)
+                    .select(seleccionHermano)
+                    .eq(variante.paterno, estudiante.paterno)
+                    .eq(variante.materno, estudiante.materno);
+
+                if (!error) {
+                    return {
+                        data: Array.isArray(data) ? data : [],
+                        error: null,
+                        usadoFiltroDirecto: true
+                    };
+                }
+
+                ultimoError = error;
+            } catch (error) {
+                ultimoError = error;
+            }
+        }
+
+        /*
+           Respaldo: conserva la compatibilidad con bases que no tengan
+           columnas de apellido utilizables en el filtro. Solo se ejecuta
+           cuando la consulta rápida no es posible.
+        */
+        try {
+            const data = await cargarTodosLosRegistrosDetalleQR(
+                tabla,
+                seleccionHermano
+            );
+
+            return {
+                data: Array.isArray(data) ? data : [],
+                error: null,
+                usadoFiltroDirecto: false,
+                errorFiltro: ultimoError
+            };
+        } catch (error) {
+            return {
+                data: [],
+                error,
+                usadoFiltroDirecto: false,
+                errorFiltro: ultimoError
+            };
+        }
+    }
+
+    // Las dos tablas se consultan simultáneamente.
+    const resultados = await Promise.all([
+        consultarHermanosTabla("matematica"),
+        consultarHermanosTabla("listageneral")
+    ]);
+
+    const rMat = resultados[0];
+    const rLista = resultados[1];
+
+    if (rMat.error) {
+        console.warn("No se pudo leer matematica para hermanos:", rMat.error);
+    }
+    if (rLista.error) {
+        console.warn("No se pudo leer listageneral para hermanos:", rLista.error);
+    }
+
+    const todos = [
+        ...(Array.isArray(rMat.data)
+            ? rMat.data.map(x => ({ ...x, __tablaHermano: "matematica" }))
+            : []),
+        ...(Array.isArray(rLista.data)
+            ? rLista.data.map(x => ({ ...x, __tablaHermano: "listageneral" }))
+            : [])
+    ];
+
+    /*
+       Si la consulta directa funcionó, todos los registros ya comparten los
+       apellidos buscados. Aun así se conserva la misma comprobación para no
+       cambiar el resultado cuando existen variantes de nombres/apellidos.
+    */
+    const hermanos = todos
+        .filter(x => {
+            const mismoApellido =
+                normalizarTextoHermanoDetalleQR(obtenerPaterno(x)) === paternoActual &&
+                normalizarTextoHermanoDetalleQR(obtenerMaterno(x)) === maternoActual;
+
+            const mismoRegistro =
+                (idActual &&
+                 String(x.id ?? "") === idActual &&
+                 (!ciActual ||
+                  normalizarTextoHermanoDetalleQR(x.ci) === ciActual)) ||
+                (ciActual &&
+                 normalizarTextoHermanoDetalleQR(x.ci) === ciActual);
+
+            return mismoApellido && !mismoRegistro;
+        })
+        .map(x => ({
+            ...x,
+            paterno: obtenerPaterno(x),
+            materno: obtenerMaterno(x),
+            nombres: obtenerCampoHermano(x, ["nombres", "nombre", "name"]),
+            nombre: obtenerCampoHermano(x, ["nombre", "nombres", "name"]),
+            nivel: obtenerCampoHermano(x, ["nivel", "grado", "nivel_educativo"]),
+            curso: obtenerCampoHermano(x, ["curso", "paralelo"]),
+            ue: obtenerCampoHermano(x, ["ue", "unidad_educativa", "unidadEducativa"])
+        }));
 
     return {
         hermanos,
         estadoLectura: {
             matematica: {
                 registros: Array.isArray(rMat.data) ? rMat.data.length : 0,
-                error: rMat.error ? (rMat.error.message || String(rMat.error)) : null
+                error: rMat.error
+                    ? (rMat.error.message || String(rMat.error))
+                    : null
             },
             listageneral: {
                 registros: Array.isArray(rLista.data) ? rLista.data.length : 0,
-                error: rLista.error ? (rLista.error.message || String(rLista.error)) : null
+                error: rLista.error
+                    ? (rLista.error.message || String(rLista.error))
+                    : null
             }
         }
     };
@@ -21454,20 +21557,35 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     const estudianteId = Number(estudiante.id);
 
-    /* Cargar los datos completos del estudiante desde matematica para la
-       información adicional solicitada, aunque el registro haya llegado
-       desde la lista local o mediante QR. */
-    try {
-        const respuestaDatosEstudiante = await supabaseClient
-            .from("matematica")
-            .select("id,num_lista,ci,nombre,paterno,materno,nombres,rude,ppff,cel1,cel2,curso,ue,gen,nivel,fecha_nacimiento,nota_1t,nota_2t")
-            .eq("id", estudianteId)
-            .maybeSingle();
-        if (!respuestaDatosEstudiante.error && respuestaDatosEstudiante.data) {
-            estudiante = { ...estudiante, ...respuestaDatosEstudiante.data };
+    /*
+       Solo consulta nuevamente matematica si el registro recibido no trae
+       todos los datos necesarios para la ficha. Cuando ya están disponibles
+       (por ejemplo, desde la lista local), se evita una consulta innecesaria.
+    */
+    const camposDetalleEstudiante = [
+        "id", "num_lista", "ci", "nombre", "paterno", "materno", "nombres",
+        "rude", "ppff", "cel1", "cel2", "curso", "ue", "gen", "nivel",
+        "fecha_nacimiento", "nota_1t", "nota_2t"
+    ];
+
+    const faltanDatosDetalleEstudiante = camposDetalleEstudiante.some(
+        campo => estudiante[campo] === undefined
+    );
+
+    if (faltanDatosDetalleEstudiante) {
+        try {
+            const respuestaDatosEstudiante = await supabaseClient
+                .from("matematica")
+                .select("id,num_lista,ci,nombre,paterno,materno,nombres,rude,ppff,cel1,cel2,curso,ue,gen,nivel,fecha_nacimiento,nota_1t,nota_2t")
+                .eq("id", estudianteId)
+                .maybeSingle();
+
+            if (!respuestaDatosEstudiante.error && respuestaDatosEstudiante.data) {
+                estudiante = { ...estudiante, ...respuestaDatosEstudiante.data };
+            }
+        } catch (error) {
+            console.warn("No se pudieron cargar datos adicionales del estudiante:", error);
         }
-    } catch (error) {
-        console.warn("No se pudieron cargar datos adicionales del estudiante:", error);
     }
 
     let hermanosDetalleQR = [];
