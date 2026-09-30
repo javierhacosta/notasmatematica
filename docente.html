@@ -21205,20 +21205,54 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
 
     const todos = [...(rMat.data || []), ...(rLista.data || [])];
 
-    const paternoActual = normalizarTextoHermanoDetalleQR(estudiante.paterno);
-    const maternoActual = normalizarTextoHermanoDetalleQR(estudiante.materno);
+    // Si el registro que abrió el detalle no trae apellidos, recuperar
+    // el mismo estudiante desde cualquiera de las dos tablas usando su CI.
+    const ciActual = normalizarTextoHermanoDetalleQR(estudiante.ci);
+    let estudianteFamilia = estudiante;
+    if (ciActual) {
+        const porCI = todos.find(x =>
+            normalizarTextoHermanoDetalleQR(x.ci) === ciActual &&
+            normalizarTextoHermanoDetalleQR(x.paterno) &&
+            normalizarTextoHermanoDetalleQR(x.materno)
+        );
+        if (porCI) estudianteFamilia = { ...estudiante, ...porCI };
+    }
 
-    const hermanos = paternoActual && maternoActual
-        ? todos.filter(x => {
-            const mismoApellido = normalizarTextoHermanoDetalleQR(x.paterno) === paternoActual &&
-                                  normalizarTextoHermanoDetalleQR(x.materno) === maternoActual;
-            const mismoRegistro = String(x.id ?? "") === String(estudiante.id ?? "") &&
-                                  normalizarTextoHermanoDetalleQR(x.ci) === normalizarTextoHermanoDetalleQR(estudiante.ci);
-            return mismoApellido && !mismoRegistro;
-        })
-        : [];
+    const paternoActual = normalizarTextoHermanoDetalleQR(estudianteFamilia.paterno);
+    const maternoActual = normalizarTextoHermanoDetalleQR(estudianteFamilia.materno);
 
-    return { hermanos };
+    if (!paternoActual || !maternoActual) {
+        console.warn("No se pudieron determinar los apellidos del estudiante para buscar hermanos.", estudianteFamilia);
+        return { hermanos: [] };
+    }
+
+    const hermanos = todos.filter(x => {
+        const mismoApellido =
+            normalizarTextoHermanoDetalleQR(x.paterno) === paternoActual &&
+            normalizarTextoHermanoDetalleQR(x.materno) === maternoActual;
+
+        // El propio estudiante nunca debe aparecer como hermano, aunque
+        // exista en las dos tablas.
+        const ciHermano = normalizarTextoHermanoDetalleQR(x.ci);
+        const esMismoPorCI = ciActual && ciHermano && ciHermano === ciActual;
+        const esMismoPorId = String(x.id ?? "") === String(estudianteFamilia.id ?? "");
+
+        return mismoApellido && !esMismoPorCI && !esMismoPorId;
+    });
+
+    // Evitar mostrar dos veces al mismo hermano si aparece en ambas tablas.
+    const unicos = [];
+    const vistos = new Set();
+    hermanos.forEach(h => {
+        const clave = normalizarTextoHermanoDetalleQR(h.ci) ||
+            `${normalizarTextoHermanoDetalleQR(h.paterno)}|${normalizarTextoHermanoDetalleQR(h.materno)}|${normalizarTextoHermanoDetalleQR(h.nombres || h.nombre)}|${normalizarTextoHermanoDetalleQR(h.curso)}`;
+        if (!vistos.has(clave)) {
+            vistos.add(clave);
+            unicos.push(h);
+        }
+    });
+
+    return { hermanos: unicos, estudianteFamilia };
 }
 
 async function mostrarEstadisticaUE(nombreUE, boton) {
@@ -21338,6 +21372,9 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     try {
         const familiares = await cargarDatosFamiliaresDetalleQR(estudiante);
         hermanosDetalleQR = familiares.hermanos || [];
+        if (familiares.estudianteFamilia) {
+            estudiante = { ...estudiante, ...familiares.estudianteFamilia };
+        }
     } catch (error) {
         console.warn("No se pudieron cargar posibles hermanos:", error);
     }
