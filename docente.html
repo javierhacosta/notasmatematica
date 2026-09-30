@@ -21183,7 +21183,9 @@ function normalizarTextoHermanoDetalleQR(valor) {
 
 function normalizarUEEstadistica(valor) {
     return normalizarTextoHermanoDetalleQR(valor)
-        .replace(/^U\.?E\.?\s*/i, "")
+        .replace(/^(U\.?\s*E\.?|UNIDAD\s+EDUCATIVA)\s*/i, "")
+        .replace(/[^A-Z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
 }
 
@@ -21200,12 +21202,8 @@ async function cargarDatosFamiliaresDetalleQR(estudiante) {
         supabaseClient.from("matematica").select(seleccion),
         supabaseClient.from("listageneral").select(seleccion)
     ]);
-    if (rMat.error) {
-        throw new Error(`No se pudo leer la tabla matematica: ${rMat.error.message || String(rMat.error)}`);
-    }
-    if (rLista.error) {
-        throw new Error(`No se pudo leer la tabla listageneral: ${rLista.error.message || String(rLista.error)}`);
-    }
+    if (rMat.error) throw rMat.error;
+    if (rLista.error) throw rLista.error;
 
     const todos = [...(rMat.data || []), ...(rLista.data || [])];
 
@@ -21241,18 +21239,21 @@ async function mostrarEstadisticaUE(nombreUE, boton) {
             supabaseClient.from("matematica").select(seleccion),
             supabaseClient.from("listageneral").select(seleccion)
         ]);
-        if (rMat.error) {
-            throw new Error(`No se pudo leer la tabla matematica: ${rMat.error.message || String(rMat.error)}`);
-        }
-        if (rLista.error) {
-            throw new Error(`No se pudo leer la tabla listageneral: ${rLista.error.message || String(rLista.error)}`);
-        }
+        if (rMat.error) throw rMat.error;
+        if (rLista.error) throw rLista.error;
 
-        const todos = [...(rMat.data || []), ...(rLista.data || [])];
+        const datosMatematica = rMat.data || [];
+        const datosListaGeneral = rLista.data || [];
+        const todos = [...datosMatematica, ...datosListaGeneral];
         const objetivo = normalizarUEEstadistica(nombreUE);
-        const estudiantes = todos.filter(e =>
-            normalizarUEEstadistica(e.ue) === objetivo
-        );
+
+        // Comparar la U.E. de forma tolerante para que los registros de
+        // listageneral se incluyan aunque tengan diferencias de formato
+        // (U.E., UE, UNIDAD EDUCATIVA, puntos, guiones o espacios).
+        const estudiantes = todos.filter(e => {
+            const ue = normalizarUEEstadistica(e.ue);
+            return ue === objetivo;
+        });
 
         const contar = lista => ({
             total: lista.length,
