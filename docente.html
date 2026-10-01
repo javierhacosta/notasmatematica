@@ -26427,17 +26427,35 @@ function cerrarModalArchivosEstudiantesDesdeFondo(event) {
 }
 
 function abrirSelectorArchivoEstudiante(id) {
-    archivoEstudianteActivo = buscarEstudianteArchivoPorId(id);
-    if (!archivoEstudianteActivo) {
+    const estudiante = buscarEstudianteArchivoPorId(id);
+    if (!estudiante) {
         alert("No se encontró al estudiante.");
         return;
     }
 
-    const input = document.getElementById("selectorArchivoEstudiante");
-    if (!input) return;
+    archivoEstudianteActivo = estudiante;
 
-    input.value = "";
+    // Crear un selector nuevo cada vez. En algunos celulares el click()
+    // sobre un input oculto permanentemente no abre el selector de archivos.
+    const inputAnterior = document.getElementById("selectorArchivoEstudiante");
+    if (inputAnterior) inputAnterior.remove();
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.id = "selectorArchivoEstudiante";
     input.accept = "*/*";
+    input.style.position = "fixed";
+    input.style.left = "-10000px";
+    input.style.top = "0";
+    input.style.width = "1px";
+    input.style.height = "1px";
+    input.style.opacity = "0";
+    input.setAttribute("aria-hidden", "true");
+
+    input.addEventListener("change", seleccionarArchivoEstudiante, { once: true });
+    document.body.appendChild(input);
+
+    // El click se ejecuta inmediatamente desde la pulsación del botón.
     input.click();
 }
 
@@ -26456,7 +26474,7 @@ async function seleccionarArchivoEstudiante(event) {
         console.error("Error al guardar archivo del estudiante:", error);
         alert("No se pudo guardar el archivo: " + (error?.message || error));
     } finally {
-        if (input) input.value = "";
+        if (input) input.remove();
         archivoEstudianteActivo = null;
     }
 }
@@ -26521,40 +26539,66 @@ async function abrirCamaraArchivoEstudiante(id) {
 
     if (!modal || !video) return;
 
+    // La cámara del navegador necesita un contexto seguro (HTTPS o localhost).
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        abrirSelectorFotoArchivoEstudiante();
+        return;
+    }
+
     modal.classList.remove("oculto");
 
     try {
-        if (streamCamaraArchivoEstudiante) {
-            streamCamaraArchivoEstudiante.getTracks().forEach(track => track.stop());
-            streamCamaraArchivoEstudiante = null;
+        detenerCamaraArchivoEstudiante();
+
+        // Primero intentamos la cámara trasera; si el navegador no acepta
+        // esas restricciones, hacemos un segundo intento más simple.
+        try {
+            streamCamaraArchivoEstudiante = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 960 }
+                },
+                audio: false
+            });
+        } catch (primerError) {
+            streamCamaraArchivoEstudiante = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
         }
 
-        streamCamaraArchivoEstudiante = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1280 },
-                height: { ideal: 960 }
-            },
-            audio: false
-        });
-
         video.srcObject = streamCamaraArchivoEstudiante;
+        video.setAttribute("playsinline", "true");
+        video.muted = true;
         await video.play();
     } catch (error) {
         console.error("No se pudo abrir la cámara:", error);
-
         cerrarCamaraArchivoEstudiante();
-
-        // Respaldo para dispositivos/navegadores donde la cámara web
-        // no está disponible: abre la selección de una imagen con captura.
-        const input = document.getElementById("selectorArchivoEstudiante");
-        if (input) {
-            input.value = "";
-            input.accept = "image/*";
-            input.setAttribute("capture", "environment");
-            input.click();
-        }
+        abrirSelectorFotoArchivoEstudiante();
     }
+}
+
+function abrirSelectorFotoArchivoEstudiante() {
+    const inputAnterior = document.getElementById("selectorArchivoEstudiante");
+    if (inputAnterior) inputAnterior.remove();
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.id = "selectorArchivoEstudiante";
+    input.accept = "image/*";
+    input.setAttribute("capture", "environment");
+    input.style.position = "fixed";
+    input.style.left = "-10000px";
+    input.style.top = "0";
+    input.style.width = "1px";
+    input.style.height = "1px";
+    input.style.opacity = "0";
+    input.setAttribute("aria-hidden", "true");
+
+    input.addEventListener("change", seleccionarArchivoEstudiante, { once: true });
+    document.body.appendChild(input);
+    input.click();
 }
 
 async function capturarFotoArchivoEstudiante() {
