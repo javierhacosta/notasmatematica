@@ -23909,11 +23909,15 @@ function elegirEstudianteAzarAsistencia() {
             }
 
             if (vozAzarAsistenciaActiva) {
-                const nombreCorto = construirNombreCortoAula(elegido);
+                /* En falta/permiso la voz debe decir únicamente el nombre,
+                   sin el número de lista ni el número del asiento. */
+                const nombreParaVozEstado = prepararNombreParaVozAsistencia(
+                    String(elegido.nombre || elegido.nombre_completo || "").trim()
+                );
                 if (estadoAsistenciaElegido === "falta") {
-                    hablarConVozAzarAsistencia(`${nombreCorto} TIENE FALTA`);
+                    hablarConVozAzarAsistencia(`${nombreParaVozEstado} TIENE FALTA`);
                 } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
-                    hablarConVozAzarAsistencia(`${nombreCorto} ESTA CON PERMISO`);
+                    hablarConVozAzarAsistencia(`${nombreParaVozEstado} TIENE PERMISO`);
                 } else {
                     const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                     const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
