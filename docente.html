@@ -23464,7 +23464,13 @@ function prepararNombreParaVozAsistencia(nombre) {
 
 function hablarConVozAzarAsistencia(texto) {
     if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
-    const textoVoz = prepararNombreParaVozAsistencia(texto);
+    const textoOriginal = String(texto || "").trim();
+    const esEstadoEspecial =
+        /\sTIENE FALTA$/i.test(textoOriginal) ||
+        /\sESTA CON PERMISO$/i.test(textoOriginal);
+    const textoVoz = esEstadoEspecial
+        ? textoOriginal
+        : prepararNombreParaVozAsistencia(textoOriginal);
     if (!textoVoz) return;
     window.speechSynthesis.cancel();
     const voz = new SpeechSynthesisUtterance(textoVoz);
@@ -23790,6 +23796,16 @@ function actualizarEstadoBotonElegirAzarAsistencia() {
 function elegirEstudianteAzarAsistencia() {
     if (azarAsistenciaAnimacion) return;
 
+    const fechaAsistenciaActual = document.getElementById("fechaAsistencia")?.value || "";
+    const hayAsistenciaLlenada = Object.values(registrosAsistencia || {}).some(registro =>
+        registro && String(registro.estado || "").trim() !== ""
+    );
+
+    if (!fechaAsistenciaActual || !hayAsistenciaLlenada) {
+        alert("Primero debes llenar la asistencia de este día para usar Estudiante al azar.");
+        return;
+    }
+
     const numeroEl = document.getElementById("azarAsistenciaNumero");
     const nombreEl = document.getElementById("azarAsistenciaNombre");
     const boton = document.getElementById("botonElegirAzarAsistencia");
@@ -23855,6 +23871,17 @@ function elegirEstudianteAzarAsistencia() {
                 numeroEl.style.animationDuration = "";
             }
 
+            const estadoAsistenciaElegido = String(
+                (registrosAsistencia[elegido.id] || {}).estado || ""
+            ).toLowerCase();
+
+            let avisoEstadoEspecial = "";
+            if (estadoAsistenciaElegido === "falta") {
+                avisoEstadoEspecial = "⚠️ TIENE FALTA";
+            } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
+                avisoEstadoEspecial = "📄 ESTÁ CON PERMISO";
+            }
+
             if (nombreEl) {
                 nombreEl.innerHTML = "";
                 const botonNombre = document.createElement("button");
@@ -23863,13 +23890,28 @@ function elegirEstudianteAzarAsistencia() {
                 botonNombre.title = "Añadir una observación de asistencia";
                 botonNombre.addEventListener("click", function() { abrirAsistenciaDesdeAzar(elegido.id); });
                 nombreEl.appendChild(botonNombre);
+
+                if (avisoEstadoEspecial) {
+                    const aviso = document.createElement("div");
+                    aviso.textContent = avisoEstadoEspecial;
+                    aviso.style.marginTop = "8px";
+                    aviso.style.fontWeight = "bold";
+                    nombreEl.appendChild(aviso);
+                }
             }
 
             if (vozAzarAsistenciaActiva) {
-                const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
-                const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
-                const nombreParaVoz = String(elegido.nombre || elegido.nombre_completo || "").trim();
-                hablarConVozAzarAsistencia(`${nombreParaVoz} ${palabraElegido}`);
+                const nombreCorto = construirNombreCortoAula(elegido);
+                if (estadoAsistenciaElegido === "falta") {
+                    hablarConVozAzarAsistencia(`${nombreCorto} TIENE FALTA`);
+                } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
+                    hablarConVozAzarAsistencia(`${nombreCorto} ESTA CON PERMISO`);
+                } else {
+                    const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
+                    const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
+                    const nombreParaVoz = String(elegido.nombre || elegido.nombre_completo || "").trim();
+                    hablarConVozAzarAsistencia(`${nombreParaVoz} ${palabraElegido}`);
+                }
             }
 
             actualizarEstadoBotonElegirAzarAsistencia();
