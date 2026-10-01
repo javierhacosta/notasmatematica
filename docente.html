@@ -23911,9 +23911,12 @@ function elegirEstudianteAzarAsistencia() {
             if (vozAzarAsistenciaActiva) {
                 /* En falta/permiso la voz debe decir únicamente el nombre,
                    sin el número de lista ni el número del asiento. */
-                const nombreParaVozEstado = prepararNombreParaVozAsistencia(
-                    String(elegido.nombre || elegido.nombre_completo || "").trim()
-                );
+                const nombreBaseEstado = String(elegido.nombre || elegido.nombre_completo || "").trim();
+                const partesNombreEstado = nombreBaseEstado.split(/\s+/).filter(Boolean);
+                const nombreOrdenadoEstado = partesNombreEstado.length === 2
+                    ? `${partesNombreEstado[1]} ${partesNombreEstado[0]}`
+                    : nombreBaseEstado;
+                const nombreParaVozEstado = prepararNombreParaVozAsistencia(nombreOrdenadoEstado);
                 if (estadoAsistenciaElegido === "falta") {
                     hablarConVozAzarAsistencia(`${nombreParaVozEstado} ESTÁ CON FALTA`);
                 } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
