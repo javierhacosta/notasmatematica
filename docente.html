@@ -19106,6 +19106,33 @@ let estadoQRAsistencia = "asistio";
  */
 let asistenciasQRPendientesGuardar = new Map();
 
+/*
+ * Guardado en segundo plano de cada escaneo QR.
+ * No se espera la respuesta de Internet para continuar escaneando.
+ * La cola anterior se mantiene como respaldo para el guardado final.
+ */
+function guardarAsistenciaQREnSegundoPlano(registro) {
+    if (!registro) return;
+
+    Promise.resolve()
+        .then(async () => {
+            const { error } = await supabaseClient
+                .from("asistencia")
+                .upsert([registro], {
+                    onConflict: "estudiante_id,fecha"
+                });
+
+            if (error) throw error;
+        })
+        .catch(error => {
+            console.warn(
+                "No se pudo guardar todavía la asistencia QR en segundo plano. " +
+                "Se conserva en la cola para el guardado final.",
+                error
+            );
+        });
+}
+
 /* =====================================================
    PROTECCIÓN SEGUNDA ETAPA - QR
    Evita procesar dos veces el mismo QR por accidente.
@@ -19833,6 +19860,14 @@ async function continuarEscaneoAsistenciaQR() {
             String(estudiante.id),
             registro
         );
+
+        /*
+         * Intentar guardar en segundo plano sin detener el escáner.
+         * Si Internet está lento o no responde, el escaneo continúa
+         * normalmente y el registro queda en la cola para el guardado
+         * final al cerrar el escáner.
+         */
+        guardarAsistenciaQREnSegundoPlano(registro);
 
         /* Mantener la información local sincronizada */
         estadoQRAsistencia = registro.estado;
