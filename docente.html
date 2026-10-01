@@ -23909,18 +23909,11 @@ function elegirEstudianteAzarAsistencia() {
             }
 
             if (vozAzarAsistenciaActiva) {
-                /* En falta/permiso la voz debe decir únicamente el nombre,
-                   sin el número de lista ni el número del asiento. */
-                const nombreBaseEstado = String(elegido.nombre || elegido.nombre_completo || "").trim();
-                const partesNombreEstado = nombreBaseEstado.split(/\s+/).filter(Boolean);
-                const nombreOrdenadoEstado = partesNombreEstado.length === 2
-                    ? `${partesNombreEstado[1]} ${partesNombreEstado[0]}`
-                    : nombreBaseEstado;
-                const nombreParaVozEstado = prepararNombreParaVozAsistencia(nombreOrdenadoEstado);
+                const nombreCorto = construirNombreCortoAula(elegido);
                 if (estadoAsistenciaElegido === "falta") {
-                    hablarConVozAzarAsistencia(`${nombreParaVozEstado} ESTÁ CON FALTA`);
+                    hablarConVozAzarAsistencia(`${nombreCorto} TIENE FALTA`);
                 } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
-                    hablarConVozAzarAsistencia(`${nombreParaVozEstado} ESTÁ CON PERMISO`);
+                    hablarConVozAzarAsistencia(`${nombreCorto} ESTA CON PERMISO`);
                 } else {
                     const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
                     const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
