@@ -5499,6 +5499,43 @@ table tbody tr:nth-child(10n+10) td {
 </style>
 
 <style>
+/* BLOQUEO DEL MODO PRESIDENTE: solo asistencia QR */
+body.modo-presidente-qr-bloqueado {
+    overflow: hidden !important;
+    touch-action: manipulation;
+}
+body.modo-presidente-qr-bloqueado #modalEscanerQR,
+body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
+    z-index: 2147483000 !important;
+}
+#modalEscanerQR.modo-presidente-qr .boton-cerrar-modal,
+#modalEscanerQR.modo-presidente-qr .qr-camara-continua,
+#modalAsistenciaQR.modo-presidente-qr .boton-cerrar-modal,
+#modalAsistenciaQR.modo-presidente-qr .asistencia-qr-opciones,
+#modalAsistenciaQR.modo-presidente-qr #observacionAsistenciaQR,
+#modalAsistenciaQR.modo-presidente-qr label[for="observacionAsistenciaQR"] {
+    display: none !important;
+}
+#modalAsistenciaQR.modo-presidente-qr .campo-formulario {
+    display: none !important;
+}
+#modalAsistenciaQR.modo-presidente-qr .modal-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+#modalAsistenciaQR.modo-presidente-qr #botonContinuarAsistenciaQR {
+    display: block !important;
+    width: 100%;
+    min-height: 52px;
+    font-size: 18px;
+}
+#modalEscanerQR.modo-presidente-qr .modal-cabecera h3 {
+    text-align: center;
+    width: 100%;
+}
+
+<style>
 .panel-archivos-estudiantes{margin-top:15px;border:1px solid #ddd;border-radius:12px;overflow:hidden;background:white}.panel-archivos-estudiantes.oculto{display:none}.titulo-archivos-estudiantes{background:#455a64;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:bold}.boton-archivos-estudiantes{width:38px;height:34px;border:none;border-radius:7px;background:rgba(255,255,255,.2);color:white;font-size:22px;font-weight:bold;cursor:pointer}.contenido-archivos-estudiantes{padding:12px;background:#fff}.contenido-archivos-estudiantes.oculto{display:none}.lista-archivos-estudiantes{display:flex;flex-direction:column;gap:7px}.fila-archivo-estudiante{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e0e0e0;border-radius:9px;background:#fafafa}.numero-lista-archivo-estudiante{text-align:center;font-weight:700;color:#555}.nombre-archivo-estudiante{min-width:0;text-align:left;font-weight:600;overflow-wrap:anywhere}.acciones-archivo-estudiante{display:flex;gap:6px;flex-shrink:0}.boton-archivo-estudiante{width:40px;height:38px;border:none;border-radius:7px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.boton-camara-estudiante{background:#00838f}.boton-subir-estudiante{background:#1565c0}.archivos-estudiante-detalle{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}.archivo-guardado-estudiante{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:#e8f1fb;color:#1557a6;font-size:12px;max-width:260px}.archivo-guardado-estudiante .nombre-archivo-guardado{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boton-ver-archivo-estudiante,.boton-eliminar-archivo-estudiante{border:none;background:transparent;padding:1px 3px;font-size:16px;line-height:1;cursor:pointer}.boton-ver-archivo-estudiante{color:#1557a6}.boton-eliminar-archivo-estudiante{color:#c62828}.archivos-cargando,.archivos-vacio{color:#777;text-align:center;padding:15px}@media(max-width:600px){.fila-archivo-estudiante{grid-template-columns:42px minmax(0,1fr) auto;align-items:start}.nombre-archivo-estudiante{padding-top:8px}.archivos-estudiante-detalle{grid-column:1 / 4;margin-left:0}.numero-lista-archivo-estudiante{padding-top:8px}} </style>
 </head>
 
@@ -6527,13 +6564,15 @@ Cancelar
 
         <div class="modal-cabecera">
 
-            <h3>
+            <h3
+                onclick="gestoAdministradorAsistenciaQR(event)"
+                style="cursor:default; user-select:none;">
                 📷 Escanear estudiante
             </h3>
 
             <button
                 type="button"
-                class="boton-cerrar-modal"
+                class="boton-cerrar-modal boton-cerrar-escaner-qr"
                 onclick="cerrarEscanerQR()">
 
                 ×
@@ -6648,7 +6687,7 @@ Cancelar
 
             <button
                 type="button"
-                class="boton-cerrar-modal"
+                class="boton-cerrar-modal boton-cerrar-asistencia-qr"
                 onclick="cerrarModalAsistenciaQR()">
 
                 ×
@@ -19096,6 +19135,14 @@ let modoQRAsistencia = false;
 let modoQRConsultaEstudiante = false;
 let estudianteQRAsistencia = null;
 
+/* MODO PRESIDENTE: bloqueo exclusivo para la toma de asistencia por QR */
+let modoPresidenteAsistenciaQR = false;
+let desbloqueandoPresidenteQR = false;
+let historialPresidenteQRPreparado = false;
+let toquesAdministradorQR = 0;
+let ultimoToqueAdministradorQR = 0;
+const CLAVE_CREDENCIAL_PRESIDENTE_QR = "credencial_admin_asistencia_qr_v1";
+
 // Protección visual y confirmación cuando asistencia/actividad no corresponde a hoy.
 let qrFechaFueraDeHoy = false;
 let qrFechaFueraDeHoyConfirmada = false;
@@ -19569,6 +19616,220 @@ function detenerCamaraQR() {
 }
 
 
+/* =====================================================
+   MODO PRESIDENTE - ASISTENCIA QR BLOQUEADA
+   Nota: JavaScript puede bloquear la interfaz y solicitar pantalla
+   completa, pero no puede impedir por sí solo los controles del sistema
+   Android (Inicio/Recientes). Para un bloqueo real del teléfono se
+   necesita modo kiosco/Lock Task de Android.
+===================================================== */
+
+function activarModoPresidenteAsistenciaQR() {
+    modoPresidenteAsistenciaQR = true;
+    desbloqueandoPresidenteQR = false;
+
+    document.body.classList.add("modo-presidente-qr-bloqueado");
+
+    const modalQR = document.getElementById("modalEscanerQR");
+    const modalAsistencia = document.getElementById("modalAsistenciaQR");
+
+    if (modalQR) modalQR.classList.add("modo-presidente-qr");
+    if (modalAsistencia) modalAsistencia.classList.add("modo-presidente-qr");
+
+    /* Evitar volver atrás accidentalmente mientras está bloqueado. */
+    if (!historialPresidenteQRPreparado) {
+        try {
+            history.pushState({ presidenteQR: true }, "", location.href);
+            historialPresidenteQRPreparado = true;
+        } catch (_) {}
+    }
+
+    /* Intentar pantalla completa. El navegador puede requerir interacción previa. */
+    try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    } catch (_) {}
+}
+
+function desactivarModoPresidenteAsistenciaQR() {
+    modoPresidenteAsistenciaQR = false;
+    desbloqueandoPresidenteQR = false;
+    document.body.classList.remove("modo-presidente-qr-bloqueado");
+
+    const modalQR = document.getElementById("modalEscanerQR");
+    const modalAsistencia = document.getElementById("modalAsistenciaQR");
+    if (modalQR) modalQR.classList.remove("modo-presidente-qr");
+    if (modalAsistencia) modalAsistencia.classList.remove("modo-presidente-qr");
+
+    historialPresidenteQRPreparado = false;
+
+    try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        }
+    } catch (_) {}
+}
+
+function detenerEventoPresidenteQR(event) {
+    if (!modoPresidenteAsistenciaQR) return;
+    if (desbloqueandoPresidenteQR) return;
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}
+
+/*
+ * Registro de huella/passkey del profesor.
+ * Debe ejecutarse UNA VEZ desde la interfaz normal del profesor:
+ * registrarHuellaAdministrador()
+ * La huella queda protegida por el autenticador del dispositivo.
+ */
+async function registrarHuellaAdministrador() {
+    if (!window.PublicKeyCredential || !navigator.credentials) {
+        alert("Este navegador no permite usar la huella/biometría mediante WebAuthn.");
+        return false;
+    }
+
+    try {
+        const disponible = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
+        if (disponible === false) {
+            alert("Este dispositivo no tiene disponible un autenticador biométrico compatible.");
+            return false;
+        }
+
+        const userEmail = document.getElementById("usuario")?.textContent?.trim() || "profesor";
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const userId = crypto.getRandomValues(new Uint8Array(16));
+
+        const cred = await navigator.credentials.create({
+            publicKey: {
+                challenge,
+                rp: { name: "Asistencia QR" },
+                user: {
+                    id: userId,
+                    name: userEmail,
+                    displayName: "Administrador / Profesor"
+                },
+                pubKeyCredParams: [
+                    { type: "public-key", alg: -7 },
+                    { type: "public-key", alg: -257 }
+                ],
+                authenticatorSelection: {
+                    authenticatorAttachment: "platform",
+                    userVerification: "required",
+                    residentKey: "preferred"
+                },
+                timeout: 60000,
+                attestation: "none"
+            }
+        });
+
+        if (!cred) throw new Error("No se creó la credencial biométrica.");
+
+        const rawId = new Uint8Array(cred.rawId);
+        let bin = "";
+        rawId.forEach(b => bin += String.fromCharCode(b));
+        localStorage.setItem(CLAVE_CREDENCIAL_PRESIDENTE_QR, btoa(bin));
+
+        alert("✓ Huella/biometría del profesor registrada. Ya puede usarse para desbloquear la asistencia QR.");
+        return true;
+    } catch (error) {
+        console.error("No se pudo registrar la huella del administrador:", error);
+        alert("No se pudo registrar la huella/biometría. Verifica el bloqueo de pantalla y los permisos del dispositivo.");
+        return false;
+    }
+}
+
+function obtenerCredencialPresidenteQR() {
+    try {
+        return localStorage.getItem(CLAVE_CREDENCIAL_PRESIDENTE_QR) || "";
+    } catch (_) {
+        return "";
+    }
+}
+
+async function desbloquearAsistenciaQRConHuella() {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return false;
+
+    const credencialBase64 = obtenerCredencialPresidenteQR();
+    if (!credencialBase64) {
+        alert("Primero registra la huella del profesor ejecutando registrarHuellaAdministrador() desde la interfaz normal.");
+        return false;
+    }
+
+    if (!window.PublicKeyCredential || !navigator.credentials) {
+        alert("Este navegador no permite desbloquear con huella/biometría.");
+        return false;
+    }
+
+    desbloqueandoPresidenteQR = true;
+
+    try {
+        let bin = atob(credencialBase64);
+        const rawId = Uint8Array.from(bin, c => c.charCodeAt(0));
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+        const assertion = await navigator.credentials.get({
+            publicKey: {
+                challenge,
+                allowCredentials: [{
+                    id: rawId.buffer,
+                    type: "public-key",
+                    transports: ["internal"]
+                }],
+                userVerification: "required",
+                timeout: 60000
+            }
+        });
+
+        if (!assertion) throw new Error("No se confirmó la identidad biométrica.");
+
+        desactivarModoPresidenteAsistenciaQR();
+
+        /* El profesor recupera el control normal y la cámara se cierra. */
+        detenerCamaraQR();
+        const modalAsistencia = document.getElementById("modalAsistenciaQR");
+        const modalQR = document.getElementById("modalEscanerQR");
+        if (modalAsistencia) modalAsistencia.classList.add("oculto");
+        if (modalQR) modalQR.classList.add("oculto");
+
+        modoQRAsistencia = false;
+        estudianteQRAsistencia = null;
+        procesandoQR = false;
+        return true;
+    } catch (error) {
+        console.error("No se pudo desbloquear la asistencia QR:", error);
+        alert("Huella/biometría no confirmada. La asistencia QR continúa bloqueada.");
+        return false;
+    } finally {
+        desbloqueandoPresidenteQR = false;
+    }
+}
+
+/* El administrador abre la autenticación tocando 5 veces el título del escáner. */
+function gestoAdministradorAsistenciaQR(event) {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
+
+    const ahora = Date.now();
+    if (ahora - ultimoToqueAdministradorQR > 1800) {
+        toquesAdministradorQR = 0;
+    }
+    ultimoToqueAdministradorQR = ahora;
+    toquesAdministradorQR++;
+
+    if (toquesAdministradorQR >= 5) {
+        toquesAdministradorQR = 0;
+        desbloquearAsistenciaQRConHuella();
+    }
+
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}
+
 async function abrirEscanerAsistenciaQR() {
 
     if (esDiaSinClasesAsistencia()) {
@@ -19591,6 +19852,7 @@ async function abrirEscanerAsistenciaQR() {
     }
 
     modoQRAsistencia = true;
+    activarModoPresidenteAsistenciaQR();
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
     qrFechaFueraDeHoy = compararFechaConHoy(fecha);
@@ -19945,6 +20207,11 @@ async function continuarEscaneoAsistenciaQR() {
 }
 
 function cerrarModalAsistenciaQR(event) {
+
+    if (modoPresidenteAsistenciaQR && !desbloqueandoPresidenteQR) {
+        detenerEventoPresidenteQR(event);
+        return;
+    }
 
     if (event && event.target !== document.getElementById("modalAsistenciaQR")) {
         return;
@@ -22577,6 +22844,11 @@ async function cerrarEscanerQR(
     event
 ) {
 
+    if (modoPresidenteAsistenciaQR && !desbloqueandoPresidenteQR) {
+        detenerEventoPresidenteQR(event);
+        return;
+    }
+
     if (
         event &&
         event.target !==
@@ -22703,6 +22975,10 @@ async function cerrarEscanerQR(
         if (pendientes.length > 0) {
             mostrarPendientesAsistencia();
         }
+    }
+
+    if (modoPresidenteAsistenciaQR) {
+        desactivarModoPresidenteAsistenciaQR();
     }
 
 }
@@ -25955,6 +26231,37 @@ async function subirArchivoEstudiante(ev,idc){const i=ev.target,a=i?.files?.[0],
 async function abrirArchivoEstudiante(idc,nc){const id=decodeURIComponent(idc),n=decodeURIComponent(nc);try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(`${id}/${n}`,600);if(error)throw error;if(data?.signedUrl)window.open(data.signedUrl,"_blank","noopener");else throw new Error("No se obtuvo el enlace del archivo.")}catch(e){console.error("Error al abrir archivo",e);alert("No se pudo abrir el archivo.\n\n"+(e.message||e))}}
 async function eliminarArchivoEstudiante(idc,nc){const id=decodeURIComponent(idc),n=decodeURIComponent(nc);if(!confirm(`¿Eliminar el archivo "${n}"?\n\nEsta acción no se puede deshacer.`))return;try{const{error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([`${id}/${n}`]);if(error)throw error;await cargarListaArchivosEstudiantes();mostrarMensaje("✓ Archivo eliminado.")}catch(e){console.error("Error al eliminar archivo",e);alert("No se pudo eliminar el archivo.\n\n"+(e.message||e))}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>actualizarPanelArchivosEstudiantes(),{once:true});else setTimeout(actualizarPanelArchivosEstudiantes,0);
+
+
+/* CONTROLES DE SEGURIDAD DEL MODO PRESIDENTE QR */
+document.addEventListener("keydown", function(event) {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
+    if (event.key === "Escape" || event.key === "BrowserBack") {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}, true);
+
+window.addEventListener("popstate", function() {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
+    try {
+        history.pushState({ presidenteQR: true }, "", location.href);
+    } catch (_) {}
+});
+
+document.addEventListener("fullscreenchange", function() {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
+    if (!document.fullscreenElement) {
+        try {
+            document.documentElement.requestFullscreen?.().catch(() => {});
+        } catch (_) {}
+    }
+});
+
+document.addEventListener("contextmenu", function(event) {
+    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
+    event.preventDefault();
+}, true);
 </script>
 </body>
 
