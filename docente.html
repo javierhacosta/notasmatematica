@@ -26343,35 +26343,6 @@ document.addEventListener("contextmenu", function(event) {
     if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
     event.preventDefault();
 }, true);
-
-/* Bloquear navegaciones internas/externas accidentales mientras el QR está bloqueado.
-   Los botones y controles de la propia aplicación siguen funcionando porque no son enlaces. */
-document.addEventListener("click", function(event) {
-    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
-    const enlace = event.target && event.target.closest ? event.target.closest("a[href]") : null;
-    if (!enlace) return;
-    event.preventDefault();
-    event.stopPropagation();
-}, true);
-
-/* Evitar que scripts o enlaces intenten sacar al usuario de la página durante el bloqueo. */
-window.addEventListener("beforeunload", function(event) {
-    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
-    event.preventDefault();
-    event.returnValue = "";
-}, true);
-
-/* En navegadores compatibles, interceptar navegaciones de la propia página. */
-if (window.navigation && typeof window.navigation.addEventListener === "function") {
-    window.navigation.addEventListener("navigate", function(event) {
-        if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
-        try {
-            if (event.destination && event.destination.url !== location.href) {
-                event.preventDefault();
-            }
-        } catch (_) {}
-    });
-}
 </script>
 </body>
 
