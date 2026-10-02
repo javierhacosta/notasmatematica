@@ -23829,7 +23829,8 @@ function hablarConVozAzarAsistencia(texto) {
     const textoOriginal = String(texto || "").trim();
     const esEstadoEspecial =
         /\sTIENE FALTA$/i.test(textoOriginal) ||
-        /\sESTA CON PERMISO$/i.test(textoOriginal);
+        /\sESTA CON PERMISO$/i.test(textoOriginal) ||
+        /\sTIENE PERMISO$/i.test(textoOriginal);
     const textoVoz = esEstadoEspecial
         ? textoOriginal
         : prepararNombreParaVozAsistencia(textoOriginal);
@@ -24235,13 +24236,13 @@ function elegirEstudianteAzarAsistencia() {
 
             const estadoAsistenciaElegido = String(
                 (registrosAsistencia[elegido.id] || {}).estado || ""
-            ).toLowerCase();
+            ).trim().toLowerCase();
 
             let avisoEstadoEspecial = "";
             if (estadoAsistenciaElegido === "falta") {
                 avisoEstadoEspecial = "⚠️ TIENE FALTA";
             } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
-                avisoEstadoEspecial = "📄 ESTÁ CON PERMISO";
+                avisoEstadoEspecial = "📄 TIENE PERMISO";
             }
 
             if (nombreEl) {
