@@ -1,384 +1,396 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<!DOCTYPE html>
+<html lang="es">
 
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+<head>
 
-<title>Acceso Docente</title>
+    <meta charset="UTF-8">
 
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-<style>
+    <title>Acceso Docente</title>
 
-    * {
-        box-sizing: border-box;
-    }
 
+    <style>
 
-    body {
+        * {
+            box-sizing: border-box;
+        }
 
-        margin: 0;
 
-        font-family: Arial, sans-serif;
+        body {
 
-        background: #f2f5f9;
+            margin: 0;
 
-        min-height: 100vh;
+            font-family: Arial, sans-serif;
 
-        display: flex;
+            background: #f2f5f9;
 
-        align-items: center;
+            min-height: 100vh;
 
-        justify-content: center;
+            display: flex;
 
-    }
+            align-items: center;
 
+            justify-content: center;
 
-    .login {
+        }
 
-        width: 90%;
 
-        max-width: 400px;
+        .login {
 
-        background: white;
+            width: 90%;
 
-        padding: 30px;
+            max-width: 400px;
 
-        border-radius: 15px;
+            background: white;
 
-        box-shadow:
-            0 5px 20px rgba(0,0,0,.12);
+            padding: 30px;
 
-    }
+            border-radius: 15px;
 
+            box-shadow:
+                0 5px 20px rgba(0,0,0,.12);
 
-    h1 {
+        }
 
-        text-align: center;
 
-        color: #1557a6;
+        h1 {
 
-        margin-top: 0;
+            text-align: center;
 
-    }
+            color: #1557a6;
 
+            margin-top: 0;
 
-    .subtitulo {
+        }
 
-        text-align: center;
 
-        color: #666;
+        .subtitulo {
 
-        margin-bottom: 25px;
+            text-align: center;
 
-    }
+            color: #666;
 
+            margin-bottom: 25px;
 
-    label {
+        }
 
-        display: block;
 
-        font-weight: bold;
+        label {
 
-        margin-top: 15px;
+            display: block;
 
-        margin-bottom: 6px;
+            font-weight: bold;
 
-    }
+            margin-top: 15px;
 
+            margin-bottom: 6px;
 
-    input {
+        }
 
-        width: 100%;
 
-        padding: 12px;
+        input {
 
-        border: 1px solid #ccc;
+            width: 100%;
 
-        border-radius: 8px;
+            padding: 12px;
 
-        font-size: 16px;
+            border: 1px solid #ccc;
 
-    }
+            border-radius: 8px;
 
+            font-size: 16px;
 
-    button {
+        }
 
-        width: 100%;
 
-        margin-top: 25px;
+        button {
 
-        padding: 13px;
+            width: 100%;
 
-        border: none;
+            margin-top: 25px;
 
-        border-radius: 8px;
+            padding: 13px;
 
-        background: #1557a6;
+            border: none;
 
-        color: white;
+            border-radius: 8px;
 
-        font-size: 17px;
+            background: #1557a6;
 
-        cursor: pointer;
+            color: white;
 
-    }
+            font-size: 17px;
 
+            cursor: pointer;
 
-    button:hover {
+        }
 
-        background: #0d4282;
 
-    }
+        button:hover {
 
+            background: #0d4282;
 
-    #botonHuella {
+        }
 
-        margin-top: 10px;
 
-        background: #37474f;
+        #mensaje {
 
-    }
+            margin-top: 15px;
 
+            text-align: center;
 
-    #botonHuella:hover {
+            font-weight: bold;
 
-        background: #263238;
+        }
 
-    }
 
+        .error {
 
-    #mensaje {
+            color: #c62828;
 
-        margin-top: 15px;
+        }
 
-        text-align: center;
 
-        font-weight: bold;
+        .cargando {
 
-    }
+            color: #1557a6;
 
+        }
 
-    .error {
+    </style>
 
-        color: #c62828;
+</head>
 
-    }
 
+<body>
 
-    .cargando {
 
-        color: #1557a6;
+<div class="login">
 
-    }
 
-</style>
+    <h1>Panel Docente</h1>
 
-</head><body><div class="login"><h1>Panel Docente</h1>
 
+    <div class="subtitulo">
 
-<div class="subtitulo">
+        Inicia sesión para continuar
 
-    Inicia sesión para continuar
+    </div>
+
+
+    <label for="email">
+
+        Correo electrónico
+
+    </label>
+
+
+    <input
+
+        type="email"
+
+        id="email"
+
+        placeholder="docente@colegio.com"
+
+    >
+
+
+    <label for="password">
+
+        Contraseña
+
+    </label>
+
+
+    <input
+
+        type="password"
+
+        id="password"
+
+        placeholder="Ingresa tu contraseña"
+
+    >
+
+
+    <button onclick="iniciarSesion()">
+
+        Ingresar
+
+    </button>
+
+
+    <div id="mensaje"></div>
+
 
 </div>
 
 
-<button
-    type="button"
-    id="botonCrearClave"
-    onclick="crearClaveLocal()">
-    🔐 Crear clave de acceso local
-</button>
 
-<button
-    type="button"
-    id="botonHuella"
-    onclick="iniciarConHuella()">
-    🫆 Ingresar con huella / bloqueo del celular
-</button>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<div id="mensaje"></div>
 
-</div>
 <script>
-    /*
-     * Acceso local mediante WebAuthn/Passkey.
-     * No usa Supabase ni guarda la huella: el sistema operativo
-     * del teléfono/computadora conserva la credencial.
-     */
-    const CLAVE_LOCAL = "docente_clave_acceso_local_v1";
-    const RP_ID = location.hostname;
-    const NOMBRE_SITIO = "Panel Docente";
 
-    const mensaje = document.getElementById("mensaje");
-    const botonCrear = document.getElementById("botonCrearClave");
-    const botonHuella = document.getElementById("botonHuella");
 
-    function mostrar(texto, clase = "") {
-        mensaje.textContent = texto;
-        mensaje.className = clase;
-    }
+    const SUPABASE_URL =
 
-    function soporteWebAuthn() {
-        return !!(window.isSecureContext &&
-                   window.PublicKeyCredential &&
-                   navigator.credentials);
-    }
+        "https://tecphbbkkmlgahjddcep.supabase.co";
 
-    function base64url(bytes) {
-        let str = "";
-        const arr = new Uint8Array(bytes);
-        for (const b of arr) str += String.fromCharCode(b);
-        return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-    }
 
-    function desdeBase64url(texto) {
-        const normal = texto.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = normal + "=".repeat((4 - normal.length % 4) % 4);
-        const bin = atob(padded);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        return bytes;
-    }
+    const SUPABASE_KEY =
 
-    function tieneClaveLocal() {
-        return !!localStorage.getItem(CLAVE_LOCAL);
-    }
+        "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-    function actualizarBotones() {
-        const existe = tieneClaveLocal();
-        botonCrear.textContent = existe
-            ? "🔄 Cambiar clave de acceso local"
-            : "🔐 Crear clave de acceso local";
-        botonHuella.disabled = !existe;
-        botonHuella.style.opacity = existe ? "1" : ".55";
-    }
 
-    async function crearClaveLocal() {
-        if (!soporteWebAuthn()) {
-            mostrar(
-                "Este navegador no permite clave de acceso. Abre la página con HTTPS.",
-                "error"
-            );
+    const supabaseClient =
+
+        window.supabase.createClient(
+
+            SUPABASE_URL,
+
+            SUPABASE_KEY
+
+        );
+
+
+
+    async function iniciarSesion() {
+
+
+        const email =
+
+            document
+
+                .getElementById("email")
+
+                .value
+
+                .trim();
+
+
+        const password =
+
+            document
+
+                .getElementById("password")
+
+                .value;
+
+
+
+        const mensaje =
+
+            document
+
+                .getElementById("mensaje");
+
+
+
+        if (!email || !password) {
+
+            mensaje.textContent =
+
+                "Ingresa correo y contraseña.";
+
+            mensaje.className = "error";
+
             return;
+
         }
 
-        try {
-            mostrar("Sigue la indicación del celular para registrar tu huella, rostro, PIN o bloqueo de pantalla...", "cargando");
 
-            const existente = tieneClaveLocal();
 
-            const credencial = await navigator.credentials.create({
-                publicKey: {
-                    challenge: crypto.getRandomValues(new Uint8Array(32)),
-                    rp: {
-                        name: NOMBRE_SITIO,
-                        id: RP_ID
-                    },
-                    user: {
-                        id: crypto.getRandomValues(new Uint8Array(16)),
-                        name: "docente-local",
-                        displayName: "Docente"
-                    },
-                    pubKeyCredParams: [
-                        { type: "public-key", alg: -7 },
-                        { type: "public-key", alg: -257 }
-                    ],
-                    authenticatorSelection: {
-                        residentKey: "preferred",
-                        requireResidentKey: false,
-                        userVerification: "required"
-                    },
-                    timeout: 60000,
-                    attestation: "none"
-                }
-            });
+        mensaje.textContent =
 
-            if (!credencial) throw new Error("No se creó la credencial.");
+            "Ingresando...";
 
-            localStorage.setItem(
-                CLAVE_LOCAL,
-                JSON.stringify({
-                    id: base64url(credencial.rawId),
-                    rpId: RP_ID,
-                    creada: Date.now()
-                })
-            );
+        mensaje.className = "cargando";
 
-            actualizarBotones();
-            mostrar(
-                existente
-                    ? "Clave de acceso local cambiada correctamente."
-                    : "Clave de acceso local creada correctamente. Ahora puedes ingresar con tu huella o bloqueo del celular.",
-                "cargando"
-            );
-        } catch (error) {
-            console.error("WebAuthn:", error);
 
-            if (error.name === "NotAllowedError") {
-                mostrar("Registro cancelado o no autorizado por el celular.", "error");
-            } else if (error.name === "InvalidStateError") {
-                mostrar("El celular ya tiene una clave para esta página. Puedes intentar cambiarla.", "error");
-            } else {
-                mostrar("No se pudo crear la clave de acceso local.", "error");
-            }
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabaseClient.auth.signInWithPassword({
+
+            email: email,
+
+            password: password
+
+        });
+
+
+
+        if (error) {
+
+            console.error(error);
+
+            mensaje.textContent =
+
+                "Correo o contraseña incorrectos.";
+
+            mensaje.className = "error";
+
+            return;
+
         }
+
+
+
+        // Verificar que realmente sea docente
+
+        const {
+
+            data: docente,
+
+            error: errorDocente
+
+        } = await supabaseClient
+
+            .from("docentes")
+
+            .select("id,nombre,ci")
+
+            .eq("user_id", data.user.id)
+
+            .maybeSingle();
+
+
+
+        if (errorDocente || !docente) {
+
+            await supabaseClient.auth.signOut();
+
+            mensaje.textContent =
+
+                "Este usuario no está autorizado como docente.";
+
+            mensaje.className = "error";
+
+            return;
+
+        }
+
+
+
+        // Acceso correcto
+
+        window.location.href =
+
+            "docente.html";
+
     }
 
-    async function iniciarConHuella() {
-        if (!tieneClaveLocal()) {
-            mostrar("Primero crea una clave de acceso local.", "error");
-            return;
-        }
+</script>
 
-        if (!soporteWebAuthn()) {
-            mostrar(
-                "Este navegador no permite clave de acceso. Abre la página con HTTPS.",
-                "error"
-            );
-            return;
-        }
 
-        try {
-            mostrar("Verificando huella o bloqueo del celular...", "cargando");
+</body>
 
-            const guardada = JSON.parse(localStorage.getItem(CLAVE_LOCAL));
-
-            const credencial = await navigator.credentials.get({
-                publicKey: {
-                    challenge: crypto.getRandomValues(new Uint8Array(32)),
-                    rpId: guardada.rpId || RP_ID,
-                    allowCredentials: [{
-                        type: "public-key",
-                        id: desdeBase64url(guardada.id)
-                    }],
-                    userVerification: "required",
-                    timeout: 60000
-                }
-            });
-
-            if (!credencial) throw new Error("No se obtuvo credencial.");
-
-            // La credencial está ligada al dominio por WebAuthn.
-            // El navegador/OS ya realizó la verificación biométrica
-            // o del método de desbloqueo configurado en el dispositivo.
-            if (base64url(credencial.rawId) !== guardada.id) {
-                throw new Error("Credencial local no coincide.");
-            }
-
-            sessionStorage.setItem("docente_acceso_local", "1");
-            window.location.href = "docente.html";
-        } catch (error) {
-            console.error("WebAuthn:", error);
-
-            if (error.name === "NotAllowedError") {
-                mostrar("Huella, rostro o bloqueo no reconocido, o autenticación cancelada.", "error");
-            } else {
-                mostrar("No se pudo verificar la clave de acceso local.", "error");
-            }
-        }
-    }
-
-    // Si la página se abre en un dominio diferente, la clave queda
-    // vinculada a ese dominio y no se comparte con otros sitios.
-    actualizarBotones();
-</script></body></html>
+</html>
