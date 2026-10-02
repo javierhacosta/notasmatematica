@@ -19999,6 +19999,7 @@ async function registrarHuellaAdministrador() {
         let bin = "";
         rawId.forEach(b => bin += String.fromCharCode(b));
         localStorage.setItem(CLAVE_CREDENCIAL_PRESIDENTE_QR, btoa(bin));
+        actualizarBotonRegistrarHuella();
 
         alert("✓ Huella/biometría del profesor registrada. Ya puede usarse para desbloquear la asistencia QR.");
         return true;
@@ -20007,6 +20008,14 @@ async function registrarHuellaAdministrador() {
         alert("No se pudo registrar la huella/biometría. Verifica el bloqueo de pantalla y los permisos del dispositivo.");
         return false;
     }
+}
+
+function actualizarBotonRegistrarHuella() {
+    const boton = document.querySelector(".boton-registrar-huella-asistencia");
+    if (!boton) return;
+
+    const tieneLlave = !!obtenerCredencialPresidenteQR();
+    boton.style.display = tieneLlave ? "none" : "";
 }
 
 function obtenerCredencialPresidenteQR() {
@@ -25932,6 +25941,7 @@ async function guardarDistribucionAula() {
 ===================================================== */
 
 comprobarBloqueoPanelDocente();
+actualizarBotonRegistrarHuella();
 comprobarSesion();
 
 
