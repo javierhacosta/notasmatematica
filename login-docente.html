@@ -225,8 +225,16 @@
 
     <div id="mensaje"></div>
 
+    <button id="btnClaveLocal" type="button" onclick="accederConClaveLocal()" style="display:none;">
+        🔐 Usar clave de acceso del celular
+    </button>
 
-</div>
+    <button id="btnRegistrarClaveLocal" type="button" onclick="registrarClaveLocal()" style="display:none; background:#2e7d32;">
+        📱 Registrar este celular
+    </button>
+
+
+ </div>
 
 
 
@@ -257,6 +265,181 @@
         );
 
 
+
+
+    // ================================
+    // CLAVE DE ACCESO LOCAL DEL CELULAR
+    // ================================
+    // Usa WebAuthn/passkeys: huella, rostro, PIN o bloqueo del dispositivo.
+    // La credencial queda guardada por el sistema del celular y NO en Supabase.
+    const CLAVE_LOCAL_ID = "docente_passkey_local_v1";
+    const CLAVE_LOCAL_STORAGE = "docente_passkey_credential_id";
+
+    function base64UrlEncode(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        return btoa(binary)
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/g, "");
+    }
+
+    function base64UrlDecode(value) {
+        value = value.replace(/-/g, "+").replace(/_/g, "/");
+        while (value.length % 4) value += "=";
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes;
+    }
+
+    function bufferToArrayBuffer(buffer) {
+        return buffer instanceof ArrayBuffer
+            ? buffer
+            : buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    }
+
+    function soporteClaveLocal() {
+        return window.isSecureContext &&
+               !!window.PublicKeyCredential &&
+               !!navigator.credentials;
+    }
+
+    function mostrarOpcionesClaveLocal() {
+        const btn = document.getElementById("btnClaveLocal");
+        const registrar = document.getElementById("btnRegistrarClaveLocal");
+
+        if (!soporteClaveLocal()) return;
+
+        const credencial = localStorage.getItem(CLAVE_LOCAL_STORAGE);
+
+        if (credencial) {
+            btn.style.display = "block";
+            registrar.style.display = "none";
+        } else {
+            btn.style.display = "none";
+            registrar.style.display = "block";
+        }
+    }
+
+    async function registrarClaveLocal() {
+        const email = document.getElementById("email").value.trim();
+        const mensaje = document.getElementById("mensaje");
+
+        if (!soporteClaveLocal()) {
+            mensaje.textContent = "Este navegador no permite clave de acceso local.";
+            mensaje.className = "error";
+            return;
+        }
+
+        if (!email) {
+            mensaje.textContent = "Primero ingresa el correo electrónico.";
+            mensaje.className = "error";
+            return;
+        }
+
+        try {
+            mensaje.textContent = "Confirma con la huella, rostro o bloqueo de tu celular...";
+            mensaje.className = "cargando";
+
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+            const credencial = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: {
+                        name: "Panel Docente"
+                    },
+                    user: {
+                        id: crypto.getRandomValues(new Uint8Array(16)),
+                        name: email,
+                        displayName: email
+                    },
+                    pubKeyCredParams: [
+                        { type: "public-key", alg: -7 },
+                        { type: "public-key", alg: -257 }
+                    ],
+                    authenticatorSelection: {
+                        residentKey: "preferred",
+                        userVerification: "required"
+                    },
+                    timeout: 60000,
+                    attestation: "none"
+                }
+            });
+
+            if (!credencial) throw new Error("No se creó la clave.");
+
+            localStorage.setItem(
+                CLAVE_LOCAL_STORAGE,
+                base64UrlEncode(bufferToArrayBuffer(credencial.rawId))
+            );
+
+            localStorage.setItem(CLAVE_LOCAL_ID, email);
+
+            mensaje.textContent = "Clave local registrada. Ahora puedes usarla para ingresar.";
+            mensaje.className = "cargando";
+
+            mostrarOpcionesClaveLocal();
+
+        } catch (error) {
+            console.error("Error registrando clave local:", error);
+
+            if (error.name === "NotAllowedError") {
+                mensaje.textContent = "Registro cancelado o no autorizado.";
+            } else {
+                mensaje.textContent = "No se pudo registrar la clave local en este celular.";
+            }
+
+            mensaje.className = "error";
+        }
+    }
+
+    async function accederConClaveLocal() {
+        const mensaje = document.getElementById("mensaje");
+        const idGuardado = localStorage.getItem(CLAVE_LOCAL_STORAGE);
+
+        if (!soporteClaveLocal() || !idGuardado) {
+            mensaje.textContent = "No hay una clave local registrada en este celular.";
+            mensaje.className = "error";
+            return;
+        }
+
+        try {
+            mensaje.textContent = "Confirma con la huella, rostro o bloqueo de tu celular...";
+            mensaje.className = "cargando";
+
+            const assertion = await navigator.credentials.get({
+                publicKey: {
+                    challenge: crypto.getRandomValues(new Uint8Array(32)),
+                    allowCredentials: [{
+                        type: "public-key",
+                        id: base64UrlDecode(idGuardado)
+                    }],
+                    userVerification: "required",
+                    timeout: 60000
+                }
+            });
+
+            if (!assertion) throw new Error("No se pudo verificar la clave.");
+
+            // La clave privada nunca sale del celular.
+            // Esta verificación local solo habilita la entrada a docente.html.
+            window.location.href = "docente.html";
+
+        } catch (error) {
+            console.error("Error usando clave local:", error);
+
+            if (error.name === "NotAllowedError") {
+                mensaje.textContent = "Acceso cancelado o no autorizado.";
+            } else {
+                mensaje.textContent = "No se pudo verificar la clave local.";
+            }
+
+            mensaje.className = "error";
+        }
+    }
 
     async function iniciarSesion() {
 
@@ -387,6 +570,10 @@
             "docente.html";
 
     }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        mostrarOpcionesClaveLocal();
+    });
 
 </script>
 
