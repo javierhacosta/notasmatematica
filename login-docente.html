@@ -500,7 +500,12 @@
                     document.getElementById("opcionesHuella").style.display = "none";
                     return true;
                 }
-                mensaje.textContent = "No se pudo configurar la huella: " + (error.message || "revisa la configuración de passkeys de Supabase.");
+                const detalle = error.message || "";
+                if (/RP ID|Relying Party|domain|origin|loralhost|localhost/i.test(detalle)) {
+                    mensaje.textContent = "No se pudo configurar la huella. En Supabase configura Relying Party ID como javierhacosta.github.io y Relying Party Origin como https://javierhacosta.github.io.";
+                } else {
+                    mensaje.textContent = "No se pudo configurar la huella: " + detalle;
+                }
                 mensaje.className = "error";
                 return false;
             }
