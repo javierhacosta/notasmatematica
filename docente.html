@@ -23,34 +23,6 @@
 
       
 /* =====================================================
-   BLOQUEO DE SEGURIDAD AL REABRIR LA PÁGINA
-===================================================== */
-body.panel-bloqueado .contenedor .panel {
-    position: relative;
-}
-
-body.panel-bloqueado .contenedor .panel::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 10000;
-    background: rgba(255,255,255,.58);
-    cursor: not-allowed;
-}
-
-body.panel-bloqueado .contenedor .panel > * {
-    opacity: .42;
-}
-
-body.panel-bloqueado .contenedor .salir {
-    position: relative;
-    z-index: 10001;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    filter: none !important;
-}
-
-/* =====================================================
    GENERAL
 ===================================================== */
 
@@ -5537,6 +5509,53 @@ table tbody tr:nth-child(10n+10) td {
 </style>
 
 <style>
+/* BLOQUEO DEL PANEL DOCENTE AL CERRAR/REABRIR LA PÁGINA */
+body.panel-docente-seguridad-bloqueado > *:not(#bloqueoPanelDocente) {
+    opacity: .28 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+body.panel-docente-seguridad-bloqueado {
+    overflow: hidden !important;
+}
+#bloqueoPanelDocente {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,.42);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+    pointer-events: auto;
+}
+body.panel-docente-seguridad-bloqueado #bloqueoPanelDocente {
+    display: flex;
+}
+.bloqueo-panel-docente-boton {
+    width: 76px;
+    height: 76px;
+    border: none;
+    border-radius: 50%;
+    background: #1557a6;
+    color: white;
+    font-size: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 22px rgba(0,0,0,.28);
+    -webkit-tap-highlight-color: transparent;
+}
+.bloqueo-panel-docente-boton:active {
+    transform: scale(.95);
+}
+.bloqueo-panel-docente-boton:disabled {
+    opacity: .65;
+    cursor: wait;
+}
+
 /* BLOQUEO DEL MODO PRESIDENTE: solo asistencia QR */
 body.modo-presidente-qr-bloqueado {
     overflow: hidden !important;
@@ -5606,6 +5625,16 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 
 
 <body>
+
+<div id="bloqueoPanelDocente" aria-hidden="true">
+    <button
+        type="button"
+        id="botonDesbloquearPanelDocente"
+        class="bloqueo-panel-docente-boton"
+        onclick="desbloquearPanelDocenteConHuella()"
+        title="Desbloquear con huella o biometría"
+        aria-label="Desbloquear panel docente con huella o biometría">👆</button>
+</div>
 
 <div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
 
@@ -7500,48 +7529,6 @@ window.supabase.createClient(
 );
 
 /* =====================================================
-   ESTADO DE APERTURA / CIERRE DE LA PÁGINA
-   Si el panel se cierra sin usar "Cerrar sesión", al volver a abrirlo
-   queda bloqueado hasta que se realice un cierre de sesión normal.
-===================================================== */
-const CLAVE_PANEL_DOCENTE_ABIERTO = "panel_docente_abierto_v1";
-const CLAVE_PANEL_DOCENTE_CIERRE_NORMAL = "panel_docente_cierre_normal_v1";
-
-function aplicarBloqueoPorCierreDePagina() {
-    document.body.classList.add("panel-bloqueado");
-}
-
-function desbloquearPanelDocente() {
-    document.body.classList.remove("panel-bloqueado");
-}
-
-function prepararEstadoAperturaPanelDocente() {
-    const cierreNormal = localStorage.getItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL) === "1";
-    const paginaEstabaAbierta = localStorage.getItem(CLAVE_PANEL_DOCENTE_ABIERTO) === "1";
-
-    if (paginaEstabaAbierta && !cierreNormal) {
-        aplicarBloqueoPorCierreDePagina();
-    } else {
-        desbloquearPanelDocente();
-    }
-
-    localStorage.removeItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL);
-    sessionStorage.removeItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL);
-    localStorage.setItem(CLAVE_PANEL_DOCENTE_ABIERTO, "1");
-}
-
-window.addEventListener("pagehide", function() {
-    if (sessionStorage.getItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL) === "1") {
-        localStorage.removeItem(CLAVE_PANEL_DOCENTE_ABIERTO);
-        return;
-    }
-    localStorage.setItem(CLAVE_PANEL_DOCENTE_ABIERTO, "1");
-});
-
-document.addEventListener("DOMContentLoaded", prepararEstadoAperturaPanelDocente, { once: true });
-
-
-/* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
 ===================================================== */
 let guardadoAutomatico = false;
@@ -7797,6 +7784,150 @@ new Set();
 const actividadesEntregaVisibles =
 new Set();
 
+
+/* =====================================================
+   SEGURIDAD DEL PANEL DOCENTE AL CERRAR/REABRIR
+===================================================== */
+
+const CLAVE_PANEL_DOCENTE_CERRADO = "panel_docente_cerrado_v1";
+let salidaSesionIntencional = false;
+let desbloqueandoPanelDocente = false;
+
+function marcarPaginaComoCerrada() {
+    if (salidaSesionIntencional) return;
+    try {
+        localStorage.setItem(CLAVE_PANEL_DOCENTE_CERRADO, "1");
+    } catch (_) {}
+}
+
+function comprobarBloqueoPanelDocente() {
+    let estabaCerrada = false;
+
+    try {
+        estabaCerrada =
+            localStorage.getItem(CLAVE_PANEL_DOCENTE_CERRADO) === "1";
+    } catch (_) {}
+
+    if (estabaCerrada) {
+        bloquearPanelDocente();
+    }
+}
+
+function bloquearPanelDocente() {
+    document.body.classList.add("panel-docente-seguridad-bloqueado");
+
+    const boton = document.getElementById("botonDesbloquearPanelDocente");
+    if (boton) {
+        boton.disabled = false;
+        boton.textContent = "👆";
+    }
+}
+
+async function desbloquearPanelDocenteConHuella() {
+    if (desbloqueandoPanelDocente) return false;
+
+    const credencialBase64 = obtenerCredencialPresidenteQR();
+
+    if (!credencialBase64) {
+        alert(
+            'Primero registra la huella del profesor desde "🔐 Registrar huella del profesor".'
+        );
+        return false;
+    }
+
+    if (!window.PublicKeyCredential || !navigator.credentials) {
+        alert("Este navegador no permite desbloquear con huella/biometría.");
+        return false;
+    }
+
+    desbloqueandoPanelDocente = true;
+
+    const boton = document.getElementById("botonDesbloquearPanelDocente");
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "⏳";
+    }
+
+    try {
+        const disponible =
+            await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.();
+
+        if (disponible === false) {
+            throw new Error("Este dispositivo no tiene disponible un autenticador biométrico compatible.");
+        }
+
+        const bin = atob(credencialBase64);
+        const rawId = Uint8Array.from(
+            bin,
+            c => c.charCodeAt(0)
+        );
+
+        const challenge =
+            crypto.getRandomValues(new Uint8Array(32));
+
+        const assertion =
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{
+                        id: rawId.buffer,
+                        type: "public-key",
+                        transports: ["internal"]
+                    }],
+                    userVerification: "required",
+                    timeout: 60000
+                }
+            });
+
+        if (!assertion) {
+            throw new Error("No se confirmó la identidad biométrica.");
+        }
+
+        try {
+            localStorage.removeItem(CLAVE_PANEL_DOCENTE_CERRADO);
+        } catch (_) {}
+
+        document.body.classList.remove(
+            "panel-docente-seguridad-bloqueado"
+        );
+
+        const bloqueo =
+            document.getElementById("bloqueoPanelDocente");
+
+        if (bloqueo) {
+            bloqueo.setAttribute("aria-hidden", "true");
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error(
+            "No se pudo desbloquear el panel docente:",
+            error
+        );
+
+        alert(
+            "Huella/biometría no confirmada. El panel continúa bloqueado."
+        );
+
+        return false;
+
+    } finally {
+        desbloqueandoPanelDocente = false;
+
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = "👆";
+        }
+    }
+}
+
+/*
+ * Si la página se cierra, actualiza o se abandona, se deja una marca.
+ * Al volver a abrir el panel, esa marca hace que aparezca bloqueado.
+ * Cerrar sesión de forma normal no activa este bloqueo.
+ */
+window.addEventListener("beforeunload", marcarPaginaComoCerrada);
 
 /* =====================================================
    SESIÓN
@@ -19174,10 +19305,11 @@ function calcularPromedioPonderado(
 
 async function cerrarSesion() {
 
-    sessionStorage.setItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL, "1");
-    localStorage.setItem(CLAVE_PANEL_DOCENTE_CIERRE_NORMAL, "1");
-    localStorage.removeItem(CLAVE_PANEL_DOCENTE_ABIERTO);
-    desbloquearPanelDocente();
+    salidaSesionIntencional = true;
+
+    try {
+        localStorage.removeItem(CLAVE_PANEL_DOCENTE_CERRADO);
+    } catch (_) {}
 
     await supabaseClient.auth.signOut();
 
@@ -25799,6 +25931,7 @@ async function guardarDistribucionAula() {
    INICIAR
 ===================================================== */
 
+comprobarBloqueoPanelDocente();
 comprobarSesion();
 
 
