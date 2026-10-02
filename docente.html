@@ -2788,6 +2788,14 @@ td:first-child {
     color: white;
 }
 
+// Cerrar automáticamente la sesión al cerrar la ventana/página.
+window.addEventListener("pagehide", () => {
+    try {
+        if (supabaseClient?.auth) {
+            supabaseClient.auth.signOut({ scope: "local" });
+        }
+    } catch (e) {}
+});
 
 /* =====================================================
    MENSAJES
