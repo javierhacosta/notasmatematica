@@ -685,6 +685,20 @@
 
     }
 
+    async function prepararPagina() {
+        // Mostrar primero el acceso normal mientras se comprueba si este dispositivo
+        // tiene una passkey registrada.
+        mostrarAccesoCorreo();
+        await actualizarOpcionesHuella();
+
+        // Si la passkey fue configurada anteriormente en este dispositivo,
+        // intentar primero el ingreso con huella.
+        if (localStorage.getItem("docente_passkey_configurada") === "1" && huellaCompatible()) {
+            document.getElementById("accesoCorreo").style.display = "none";
+            await intentarHuellaAutomatica();
+        }
+    }
+
     prepararPagina();
 
 </script></body></html>
