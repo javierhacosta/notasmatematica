@@ -217,47 +217,51 @@
     </div>
 
 
-    <label for="email">
+    <div id="accesoManual">
 
-        Correo electrónico
+        <label for="email">
 
-    </label>
+            Correo electrónico
 
-
-    <input
-
-        type="email"
-
-        id="email"
-
-        placeholder="docente@colegio.com"
-
-    >
+        </label>
 
 
-    <label for="password">
+        <input
 
-        Contraseña
+            type="email"
 
-    </label>
+            id="email"
 
+            placeholder="docente@colegio.com"
 
-    <input
-
-        type="password"
-
-        id="password"
-
-        placeholder="Ingresa tu contraseña"
-
-    >
+        >
 
 
-    <button onclick="iniciarSesion()">
+        <label for="password">
 
-        Ingresar
+            Contraseña
 
-    </button>
+        </label>
+
+
+        <input
+
+            type="password"
+
+            id="password"
+
+            placeholder="Ingresa tu contraseña"
+
+        >
+
+
+        <button onclick="iniciarSesion()">
+
+            Ingresar
+
+        </button>
+
+    </div>
 
     <div class="separador-local">
         Acceso local
@@ -323,6 +327,21 @@
      * El inicio normal con correo y contraseña permanece sin cambios.
      */
     const CLAVE_LOCAL_STORAGE = "acceso_docente_clave_local_v1";
+    const INTENTOS_LOCAL_STORAGE = "acceso_docente_intentos_clave_local_v1";
+
+    function obtenerIntentosFallidos() {
+        return parseInt(localStorage.getItem(INTENTOS_LOCAL_STORAGE) || "0", 10) || 0;
+    }
+
+    function registrarIntentoFallido() {
+        const intentos = obtenerIntentosFallidos() + 1;
+        localStorage.setItem(INTENTOS_LOCAL_STORAGE, String(intentos));
+        return intentos;
+    }
+
+    function reiniciarIntentosFallidos() {
+        localStorage.removeItem(INTENTOS_LOCAL_STORAGE);
+    }
 
     function bytesABase64(bytes) {
         let binary = "";
@@ -375,11 +394,26 @@
     function actualizarBotonClaveLocal() {
         const datos = obtenerClaveLocal();
         const boton = document.getElementById("btnClaveLocal");
+        const botonCrear = document.getElementById("btnCrearClaveLocal");
+        const accesoManual = document.getElementById("accesoManual");
+        const separador = document.querySelector(".separador-local");
 
         if (datos && datos.credentialId) {
             boton.style.display = "block";
+            botonCrear.style.display = "none";
+
+            // Mientras no haya 3 fallos, se muestra sólo el acceso local.
+            if (obtenerIntentosFallidos() < 3) {
+                accesoManual.style.display = "none";
+                separador.style.display = "flex";
+            } else {
+                accesoManual.style.display = "block";
+            }
         } else {
             boton.style.display = "none";
+            botonCrear.style.display = "block";
+            accesoManual.style.display = "block";
+            separador.style.display = "flex";
         }
     }
 
@@ -609,6 +643,7 @@
                 })
             );
 
+            reiniciarIntentosFallidos();
             actualizarBotonClaveLocal();
 
             document.getElementById("email").value = email;
@@ -729,6 +764,7 @@
                 return;
             }
 
+            reiniciarIntentosFallidos();
             window.location.href =
                 "docente.html";
 
@@ -737,10 +773,20 @@
             console.error(error);
 
             if (error.name === "NotAllowedError") {
-                mostrarMensaje(
-                    "No se completó la verificación con huella, rostro o PIN.",
-                    "error"
-                );
+                const intentos = registrarIntentoFallido();
+
+                if (intentos >= 3) {
+                    actualizarBotonClaveLocal();
+                    mostrarMensaje(
+                        "Se alcanzaron 3 intentos fallidos. Puedes ingresar con tu correo y contraseña.",
+                        "error"
+                    );
+                } else {
+                    mostrarMensaje(
+                        "No se completó la verificación con huella, rostro o PIN. Intento " + intentos + " de 3.",
+                        "error"
+                    );
+                }
             } else {
                 mostrarMensaje(
                     "No se pudo utilizar la clave de acceso local.",
