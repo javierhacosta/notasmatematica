@@ -5621,6 +5621,39 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 
 <style>
 .panel-archivos-estudiantes{margin-top:15px;border:1px solid #ddd;border-radius:12px;overflow:hidden;background:white}.panel-archivos-estudiantes.oculto{display:none}.titulo-archivos-estudiantes{background:#455a64;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:bold}.boton-archivos-estudiantes{width:38px;height:34px;border:none;border-radius:7px;background:rgba(255,255,255,.2);color:white;font-size:22px;font-weight:bold;cursor:pointer}.contenido-archivos-estudiantes{padding:12px;background:#fff}.contenido-archivos-estudiantes.oculto{display:none}.lista-archivos-estudiantes{display:flex;flex-direction:column;gap:7px}.fila-archivo-estudiante{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e0e0e0;border-radius:9px;background:#fafafa}.numero-lista-archivo-estudiante{text-align:center;font-weight:700;color:#555}.nombre-archivo-estudiante{min-width:0;text-align:left;font-weight:600;overflow-wrap:anywhere}.acciones-archivo-estudiante{display:flex;gap:6px;flex-shrink:0}.boton-archivo-estudiante{width:40px;height:38px;border:none;border-radius:7px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.boton-camara-estudiante{background:#00838f}.boton-subir-estudiante{background:#1565c0}.archivos-estudiante-detalle{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}.archivo-guardado-estudiante{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:#e8f1fb;color:#1557a6;font-size:12px;max-width:260px}.archivo-guardado-estudiante .nombre-archivo-guardado{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boton-ver-archivo-estudiante,.boton-eliminar-archivo-estudiante{border:none;background:transparent;padding:1px 3px;font-size:16px;line-height:1;cursor:pointer}.boton-ver-archivo-estudiante{color:#1557a6}.boton-eliminar-archivo-estudiante{color:#c62828}.archivos-cargando,.archivos-vacio{color:#777;text-align:center;padding:15px}@media(max-width:600px){.fila-archivo-estudiante{grid-template-columns:42px minmax(0,1fr) auto;align-items:start}.nombre-archivo-estudiante{padding-top:8px}.archivos-estudiante-detalle{grid-column:1 / 4;margin-left:0}.numero-lista-archivo-estudiante{padding-top:8px}} </style>
+
+/* Mensaje de llave de acceso no configurada */
+#mensajeSinHuellaPanelDocente {
+    position: fixed;
+    inset: 0;
+    z-index: 1000002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,.45);
+}
+#mensajeSinHuellaPanelDocente .contenido {
+    width: min(420px, 92vw);
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 10px 35px rgba(0,0,0,.3);
+}
+#mensajeSinHuellaPanelDocente .texto {
+    margin-bottom: 16px;
+    font-size: 16px;
+    line-height: 1.45;
+}
+#mensajeSinHuellaPanelDocente .boton-registrar {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 16px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
 </head>
 
 
@@ -7829,9 +7862,34 @@ async function desbloquearPanelDocenteConHuella() {
     const credencialBase64 = obtenerCredencialPresidenteQR();
 
     if (!credencialBase64) {
-        alert(
-            'No hay llaves de acceso configuradas. Configure una llave de acceso/huella desde "🔐 Registrar huella del profesor" para poder desbloquear el panel.'
-        );
+        const anterior = document.getElementById("mensajeSinHuellaPanelDocente");
+        if (anterior) anterior.remove();
+
+        const mensaje = document.createElement("div");
+        mensaje.id = "mensajeSinHuellaPanelDocente";
+        mensaje.innerHTML = `
+            <div class="contenido">
+                <div class="texto">No tienes ninguna llave de acceso/huella habilitada.</div>
+                <button type="button" class="boton-registrar" id="botonRegistrarHuellaSinLlave">
+                    🔐 Añadir huella
+                </button>
+            </div>
+        `;
+        document.body.appendChild(mensaje);
+
+        const botonRegistrar = document.getElementById("botonRegistrarHuellaSinLlave");
+        if (botonRegistrar) {
+            botonRegistrar.onclick = async () => {
+                mensaje.remove();
+                const registrada = await registrarHuellaAdministrador();
+                if (registrada) {
+                    const credencialNueva = obtenerCredencialPresidenteQR();
+                    if (credencialNueva) {
+                        desbloquearPanelDocenteConHuella();
+                    }
+                }
+            };
+        }
         return false;
     }
 
