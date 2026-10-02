@@ -19126,6 +19126,16 @@ window.addEventListener("pagehide", function () {
     } catch (e) {}
 });
 
+// También al cerrar la pestaña/ventana desde el navegador del celular.
+window.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && !cierreSesionEnCurso) {
+        cierreSesionEnCurso = true;
+        try {
+            supabaseClient.auth.signOut();
+        } catch (e) {}
+    }
+});
+
 
 /* =====================================================
    MENSAJES
