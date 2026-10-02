@@ -182,24 +182,19 @@
 </div>
 
 
-<div id="zonaHuella" style="display:none;">
+<div id="opcionesHuella" style="display:none;">
 <button
     type="button"
     id="botonHuella"
     onclick="iniciarConHuella()">
-
     🫆 Ingresar con huella
-
 </button>
-
 <button
     type="button"
     id="botonConfigurarHuella"
     onclick="configurarHuella()"
     style="margin-top:10px;background:#607d8b;">
-
     ⚙️ Configurar huella
-
 </button>
 </div>
 
@@ -336,62 +331,7 @@
 
 
 
-    const CLAVE_HUELLA_CONFIGURADA = "docente_huella_configurada";
-
-    function ocultarHuella() {
-        const zona = document.getElementById("zonaHuella");
-        if (zona) zona.style.display = "none";
-    }
-
-    function mostrarHuella() {
-        const zona = document.getElementById("zonaHuella");
-        if (zona) zona.style.display = "block";
-    }
-
-    function huellaConfigurada() {
-        return localStorage.getItem(CLAVE_HUELLA_CONFIGURADA) === "true";
-    }
-
-    async function dispositivoCompatibleConHuella() {
-        try {
-            if (!window.PublicKeyCredential ||
-                !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-                return false;
-            }
-            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        } catch (error) {
-            console.warn("No se pudo comprobar la huella:", error);
-            return false;
-        }
-    }
-
-    async function prepararAccesoHuella() {
-        const compatible = await dispositivoCompatibleConHuella();
-
-        if (!compatible) {
-            ocultarHuella();
-            return;
-        }
-
-        if (huellaConfigurada()) {
-            ocultarHuella();
-            await iniciarConHuella(true);
-            return;
-        }
-
-        mostrarHuella();
-        document.getElementById("botonConfigurarHuella").style.display = "block";
-    }
-
-    async function configurarHuella() {
-        const resultado = await registrarHuella();
-        if (resultado) {
-            localStorage.setItem(CLAVE_HUELLA_CONFIGURADA, "true");
-            ocultarHuella();
-        }
-    }
-
-    async function iniciarConHuella(automatico = false) {
+    async function iniciarConHuella() {
 
         const mensaje =
 
@@ -487,90 +427,100 @@
 
 
 
-    async function registrarHuella() {
-
-        const mensaje =
-
-            document
-
-                .getElementById("mensaje");
-
-
-        mensaje.textContent =
-
-            "Registrando huella...";
-
-        mensaje.className = "cargando";
-
-
-        try {
-
-
-            const {
-
-                data,
-
-                error
-
-            } = await supabaseClient.auth.registerPasskey();
-
-
-            if (error) {
-
-                console.error(error);
-
-
-                mensaje.textContent =
-
-                    "No se pudo registrar la huella.";
-
-                mensaje.className = "error";
-
-                return false;
-
-            }
-
-
-            console.log(
-
-                "Passkey registrada:",
-
-                data
-
-            );
-
-
-            mensaje.textContent =
-
-                "Huella registrada correctamente.";
-
-            mensaje.className = "cargando";
-
-            localStorage.setItem(CLAVE_HUELLA_CONFIGURADA, "true");
-            ocultarHuella();
-
-            return true;
-
-
-        } catch (error) {
-
-            console.error(error);
-
-
-            mensaje.textContent =
-
-                "No se pudo registrar la huella.";
-
-            mensaje.className = "error";
-
-
-            return false;
-
-        }
-
+    function huellaCompatible() {
+        return window.isSecureContext &&
+               !!window.PublicKeyCredential &&
+               typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function";
     }
 
+    async function actualizarOpcionesHuella() {
+        const contenedor = document.getElementById("opcionesHuella");
+        if (!huellaCompatible()) {
+            contenedor.style.display = "none";
+            return;
+        }
 
+        try {
+            const disponible = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            const configurada = localStorage.getItem("docente_passkey_configurada") === "1";
+            contenedor.style.display = disponible && !configurada ? "block" : "none";
+        } catch (e) {
+            contenedor.style.display = "none";
+        }
+    }
+
+    async function registrarHuella() {
+        const mensaje = document.getElementById("mensaje");
+        mensaje.textContent = "Registrando huella...";
+        mensaje.className = "cargando";
+
+        try {
+            const { data, error } = await supabaseClient.auth.registerPasskey();
+            if (error) {
+                console.error(error);
+                mensaje.textContent = "No se pudo configurar la huella: " + (error.message || "revisa la configuración de passkeys de Supabase.");
+                mensaje.className = "error";
+                return false;
+            }
+            localStorage.setItem("docente_passkey_configurada", "1");
+            mensaje.textContent = "Huella configurada correctamente.";
+            mensaje.className = "cargando";
+            document.getElementById("opcionesHuella").style.display = "none";
+            return true;
+        } catch (error) {
+            console.error(error);
+            mensaje.textContent = "No se pudo configurar la huella. Verifica que el sitio use HTTPS y que tu dispositivo tenga bloqueo de pantalla/huella activado.";
+            mensaje.className = "error";
+            return false;
+        }
+    }
+
+    async function configurarHuella() {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        const mensaje = document.getElementById("mensaje");
+
+        if (!email || !password) {
+            mensaje.textContent = "Primero ingresa tu correo y contraseña para configurar la huella.";
+            mensaje.className = "error";
+            return;
+        }
+
+        mensaje.textContent = "Verificando tu cuenta...";
+        mensaje.className = "cargando";
+
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error || !data.user) {
+                mensaje.textContent = "Correo o contraseña incorrectos.";
+                mensaje.className = "error";
+                return;
+            }
+
+            const esDocente = await verificarDocente(data.user.id);
+            if (!esDocente) {
+                mensaje.textContent = "Este usuario no está autorizado como docente.";
+                mensaje.className = "error";
+                return;
+            }
+
+            const registrada = await registrarHuella();
+            await supabaseClient.auth.signOut();
+            if (registrada) {
+                setTimeout(() => {
+                    document.getElementById("email").value = "";
+                    document.getElementById("password").value = "";
+                    mensaje.textContent = "Huella configurada. Ahora puedes ingresar con ella.";
+                    mensaje.className = "cargando";
+                }, 300);
+            }
+        } catch (error) {
+            console.error(error);
+            await supabaseClient.auth.signOut();
+            mensaje.textContent = "No se pudo configurar la huella.";
+            mensaje.className = "error";
+        }
+    }
 
     async function iniciarSesion() {
 
@@ -711,7 +661,5 @@
             "docente.html";
 
     }
-
-    prepararAccesoHuella();
 
 </script></body></html>
