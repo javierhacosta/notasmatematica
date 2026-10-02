@@ -249,8 +249,6 @@
 
 
 <div id="mensaje"></div>
-</div>
-
 </div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 
 
@@ -495,6 +493,13 @@
             const { data, error } = await supabaseClient.auth.registerPasskey();
             if (error) {
                 console.error(error);
+                if (error.code === "webauthn_credential_exists") {
+                    localStorage.setItem("docente_passkey_configurada", "1");
+                    mensaje.textContent = "La huella ya estaba configurada.";
+                    mensaje.className = "cargando";
+                    document.getElementById("opcionesHuella").style.display = "none";
+                    return true;
+                }
                 mensaje.textContent = "No se pudo configurar la huella: " + (error.message || "revisa la configuración de passkeys de Supabase.");
                 mensaje.className = "error";
                 return false;
@@ -664,18 +669,22 @@
 
         }
 
-
-
+        // Después de un acceso correcto con contraseña, configurar la passkey
+        // en este mismo dispositivo para poder usar la huella en los siguientes accesos.
+        if (huellaCompatible()) {
+            const registrada = await registrarHuella();
+            if (registrada) {
+                mensaje.textContent = "Acceso correcto. Huella configurada.";
+                mensaje.className = "cargando";
+            }
+        }
 
         // Acceso correcto
-
         window.location.href =
-
             "docente.html";
 
     }
 
-    actualizarOpcionesHuella();
-    intentarHuellaAutomatica();
+    prepararPagina();
 
 </script></body></html>
