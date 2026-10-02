@@ -4772,7 +4772,8 @@ table tbody tr:nth-child(10n+10) td {
 }
 
 .configuracion-aula-acciones-extra .boton-lista-asientos,
-.configuracion-aula-acciones-extra .boton-vaciar-asientos-aula {
+.configuracion-aula-acciones-extra .boton-vaciar-asientos-aula,
+.configuracion-aula-acciones-extra .boton-registrar-huella-asistencia {
     width: auto;
     min-height: 38px;
     height: auto;
@@ -4786,6 +4787,15 @@ table tbody tr:nth-child(10n+10) td {
     white-space: nowrap;
     box-sizing: border-box;
     font-size: 14px;
+}
+
+.configuracion-aula-acciones-extra .boton-registrar-huella-asistencia {
+    background: #455a64;
+    color: white;
+}
+
+.configuracion-aula-acciones-extra .boton-registrar-huella-asistencia:hover {
+    background: #37474f;
 }
 
 .configuracion-aula-acciones-extra .boton-lista-asientos {
@@ -5699,8 +5709,12 @@ Selecciona un curso
 <button
     type="button"
     class="boton-bloquear boton-escanear-qr"
-    onclick="abrirEscanerAsistenciaQR()"
-    title="Tomar asistencia mediante QR">
+    onclick="manejarClickQRAsistencia(event)"
+    onpointerdown="iniciarPulsacionQRAsistencia(event)"
+    onpointerup="cancelarPulsacionQRAsistencia(event)"
+    onpointercancel="cancelarPulsacionQRAsistencia(event)"
+    onpointerleave="cancelarPulsacionQRAsistencia(event)"
+    title="Toque normal: cámara del docente. Mantén pulsado para cámara bloqueada">
 
 📷
 
@@ -6942,6 +6956,9 @@ Cancelar
                         Define cuántas filas y columnas de mesas tendrá este curso. Cada mesa tiene 2 asientos, por lo que el total de sillas se calcula automáticamente.
                     </p>
                     <div class="configuracion-aula-acciones-extra">
+                        <button type="button" class="boton-registrar-huella-asistencia"
+                                onclick="registrarHuellaAdministrador()"
+                                title="Registrar la huella del profesor para desbloquear la asistencia QR">🔐 Registrar huella del profesor</button>
                         <button type="button" id="botonListaAsientosConfig" class="boton-lista-asientos"
                                 onclick="mostrarListaAsientos()"
                                 title="Ver lista de estudiantes y asientos">🪑 Lista de asientos</button>
@@ -19830,7 +19847,48 @@ function gestoAdministradorAsistenciaQR(event) {
     }
 }
 
-async function abrirEscanerAsistenciaQR() {
+let temporizadorPulsacionQRAsistencia = null;
+let pulsacionLargaQRAsistencia = false;
+
+function iniciarPulsacionQRAsistencia(event) {
+    pulsacionLargaQRAsistencia = false;
+    if (temporizadorPulsacionQRAsistencia) clearTimeout(temporizadorPulsacionQRAsistencia);
+
+    temporizadorPulsacionQRAsistencia = setTimeout(() => {
+        pulsacionLargaQRAsistencia = true;
+        const aceptar = window.confirm(
+            "🔒 MODO ASISTENCIA BLOQUEADA\n\n" +
+            "La cámara quedará bloqueada para el presidente de curso.\n" +
+            "Solo podrá continuar escaneando y el profesor podrá recuperar el control con su huella.\n\n" +
+            "¿Desea abrir la cámara bloqueada?"
+        );
+        if (aceptar) abrirEscanerAsistenciaQR(true);
+    }, 900);
+
+    if (event) event.preventDefault();
+}
+
+function cancelarPulsacionQRAsistencia(event) {
+    if (temporizadorPulsacionQRAsistencia) {
+        clearTimeout(temporizadorPulsacionQRAsistencia);
+        temporizadorPulsacionQRAsistencia = null;
+    }
+    if (event && pulsacionLargaQRAsistencia) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+}
+
+function manejarClickQRAsistencia(event) {
+    if (pulsacionLargaQRAsistencia) {
+        pulsacionLargaQRAsistencia = false;
+        if (event) { event.preventDefault(); event.stopPropagation(); }
+        return;
+    }
+    abrirEscanerAsistenciaQR(false);
+}
+
+async function abrirEscanerAsistenciaQR(modoBloqueado = false) {
 
     if (esDiaSinClasesAsistencia()) {
         mostrarMensaje("ℹ️ No se puede tomar asistencia por QR porque este día no se pasó clases.");
@@ -19852,7 +19910,9 @@ async function abrirEscanerAsistenciaQR() {
     }
 
     modoQRAsistencia = true;
-    activarModoPresidenteAsistenciaQR();
+    if (modoBloqueado) {
+        activarModoPresidenteAsistenciaQR();
+    }
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
     qrFechaFueraDeHoy = compararFechaConHoy(fecha);
