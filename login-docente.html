@@ -508,9 +508,31 @@
 
             /*
              * La clave local ya verificó al usuario mediante el mecanismo
-             * seguro del propio celular. Se mantiene la sesión docente local
-             * para no modificar la autenticación de Supabase existente.
+             * seguro del propio celular. Recuperamos la sesión de Supabase
+             * guardada en este navegador. Si existe y pertenece a un docente,
+             * se permite el acceso sin pedir nuevamente correo/contraseña.
              */
+            const { data: sesionData } =
+                await supabaseClient.auth.getSession();
+
+            const sesion = sesionData && sesionData.session;
+
+            if (!sesion || !sesion.user) {
+                mensaje.textContent =
+                    "La clave fue verificada, pero primero debes ingresar una vez con correo y contraseña en este dispositivo.";
+                mensaje.className = "error";
+                return;
+            }
+
+            const esDocente = await verificarDocente(sesion.user.id);
+
+            if (!esDocente) {
+                mensaje.textContent =
+                    "Este usuario no está autorizado como docente.";
+                mensaje.className = "error";
+                return;
+            }
+
             sessionStorage.setItem("accesoDocenteLocal", "1");
             window.location.href = "docente.html";
 
