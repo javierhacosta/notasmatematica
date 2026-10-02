@@ -23908,7 +23908,10 @@ function hablarNombreVozAzarAsistencia(estudiante, textoFinal = "") {
         .join(" ")
         .replace(/[._\-/,;:]+/g, " ")
         .replace(/\s+/g, " ")
-        .trim();
+        .trim()
+        // Evita que la síntesis interprete palabras en MAYÚSCULAS como letras.
+        // Se mantiene cada palabra completa, incluidos nombres y textos configurados.
+        .toLocaleLowerCase("es-ES");
     if (!textoVoz) return;
     window.speechSynthesis.cancel();
     const voz = new SpeechSynthesisUtterance(textoVoz);
