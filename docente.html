@@ -5574,10 +5574,140 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 
 <style>
 .panel-archivos-estudiantes{margin-top:15px;border:1px solid #ddd;border-radius:12px;overflow:hidden;background:white}.panel-archivos-estudiantes.oculto{display:none}.titulo-archivos-estudiantes{background:#455a64;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:bold}.boton-archivos-estudiantes{width:38px;height:34px;border:none;border-radius:7px;background:rgba(255,255,255,.2);color:white;font-size:22px;font-weight:bold;cursor:pointer}.contenido-archivos-estudiantes{padding:12px;background:#fff}.contenido-archivos-estudiantes.oculto{display:none}.lista-archivos-estudiantes{display:flex;flex-direction:column;gap:7px}.fila-archivo-estudiante{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e0e0e0;border-radius:9px;background:#fafafa}.numero-lista-archivo-estudiante{text-align:center;font-weight:700;color:#555}.nombre-archivo-estudiante{min-width:0;text-align:left;font-weight:600;overflow-wrap:anywhere}.acciones-archivo-estudiante{display:flex;gap:6px;flex-shrink:0}.boton-archivo-estudiante{width:40px;height:38px;border:none;border-radius:7px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.boton-camara-estudiante{background:#00838f}.boton-subir-estudiante{background:#1565c0}.archivos-estudiante-detalle{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}.archivo-guardado-estudiante{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:#e8f1fb;color:#1557a6;font-size:12px;max-width:260px}.archivo-guardado-estudiante .nombre-archivo-guardado{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boton-ver-archivo-estudiante,.boton-eliminar-archivo-estudiante{border:none;background:transparent;padding:1px 3px;font-size:16px;line-height:1;cursor:pointer}.boton-ver-archivo-estudiante{color:#1557a6}.boton-eliminar-archivo-estudiante{color:#c62828}.archivos-cargando,.archivos-vacio{color:#777;text-align:center;padding:15px}@media(max-width:600px){.fila-archivo-estudiante{grid-template-columns:42px minmax(0,1fr) auto;align-items:start}.nombre-archivo-estudiante{padding-top:8px}.archivos-estudiante-detalle{grid-column:1 / 4;margin-left:0}.numero-lista-archivo-estudiante{padding-top:8px}} </style>
+
+
+/* =====================================================
+   BLOQUEO DEL PANEL DOCENTE AL CERRAR LA PÁGINA
+   Solo el icono de desbloqueo permanece disponible.
+===================================================== */
+body.seguridad-panel-docente-bloqueado {
+    overflow: hidden !important;
+}
+
+body.seguridad-panel-docente-bloqueado .contenedor {
+    opacity: .32 !important;
+    filter: grayscale(.35) !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+body.seguridad-panel-docente-bloqueado .modal-fondo {
+    display: none !important;
+}
+
+#botonDesbloquearPanelDocente {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2147483647;
+    width: 58px;
+    height: 58px;
+    border: none;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #1557a6;
+    box-shadow: 0 4px 18px rgba(0,0,0,.28);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 30px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.seguridad-panel-docente-bloqueado #botonDesbloquearPanelDocente {
+    display: flex !important;
+}
+
+#botonDesbloquearPanelDocente:active {
+    transform: scale(.95);
+}
+
+#modalSeguridadPanelDocente {
+    z-index: 2147483646 !important;
+}
+
+.seguridad-panel-cuerpo {
+    text-align: center;
+    padding: 22px;
+}
+
+.seguridad-panel-icono {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 12px;
+}
+
+.seguridad-panel-cuerpo h3 {
+    margin: 0 0 10px;
+    color: #1557a6;
+}
+
+.seguridad-panel-cuerpo p {
+    margin: 0 0 18px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.seguridad-panel-acciones {
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.seguridad-panel-acciones button {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#botonUsarHuellaPanelDocente {
+    background: #1557a6;
+    color: white;
+}
+
+#botonConfigurarHuellaPanelDocente {
+    background: #455a64;
+    color: white;
+}
+
 </head>
 
 
 <body>
+
+
+<!-- BLOQUEO DE SEGURIDAD DEL PANEL DOCENTE -->
+<button
+    type="button"
+    id="botonDesbloquearPanelDocente"
+    onclick="abrirDesbloqueoPanelDocente()"
+    aria-label="Desbloquear panel docente"
+    title="Desbloquear panel docente">
+    🔐
+</button>
+
+<div id="modalSeguridadPanelDocente" class="modal-fondo oculto" onclick="cerrarDesbloqueoPanelDocente(event)">
+    <div class="modal-actividad" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>🔐 Desbloquear panel docente</h3>
+            <button type="button" class="boton-cerrar-modal" onclick="cerrarDesbloqueoPanelDocente()">×</button>
+        </div>
+        <div class="seguridad-panel-cuerpo">
+            <div class="seguridad-panel-icono">👆</div>
+            <h3>Panel bloqueado</h3>
+            <p id="mensajeSeguridadPanelDocente">Confirma tu huella digital para volver a utilizar el panel.</p>
+            <div class="seguridad-panel-acciones">
+                <button type="button" id="botonUsarHuellaPanelDocente" onclick="desbloquearPanelDocenteConHuella()">👆 Desbloquear con huella</button>
+                <button type="button" id="botonConfigurarHuellaPanelDocente" onclick="configurarHuellaPanelDocente()">⚙️ Configurar huella</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
 
