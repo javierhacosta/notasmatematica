@@ -7228,42 +7228,6 @@ Cancelar
                            type="range" min="0" max="2" step="0.05" value="1"
                            oninput="actualizarVistaTonoVozAzarAsistencia(this.value)">
                     <div id="valorTonoVozAzarAsistencia" class="config-azar-valor">1.00</div>
-
-                    <div class="config-azar-voz-subtitulo">Palabra para mujer</div>
-                    <input id="palabraVozMujerAzarAsistencia"
-                           class="config-azar-voz-control"
-                           type="text"
-                           value="ALEGIDA"
-                           maxlength="50"
-                           autocomplete="off"
-                           spellcheck="false">
-
-                    <div class="config-azar-voz-subtitulo">Palabra para varón</div>
-                    <input id="palabraVozVaronAzarAsistencia"
-                           class="config-azar-voz-control"
-                           type="text"
-                           value="ELEGIDO"
-                           maxlength="50"
-                           autocomplete="off"
-                           spellcheck="false">
-
-                    <div class="config-azar-voz-subtitulo">Texto cuando tiene falta</div>
-                    <input id="textoFaltaVozAzarAsistencia"
-                           class="config-azar-voz-control"
-                           type="text"
-                           value="TIENE FALTA"
-                           maxlength="50"
-                           autocomplete="off"
-                           spellcheck="false">
-
-                    <div class="config-azar-voz-subtitulo">Texto cuando tiene permiso</div>
-                    <input id="textoPermisoVozAzarAsistencia"
-                           class="config-azar-voz-control"
-                           type="text"
-                           value="TIENE PERMISO"
-                           maxlength="50"
-                           autocomplete="off"
-                           spellcheck="false">
                 </div>
 
                 <label>Forma de elección</label>
@@ -8000,9 +7964,7 @@ async function cargarEstudiantes(esSegundoPlano = false) {
                 String(anterior?.id ?? "") !== String(nuevo?.id ?? "") ||
                 String(anterior?.num_lista ?? "") !== String(nuevo?.num_lista ?? "") ||
                 String(anterior?.curso ?? "") !== String(nuevo?.curso ?? "") ||
-                String(anterior?.estado ?? "") !== String(nuevo?.estado ?? "") ||
-                String(anterior?.nombres ?? "") !== String(nuevo?.nombres ?? "") ||
-                String(anterior?.paterno ?? "") !== String(nuevo?.paterno ?? "")
+                String(anterior?.estado ?? "") !== String(nuevo?.estado ?? "")
             ) {
                 huboCambios = true;
                 break;
@@ -23826,10 +23788,6 @@ const CLAVE_VELOCIDAD_AZAR_ASISTENCIA = "velocidadNumeroAzarAsistencia";
 const CLAVE_VOZ_AZAR_ASISTENCIA = "vozAzarAsistencia";
 const CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA = "velocidadVozAzarAsistencia";
 const CLAVE_TONO_VOZ_AZAR_ASISTENCIA = "tonoVozAzarAsistencia";
-const CLAVE_PALABRA_VOZ_MUJER_AZAR_ASISTENCIA = "palabraVozMujerAzarAsistencia";
-const CLAVE_PALABRA_VOZ_VARON_AZAR_ASISTENCIA = "palabraVozVaronAzarAsistencia";
-const CLAVE_TEXTO_FALTA_VOZ_AZAR_ASISTENCIA = "textoFaltaVozAzarAsistencia";
-const CLAVE_TEXTO_PERMISO_VOZ_AZAR_ASISTENCIA = "textoPermisoVozAzarAsistencia";
 let tamanoNumeroAzarAsistencia = Number(localStorage.getItem(CLAVE_TAMANO_AZAR_ASISTENCIA)) || 200;
 let tipoEleccionAzarAsistencia = localStorage.getItem(CLAVE_TIPO_AZAR_ASISTENCIA) || "numero";
 let tiempoNumeroAzarAsistencia = Math.max(1, Math.min(60, Number(localStorage.getItem(CLAVE_TIEMPO_AZAR_ASISTENCIA)) || 2));
@@ -23837,10 +23795,6 @@ let velocidadNumeroAzarAsistencia = Math.max(0, Math.min(0.5, Number(localStorag
 let vozAzarAsistenciaActiva = localStorage.getItem(CLAVE_VOZ_AZAR_ASISTENCIA) === "true";
 let velocidadVozAzarAsistencia = Math.max(0.5, Math.min(2, Number(localStorage.getItem(CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA)) || 0.95));
 let tonoVozAzarAsistencia = Math.max(0, Math.min(2, Number(localStorage.getItem(CLAVE_TONO_VOZ_AZAR_ASISTENCIA)) || 1));
-let palabraVozMujerAzarAsistencia = localStorage.getItem(CLAVE_PALABRA_VOZ_MUJER_AZAR_ASISTENCIA) || "ALEGIDA";
-let palabraVozVaronAzarAsistencia = localStorage.getItem(CLAVE_PALABRA_VOZ_VARON_AZAR_ASISTENCIA) || "ELEGIDO";
-let textoFaltaVozAzarAsistencia = localStorage.getItem(CLAVE_TEXTO_FALTA_VOZ_AZAR_ASISTENCIA) || "TIENE FALTA";
-let textoPermisoVozAzarAsistencia = localStorage.getItem(CLAVE_TEXTO_PERMISO_VOZ_AZAR_ASISTENCIA) || "TIENE PERMISO";
 
 // Pronuncia los nombres como palabras completas usando exactamente la misma
 // configuración de voz de "Estudiantes elegidos".
@@ -23852,25 +23806,22 @@ function prepararNombreParaVozAsistencia(nombre) {
         .split(" ")
         .filter(Boolean);
 
-    // En asistencia QR se conserva el estado al final: NOMBRES + APELLIDO + ESTADO.
-    const estado = /^(PRESENTE|ATRASO|ELEGIDO|ELEGIDA)$/i.test(partes[partes.length - 1] || "")
-        ? partes.pop().toUpperCase()
-        : "";
-
-    // Para los QR: APELLIDO PATERNO + APELLIDO MATERNO + NOMBRES
-    // se pronuncia como NOMBRES + APELLIDO PATERNO.
-    const nombreVoz = partes.length >= 3
-        ? [...partes.slice(2), partes[0]]
-        : partes;
-
-    return [...nombreVoz, ...(estado ? [estado] : [])]
+    return partes
         .join(" ")
         .replace(/\bJH(?=[AEIOUÁÉÍÓÚÜ])/gi, "Y")
         .replace(/\bBRIDGET\b/gi, "BRIYET")
         .replace(/\s+/g, " ")
         .trim()
         .toLocaleLowerCase("es-ES")
-        .replace(/\b(presente|atraso)$/i, (_, estadoFinal) => estadoFinal.toUpperCase());
+        .replace(/\b(presente|atraso|elegido|elegida)$/i, (_, estadoFinal) => estadoFinal.toUpperCase());
+}
+
+// Para ALEATORIO, la voz toma exclusivamente las columnas "nombres" y
+// "paterno" de la tabla matematica, en ese orden: NOMBRES + PATERNO.
+function obtenerNombreVozAzarAsistencia(estudiante) {
+    const nombres = String(estudiante?.nombres || "").trim();
+    const paterno = String(estudiante?.paterno || "").trim();
+    return [nombres, paterno].filter(Boolean).join(" ").trim();
 }
 
 function hablarConVozAzarAsistencia(texto) {
@@ -23882,36 +23833,6 @@ function hablarConVozAzarAsistencia(texto) {
     const textoVoz = esEstadoEspecial
         ? textoOriginal
         : prepararNombreParaVozAsistencia(textoOriginal);
-    if (!textoVoz) return;
-    window.speechSynthesis.cancel();
-    const voz = new SpeechSynthesisUtterance(textoVoz);
-    voz.lang = "es-ES";
-    voz.rate = velocidadVozAzarAsistencia;
-    voz.pitch = tonoVozAzarAsistencia;
-    window.speechSynthesis.speak(voz);
-}
-
-/* Voz de Estudiante al azar: usa exactamente las columnas nombres + paterno. */
-function obtenerNombreVozAzarAsistencia(estudiante) {
-    if (!estudiante) return "";
-    const nombres = String(estudiante.nombres || "").trim();
-    const paterno = String(estudiante.paterno || "").trim();
-    return [nombres, paterno].filter(Boolean).join(" ").trim();
-}
-
-function hablarNombreVozAzarAsistencia(estudiante, textoFinal = "") {
-    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
-    const nombre = obtenerNombreVozAzarAsistencia(estudiante);
-    const complemento = String(textoFinal || "").trim();
-    const textoVoz = [nombre, complemento]
-        .filter(Boolean)
-        .join(" ")
-        .replace(/[._\-/,;:]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        // Evita que la síntesis interprete palabras en MAYÚSCULAS como letras.
-        // Se mantiene cada palabra completa, incluidos nombres y textos configurados.
-        .toLocaleLowerCase("es-ES");
     if (!textoVoz) return;
     window.speechSynthesis.cancel();
     const voz = new SpeechSynthesisUtterance(textoVoz);
@@ -23994,14 +23915,6 @@ function abrirConfigTamanoAzarAsistencia() {
         controlTonoVoz.value = String(tonoVozAzarAsistencia);
         actualizarVistaTonoVozAzarAsistencia(controlTonoVoz.value);
     }
-    const controlPalabraMujer = document.getElementById("palabraVozMujerAzarAsistencia");
-    if (controlPalabraMujer) controlPalabraMujer.value = palabraVozMujerAzarAsistencia;
-    const controlPalabraVaron = document.getElementById("palabraVozVaronAzarAsistencia");
-    if (controlPalabraVaron) controlPalabraVaron.value = palabraVozVaronAzarAsistencia;
-    const controlTextoFalta = document.getElementById("textoFaltaVozAzarAsistencia");
-    if (controlTextoFalta) controlTextoFalta.value = textoFaltaVozAzarAsistencia;
-    const controlTextoPermiso = document.getElementById("textoPermisoVozAzarAsistencia");
-    if (controlTextoPermiso) controlTextoPermiso.value = textoPermisoVozAzarAsistencia;
     mostrarControlesVozAzarAsistencia(vozAzarAsistenciaActiva);
 
     aplicarTipoEleccionAzarAsistencia();
@@ -24059,14 +23972,6 @@ function guardarTamanoAzarAsistencia() {
     const velocidadVoz = Math.max(0.5, Math.min(2, Number(controlVelocidadVoz?.value) || 0.95));
     const controlTonoVoz = document.getElementById("tonoVozAzarAsistencia");
     const tonoVoz = Math.max(0, Math.min(2, Number(controlTonoVoz?.value) || 1));
-    const controlPalabraMujer = document.getElementById("palabraVozMujerAzarAsistencia");
-    const controlPalabraVaron = document.getElementById("palabraVozVaronAzarAsistencia");
-    const controlTextoFalta = document.getElementById("textoFaltaVozAzarAsistencia");
-    const controlTextoPermiso = document.getElementById("textoPermisoVozAzarAsistencia");
-    const palabraMujer = String(controlPalabraMujer?.value || "").trim() || "ALEGIDA";
-    const palabraVaron = String(controlPalabraVaron?.value || "").trim() || "ELEGIDO";
-    const textoFalta = String(controlTextoFalta?.value || "").trim() || "TIENE FALTA";
-    const textoPermiso = String(controlTextoPermiso?.value || "").trim() || "TIENE PERMISO";
 
     tamanoNumeroAzarAsistencia = numero;
     tiempoNumeroAzarAsistencia = tiempo;
@@ -24074,10 +23979,6 @@ function guardarTamanoAzarAsistencia() {
     vozAzarAsistenciaActiva = vozActiva;
     velocidadVozAzarAsistencia = velocidadVoz;
     tonoVozAzarAsistencia = tonoVoz;
-    palabraVozMujerAzarAsistencia = palabraMujer;
-    palabraVozVaronAzarAsistencia = palabraVaron;
-    textoFaltaVozAzarAsistencia = textoFalta;
-    textoPermisoVozAzarAsistencia = textoPermiso;
 
     const radioSeleccionado = document.querySelector('input[name="tipoEleccionAzarAsistencia"]:checked');
     const tipoSeleccionado = radioSeleccionado?.value || "numero";
@@ -24092,10 +23993,6 @@ function guardarTamanoAzarAsistencia() {
     localStorage.setItem(CLAVE_VOZ_AZAR_ASISTENCIA, String(vozAzarAsistenciaActiva));
     localStorage.setItem(CLAVE_VELOCIDAD_VOZ_AZAR_ASISTENCIA, String(velocidadVoz));
     localStorage.setItem(CLAVE_TONO_VOZ_AZAR_ASISTENCIA, String(tonoVoz));
-    localStorage.setItem(CLAVE_PALABRA_VOZ_MUJER_AZAR_ASISTENCIA, palabraVozMujerAzarAsistencia);
-    localStorage.setItem(CLAVE_PALABRA_VOZ_VARON_AZAR_ASISTENCIA, palabraVozVaronAzarAsistencia);
-    localStorage.setItem(CLAVE_TEXTO_FALTA_VOZ_AZAR_ASISTENCIA, textoFaltaVozAzarAsistencia);
-    localStorage.setItem(CLAVE_TEXTO_PERMISO_VOZ_AZAR_ASISTENCIA, textoPermisoVozAzarAsistencia);
 
     aplicarTamanoNumeroAzarAsistencia();
     aplicarTipoEleccionAzarAsistencia();
@@ -24258,55 +24155,16 @@ function actualizarEstadoBotonElegirAzarAsistencia() {
     }
 }
 
-async function elegirEstudianteAzarAsistencia() {
+function elegirEstudianteAzarAsistencia() {
     if (azarAsistenciaAnimacion) return;
 
     const fechaAsistenciaActual = document.getElementById("fechaAsistencia")?.value || "";
-    if (!fechaAsistenciaActual || !cursoSeleccionado) {
-        alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
-        return;
-    }
+    const hayAsistenciaLlenada = Object.values(registrosAsistencia || {}).some(registro =>
+        registro && String(registro.estado || "").trim() !== ""
+    );
 
-    /*
-     * Verificar directamente en BD la asistencia del día seleccionado.
-     * Así el azar nunca utiliza registros de otra fecha ni una lista local
-     * desactualizada.
-     */
-    try {
-        const idsCurso = obtenerEstudiantesCursoActual()
-            .filter(e => e && e.id != null)
-            .map(e => e.id);
-
-        if (!idsCurso.length) {
-            alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
-            return;
-        }
-
-        const { data: asistenciaDia, error: errorAsistenciaDia } = await supabaseClient
-            .from("asistencia")
-            .select("estudiante_id,estado")
-            .eq("fecha", fechaAsistenciaActual)
-            .in("estudiante_id", idsCurso);
-
-        if (errorAsistenciaDia) throw errorAsistenciaDia;
-
-        if (!Array.isArray(asistenciaDia) || asistenciaDia.length === 0) {
-            alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
-            return;
-        }
-
-        /* Mantener la información local exactamente con la asistencia de esa fecha. */
-        registrosAsistencia = {};
-        asistenciaDia.forEach(registro => {
-            if (registro?.estudiante_id != null) {
-                registrosAsistencia[registro.estudiante_id] = {
-                    estado: String(registro.estado || "").toLowerCase()
-                };
-            }
-        });
-    } catch (error) {
-        console.error("No se pudo verificar la asistencia del día para Estudiante al azar:", error);
-        alert("No se puede usar Estudiante al azar: no se pudo comprobar la asistencia del día elegido.");
+    if (!fechaAsistenciaActual || !hayAsistenciaLlenada) {
+        alert("Primero debes llenar la asistencia de este día para usar Estudiante al azar.");
         return;
     }
 
@@ -24405,16 +24263,16 @@ async function elegirEstudianteAzarAsistencia() {
             }
 
             if (vozAzarAsistenciaActiva) {
+                // La voz de ALEATORIO usa solamente matematica.nombres + matematica.paterno.
+                const nombreParaVoz = obtenerNombreVozAzarAsistencia(elegido);
                 if (estadoAsistenciaElegido === "falta") {
-                    hablarNombreVozAzarAsistencia(elegido, textoFaltaVozAzarAsistencia);
+                    hablarConVozAzarAsistencia(`${nombreParaVoz} TIENE FALTA`);
                 } else if (estadoAsistenciaElegido === "permiso" || estadoAsistenciaElegido === "licencia") {
-                    hablarNombreVozAzarAsistencia(elegido, textoPermisoVozAzarAsistencia);
+                    hablarConVozAzarAsistencia(`${nombreParaVoz} TIENE PERMISO`);
                 } else {
                     const generoElegidoVoz = obtenerGeneroEstadistica(elegido.gen);
-                    const palabraElegido = generoElegidoVoz === "mujer"
-                        ? palabraVozMujerAzarAsistencia
-                        : palabraVozVaronAzarAsistencia;
-                    hablarNombreVozAzarAsistencia(elegido, palabraElegido);
+                    const palabraElegido = generoElegidoVoz === "mujer" ? "ELEGIDA" : "ELEGIDO";
+                    hablarConVozAzarAsistencia(`${nombreParaVoz} ${palabraElegido}`);
                 }
             }
 
