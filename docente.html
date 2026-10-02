@@ -24258,16 +24258,55 @@ function actualizarEstadoBotonElegirAzarAsistencia() {
     }
 }
 
-function elegirEstudianteAzarAsistencia() {
+async function elegirEstudianteAzarAsistencia() {
     if (azarAsistenciaAnimacion) return;
 
     const fechaAsistenciaActual = document.getElementById("fechaAsistencia")?.value || "";
-    const hayAsistenciaLlenada = Object.values(registrosAsistencia || {}).some(registro =>
-        registro && String(registro.estado || "").trim() !== ""
-    );
+    if (!fechaAsistenciaActual || !cursoSeleccionado) {
+        alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
+        return;
+    }
 
-    if (!fechaAsistenciaActual || !hayAsistenciaLlenada) {
-        alert("Primero debes llenar la asistencia de este día para usar Estudiante al azar.");
+    /*
+     * Verificar directamente en BD la asistencia del día seleccionado.
+     * Así el azar nunca utiliza registros de otra fecha ni una lista local
+     * desactualizada.
+     */
+    try {
+        const idsCurso = obtenerEstudiantesCursoActual()
+            .filter(e => e && e.id != null)
+            .map(e => e.id);
+
+        if (!idsCurso.length) {
+            alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
+            return;
+        }
+
+        const { data: asistenciaDia, error: errorAsistenciaDia } = await supabaseClient
+            .from("asistencia")
+            .select("estudiante_id,estado")
+            .eq("fecha", fechaAsistenciaActual)
+            .in("estudiante_id", idsCurso);
+
+        if (errorAsistenciaDia) throw errorAsistenciaDia;
+
+        if (!Array.isArray(asistenciaDia) || asistenciaDia.length === 0) {
+            alert("No se puede usar Estudiante al azar: no hay asistencia registrada para el día elegido.");
+            return;
+        }
+
+        /* Mantener la información local exactamente con la asistencia de esa fecha. */
+        registrosAsistencia = {};
+        asistenciaDia.forEach(registro => {
+            if (registro?.estudiante_id != null) {
+                registrosAsistencia[registro.estudiante_id] = {
+                    estado: String(registro.estado || "").toLowerCase()
+                };
+            }
+        });
+    } catch (error) {
+        console.error("No se pudo verificar la asistencia del día para Estudiante al azar:", error);
+        alert("No se puede usar Estudiante al azar: no se pudo comprobar la asistencia del día elegido.");
         return;
     }
 
