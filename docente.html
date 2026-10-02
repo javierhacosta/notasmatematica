@@ -2788,14 +2788,6 @@ td:first-child {
     color: white;
 }
 
-// Cerrar automáticamente la sesión al cerrar la ventana/página.
-window.addEventListener("pagehide", () => {
-    try {
-        if (supabaseClient?.auth) {
-            supabaseClient.auth.signOut({ scope: "local" });
-        }
-    } catch (e) {}
-});
 
 /* =====================================================
    MENSAJES
@@ -19110,7 +19102,12 @@ function calcularPromedioPonderado(
    CERRAR SESIÓN
 ===================================================== */
 
+let cierreSesionEnCurso = false;
+
 async function cerrarSesion() {
+
+    if (cierreSesionEnCurso) return;
+    cierreSesionEnCurso = true;
 
     await supabaseClient.auth.signOut();
 
@@ -19118,6 +19115,16 @@ async function cerrarSesion() {
     "login-docente.html";
 
 }
+
+/* Al cerrar la ventana/pestaña, cerrar la sesión igual que al pulsar
+   "Cerrar sesión". No se modifica ninguna otra función. */
+window.addEventListener("pagehide", function () {
+    if (cierreSesionEnCurso) return;
+    cierreSesionEnCurso = true;
+    try {
+        supabaseClient.auth.signOut();
+    } catch (e) {}
+});
 
 
 /* =====================================================
