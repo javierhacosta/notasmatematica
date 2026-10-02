@@ -20079,7 +20079,7 @@ async function prepararAsistenciaQR(ci) {
     if (!data) {
         try {
             const respuesta = await supabaseClient.from("matematica")
-                .select("id,ci,nombre,num_lista,curso")
+                .select("id,ci,nombre,paterno,nombres,num_lista,curso")
                 .eq("ci", ci).maybeSingle();
             if (respuesta.error) throw respuesta.error;
             data = respuesta.data;
@@ -20119,9 +20119,18 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
-    hablarConVozAzarAsistencia(
-        `${data.nombre} ${estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE"}`
-    );
+    // En asistencia por QR, la voz toma EXCLUSIVAMENTE la columna
+    // "nombres" de la tabla matematica y después dice el estado.
+    const nombreQRVoz = String(data.nombres || "").trim();
+    const estadoQRVoz = estadoQRAsistencia === "atraso"
+        ? "ATRASO"
+        : "ASISTENCIA";
+
+    if (nombreQRVoz) {
+        hablarConVozAzarAsistencia(
+            `${nombreQRVoz} ${estadoQRVoz}`
+        );
+    }
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
