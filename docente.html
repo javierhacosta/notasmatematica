@@ -19102,12 +19102,7 @@ function calcularPromedioPonderado(
    CERRAR SESIÓN
 ===================================================== */
 
-let cierreSesionEnCurso = false;
-
 async function cerrarSesion() {
-
-    if (cierreSesionEnCurso) return;
-    cierreSesionEnCurso = true;
 
     await supabaseClient.auth.signOut();
 
@@ -19115,26 +19110,6 @@ async function cerrarSesion() {
     "login-docente.html";
 
 }
-
-/* Al cerrar la ventana/pestaña, cerrar la sesión igual que al pulsar
-   "Cerrar sesión". No se modifica ninguna otra función. */
-window.addEventListener("pagehide", function () {
-    if (cierreSesionEnCurso) return;
-    cierreSesionEnCurso = true;
-    try {
-        supabaseClient.auth.signOut();
-    } catch (e) {}
-});
-
-// También al cerrar la pestaña/ventana desde el navegador del celular.
-window.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "hidden" && !cierreSesionEnCurso) {
-        cierreSesionEnCurso = true;
-        try {
-            supabaseClient.auth.signOut();
-        } catch (e) {}
-    }
-});
 
 
 /* =====================================================
