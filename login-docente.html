@@ -199,6 +199,7 @@
 </div>
 
 
+<div id="accesoCorreo" style="display:none;">
 <label for="email">
 
     Correo electrónico
@@ -214,7 +215,7 @@
 
     placeholder="docente@colegio.com"
 
-    autocomplete="username"
+    autocomplete="username webauthn"
 
 >
 
@@ -234,7 +235,7 @@
 
     placeholder="Ingresa tu contraseña"
 
-    autocomplete="new-password"
+    autocomplete="current-password"
 
 >
 
@@ -244,9 +245,11 @@
     Ingresar
 
 </button>
+</div>
 
 
 <div id="mensaje"></div>
+</div>
 
 </div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 
@@ -449,6 +452,40 @@
         }
     }
 
+    function mostrarAccesoCorreo() {
+        document.getElementById("accesoCorreo").style.display = "block";
+    }
+
+    async function intentarHuellaAutomatica() {
+        const mensaje = document.getElementById("mensaje");
+        const configurada = localStorage.getItem("docente_passkey_configurada") === "1";
+        if (!configurada || !huellaCompatible()) {
+            mostrarAccesoCorreo();
+            return;
+        }
+
+        mensaje.textContent = "Verificando huella...";
+        mensaje.className = "cargando";
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPasskey();
+            if (!error && data && data.user) {
+                const esDocente = await verificarDocente(data.user.id);
+                if (esDocente) {
+                    window.location.href = "docente.html";
+                    return;
+                }
+            }
+            mostrarAccesoCorreo();
+            mensaje.textContent = "No se pudo ingresar con la huella. Puedes ingresar con correo y contraseña.";
+            mensaje.className = "error";
+        } catch (e) {
+            console.warn("Acceso con huella no disponible:", e);
+            mostrarAccesoCorreo();
+            mensaje.textContent = "Puedes ingresar con correo y contraseña.";
+            mensaje.className = "error";
+        }
+    }
+
     async function registrarHuella() {
         const mensaje = document.getElementById("mensaje");
         mensaje.textContent = "Registrando huella...";
@@ -629,30 +666,6 @@
 
 
 
-        /*
-         * Después del primer acceso con contraseña,
-         * registrar la huella/passkey en Supabase.
-         *
-         * Si ya existe una passkey, simplemente continúa.
-         */
-
-        try {
-
-            await registrarHuella();
-
-        } catch (errorHuella) {
-
-            console.warn(
-
-                "No se pudo registrar la passkey:",
-
-                errorHuella
-
-            );
-
-        }
-
-
 
         // Acceso correcto
 
@@ -661,5 +674,8 @@
             "docente.html";
 
     }
+
+    actualizarOpcionesHuella();
+    intentarHuellaAutomatica();
 
 </script></body></html>
