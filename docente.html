@@ -5574,10 +5574,42 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 
 <style>
 .panel-archivos-estudiantes{margin-top:15px;border:1px solid #ddd;border-radius:12px;overflow:hidden;background:white}.panel-archivos-estudiantes.oculto{display:none}.titulo-archivos-estudiantes{background:#455a64;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:bold}.boton-archivos-estudiantes{width:38px;height:34px;border:none;border-radius:7px;background:rgba(255,255,255,.2);color:white;font-size:22px;font-weight:bold;cursor:pointer}.contenido-archivos-estudiantes{padding:12px;background:#fff}.contenido-archivos-estudiantes.oculto{display:none}.lista-archivos-estudiantes{display:flex;flex-direction:column;gap:7px}.fila-archivo-estudiante{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e0e0e0;border-radius:9px;background:#fafafa}.numero-lista-archivo-estudiante{text-align:center;font-weight:700;color:#555}.nombre-archivo-estudiante{min-width:0;text-align:left;font-weight:600;overflow-wrap:anywhere}.acciones-archivo-estudiante{display:flex;gap:6px;flex-shrink:0}.boton-archivo-estudiante{width:40px;height:38px;border:none;border-radius:7px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.boton-camara-estudiante{background:#00838f}.boton-subir-estudiante{background:#1565c0}.archivos-estudiante-detalle{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}.archivo-guardado-estudiante{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:#e8f1fb;color:#1557a6;font-size:12px;max-width:260px}.archivo-guardado-estudiante .nombre-archivo-guardado{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boton-ver-archivo-estudiante,.boton-eliminar-archivo-estudiante{border:none;background:transparent;padding:1px 3px;font-size:16px;line-height:1;cursor:pointer}.boton-ver-archivo-estudiante{color:#1557a6}.boton-eliminar-archivo-estudiante{color:#c62828}.archivos-cargando,.archivos-vacio{color:#777;text-align:center;padding:15px}@media(max-width:600px){.fila-archivo-estudiante{grid-template-columns:42px minmax(0,1fr) auto;align-items:start}.nombre-archivo-estudiante{padding-top:8px}.archivos-estudiante-detalle{grid-column:1 / 4;margin-left:0}.numero-lista-archivo-estudiante{padding-top:8px}} </style>
+<style>
+/* BLOQUEO DE SESIÓN AL REABRIR LA PÁGINA
+   Si la página fue cerrada, el panel queda visualmente bloqueado
+   hasta volver a iniciar sesión. El botón Cerrar sesión permanece activo. */
+#bloqueoSesionCerrada {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999998;
+    background: rgba(255,255,255,.58);
+    cursor: not-allowed;
+}
+body.sesion-cerrada #bloqueoSesionCerrada {
+    display: block;
+}
+body.sesion-cerrada .salir {
+    position: fixed !important;
+    right: 18px;
+    bottom: 18px;
+    z-index: 999999 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    filter: none !important;
+    cursor: pointer !important;
+}
+body.sesion-cerrada .salir:disabled {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+</style>
 </head>
 
 
 <body>
+
+<div id="bloqueoSesionCerrada" aria-hidden="true"></div>
 
 <div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
 
@@ -7732,6 +7764,36 @@ new Set();
    SESIÓN
 ===================================================== */
 
+function aplicarBloqueoPorCierreDePagina() {
+    try {
+        const paginaFueCerrada =
+            localStorage.getItem("panel_docente_sesion_cerrada") === "1";
+
+        document.body.classList.toggle("sesion-cerrada", paginaFueCerrada);
+
+        const botonCerrar = document.querySelector(".salir");
+        if (botonCerrar) {
+            botonCerrar.disabled = false;
+            botonCerrar.setAttribute("aria-disabled", "false");
+        }
+    } catch (_) {
+        // Si el almacenamiento no está disponible, no alterar el funcionamiento existente.
+    }
+}
+
+function registrarCierreDePagina() {
+    try {
+        localStorage.setItem("panel_docente_sesion_cerrada", "1");
+    } catch (_) {}
+}
+
+// Se registra el cierre/refresco de esta página sin cerrar la sesión de Supabase.
+window.addEventListener("pagehide", registrarCierreDePagina);
+window.addEventListener("beforeunload", registrarCierreDePagina);
+
+aplicarBloqueoPorCierreDePagina();
+
+
 async function comprobarSesion() {
 
     const {
@@ -7751,6 +7813,11 @@ async function comprobarSesion() {
 
     }
 
+
+    // El bloqueo solo se quita al pulsar "Cerrar sesión".
+    // Si la página fue cerrada/reabierta mientras la sesión seguía activa,
+    // el indicador permanece y el panel continúa bloqueado.
+    aplicarBloqueoPorCierreDePagina();
 
     document.getElementById(
         "usuario"
@@ -19103,6 +19170,11 @@ function calcularPromedioPonderado(
 ===================================================== */
 
 async function cerrarSesion() {
+
+    // Al iniciar sesión nuevamente se elimina este bloqueo.
+    try {
+        localStorage.removeItem("panel_docente_sesion_cerrada");
+    } catch (_) {}
 
     await supabaseClient.auth.signOut();
 
