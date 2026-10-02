@@ -5545,6 +5545,33 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
     width: 100%;
 }
 
+#modalEscanerQR .boton-huella-desbloquear-qr {
+    display: none;
+    width: 42px;
+    height: 42px;
+    padding: 8px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+#modalEscanerQR .boton-huella-desbloquear-qr svg {
+    width: 27px;
+    height: 27px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+#modalEscanerQR.modo-presidente-qr .boton-huella-desbloquear-qr {
+    display: flex !important;
+}
+
 <style>
 .panel-archivos-estudiantes{margin-top:15px;border:1px solid #ddd;border-radius:12px;overflow:hidden;background:white}.panel-archivos-estudiantes.oculto{display:none}.titulo-archivos-estudiantes{background:#455a64;color:white;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:bold}.boton-archivos-estudiantes{width:38px;height:34px;border:none;border-radius:7px;background:rgba(255,255,255,.2);color:white;font-size:22px;font-weight:bold;cursor:pointer}.contenido-archivos-estudiantes{padding:12px;background:#fff}.contenido-archivos-estudiantes.oculto{display:none}.lista-archivos-estudiantes{display:flex;flex-direction:column;gap:7px}.fila-archivo-estudiante{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e0e0e0;border-radius:9px;background:#fafafa}.numero-lista-archivo-estudiante{text-align:center;font-weight:700;color:#555}.nombre-archivo-estudiante{min-width:0;text-align:left;font-weight:600;overflow-wrap:anywhere}.acciones-archivo-estudiante{display:flex;gap:6px;flex-shrink:0}.boton-archivo-estudiante{width:40px;height:38px;border:none;border-radius:7px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}.boton-camara-estudiante{background:#00838f}.boton-subir-estudiante{background:#1565c0}.archivos-estudiante-detalle{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}.archivo-guardado-estudiante{display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:#e8f1fb;color:#1557a6;font-size:12px;max-width:260px}.archivo-guardado-estudiante .nombre-archivo-guardado{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.boton-ver-archivo-estudiante,.boton-eliminar-archivo-estudiante{border:none;background:transparent;padding:1px 3px;font-size:16px;line-height:1;cursor:pointer}.boton-ver-archivo-estudiante{color:#1557a6}.boton-eliminar-archivo-estudiante{color:#c62828}.archivos-cargando,.archivos-vacio{color:#777;text-align:center;padding:15px}@media(max-width:600px){.fila-archivo-estudiante{grid-template-columns:42px minmax(0,1fr) auto;align-items:start}.nombre-archivo-estudiante{padding-top:8px}.archivos-estudiante-detalle{grid-column:1 / 4;margin-left:0}.numero-lista-archivo-estudiante{padding-top:8px}} </style>
 </head>
@@ -6579,10 +6606,26 @@ Cancelar
         <div class="modal-cabecera">
 
             <h3
-                onclick="gestoAdministradorAsistenciaQR(event)"
                 style="cursor:default; user-select:none;">
                 📷 Escanear estudiante
             </h3>
+
+            <button
+                type="button"
+                id="botonHuellaDesbloquearQR"
+                class="boton-huella-desbloquear-qr"
+                onclick="desbloquearAsistenciaQRConHuella()"
+                aria-label="Desbloquear con huella"
+                title="Desbloquear con huella">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2.8a7.2 7.2 0 0 0-7.2 7.2c0 1.8.3 3.4.8 4.8"/>
+                    <path d="M12 6a4 4 0 0 0-4 4c0 4.1-.8 6.8-2.1 9"/>
+                    <path d="M12 9.2a.8.8 0 0 0-.8.8c0 5.3-.8 8.5-2.1 11"/>
+                    <path d="M15.5 21c1.4-3 2.5-6.4 2.5-10a6 6 0 0 0-12 0"/>
+                    <path d="M19.2 19.2c1-2.5 1.6-5.2 1.6-8.2a8.8 8.8 0 0 0-17.6 0"/>
+                    <path d="M12 12c0 3.8-.5 7.2-1.6 10"/>
+                </svg>
+            </button>
 
             <button
                 type="button"
@@ -19822,28 +19865,6 @@ async function desbloquearAsistenciaQRConHuella() {
         return false;
     } finally {
         desbloqueandoPresidenteQR = false;
-    }
-}
-
-/* El administrador abre la autenticación tocando 5 veces el título del escáner. */
-function gestoAdministradorAsistenciaQR(event) {
-    if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
-
-    const ahora = Date.now();
-    if (ahora - ultimoToqueAdministradorQR > 1800) {
-        toquesAdministradorQR = 0;
-    }
-    ultimoToqueAdministradorQR = ahora;
-    toquesAdministradorQR++;
-
-    if (toquesAdministradorQR >= 5) {
-        toquesAdministradorQR = 0;
-        desbloquearAsistenciaQRConHuella();
-    }
-
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
     }
 }
 
