@@ -59,6 +59,17 @@ h3 {
     margin-top: 0;
 }
 
+/* =====================================================
+   MODO ONLINE / OFFLINE — SOLO MENÚ PRINCIPAL
+===================================================== */
+.menu-principal-modo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 18px;padding:10px 12px;border:1px solid #d9e1ea;border-radius:10px;background:#f7f9fc}
+.menu-principal-modo-info{min-width:0}
+.menu-principal-modo-titulo{font-weight:700;color:#37474f}
+.menu-principal-modo-detalle{margin-top:2px;font-size:12px;color:#6b7280}
+.boton-modo-datos{min-width:125px;min-height:42px;border:none;border-radius:9px;padding:9px 13px;color:white;font-weight:700;cursor:pointer;white-space:nowrap}
+.boton-modo-datos.online{background:#16803c}.boton-modo-datos.offline{background:#ef6c00}.boton-modo-datos:disabled{opacity:.65;cursor:wait}
+@media(max-width:600px){.menu-principal-modo{align-items:stretch;flex-direction:column}.boton-modo-datos{width:100%}}
+
 .usuario {
     color: #666;
     margin-bottom: 25px;
@@ -5591,6 +5602,15 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 Usuario:
 <span id="usuario"></span>
 </div>
+
+<div class="menu-principal-modo" aria-label="Modo de datos de la aplicación">
+  <div class="menu-principal-modo-info">
+    <div class="menu-principal-modo-titulo">💾 Datos de la aplicación</div>
+    <div id="detalleModoDatos" class="menu-principal-modo-detalle">Online · datos sincronizados con la base de datos</div>
+  </div>
+  <button type="button" id="botonModoDatos" class="boton-modo-datos online"
+          onclick="cambiarModoDatos()" aria-label="Cambiar entre modo Online y Offline">🌐 Online</button>
+</div>
 <!-- =====================================================
      FILTROS
 ===================================================== -->
@@ -7508,6 +7528,176 @@ window.supabase.createClient(
 );
 
 /* =====================================================
+   MOTOR ONLINE / OFFLINE
+   La base completa se guarda en IndexedDB. Las funciones existentes
+   siguen usando supabaseClient.from(...), pero en Offline esas consultas
+   trabajan contra la copia local. Las escrituras se encolan para
+   sincronizarse automáticamente al volver a Online.
+===================================================== */
+const TABLAS_MODO_OFFLINE=["actividades","anotaciones","anotaciones_actividades","asistencia","asistencia_horarios","asistencia_tipos_dia","calificaciones","listageneral","matematica","visitas_estudiantes"];
+const DB_OFFLINE_NOMBRE="docentqr_offline_db",DB_OFFLINE_VERSION=1,STORE_TABLAS="tablas",STORE_META="meta",STORE_COLA="cola",CLAVE_MODO="docentqr_modo_datos";
+let modoDatosOffline=localStorage.getItem(CLAVE_MODO)==="offline",sincronizandoDatos=false;
+
+function abrirDBOffline(){
+  if(window.__docentqrDB) return Promise.resolve(window.__docentqrDB);
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(DB_OFFLINE_NOMBRE,DB_OFFLINE_VERSION);
+    r.onupgradeneeded=()=>{const d=r.result;
+      if(!d.objectStoreNames.contains(STORE_TABLAS))d.createObjectStore(STORE_TABLAS,{keyPath:"tabla"});
+      if(!d.objectStoreNames.contains(STORE_META))d.createObjectStore(STORE_META,{keyPath:"clave"});
+      if(!d.objectStoreNames.contains(STORE_COLA))d.createObjectStore(STORE_COLA,{keyPath:"id",autoIncrement:true});
+    };
+    r.onsuccess=()=>{window.__docentqrDB=r.result;resolve(r.result)};
+    r.onerror=()=>reject(r.error);
+  });
+}
+async function idbGet(store,key){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readonly"),r=t.objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbPut(store,v){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readwrite");t.objectStore(store).put(v);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})}
+async function idbAll(store){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readonly"),r=t.objectStore(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+async function idbAddQueue(v){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(STORE_COLA,"readwrite"),r=t.objectStore(STORE_COLA).add(v);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbDelQueue(id){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(STORE_COLA,"readwrite");t.objectStore(STORE_COLA).delete(id);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})}
+const copia=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+async function guardarTablaOffline(tabla,filas){await idbPut(STORE_TABLAS,{tabla,filas:Array.isArray(filas)?filas:[],actualizado:new Date().toISOString()})}
+async function leerTablaOffline(tabla){const x=await idbGet(STORE_TABLAS,tabla);return x&&Array.isArray(x.filas)?x.filas:[]}
+async function hayCopiaOfflineCompleta(){const x=await idbAll(STORE_TABLAS),s=new Set(x.map(v=>v.tabla));return TABLAS_MODO_OFFLINE.every(t=>s.has(t))}
+function actualizarInterfazModoDatos(msg){
+  const b=document.getElementById("botonModoDatos"),d=document.getElementById("detalleModoDatos");if(!b||!d)return;
+  if(modoDatosOffline){b.className="boton-modo-datos offline";b.textContent="📴 Offline";d.textContent=msg||"Offline · trabajando con la copia completa guardada en el celular"}
+  else{b.className="boton-modo-datos online";b.textContent="🌐 Online";d.textContent=msg||"Online · datos sincronizados con la base de datos"}
+}
+function mostrarProgresoModoDatos(t){actualizarInterfazModoDatos(t);if(typeof mostrarMensaje==="function")mostrarMensaje(t)}
+
+async function obtenerTodasLasFilasOnline(tabla){
+  const out=[];let desde=0;
+  while(true){
+    const {data,error}=await supabaseClient.from(tabla).select("*").range(desde,desde+999);
+    if(error)throw error;const bloque=data||[];out.push(...bloque);if(bloque.length<1000)break;desde+=1000;
+  } return out;
+}
+async function descargarBaseCompletaAlCelular(){
+  if(sincronizandoDatos)return;sincronizandoDatos=true;const b=document.getElementById("botonModoDatos");if(b)b.disabled=true;
+  try{
+    for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Descargando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
+    await idbPut(STORE_META,{clave:"ultima_descarga_completa",valor:new Date().toISOString()});
+    modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");actualizarInterfazModoDatos();mostrarMensaje("✓ Base de datos completa copiada al celular. La aplicación está Offline.");
+  }finally{sincronizandoDatos=false;if(b)b.disabled=false}
+}
+
+function filtrosCoinciden(fila,fs){
+  return (fs||[]).every(f=>{const a=fila[f.campo];
+    if(f.operador==="eq")return String(a)===String(f.valor);
+    if(f.operador==="neq")return String(a)!==String(f.valor);
+    if(f.operador==="in")return (f.valor||[]).some(v=>String(a)===String(v));
+    if(f.operador==="gte")return a>=f.valor;if(f.operador==="lte")return a<=f.valor;
+    if(f.operador==="gt")return a>f.valor;if(f.operador==="lt")return a<f.valor;
+    if(f.operador==="is")return f.valor===null?a==null:a===f.valor;return true;
+  })
+}
+function idTemporal(filas){const n=filas.map(r=>Number(r&&r.id)).filter(Number.isFinite);return Math.min(-1,(n.length?Math.min(...n):0)-1)}
+async function ejecutarLocal(q){
+  const filas=await leerTablaOffline(q.tabla),fs=q.filtros||[],conf=q.conflicto||[];let afectados=[];
+  if(q.tipo==="insert"||q.tipo==="upsert"){
+    const lista=Array.isArray(q.datos)?q.datos:[q.datos];
+    for(const x of lista){const r=copia(x);if(r.id==null&&filas.some(z=>z&&z.id!==undefined))r.id=idTemporal(filas);
+      let i=-1;if(q.tipo==="upsert"&&conf.length)i=filas.findIndex(z=>conf.every(c=>String(z[c])===String(r[c])));
+      else if(r.id!=null)i=filas.findIndex(z=>String(z.id)===String(r.id));
+      if(i>=0){filas[i]={...filas[i],...r};afectados.push(copia(filas[i]))}else{filas.push(r);afectados.push(copia(r))}
+    }
+  }else if(q.tipo==="update"){filas.forEach((r,i)=>{if(filtrosCoinciden(r,fs)){filas[i]={...r,...q.datos};afectados.push(copia(filas[i]))}})}
+  else if(q.tipo==="delete"){const keep=[];filas.forEach(r=>filtrosCoinciden(r,fs)?afectados.push(copia(r)):keep.push(r));filas.length=0;filas.push(...keep)}
+  await guardarTablaOffline(q.tabla,filas);return afectados;
+}
+class ConsultaOffline{
+  constructor(tabla){this.tabla=tabla;this.q={tipo:null,datos:null,filtros:[],ordenes:[],desde:null,hasta:null,limite:null,seleccion:"*",conflicto:[],modo:null}}
+  select(x="*"){this.q.seleccion=x||"*";return this}
+  insert(x){this.q.tipo="insert";this.q.datos=x;return this}
+  upsert(x,o={}){this.q.tipo="upsert";this.q.datos=x;this.q.conflicto=String(o.onConflict||"").split(",").map(x=>x.trim()).filter(Boolean);return this}
+  update(x){this.q.tipo="update";this.q.datos=x;return this}
+  delete(){this.q.tipo="delete";return this}
+  eq(c,v){this.q.filtros.push({campo:c,operador:"eq",valor:v});return this}
+  neq(c,v){this.q.filtros.push({campo:c,operador:"neq",valor:v});return this}
+  in(c,v){this.q.filtros.push({campo:c,operador:"in",valor:v});return this}
+  gte(c,v){this.q.filtros.push({campo:c,operador:"gte",valor:v});return this}
+  lte(c,v){this.q.filtros.push({campo:c,operador:"lte",valor:v});return this}
+  gt(c,v){this.q.filtros.push({campo:c,operador:"gt",valor:v});return this}
+  lt(c,v){this.q.filtros.push({campo:c,operador:"lt",valor:v});return this}
+  is(c,v){this.q.filtros.push({campo:c,operador:"is",valor:v});return this}
+  match(o){Object.entries(o||{}).forEach(([c,v])=>this.eq(c,v));return this}
+  not(c,op,v){if(op==="is")this.neq(c,v);return this}
+  order(c,o={}){this.q.ordenes.push({campo:c,ascending:o.ascending!==false});return this}
+  range(a,b){this.q.desde=Number(a);this.q.hasta=Number(b);return this}
+  limit(n){this.q.limite=Number(n);return this}
+  maybeSingle(){this.q.modo="maybeSingle";return this}
+  single(){this.q.modo="single";return this}
+  async _run(){
+    if(this.q.tipo){
+      const data=await ejecutarLocal({tabla:this.tabla,tipo:this.q.tipo,datos:this.q.datos,filtros:this.q.filtros,conflicto:this.q.conflicto});
+      await idbAddQueue({creado:new Date().toISOString(),tabla:this.tabla,tipo:this.q.tipo,datos:copia(this.q.datos),filtros:copia(this.q.filtros),onConflict:this.q.conflicto});
+      return {data,error:null};
+    }
+    let r=(await leerTablaOffline(this.tabla)).filter(x=>filtrosCoinciden(x,this.q.filtros));
+    this.q.ordenes.forEach(o=>r.sort((a,b)=>a[o.campo]===b[o.campo]?0:(a[o.campo]>b[o.campo]?1:-1)*(o.ascending?1:-1)));
+    if(this.q.desde!==null||this.q.hasta!==null)r=r.slice(this.q.desde??0,(this.q.hasta??r.length-1)+1);
+    if(this.q.limite!==null)r=r.slice(0,this.q.limite);
+    if(this.q.seleccion!=="*"){const cs=this.q.seleccion.split(",").map(x=>x.trim()).filter(Boolean);r=r.map(x=>{const y={};cs.forEach(c=>{if(c in x)y[c]=x[c]});return y})}
+    if(this.q.modo==="maybeSingle")return {data:r[0]||null,error:null};
+    if(this.q.modo==="single")return r.length===1?{data:r[0],error:null}:{data:null,error:new Error(r.length?"Multiple rows returned":"No rows returned")};
+    return {data:r,error:null};
+  }
+  then(a,b){return this._run().then(a,b)} catch(b){return this._run().catch(b)}
+}
+const _fromOnlineOriginal=supabaseClient.from.bind(supabaseClient);
+supabaseClient.from=function(tabla){return modoDatosOffline?new ConsultaOffline(tabla):_fromOnlineOriginal(tabla)};
+
+function traducirIds(v,map){
+  if(Array.isArray(v))return v.map(x=>traducirIds(x,map));if(v&&typeof v==="object"){const o={};Object.entries(v).forEach(([k,x])=>o[k]=traducirIds(x,map));return o}
+  return (typeof v==="number"||typeof v==="string")&&map.has(String(v))?map.get(String(v)):v;
+}
+async function aplicarFiltrosOnline(builder,fs,map){
+  for(const f of fs||[]){const v=traducirIds(f.valor,map);
+    if(f.operador==="eq")builder=builder.eq(f.campo,v);else if(f.operador==="neq")builder=builder.neq(f.campo,v);
+    else if(f.operador==="in")builder=builder.in(f.campo,v);else if(f.operador==="gte")builder=builder.gte(f.campo,v);
+    else if(f.operador==="lte")builder=builder.lte(f.campo,v);else if(f.operador==="gt")builder=builder.gt(f.campo,v);else if(f.operador==="lt")builder=builder.lt(f.campo,v);
+  } return builder;
+}
+async function sincronizarCambiosOffline(){
+  if(sincronizandoDatos)return;sincronizandoDatos=true;const b=document.getElementById("botonModoDatos");if(b)b.disabled=true;
+  try{
+    const cola=(await idbAll(STORE_COLA)).sort((a,b)=>a.id-b.id),map=new Map();
+    for(const op of cola){
+      const datos=traducirIds(copia(op.datos),map),fs=traducirIds(copia(op.filtros||[]),map);
+      if(op.tipo==="insert"){
+        const lista=Array.isArray(datos)?datos:[datos],r=await _fromOnlineOriginal(op.tabla).insert(lista).select("*");if(r.error)throw r.error;
+        (r.data||[]).forEach((rem,i)=>{const loc=lista[i];if(loc&&loc.id<0&&rem&&rem.id!=null)map.set(String(loc.id),rem.id)});
+      }else if(op.tipo==="upsert"){
+        const r=await _fromOnlineOriginal(op.tabla).upsert(datos,{onConflict:(op.onConflict||[]).join(",")}).select("*");if(r.error)throw r.error;
+      }else if(op.tipo==="update"){
+        let bld=_fromOnlineOriginal(op.tabla).update(datos);bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
+      }else if(op.tipo==="delete"){
+        let bld=_fromOnlineOriginal(op.tabla).delete();bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
+      }
+      await idbDelQueue(op.id);
+    }
+    modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online");
+    for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Actualizando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
+    actualizarInterfazModoDatos("Online · cambios del celular sincronizados con la base de datos");mostrarMensaje("✓ Sincronización completa. La aplicación volvió a Online.");
+  }finally{sincronizandoDatos=false;if(b)b.disabled=false}
+}
+async function cambiarModoDatos(){
+  if(sincronizandoDatos)return;
+  try{if(!modoDatosOffline){await descargarBaseCompletaAlCelular();return}
+    await sincronizarCambiosOffline();
+    if(typeof cargarEstudiantes==="function")await cargarEstudiantes(true);
+    if(typeof cursoSeleccionado!=="undefined"&&cursoSeleccionado){
+      if(typeof cargarActividades==="function")await cargarActividades();
+      if(typeof cargarFechasAsistencia==="function")await cargarFechasAsistencia();
+      if(typeof cargarAsistencia==="function")await cargarAsistencia();
+    }
+  }catch(e){console.error(e);modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");actualizarInterfazModoDatos("Offline · sincronización pendiente");alert("No se pudo completar la sincronización. La aplicación permanece Offline para no perder los datos.\n\n"+(e.message||e))}
+}
+(async()=>{try{if(modoDatosOffline&&!await hayCopiaOfflineCompleta()){modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online")}actualizarInterfazModoDatos()}catch(e){console.warn(e)}})();
+
+/* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
 ===================================================== */
 let guardadoAutomatico = false;
@@ -7770,12 +7960,15 @@ new Set();
 
 async function comprobarSesion() {
 
-    const {
-        data: {
-            user
-        }
-    } =
-    await supabaseClient.auth.getUser();
+    let user = null;
+
+    if (modoDatosOffline) {
+        const { data: sesionLocal } = await supabaseClient.auth.getSession();
+        user = sesionLocal?.session?.user || null;
+    } else {
+        const { data: { user: usuarioOnline } } = await supabaseClient.auth.getUser();
+        user = usuarioOnline;
+    }
 
 
     if (!user) {
@@ -7802,6 +7995,17 @@ async function comprobarSesion() {
     // 3) La actualización de estudiantes se hace después del primer pintado.
     // Esto evita que la carga inicial quede bloqueada por la consulta remota.
     const hayCacheEstudiantes = cargarCacheEstudiantesQR();
+
+    if (modoDatosOffline) {
+        try {
+            const locales = await supabaseClient.from("matematica").select("*");
+            if (!locales.error && Array.isArray(locales.data)) estudiantes = locales.data;
+            await cargarPendientesInicio().catch(e => console.warn("Pendientes Offline:", e));
+        } catch (e) {
+            console.warn("No se pudo iniciar completamente Offline:", e);
+        }
+        return;
+    }
 
     if (hayCacheEstudiantes) {
         cargarPendientesInicio().catch(error =>
