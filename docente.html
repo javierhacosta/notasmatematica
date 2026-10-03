@@ -20070,28 +20070,6 @@ async function iniciarCamaraQR() {
 }
 
 
-function hablarVozAsistenciaQR(texto) {
-    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
-
-    const textoVoz = String(texto || "")
-        .replace(/[._\\-/,;:]+/g, " ")
-        .replace(/\\s+/g, " ")
-        .trim()
-        .toLocaleLowerCase("es-ES");
-
-    if (!textoVoz) return;
-
-    window.speechSynthesis.cancel();
-
-    const voz = new SpeechSynthesisUtterance(textoVoz);
-    voz.lang = "es-ES";
-    voz.rate = velocidadVozAzarAsistencia;
-    voz.pitch = tonoVozAzarAsistencia;
-
-    window.speechSynthesis.speak(voz);
-}
-
-
 async function prepararAsistenciaQR(ci) {
 
     // Búsqueda local primero: el QR no espera a Internet.
@@ -20101,7 +20079,7 @@ async function prepararAsistenciaQR(ci) {
     if (!data) {
         try {
             const respuesta = await supabaseClient.from("matematica")
-                .select("id,ci,nombre,paterno,nombres,num_lista,curso")
+                .select("id,ci,nombre,num_lista,curso")
                 .eq("ci", ci).maybeSingle();
             if (respuesta.error) throw respuesta.error;
             data = respuesta.data;
@@ -20141,21 +20119,9 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
-    // En asistencia por QR, la voz usa el orden:
-    // "nombres" + "paterno" + "PRESENTE" o "ATRASO".
-    const nombresQRVoz = String(data.nombres || "").trim();
-    const paternoQRVoz = String(data.paterno || "").trim();
-    const estadoQRVoz = estadoQRAsistencia === "atraso"
-        ? "ATRASO"
-        : "PRESENTE";
-
-    const nombreCompletoQRVoz = `${nombresQRVoz} ${paternoQRVoz}`.trim();
-
-    if (nombreCompletoQRVoz) {
-        hablarVozAsistenciaQR(
-            `${nombreCompletoQRVoz} ${estadoQRVoz}`
-        );
-    }
+    hablarConVozAzarAsistencia(
+        `${data.nombre} ${estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE"}`
+    );
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
