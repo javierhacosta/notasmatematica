@@ -7496,6 +7496,20 @@ Cancelar
 <div id="modalAnotacionActividad" class="modal-fondo oculto" onclick="cerrarAnotacionActividad(event)"><div class="modal-anotacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotación de actividad</h3><button class="boton-cerrar-modal" onclick="cerrarAnotacionActividad()">×</button></div><div class="modal-cuerpo"><textarea id="textoAnotacionActividad" placeholder="Escribe la anotación de esta actividad..."></textarea><div class="modal-acciones"><button class="boton-cancelar" onclick="cerrarAnotacionActividad()">Cancelar</button><button class="boton-crear-modal" onclick="guardarAnotacionActividad()">Guardar anotación</button></div></div></div></div>
 <div id="modalListadoAnotaciones" class="modal-fondo oculto" onclick="cerrarListadoAnotaciones(event)"><div class="modal-historial" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotaciones</h3><button class="boton-cerrar-modal" onclick="cerrarListadoAnotaciones()">×</button></div><div class="historial-cuerpo"><div class="anotaciones-filtros"><select id="filtroAnotacionesCurso"><option value="">Todos</option></select><input id="buscarAnotaciones" placeholder="Buscar anotación..."></div><div class="tabla-contenedor"><table class="tabla-anotaciones"><thead><tr><th>Curso</th><th>Fecha</th><th>Anotación</th></tr></thead><tbody id="tablaAnotaciones"></tbody></table></div></div></div></div>
 <script>
+/* =====================================================
+   SERVICE WORKER: permite recargar la aplicación sin Internet.
+   Debe existir docentqrpres_offline-sw.js en la misma carpeta.
+===================================================== */
+(function registrarServiceWorkerOffline(){
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./docente-sw.js', {scope: './'})
+            .then(function(){ console.log('✓ Modo recarga offline disponible.'); })
+            .catch(function(error){ console.warn('No se pudo registrar el Service Worker offline:', error); });
+    });
+})();
+</script>
+<script>
 const _scriptsDiferidos = {};
 function cargarScriptDiferido(url, globalName) {
  if (globalName && window[globalName]) return Promise.resolve(window[globalName]);
@@ -7535,7 +7549,7 @@ window.supabase.createClient(
    sincronizarse automáticamente al volver a Online.
 ===================================================== */
 const TABLAS_MODO_OFFLINE=["actividades","anotaciones","anotaciones_actividades","asistencia","asistencia_horarios","asistencia_tipos_dia","calificaciones","listageneral","matematica","visitas_estudiantes"];
-const DB_OFFLINE_NOMBRE="docentqr_offline_db",DB_OFFLINE_VERSION=1,STORE_TABLAS="tablas",STORE_META="meta",STORE_COLA="cola",CLAVE_MODO="docentqr_modo_datos";
+const DB_OFFLINE_NOMBRE="docentqr_offline_db",DB_OFFLINE_VERSION=2,STORE_TABLAS="tablas",STORE_META="meta",STORE_COLA="cola",STORE_ARCHIVOS="archivos",CLAVE_MODO="docentqr_modo_datos";
 let modoDatosOffline=localStorage.getItem(CLAVE_MODO)==="offline",sincronizandoDatos=false;
 
 function abrirDBOffline(){
@@ -7546,6 +7560,7 @@ function abrirDBOffline(){
       if(!d.objectStoreNames.contains(STORE_TABLAS))d.createObjectStore(STORE_TABLAS,{keyPath:"tabla"});
       if(!d.objectStoreNames.contains(STORE_META))d.createObjectStore(STORE_META,{keyPath:"clave"});
       if(!d.objectStoreNames.contains(STORE_COLA))d.createObjectStore(STORE_COLA,{keyPath:"id",autoIncrement:true});
+      if(!d.objectStoreNames.contains(STORE_ARCHIVOS))d.createObjectStore(STORE_ARCHIVOS,{keyPath:"clave"});
     };
     r.onsuccess=()=>{window.__docentqrDB=r.result;resolve(r.result)};
     r.onerror=()=>reject(r.error);
@@ -7556,6 +7571,8 @@ async function idbPut(store,v){const d=await abrirDBOffline();return new Promise
 async function idbAll(store){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readonly"),r=t.objectStore(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
 async function idbAddQueue(v){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(STORE_COLA,"readwrite"),r=t.objectStore(STORE_COLA).add(v);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function idbDelQueue(id){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(STORE_COLA,"readwrite");t.objectStore(STORE_COLA).delete(id);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})}
+async function idbDelete(store,key){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readwrite");t.objectStore(store).delete(key);t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})}
+async function idbClear(store){const d=await abrirDBOffline();return new Promise((res,rej)=>{const t=d.transaction(store,"readwrite");t.objectStore(store).clear();t.oncomplete=()=>res(true);t.onerror=()=>rej(t.error)})}
 const copia=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
 async function guardarTablaOffline(tabla,filas){await idbPut(STORE_TABLAS,{tabla,filas:Array.isArray(filas)?filas:[],actualizado:new Date().toISOString()})}
 async function leerTablaOffline(tabla){const x=await idbGet(STORE_TABLAS,tabla);return x&&Array.isArray(x.filas)?x.filas:[]}
@@ -7578,6 +7595,7 @@ async function descargarBaseCompletaAlCelular(){
   if(sincronizandoDatos)return;sincronizandoDatos=true;const b=document.getElementById("botonModoDatos");if(b)b.disabled=true;
   try{
     for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Descargando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
+    await descargarStorageAlCelular();
     await idbPut(STORE_META,{clave:"ultima_descarga_completa",valor:new Date().toISOString()});
     modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");actualizarInterfazModoDatos();mostrarMensaje("✓ Base de datos completa copiada al celular. La aplicación está Offline.");
   }finally{sincronizandoDatos=false;if(b)b.disabled=false}
@@ -7649,6 +7667,98 @@ class ConsultaOffline{
 const _fromOnlineOriginal=supabaseClient.from.bind(supabaseClient);
 supabaseClient.from=function(tabla){return modoDatosOffline?new ConsultaOffline(tabla):_fromOnlineOriginal(tabla)};
 
+/* =====================================================
+   SUPABASE STORAGE ONLINE / OFFLINE
+   Los archivos del bucket de estudiantes también se copian al celular.
+   En Offline se trabaja con Blob locales y las operaciones se encolan.
+===================================================== */
+const _storageFromOriginal=supabaseClient.storage.from.bind(supabaseClient.storage);
+async function guardarArchivoOffline(bucket,path,blob,meta={}){
+  await idbPut(STORE_ARCHIVOS,{clave:`${bucket}|${path}`,bucket,path,blob,nombre:meta.nombre||path.split("/").pop(),id:meta.id??null,metadata:meta.metadata||null,created_at:meta.created_at||new Date().toISOString(),actualizado:new Date().toISOString()});
+}
+async function leerArchivosOffline(bucket,prefix=""){
+  const all=await idbAll(STORE_ARCHIVOS),p=String(prefix||"").replace(/^\/+|\/+$/g,"");
+  return all.filter(x=>x.bucket===bucket&&(!p||x.path.startsWith(p+"/")));
+}
+function resultadoStorageError(message){return {data:null,error:new Error(message)}}
+function storageLocalFrom(bucket){
+  return {
+    async list(prefix="",options={}){
+      if(bucket!==BUCKET_ARCHIVOS_ESTUDIANTES)return resultadoStorageError("Bucket no disponible Offline.");
+      const p=String(prefix||"").replace(/^\/+|\/+$/g,"");
+      const all=await leerArchivosOffline(bucket,p);
+      const direct=new Map();
+      for(const f of all){
+        const rest=p?f.path.slice(p.length+1):f.path;
+        const slash=rest.indexOf("/");
+        if(slash>=0){const folder=rest.slice(0,slash);if(!direct.has(folder))direct.set(folder,{name:folder,id:null,metadata:null,created_at:null});}
+        else if(rest){direct.set(rest,{name:f.nombre||rest,id:f.id||null,metadata:f.metadata||null,created_at:f.created_at||f.actualizado});}
+      }
+      let out=[...direct.values()];
+      if(options.sortBy?.column){const col=options.sortBy.column,asc=options.sortBy.order!=="desc";out.sort((a,b)=>String(a[col]??"").localeCompare(String(b[col]??""))*(asc?1:-1));}
+      const off=Number(options.offset||0),lim=Number(options.limit||100);
+      return {data:out.slice(off,off+lim),error:null};
+    },
+    async upload(path,file,options={}){
+      if(bucket!==BUCKET_ARCHIVOS_ESTUDIANTES)return resultadoStorageError("Bucket no disponible Offline.");
+      const blob=file instanceof Blob?file:new Blob([file],{type:options.contentType||"application/octet-stream"});
+      const meta={nombre:String(path).split("/").pop(),metadata:{size:blob.size,mimetype:blob.type||options.contentType||"application/octet-stream"}};
+      await guardarArchivoOffline(bucket,path,blob,meta);
+      await idbAddQueue({creado:new Date().toISOString(),tipo:"storage_upload",bucket,path,blob,options:copia(options)});
+      return {data:{path},error:null};
+    },
+    async remove(paths){
+      if(bucket!==BUCKET_ARCHIVOS_ESTUDIANTES)return resultadoStorageError("Bucket no disponible Offline.");
+      const lista=Array.isArray(paths)?paths:[paths];
+      for(const path of lista){await idbDelete(STORE_ARCHIVOS,`${bucket}|${path}`);await idbAddQueue({creado:new Date().toISOString(),tipo:"storage_remove",bucket,path});}
+      return {data:lista,error:null};
+    },
+    async createSignedUrl(path){
+      if(bucket!==BUCKET_ARCHIVOS_ESTUDIANTES)return resultadoStorageError("Bucket no disponible Offline.");
+      const x=await idbGet(STORE_ARCHIVOS,`${bucket}|${path}`);if(!x?.blob)return resultadoStorageError("El archivo no está disponible en la copia Offline.");
+      return {data:{signedUrl:URL.createObjectURL(x.blob)},error:null};
+    },
+    async download(path){
+      if(bucket!==BUCKET_ARCHIVOS_ESTUDIANTES)return resultadoStorageError("Bucket no disponible Offline.");
+      const x=await idbGet(STORE_ARCHIVOS,`${bucket}|${path}`);if(!x?.blob)return resultadoStorageError("El archivo no está disponible en la copia Offline.");
+      return {data:x.blob,error:null};
+    }
+  };
+}
+supabaseClient.storage.from=function(bucket){return modoDatosOffline&&bucket===BUCKET_ARCHIVOS_ESTUDIANTES?storageLocalFrom(bucket):_storageFromOriginal(bucket)};
+
+async function obtenerTodosLosArchivosStorageOnline(bucket){
+  const original=_storageFromOriginal(bucket),salida=[];
+  async function recorrer(prefijo){
+    let offset=0;
+    while(true){
+      const {data,error}=await original.list(prefijo,{limit:1000,offset,sortBy:{column:"name",order:"asc"}});
+      if(error)throw error;const bloque=data||[];
+      for(const item of bloque){
+        if(!item?.name)continue;
+        const ruta=prefijo?`${prefijo}/${item.name}`:item.name;
+        if(item.id||item.metadata||item.created_at||item.updated_at){
+          const r=await original.download(ruta);if(r.error)throw r.error;
+          salida.push({bucket,path:ruta,blob:r.data,nombre:item.name,id:item.id||null,metadata:item.metadata||null,created_at:item.created_at||item.updated_at||new Date().toISOString()});
+        }else await recorrer(ruta);
+      }
+      if(bloque.length<1000)break;offset+=1000;
+    }
+  }
+  await recorrer("");return salida;
+}
+async function descargarStorageAlCelular(){
+  mostrarProgresoModoDatos("Descargando archivos de estudiantes...");
+  const archivos=await obtenerTodosLosArchivosStorageOnline(BUCKET_ARCHIVOS_ESTUDIANTES);
+  await idbClear(STORE_ARCHIVOS);
+  for(let i=0;i<archivos.length;i++){
+    const a=archivos[i];
+    await guardarArchivoOffline(a.bucket,a.path,a.blob,{nombre:a.nombre,id:a.id,metadata:a.metadata,created_at:a.created_at});
+    if((i+1)%5===0||i===archivos.length-1)mostrarProgresoModoDatos(`Guardando archivos ${i+1}/${archivos.length}...`);
+  }
+  await idbPut(STORE_META,{clave:"ultima_descarga_storage",valor:new Date().toISOString(),cantidad:archivos.length});
+}
+
 function traducirIds(v,map){
   if(Array.isArray(v))return v.map(x=>traducirIds(x,map));if(v&&typeof v==="object"){const o={};Object.entries(v).forEach(([k,x])=>o[k]=traducirIds(x,map));return o}
   return (typeof v==="number"||typeof v==="string")&&map.has(String(v))?map.get(String(v)):v;
@@ -7675,11 +7785,16 @@ async function sincronizarCambiosOffline(){
         let bld=_fromOnlineOriginal(op.tabla).update(datos);bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
       }else if(op.tipo==="delete"){
         let bld=_fromOnlineOriginal(op.tabla).delete();bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
+      }else if(op.tipo==="storage_upload"){
+        const r=await _storageFromOriginal(op.bucket).upload(op.path,op.blob,op.options||{});if(r.error)throw r.error;
+      }else if(op.tipo==="storage_remove"){
+        const r=await _storageFromOriginal(op.bucket).remove([op.path]);if(r.error)throw r.error;
       }
       await idbDelQueue(op.id);
     }
     modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online");
     for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Actualizando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
+    await descargarStorageAlCelular();
     actualizarInterfazModoDatos("Online · cambios del celular sincronizados con la base de datos");mostrarMensaje("✓ Sincronización completa. La aplicación volvió a Online.");
   }finally{sincronizandoDatos=false;if(b)b.disabled=false}
 }
