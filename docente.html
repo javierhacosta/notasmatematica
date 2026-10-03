@@ -20070,6 +20070,28 @@ async function iniciarCamaraQR() {
 }
 
 
+function hablarVozAsistenciaQR(texto) {
+    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
+
+    const textoVoz = String(texto || "")
+        .replace(/[._\\-/,;:]+/g, " ")
+        .replace(/\\s+/g, " ")
+        .trim()
+        .toLocaleLowerCase("es-ES");
+
+    if (!textoVoz) return;
+
+    window.speechSynthesis.cancel();
+
+    const voz = new SpeechSynthesisUtterance(textoVoz);
+    voz.lang = "es-ES";
+    voz.rate = velocidadVozAzarAsistencia;
+    voz.pitch = tonoVozAzarAsistencia;
+
+    window.speechSynthesis.speak(voz);
+}
+
+
 async function prepararAsistenciaQR(ci) {
 
     // Búsqueda local primero: el QR no espera a Internet.
@@ -20130,7 +20152,7 @@ async function prepararAsistenciaQR(ci) {
     const nombreCompletoQRVoz = `${nombresQRVoz} ${paternoQRVoz}`.trim();
 
     if (nombreCompletoQRVoz) {
-        hablarConVozAzarAsistencia(
+        hablarVozAsistenciaQR(
             `${nombreCompletoQRVoz} ${estadoQRVoz}`
         );
     }
