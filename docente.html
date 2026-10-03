@@ -7771,34 +7771,317 @@ async function aplicarFiltrosOnline(builder,fs,map){
     else if(f.operador==="lte")builder=builder.lte(f.campo,v);else if(f.operador==="gt")builder=builder.gt(f.campo,v);else if(f.operador==="lt")builder=builder.lt(f.campo,v);
   } return builder;
 }
+async function registrarConflictoSincronizacion(op, motivo, datosConflicto){
+  try{
+    const meta=await idbGet(STORE_META,"conflictos_sincronizacion");
+    const lista=Array.isArray(meta?.valor)?meta.valor:[];
+    lista.push({
+      fecha:new Date().toISOString(),
+      tabla:op.tabla,
+      tipo:op.tipo,
+      motivo:String(motivo||""),
+      datos:copia(datosConflicto ?? op.datos),
+      filtros:copia(op.filtros||[]),
+      onConflict:copia(op.onConflict||[])
+    });
+    await idbPut(STORE_META,{clave:"conflictos_sincronizacion",valor:lista.slice(-100)});
+  }catch(e){
+    console.warn("No se pudo guardar el conflicto local:",e);
+  }
+}
+
+async function actividadExisteOnline(actividadId){
+  if(actividadId===null||actividadId===undefined||String(actividadId)==="")return true;
+  const r=await _fromOnlineOriginal("actividades")
+    .select("id")
+    .eq("id",actividadId)
+    .maybeSingle();
+  if(r.error)throw r.error;
+  return !!r.data;
+}
+
+/*
+ * Muestra una decisión explícita antes de resolver el conflicto.
+ * "Conservar" vuelve a crear la actividad en el servidor y después
+ * permite sincronizar las calificaciones pendientes.
+ * "Continuar" acepta la eliminación hecha en el otro dispositivo y
+ * descarta solamente las calificaciones pendientes de esa actividad.
+ */
+function pedirDecisionConflictoSincronizacion(actividad, cantidad){
+  return new Promise(resolve=>{
+    const existente=document.getElementById("modalConflictoSincronizacion");
+    if(existente)existente.remove();
+
+    const nombre=String(
+      actividad?.nombre ??
+      actividad?.titulo ??
+      actividad?.descripcion ??
+      actividad?.actividad ??
+      "esta actividad"
+    );
+
+    const fondo=document.createElement("div");
+    fondo.id="modalConflictoSincronizacion";
+    fondo.style.cssText=[
+      "position:fixed","inset:0","z-index:999999",
+      "background:rgba(0,0,0,.62)","display:flex",
+      "align-items:center","justify-content:center",
+      "padding:18px","box-sizing:border-box"
+    ].join(";");
+
+    const caja=document.createElement("div");
+    caja.style.cssText=[
+      "width:min(520px,100%)","background:#fff","border-radius:20px",
+      "padding:24px","box-sizing:border-box","box-shadow:0 12px 40px rgba(0,0,0,.35)",
+      "font-family:Arial,sans-serif"
+    ].join(";");
+
+    const titulo=document.createElement("h3");
+    titulo.textContent="⚠️ Conflicto de sincronización";
+    titulo.style.cssText="margin:0 0 14px;font-size:22px;color:#173b68;";
+
+    const texto=document.createElement("div");
+    texto.innerHTML=
+      `<p style="margin:0 0 10px;line-height:1.5">La actividad <strong>${nombre.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</strong> fue eliminada en otro dispositivo.</p>`+
+      `<p style="margin:0 0 18px;line-height:1.5">Este dispositivo tiene <strong>${cantidad}</strong> calificación(es) pendientes para esa actividad.</p>`+
+      `<p style="margin:0 0 20px;line-height:1.5">¿Qué deseas hacer?</p>`;
+
+    const acciones=document.createElement("div");
+    acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;";
+
+    const continuar=document.createElement("button");
+    continuar.type="button";
+    continuar.textContent="Continuar";
+    continuar.style.cssText=[
+      "border:0","border-radius:10px","padding:12px 18px",
+      "font-size:16px","font-weight:700","background:#e5e7eb",
+      "color:#222","cursor:pointer"
+    ].join(";");
+
+    const conservar=document.createElement("button");
+    conservar.type="button";
+    conservar.textContent="Conservar";
+    conservar.style.cssText=[
+      "border:0","border-radius:10px","padding:12px 18px",
+      "font-size:16px","font-weight:700","background:#1677d2",
+      "color:#fff","cursor:pointer"
+    ].join(";");
+
+    const cerrar=decision=>{
+      fondo.remove();
+      resolve(decision);
+    };
+
+    continuar.onclick=()=>cerrar("continuar");
+    conservar.onclick=()=>cerrar("conservar");
+    fondo.onclick=e=>{if(e.target===fondo){}};
+
+    acciones.appendChild(continuar);
+    acciones.appendChild(conservar);
+    caja.appendChild(titulo);
+    caja.appendChild(texto);
+    caja.appendChild(acciones);
+    fondo.appendChild(caja);
+    document.body.appendChild(fondo);
+  });
+}
+
+async function conservarActividadEliminadaOnline(actividadId){
+  const filas=await leerTablaOffline("actividades");
+  const actividad=filas.find(x=>String(x?.id)===String(actividadId));
+
+  if(!actividad){
+    throw new Error(
+      "No se encontró en la copia Offline la actividad que se desea conservar."
+    );
+  }
+
+  const copiaActividad=copia(actividad);
+  const r=await _fromOnlineOriginal("actividades")
+    .insert(copiaActividad)
+    .select("*");
+
+  if(r.error){
+    /*
+     * Si mientras se mostraba la ventana otro dispositivo ya restauró
+     * la actividad, verificamos nuevamente antes de fallar.
+     */
+    if(await actividadExisteOnline(actividadId))return;
+    throw r.error;
+  }
+}
+
+async function resolverConflictosCalificaciones(op, datos){
+  if(op.tabla!=="calificaciones" || !["insert","upsert"].includes(op.tipo)){
+    return {datos,conflictosDescartados:0};
+  }
+
+  const lista=Array.isArray(datos)?datos:[datos];
+  const conflictos=[];
+  const validos=[];
+
+  for(const registro of lista){
+    const actividadId=registro?.actividad_id;
+
+    if(actividadId===null||actividadId===undefined||String(actividadId)===""){
+      validos.push(registro);
+      continue;
+    }
+
+    if(Number(actividadId)<0){
+      validos.push(registro);
+      continue;
+    }
+
+    if(await actividadExisteOnline(actividadId)){
+      validos.push(registro);
+      continue;
+    }
+
+    conflictos.push(registro);
+  }
+
+  if(!conflictos.length){
+    return {datos,conflictosDescartados:0};
+  }
+
+  /*
+   * Agrupamos por actividad para que, si hay 20 calificaciones de la misma
+   * actividad, el docente tenga que tomar una sola decisión.
+   */
+  const grupos=new Map();
+  for(const registro of conflictos){
+    const id=String(registro.actividad_id);
+    if(!grupos.has(id))grupos.set(id,[]);
+    grupos.get(id).push(registro);
+  }
+
+  let descartados=0;
+
+  for(const [actividadId,registros] of grupos){
+    const filas=await leerTablaOffline("actividades");
+    const actividad=filas.find(x=>String(x?.id)===actividadId)||{id:actividadId};
+    const decision=await pedirDecisionConflictoSincronizacion(
+      actividad,
+      registros.length
+    );
+
+    if(decision==="conservar"){
+      /*
+       * Primero restauramos la actividad en el servidor. Solo después
+       * las calificaciones podrán respetar la clave foránea.
+       */
+      await conservarActividadEliminadaOnline(actividadId);
+      validos.push(...registros);
+    }else{
+      for(const registro of registros){
+        await registrarConflictoSincronizacion(
+          op,
+          "El usuario eligió continuar y aceptar la eliminación de la actividad en el otro dispositivo.",
+          registro
+        );
+      }
+      descartados+=registros.length;
+    }
+  }
+
+  const datosResultado=Array.isArray(datos)
+    ? validos
+    : (validos[0]||null);
+
+  return {
+    datos:datosResultado,
+    conflictosDescartados:descartados
+  };
+}
+
 async function sincronizarCambiosOffline(){
   if(sincronizandoDatos)return;sincronizandoDatos=true;const b=document.getElementById("botonModoDatos");if(b)b.disabled=true;
+  let conflictosDescartados=0;
   try{
     const cola=(await idbAll(STORE_COLA)).sort((a,b)=>a.id-b.id),map=new Map();
+
     for(const op of cola){
       const datos=traducirIds(copia(op.datos),map),fs=traducirIds(copia(op.filtros||[]),map);
-      if(op.tipo==="insert"){
-        const lista=Array.isArray(datos)?datos:[datos],r=await _fromOnlineOriginal(op.tabla).insert(lista).select("*");if(r.error)throw r.error;
-        (r.data||[]).forEach((rem,i)=>{const loc=lista[i];if(loc&&loc.id<0&&rem&&rem.id!=null)map.set(String(loc.id),rem.id)});
-      }else if(op.tipo==="upsert"){
-        const r=await _fromOnlineOriginal(op.tabla).upsert(datos,{onConflict:(op.onConflict||[]).join(",")}).select("*");if(r.error)throw r.error;
-      }else if(op.tipo==="update"){
-        let bld=_fromOnlineOriginal(op.tabla).update(datos);bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
-      }else if(op.tipo==="delete"){
-        let bld=_fromOnlineOriginal(op.tabla).delete();bld=await aplicarFiltrosOnline(bld,fs,map);const r=await bld;if(r.error)throw r.error;
-      }else if(op.tipo==="storage_upload"){
-        const r=await _storageFromOriginal(op.bucket).upload(op.path,op.blob,op.options||{});if(r.error)throw r.error;
-      }else if(op.tipo==="storage_remove"){
-        const r=await _storageFromOriginal(op.bucket).remove([op.path]);if(r.error)throw r.error;
+
+      /*
+       * Si una actividad fue eliminada desde otro dispositivo, la aplicación
+       * pregunta antes de resolver el conflicto.
+       */
+      let datosAEnviar=datos;
+
+      if(op.tabla==="calificaciones" && ["insert","upsert"].includes(op.tipo)){
+        const resultado=await resolverConflictosCalificaciones(op,datos);
+        datosAEnviar=resultado.datos;
+        conflictosDescartados+=resultado.conflictosDescartados;
+
+        if(datosAEnviar===null ||
+           (Array.isArray(datosAEnviar)&&datosAEnviar.length===0)){
+          await idbDelQueue(op.id);
+          continue;
+        }
       }
+
+      if(op.tipo==="insert"){
+        const lista=Array.isArray(datosAEnviar)?datosAEnviar:[datosAEnviar];
+        const r=await _fromOnlineOriginal(op.tabla).insert(lista).select("*");
+        if(r.error)throw r.error;
+        (r.data||[]).forEach((rem,i)=>{
+          const loc=lista[i];
+          if(loc&&loc.id<0&&rem&&rem.id!=null)map.set(String(loc.id),rem.id);
+        });
+      }else if(op.tipo==="upsert"){
+        const r=await _fromOnlineOriginal(op.tabla)
+          .upsert(datosAEnviar,{onConflict:(op.onConflict||[]).join(",")})
+          .select("*");
+        if(r.error)throw r.error;
+      }else if(op.tipo==="update"){
+        let bld=_fromOnlineOriginal(op.tabla).update(datosAEnviar);
+        bld=await aplicarFiltrosOnline(bld,fs,map);
+        const r=await bld;
+        if(r.error)throw r.error;
+      }else if(op.tipo==="delete"){
+        let bld=_fromOnlineOriginal(op.tabla).delete();
+        bld=await aplicarFiltrosOnline(bld,fs,map);
+        const r=await bld;
+        if(r.error)throw r.error;
+      }else if(op.tipo==="storage_upload"){
+        const r=await _storageFromOriginal(op.bucket).upload(op.path,op.blob,op.options||{});
+        if(r.error)throw r.error;
+      }else if(op.tipo==="storage_remove"){
+        const r=await _storageFromOriginal(op.bucket).remove([op.path]);
+        if(r.error)throw r.error;
+      }
+
       await idbDelQueue(op.id);
     }
+
     modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online");
-    for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Actualizando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
+
+    for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){
+      const t=TABLAS_MODO_OFFLINE[i];
+      mostrarProgresoModoDatos(`Actualizando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);
+      await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t));
+    }
+
     await descargarStorageAlCelular();
-    actualizarInterfazModoDatos("Online · cambios del celular sincronizados con la base de datos");mostrarMensaje("✓ Sincronización completa. La aplicación volvió a Online.");
-  }finally{sincronizandoDatos=false;if(b)b.disabled=false}
+
+    actualizarInterfazModoDatos(
+      conflictosDescartados
+        ? `Online · sincronización completada; ${conflictosDescartados} calificación(es) descartada(s) por decisión del usuario`
+        : "Online · cambios del celular sincronizados con la base de datos"
+    );
+
+    mostrarMensaje(
+      conflictosDescartados
+        ? `✓ Volvió a Online. Se aceptó la eliminación y se descartaron ${conflictosDescartados} calificación(es) pendientes.`
+        : "✓ Sincronización completa. La aplicación volvió a Online."
+    );
+  }finally{
+    sincronizandoDatos=false;if(b)b.disabled=false;
+  }
 }
+
 async function cambiarModoDatos(){
   if(sincronizandoDatos)return;
   try{if(!modoDatosOffline){await descargarBaseCompletaAlCelular();return}
