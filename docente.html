@@ -7968,7 +7968,7 @@ async function cargarEstudiantes(esSegundoPlano = false) {
     await supabaseClient
     .from("matematica")
     .select(
-        "id,num_lista,ci,nombre,paterno,nombres,curso,fecha_nacimiento,gen,estado,nota_1t,nota_2t"
+        "id,num_lista,ci,nombre,paterno,materno,nombres,curso,fecha_nacimiento,gen,estado,nota_1t,nota_2t"
     )
     .order("curso")
     .order("num_lista");
@@ -8002,7 +8002,8 @@ async function cargarEstudiantes(esSegundoPlano = false) {
                 String(anterior?.curso ?? "") !== String(nuevo?.curso ?? "") ||
                 String(anterior?.estado ?? "") !== String(nuevo?.estado ?? "") ||
                 String(anterior?.nombres ?? "") !== String(nuevo?.nombres ?? "") ||
-                String(anterior?.paterno ?? "") !== String(nuevo?.paterno ?? "")
+                String(anterior?.paterno ?? "") !== String(nuevo?.paterno ?? "") ||
+                String(anterior?.materno ?? "") !== String(nuevo?.materno ?? "")
             ) {
                 huboCambios = true;
                 break;
@@ -20079,7 +20080,7 @@ async function prepararAsistenciaQR(ci) {
     if (!data) {
         try {
             const respuesta = await supabaseClient.from("matematica")
-                .select("id,ci,nombre,num_lista,curso")
+                .select("id,ci,num_lista,nombres,paterno,materno,nombre,curso")
                 .eq("ci", ci).maybeSingle();
             if (respuesta.error) throw respuesta.error;
             data = respuesta.data;
@@ -20119,14 +20120,20 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
+    const nombresQR = String(data.nombres ?? "").trim();
+    const paternoQR = String(data.paterno ?? "").trim();
+    const maternoQR = String(data.materno ?? "").trim();
+    const nombreMostrarQR = [nombresQR, paternoQR, maternoQR].filter(Boolean).join(" ").trim();
+    const nombreVozQR = [nombresQR, paternoQR].filter(Boolean).join(" ").trim();
+
     hablarConVozAzarAsistencia(
-        `${data.nombre} ${estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE"}`
+        `${nombreVozQR} ${estadoQRAsistencia === "atraso" ? "ATRASO" : "PRESENTE"}`
     );
 
     document.getElementById("infoEstudianteAsistenciaQR").innerHTML = `
         <strong>N°:</strong> ${escapeHTML(String(data.num_lista ?? ""))}
         <br>
-        <strong>Estudiante:</strong> ${escapeHTML(data.nombre)}
+        <strong>Estudiante:</strong> ${escapeHTML(nombreMostrarQR)}
     `;
 
     const checkAsistencia = document.getElementById("checkAsistenciaQR");
@@ -20284,8 +20291,14 @@ async function continuarEscaneoAsistenciaQR() {
         escaneoAsistenciaQRRealizado = true;
         marcarAsistenciaPendiente();
 
+        const nombrePreparadoQR = [
+            String(estudiante.nombres ?? "").trim(),
+            String(estudiante.paterno ?? "").trim(),
+            String(estudiante.materno ?? "").trim()
+        ].filter(Boolean).join(" ").trim();
+
         mostrarMensaje(
-            "✓ Asistencia preparada: " + estudiante.nombre +
+            "✓ Asistencia preparada: " + nombrePreparadoQR +
             " · pendiente de guardar al cerrar el escáner"
         );
 
