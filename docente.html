@@ -20119,16 +20119,19 @@ async function prepararAsistenciaQR(ci) {
           )
         : "asistio";
 
-    // En asistencia por QR, la voz toma EXCLUSIVAMENTE la columna
-    // "nombres" de la tabla matematica y después dice el estado.
-    const nombreQRVoz = String(data.nombres || "").trim();
+    // En asistencia por QR, la voz usa el orden:
+    // "nombres" + "paterno" + "PRESENTE" o "ATRASO".
+    const nombresQRVoz = String(data.nombres || "").trim();
+    const paternoQRVoz = String(data.paterno || "").trim();
     const estadoQRVoz = estadoQRAsistencia === "atraso"
         ? "ATRASO"
-        : "ASISTENCIA";
+        : "PRESENTE";
 
-    if (nombreQRVoz) {
+    const nombreCompletoQRVoz = `${nombresQRVoz} ${paternoQRVoz}`.trim();
+
+    if (nombreCompletoQRVoz) {
         hablarConVozAzarAsistencia(
-            `${nombreQRVoz} ${estadoQRVoz}`
+            `${nombreCompletoQRVoz} ${estadoQRVoz}`
         );
     }
 
