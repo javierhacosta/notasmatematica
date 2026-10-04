@@ -69,6 +69,13 @@ h3 {
    FILTROS
 ===================================================== */
 
+.conexion-lenta-panel { display:flex; align-items:center; gap:9px; margin:0 0 18px; padding:10px 12px; border:1px solid #d7dee6; border-radius:9px; background:#f8fafc; color:#333; }
+.conexion-lenta-panel input { width:18px; height:18px; margin:0; cursor:pointer; flex:0 0 auto; }
+.conexion-lenta-panel label { margin:0; cursor:pointer; font-weight:bold; }
+.estado-conexion-lenta { display:none; margin-left:auto; font-size:12px; color:#16803c; font-weight:bold; }
+.estado-conexion-lenta.visible { display:inline-block; }
+.estado-conexion-lenta.error { color:#c62828; }
+
 .filtros {
     display: flex;
     gap: 15px;
@@ -2802,70 +2809,6 @@ td:first-child {
    Solo cambia la forma de mostrar los avisos; no cambia
    la lógica de guardado.
 ===================================================== */
-/* =====================================================
-   MODO INTERNET LENTO
-   Solo añade el botón y su indicador de sincronización.
-===================================================== */
-.boton-internet-lento {
-    margin-top: 10px;
-    width: 100%;
-    min-height: 44px;
-    padding: 10px 14px;
-    border: 1px solid #1565c0;
-    border-radius: 8px;
-    background: #e8f1fb;
-    color: #1557a6;
-    font-weight: bold;
-    font-size: 15px;
-    cursor: pointer;
-}
-.boton-internet-lento:hover {
-    background: #d8e8f8;
-}
-.boton-internet-lento.activo {
-    background: #16803c;
-    border-color: #11652f;
-    color: white;
-}
-.aviso-internet-lento {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    z-index: 30000;
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 9px;
-    background: #fff3cd;
-    border: 1px solid #ffcc00;
-    color: #664d03;
-    font-weight: bold;
-    font-size: 14px;
-    box-shadow: 0 3px 12px rgba(0,0,0,.18);
-}
-.aviso-internet-lento.visible {
-    display: flex;
-}
-.aviso-internet-lento button {
-    border: none;
-    border-radius: 7px;
-    padding: 8px 11px;
-    background: #1557a6;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    white-space: nowrap;
-}
-@media (max-width: 600px) {
-    .aviso-internet-lento {
-        align-items: stretch;
-        flex-direction: column;
-    }
-}
-
 #notificacionesGuardado {
     position: fixed;
     top: 18px;
@@ -5648,10 +5591,6 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 <body>
 
 <div id="notificacionesGuardado" aria-live="polite" aria-atomic="true"></div>
-<div id="avisoInternetLento" class="aviso-internet-lento" role="alert" aria-live="assertive">
-    <span id="textoAvisoInternetLento">Hay datos que todavía no se pudieron guardar.</span>
-    <button type="button" onclick="intentarGuardarInternetLento()">Intentar guardar ahora</button>
-</div>
 
 <div class="contenedor">
 
@@ -5663,14 +5602,12 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 Usuario:
 <span id="usuario"></span>
 </div>
-<button
-    type="button"
-    id="botonInternetLento"
-    class="boton-internet-lento"
-    onclick="alternarModoInternetLento()"
-    title="Copiar la base de datos al celular y trabajar localmente mientras Internet está lento">
-    📶 Internet lento
-</button>
+
+<div class="conexion-lenta-panel">
+    <input type="checkbox" id="conexionLenta" onchange="cambiarConexionLenta(this.checked)">
+    <label for="conexionLenta">📶 Conexión lenta</label>
+    <span id="estadoConexionLenta" class="estado-conexion-lenta" aria-live="polite"></span>
+</div>
 <!-- =====================================================
      FILTROS
 ===================================================== -->
@@ -7581,1060 +7518,270 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-const supabaseOnlineClient =
+const supabaseClientBase =
 window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
 
-let supabaseClient = supabaseOnlineClient;
 /* =====================================================
-   MODO INTERNET LENTO
-   Cuando se activa, se copia al dispositivo la información que
-   utiliza este panel y las lecturas/escrituras pasan a una base
-   local. Cada cambio se sincroniza en segundo plano por separado.
-   Si una sincronización falla, el dato permanece en la cola local.
+   CONEXIÓN LENTA
+   La lectura se realiza desde una copia local IndexedDB. Los cambios se
+   aplican primero localmente y se sincronizan en segundo plano con Supabase.
 ===================================================== */
-
-const INTERNET_LENTO_DB = "panel_docente_internet_lento_v1";
-const INTERNET_LENTO_DB_VERSION = 1;
-
-const TABLAS_MODO_INTERNET_LENTO = [
-    "matematica",
-    "actividades",
-    "calificaciones",
-    "asistencia",
-    "asistencia_horarios",
-    "asistencia_tipos_dia",
-    "anotaciones",
-    "anotaciones_actividades",
-    "visitas_estudiantes",
-    "listageneral",
-    "azar_estudiantes_elegidos",
-    "azar_estudiantes_descartados",
+const TABLAS_CONEXION_LENTA = [
+    "matematica", "listageneral", "actividades", "calificaciones",
+    "asistencia", "asistencia_horarios", "asistencia_tipos_dia",
+    "anotaciones", "anotaciones_actividades", "visitas_estudiantes",
+    "azar_estudiantes_elegidos", "azar_estudiantes_descartados",
     "distribuciones_aula"
 ];
+const CLAVE_MODO_CONEXION_LENTA = "panel_docente_conexion_lenta_v1";
+const CLAVE_DB_CONEXION_LENTA = "panel_docente_cache_db_v1";
+const VERSION_DB_CONEXION_LENTA = 1;
+const INTERVALO_SINCRONIZACION_LENTA_MS = 30000;
+let conexionLentaActiva = false;
+let conexionLentaInicializando = false;
+let conexionLentaSincronizando = false;
+let conexionLentaIntervalo = null;
+let conexionLentaDB = null;
+let conexionLentaAdvertencias = [];
 
-let modoInternetLentoActivo = false;
-let internetLentoDB = null;
-let internetLentoSincronizando = false;
-let internetLentoAvisoVisible = false;
-
-function abrirBDInternetLento() {
+function abrirDBConexionLenta() {
+    if (conexionLentaDB) return Promise.resolve(conexionLentaDB);
     return new Promise((resolve, reject) => {
-        if (internetLentoDB) {
-            resolve(internetLentoDB);
-            return;
-        }
-
-        const solicitud = indexedDB.open(
-            INTERNET_LENTO_DB,
-            INTERNET_LENTO_DB_VERSION
-        );
-
-        solicitud.onupgradeneeded = event => {
-            const db = event.target.result;
-
-            if (!db.objectStoreNames.contains("datos")) {
-                db.createObjectStore("datos", { keyPath: "tabla" });
-            }
-
-            if (!db.objectStoreNames.contains("cola")) {
-                const cola = db.createObjectStore("cola", {
-                    keyPath: "id",
-                    autoIncrement: true
-                });
-                cola.createIndex("estado", "estado", { unique: false });
-            }
-
-            if (!db.objectStoreNames.contains("meta")) {
-                db.createObjectStore("meta", { keyPath: "clave" });
-            }
+        const req = indexedDB.open(CLAVE_DB_CONEXION_LENTA, VERSION_DB_CONEXION_LENTA);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains("tablas")) db.createObjectStore("tablas", {keyPath:"nombre"});
+            if (!db.objectStoreNames.contains("cola")) db.createObjectStore("cola", {keyPath:"id", autoIncrement:true});
         };
-
-        solicitud.onsuccess = event => {
-            internetLentoDB = event.target.result;
-            resolve(internetLentoDB);
-        };
-
-        solicitud.onerror = () => {
-            reject(solicitud.error || new Error("No se pudo abrir la base local."));
-        };
+        req.onsuccess = () => { conexionLentaDB = req.result; resolve(conexionLentaDB); };
+        req.onerror = () => reject(req.error || new Error("No se pudo abrir la base local."));
     });
 }
 
-function idbOperacion(storeName, modo, callback) {
-    return abrirBDInternetLento().then(db => new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, modo);
-        const store = tx.objectStore(storeName);
-        let resultado;
-
-        try {
-            resultado = callback(store);
-        } catch (error) {
-            reject(error);
-            return;
-        }
-
-        tx.oncomplete = () => resolve(resultado);
-        tx.onerror = () => reject(tx.error || new Error("Error en la base local."));
-        tx.onabort = () => reject(tx.error || new Error("Operación local cancelada."));
-    }));
-}
-
-function idbObtener(storeName, clave) {
-    return abrirBDInternetLento().then(db => new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, "readonly");
-        const request = tx.objectStore(storeName).get(clave);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    }));
-}
-
-function idbPoner(storeName, valor) {
-    return idbOperacion(storeName, "readwrite", store => store.put(valor));
-}
-
-function idbEliminar(storeName, clave) {
-    return idbOperacion(storeName, "readwrite", store => store.delete(clave));
-}
-
-function clonarLocalInternetLento(valor) {
-    if (valor === undefined) return undefined;
-    try {
-        return JSON.parse(JSON.stringify(valor));
-    } catch (_) {
-        return valor;
-    }
-}
-
-async function leerTablaLocalInternetLento(tabla) {
-    const registro = await idbObtener("datos", tabla);
-    return Array.isArray(registro?.filas)
-        ? clonarLocalInternetLento(registro.filas)
-        : [];
-}
-
-async function guardarTablaLocalInternetLento(tabla, filas) {
-    await idbPoner("datos", {
-        tabla,
-        filas: clonarLocalInternetLento(filas || []),
-        actualizado: Date.now()
+async function leerTablaConexionLenta(nombre) {
+    const db = await abrirDBConexionLenta();
+    return new Promise((resolve,reject) => {
+        const req = db.transaction("tablas","readonly").objectStore("tablas").get(nombre);
+        req.onsuccess = () => resolve(req.result?.filas || []);
+        req.onerror = () => reject(req.error);
     });
 }
-
-function mostrarAvisoInternetLento(mensaje) {
-    const aviso = document.getElementById("avisoInternetLento");
-    const texto = document.getElementById("textoAvisoInternetLento");
-
-    if (texto) {
-        texto.textContent = mensaje ||
-            "Hay datos que todavía no se pudieron guardar.";
-    }
-
-    if (aviso) {
-        aviso.classList.add("visible");
-    }
-
-    internetLentoAvisoVisible = true;
-}
-
-function ocultarAvisoInternetLento() {
-    const aviso = document.getElementById("avisoInternetLento");
-    if (aviso) aviso.classList.remove("visible");
-    internetLentoAvisoVisible = false;
-}
-
-function actualizarBotonInternetLento() {
-    const boton = document.getElementById("botonInternetLento");
-    if (!boton) return;
-
-    boton.classList.toggle("activo", modoInternetLentoActivo);
-    boton.textContent = modoInternetLentoActivo
-        ? "📶 Internet lento ✓"
-        : "📶 Internet lento";
-    boton.setAttribute(
-        "aria-pressed",
-        modoInternetLentoActivo ? "true" : "false"
-    );
-}
-
-function clavesFiltroInternetLento(filtros) {
-    return filtros.map(f => ({
-        campo: f.campo,
-        tipo: f.tipo,
-        valor: clonarLocalInternetLento(f.valor)
-    }));
-}
-
-function aplicarFiltrosInternetLento(filas, filtros) {
-    let resultado = Array.isArray(filas) ? [...filas] : [];
-
-    for (const filtro of filtros) {
-        const campo = filtro.campo;
-
-        if (filtro.tipo === "eq") {
-            resultado = resultado.filter(row =>
-                row?.[campo] === filtro.valor
-            );
-        } else if (filtro.tipo === "neq") {
-            resultado = resultado.filter(row =>
-                row?.[campo] !== filtro.valor
-            );
-        } else if (filtro.tipo === "in") {
-            const valores = Array.isArray(filtro.valor)
-                ? filtro.valor
-                : [];
-            resultado = resultado.filter(row =>
-                valores.some(v => row?.[campo] === v)
-            );
-        } else if (filtro.tipo === "gte") {
-            resultado = resultado.filter(row =>
-                row?.[campo] != null &&
-                String(row[campo]) >= String(filtro.valor)
-            );
-        } else if (filtro.tipo === "gt") {
-            resultado = resultado.filter(row =>
-                row?.[campo] != null &&
-                String(row[campo]) > String(filtro.valor)
-            );
-        } else if (filtro.tipo === "lte") {
-            resultado = resultado.filter(row =>
-                row?.[campo] != null &&
-                String(row[campo]) <= String(filtro.valor)
-            );
-        } else if (filtro.tipo === "lt") {
-            resultado = resultado.filter(row =>
-                row?.[campo] != null &&
-                String(row[campo]) < String(filtro.valor)
-            );
-        } else if (filtro.tipo === "not") {
-            const operador = filtro.operador;
-            if (operador === "is" && filtro.valor === null) {
-                resultado = resultado.filter(row => row?.[campo] != null);
-            } else if (operador === "eq") {
-                resultado = resultado.filter(row => row?.[campo] !== filtro.valor);
-            }
-        }
-    }
-
-    return resultado;
-}
-
-function seleccionarCamposInternetLento(filas, seleccion) {
-    if (!seleccion || seleccion === "*") {
-        return clonarLocalInternetLento(filas);
-    }
-
-    const campos = String(seleccion)
-        .split(",")
-        .map(c => c.trim())
-        .filter(Boolean);
-
-    return filas.map(row => {
-        const salida = {};
-        campos.forEach(campo => {
-            if (Object.prototype.hasOwnProperty.call(row || {}, campo)) {
-                salida[campo] = row[campo];
-            }
-        });
-        return salida;
+async function guardarTablaConexionLenta(nombre, filas) {
+    const db = await abrirDBConexionLenta();
+    return new Promise((resolve,reject) => {
+        const tx = db.transaction("tablas","readwrite");
+        tx.objectStore("tablas").put({nombre, filas:Array.isArray(filas)?filas:[], actualizado_en:Date.now()});
+        tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
     });
 }
-
-function ordenarInternetLento(filas, ordenes) {
-    const resultado = [...filas];
-
-    for (let i = ordenes.length - 1; i >= 0; i--) {
-        const orden = ordenes[i];
-
-        resultado.sort((a, b) => {
-            const av = a?.[orden.campo];
-            const bv = b?.[orden.campo];
-
-            if (av === bv) return 0;
-            if (av == null) return orden.ascending ? 1 : -1;
-            if (bv == null) return orden.ascending ? -1 : 1;
-
-            if (av < bv) return orden.ascending ? -1 : 1;
-            return orden.ascending ? 1 : -1;
-        });
+async function leerColaConexionLenta() {
+    const db = await abrirDBConexionLenta();
+    return new Promise((resolve,reject) => {
+        const req=db.transaction("cola","readonly").objectStore("cola").getAll();
+        req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error);
+    });
+}
+async function agregarColaConexionLenta(registro) {
+    const db=await abrirDBConexionLenta();
+    return new Promise((resolve,reject)=>{
+        const tx=db.transaction("cola","readwrite"); tx.objectStore("cola").add({...registro,creado_en:Date.now()});
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+    });
+}
+async function eliminarColaConexionLenta(id) {
+    const db=await abrirDBConexionLenta();
+    return new Promise((resolve,reject)=>{
+        const tx=db.transaction("cola","readwrite"); tx.objectStore("cola").delete(id);
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+    });
+}
+function actualizarPanelConexionLenta() {
+    const check=document.getElementById("conexionLenta");
+    if(check) check.checked=conexionLentaActiva;
+    const estado=document.getElementById("estadoConexionLenta");
+    if(!estado)return;
+    estado.textContent=conexionLentaActiva?(conexionLentaSincronizando?"⟳ Sincronizando...":"📱 Datos locales activos"):"";
+    estado.classList.toggle("visible",!!estado.textContent);
+    estado.classList.remove("error");
+}
+async function descargarTablaConexionLenta(nombre) {
+    const filas=[], tamano=1000; let desde=0;
+    while(true){
+        const r=await supabaseClientBase.from(nombre).select("*").range(desde,desde+tamano-1);
+        if(r.error)throw r.error;
+        filas.push(...(r.data||[]));
+        if((r.data||[]).length<tamano)break;
+        desde+=tamano;
     }
-
-    return resultado;
+    await guardarTablaConexionLenta(nombre,filas); return filas.length;
 }
-
-function obtenerColumnasConflictoInternetLento(options) {
-    const texto = String(options?.onConflict || "").trim();
-    return texto
-        ? texto.split(",").map(c => c.trim()).filter(Boolean)
-        : [];
-}
-
-function coincidenConflictoInternetLento(a, b, columnas) {
-    if (!columnas.length) {
-        return a?.id != null && b?.id != null &&
-            String(a.id) === String(b.id);
+async function descargarBaseCompletaConexionLenta() {
+    conexionLentaAdvertencias=[];
+    for(const tabla of TABLAS_CONEXION_LENTA){
+        try{await descargarTablaConexionLenta(tabla);}
+        catch(e){conexionLentaAdvertencias.push(tabla+": "+(e?.message||e));}
     }
-
-    return columnas.every(campo =>
-        a?.[campo] != null &&
-        b?.[campo] != null &&
-        String(a[campo]) === String(b[campo])
-    );
+    if(conexionLentaAdvertencias.length){
+        const aviso="⚠️ Conexión lenta: estas tablas no pudieron copiarse y necesitarán Internet:\n\n"+conexionLentaAdvertencias.join("\n");
+        console.warn(aviso); alert(aviso);
+    }
 }
-
-function generarIdLocalInternetLento(tabla, filas) {
-    const ids = (filas || [])
-        .map(row => Number(row?.id))
-        .filter(Number.isFinite);
-
-    const minimo = ids.length ? Math.min(...ids) : 0;
-    return minimo <= 0 ? minimo - 1 : -1;
+function compararConexionLenta(a,op,b){
+    if(op==="eq")return String(a??"")===String(b??"");
+    if(op==="neq")return String(a??"")!==String(b??"");
+    if(op==="gt")return Number(a)>Number(b); if(op==="gte")return Number(a)>=Number(b);
+    if(op==="lt")return Number(a)<Number(b); if(op==="lte")return Number(a)<=Number(b);
+    if(op==="ilike")return String(a??"").toLowerCase().includes(String(b??"").replace(/%/g,"").toLowerCase());
+    if(op==="is")return b===null?a==null:a===b;
+    return true;
 }
-
-async function guardarOperacionInternetLento(operacion) {
-    await idbOperacion("cola", "readwrite", store => store.add({
-        ...clonarLocalInternetLento(operacion),
-        estado: "pendiente",
-        creado: Date.now()
-    }));
+function aplicarFiltrosConexionLenta(filas,filtros){
+    let r=filas.slice();
+    for(const f of filtros){
+        if(f.tipo==="in")r=r.filter(x=>(f.valores||[]).map(String).includes(String(x[f.campo])));
+        else if(f.tipo==="not")r=r.filter(x=>!compararConexionLenta(x[f.campo],f.operador,f.valor));
+        else if(f.tipo==="match")for(const [k,v] of Object.entries(f.valores||{}))r=r.filter(x=>compararConexionLenta(x[k],"eq",v));
+        else r=r.filter(x=>compararConexionLenta(x[f.campo],f.operador,f.valor));
+    }
+    return r;
 }
-
-async function obtenerColaInternetLento() {
-    const db = await abrirBDInternetLento();
-
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction("cola", "readonly");
-        const request = tx.objectStore("cola").getAll();
-
-        request.onsuccess = () => {
-            const filas = (request.result || [])
-                .filter(item => item.estado === "pendiente")
-                .sort((a, b) => Number(a.id) - Number(b.id));
-            resolve(filas);
+function seleccionarCamposConexionLenta(filas,seleccion){
+    if(!seleccion||seleccion==="*")return filas.map(x=>({...x}));
+    const campos=String(seleccion).split(",").map(x=>x.trim()).filter(Boolean).map(x=>{const p=x.split(/\s+as\s+/i);return [p[0].trim(),(p[1]||p[0]).trim()];});
+    return filas.map(f=>{const o={}; campos.forEach(([a,b])=>o[b]=f[a]); return o;});
+}
+function ordenarConexionLenta(filas,ordenes){
+    return filas.slice().sort((a,b)=>{for(const o of ordenes){if(a[o.campo]===b[o.campo])continue; const c=String(a[o.campo]??"").localeCompare(String(b[o.campo]??""),undefined,{numeric:true,sensitivity:"base"}); if(c)return o.asc?c:-c;}return 0;});
+}
+async function ejecutarConsultaLocalConexionLenta(nombre,e){
+    let filas=aplicarFiltrosConexionLenta(await leerTablaConexionLenta(nombre),e.filtros);
+    filas=ordenarConexionLenta(filas,e.ordenes);
+    if(e.limite!=null)filas=filas.slice(0,e.limite);
+    if(e.rango)filas=filas.slice(e.rango[0],e.rango[1]+1);
+    const count=filas.length;
+    if(e.head)return {data:null,error:null,count};
+    const data=seleccionarCamposConexionLenta(filas,e.select);
+    if(e.maybeSingle||e.single){
+        if(data.length===0)return e.single?{data:null,error:{message:"No se encontró ningún registro.",code:"PGRST116"},count:null}:{data:null,error:null,count:null};
+        if(e.single&&data.length>1)return {data:null,error:{message:"Se esperaba un único registro.",code:"PGRST116"},count:null};
+        return {data:data[0],error:null,count:null};
+    }
+    return {data,error:null,count:e.countExact?count:null};
+}
+function filtrosRemotosConexionLenta(q,filtros){
+    for(const f of filtros){
+        if(f.tipo==="in")q=q.in(f.campo,f.valores);
+        else if(f.tipo==="not")q=q.not(f.campo,f.operador,f.valor);
+        else if(f.tipo==="match")q=q.match(f.valores);
+        else q=q[f.operador](f.campo,f.valor);
+    } return q;
+}
+async function aplicarMutacionLocalConexionLenta(nombre,e){
+    let filas=await leerTablaConexionLenta(nombre);
+    const afectados=()=>aplicarFiltrosConexionLenta(filas,e.filtros);
+    if(e.operacion==="insert"){
+        const vals=Array.isArray(e.valor)?e.valor:[e.valor];
+        const nuevas=vals.map(v=>({...v})); nuevas.forEach(v=>{if(v.id==null&&nombre==="actividades")v.id=-Date.now()-Math.floor(Math.random()*100000);});
+        filas.push(...nuevas); await guardarTablaConexionLenta(nombre,filas); await agregarColaConexionLenta({tabla:nombre,operacion:"insert",valor:nuevas});
+        return {data:e.selectAfter?nuevas:null,error:null};
+    }
+    if(e.operacion==="upsert"){
+        const vals=Array.isArray(e.valor)?e.valor:[e.valor], conflictos=String(e.opciones?.onConflict||"").split(",").map(x=>x.trim()).filter(Boolean), out=[];
+        vals.forEach(v0=>{const v={...v0}; let i=-1; if(conflictos.length)i=filas.findIndex(f=>conflictos.every(c=>String(f[c]??"")===String(v[c]??""))); else if(v.id!=null)i=filas.findIndex(f=>String(f.id)===String(v.id));
+            if(i>=0){filas[i]={...filas[i],...v};out.push(filas[i]);}else{if(v.id==null&&nombre==="actividades")v.id=-Date.now()-Math.floor(Math.random()*100000);filas.push(v);out.push(v);}});
+        await guardarTablaConexionLenta(nombre,filas); await agregarColaConexionLenta({tabla:nombre,operacion:"upsert",valor:out,opciones:e.opciones});
+        return {data:e.selectAfter?out:null,error:null};
+    }
+    if(e.operacion==="update"){
+        const cambios=e.valor||{}, out=[]; filas=filas.map(f=>{if(afectados().some(x=>x===f)){const n={...f,...cambios};out.push(n);return n;}return f;});
+        await guardarTablaConexionLenta(nombre,filas); if(out.length)await agregarColaConexionLenta({tabla:nombre,operacion:"update",filtros:e.filtros,valor:cambios});
+        return {data:e.selectAfter?out:null,error:null};
+    }
+    if(e.operacion==="delete"){
+        const out=afectados(), ids=new Set(out); filas=filas.filter(f=>!ids.has(f)); await guardarTablaConexionLenta(nombre,filas);
+        if(out.length)await agregarColaConexionLenta({tabla:nombre,operacion:"delete",filtros:e.filtros});
+        return {data:e.selectAfter?out:null,error:null};
+    }
+    return {data:null,error:{message:"Operación local no soportada: "+e.operacion}};
+}
+function crearBuilderConexionLenta(nombre){
+    const e={select:"*",filtros:[],ordenes:[],limite:null,rango:null,countExact:false,head:false,single:false,maybeSingle:false,operacion:null,valor:null,opciones:null,selectAfter:false};
+    const b=new Proxy({}, {get(_t,p){
+        if(p==="then")return(resolve,reject)=>Promise.resolve(e.operacion?aplicarMutacionLocalConexionLenta(nombre,e):ejecutarConsultaLocalConexionLenta(nombre,e)).then(resolve,reject);
+        if(p==="catch")return fn=>Promise.resolve(b).catch(fn); if(p==="finally")return fn=>Promise.resolve(b).finally(fn);
+        if(typeof p!=="string")return undefined;
+        return(...a)=>{
+            if(p==="select"){e.select=a[0]||"*";e.countExact=a[1]?.count==="exact";e.head=a[1]?.head===true;if(e.operacion)e.selectAfter=true;}
+            else if(["eq","neq","gt","gte","lt","lte","ilike","is"].includes(p))e.filtros.push({tipo:"normal",operador:p,campo:a[0],valor:a[1]});
+            else if(p==="in")e.filtros.push({tipo:"in",campo:a[0],valores:a[1]});
+            else if(p==="not")e.filtros.push({tipo:"not",campo:a[0],operador:a[1],valor:a[2]});
+            else if(p==="match")e.filtros.push({tipo:"match",valores:a[0]||{}});
+            else if(p==="filter")e.filtros.push({tipo:"normal",operador:a[1],campo:a[0],valor:a[2]});
+            else if(p==="order")e.ordenes.push({campo:a[0],asc:a[1]?.ascending!==false});
+            else if(p==="limit")e.limite=Number(a[0]);
+            else if(p==="range")e.rango=[Number(a[0]),Number(a[1])];
+            else if(p==="maybeSingle")e.maybeSingle=true; else if(p==="single")e.single=true;
+            else if(["insert","upsert","update","delete"].includes(p)){e.operacion=p;if(p!=="delete")e.valor=a[0];if(p==="upsert")e.opciones=a[1]||null;}
+            else console.warn("Conexión lenta: método no implementado localmente:",p,nombre);
+            return b;
         };
+    }}); return b;
+}
+function crearClienteConModoConexionLenta(base){
+    return new Proxy(base,{get(obj,p,rec){if(p!=="from")return Reflect.get(obj,p,rec);return nombre=>(conexionLentaActiva&&TABLAS_CONEXION_LENTA.includes(nombre))?crearBuilderConexionLenta(nombre):obj.from(nombre);}});
+}
+let supabaseClient=crearClienteConModoConexionLenta(supabaseClientBase);
 
-        request.onerror = () => reject(request.error);
-    });
+async function procesarColaConexionLenta(){
+    if(!conexionLentaActiva||conexionLentaSincronizando||!navigator.onLine)return;
+    const cola=await leerColaConexionLenta(); if(!cola.length)return;
+    conexionLentaSincronizando=true; actualizarPanelConexionLenta();
+    try{for(const item of cola){let q=supabaseClientBase.from(item.tabla);
+        if(item.operacion==="insert")q=q.insert(item.valor); else if(item.operacion==="upsert")q=q.upsert(item.valor,item.opciones||{}); else if(item.operacion==="update")q=filtrosRemotosConexionLenta(q.update(item.valor),item.filtros||[]); else if(item.operacion==="delete")q=filtrosRemotosConexionLenta(q.delete(),item.filtros||[]); else {await eliminarColaConexionLenta(item.id);continue;}
+        const r=await q; if(r?.error)throw r.error; await eliminarColaConexionLenta(item.id);
+    }}catch(e){console.warn("Sincronización en segundo plano pendiente:",e);}finally{conexionLentaSincronizando=false;actualizarPanelConexionLenta();}
+}
+async function sincronizarBaseConexionLenta(){
+    if(!conexionLentaActiva||conexionLentaSincronizando||!navigator.onLine)return;
+    conexionLentaSincronizando=true; actualizarPanelConexionLenta();
+    try{
+        conexionLentaSincronizando=false; await procesarColaConexionLenta();
+        await descargarBaseCompletaConexionLenta();
+    }catch(e){console.warn("No se pudo completar la sincronización:",e);}
+    finally{conexionLentaSincronizando=false;actualizarPanelConexionLenta();}
+}
+async function activarConexionLenta(){
+    if(conexionLentaActiva||conexionLentaInicializando)return;
+    conexionLentaInicializando=true; const estado=document.getElementById("estadoConexionLenta"); if(estado){estado.textContent="⏳ Copiando base de datos al celular...";estado.classList.add("visible");}
+    try{await abrirDBConexionLenta();await descargarBaseCompletaConexionLenta();conexionLentaActiva=true;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"1");actualizarPanelConexionLenta();
+        if(conexionLentaIntervalo)clearInterval(conexionLentaIntervalo); conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);
+        if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);
+    }catch(e){conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");if(estado){estado.textContent="⚠️ No se pudo preparar la copia local.";estado.classList.add("visible","error");}alert("No se pudo activar la conexión lenta:\n\n"+(e?.message||e));}
+    finally{conexionLentaInicializando=false;actualizarPanelConexionLenta();}
+}
+async function desactivarConexionLenta(){
+    if (conexionLentaActiva && navigator.onLine) {
+        try { await procesarColaConexionLenta(); } catch (e) { console.warn("No se pudo enviar toda la cola antes de desactivar:", e); }
+    }
+    conexionLentaActiva=false;
+    localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");
+    if(conexionLentaIntervalo){clearInterval(conexionLentaIntervalo);conexionLentaIntervalo=null;}
+    actualizarPanelConexionLenta();
+}
+async function cambiarConexionLenta(valor){if(valor)await activarConexionLenta();else await desactivarConexionLenta();}
+async function inicializarConexionLenta(){
+    const check=document.getElementById("conexionLenta"); if(!check)return; const guardado=localStorage.getItem(CLAVE_MODO_CONEXION_LENTA)==="1";
+    if(!guardado){check.checked=false;return;}
+    try{await abrirDBConexionLenta();const base=await leerTablaConexionLenta("matematica");if(!base.length){check.checked=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");return;}conexionLentaActiva=true;check.checked=true;actualizarPanelConexionLenta();conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);}
+    catch(e){console.warn("No se pudo restaurar conexión lenta:",e);check.checked=false;conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");}
 }
 
-async function ejecutarOperacionLocalInternetLento(operacion) {
-    const filas = await leerTablaLocalInternetLento(operacion.tabla);
-    let nuevasFilas = [...filas];
-
-    if (operacion.tipo === "upsert") {
-        const columnas = obtenerColumnasConflictoInternetLento(
-            operacion.options
-        );
-        const registros = Array.isArray(operacion.payload)
-            ? operacion.payload
-            : [operacion.payload];
-
-        registros.forEach(registro => {
-            const indice = nuevasFilas.findIndex(row =>
-                coincidenConflictoInternetLento(row, registro, columnas)
-            );
-
-            if (indice >= 0) {
-                nuevasFilas[indice] = {
-                    ...nuevasFilas[indice],
-                    ...clonarLocalInternetLento(registro)
-                };
-            } else {
-                nuevasFilas.push(clonarLocalInternetLento(registro));
-            }
-        });
-    } else if (operacion.tipo === "insert") {
-        const registros = Array.isArray(operacion.payload)
-            ? operacion.payload
-            : [operacion.payload];
-
-        registros.forEach(registro => {
-            const nuevo = clonarLocalInternetLento(registro);
-
-            if (nuevo && nuevo.id == null) {
-                nuevo.id = generarIdLocalInternetLento(
-                    operacion.tabla,
-                    nuevasFilas
-                );
-            }
-
-            nuevasFilas.push(nuevo);
-        });
-    } else if (operacion.tipo === "update") {
-        nuevasFilas = nuevasFilas.map(row =>
-            aplicarFiltrosInternetLento([row], operacion.filtros)[0]
-                ? { ...row, ...clonarLocalInternetLento(operacion.payload) }
-                : row
-        );
-    } else if (operacion.tipo === "delete") {
-        nuevasFilas = nuevasFilas.filter(row =>
-            !aplicarFiltrosInternetLento(
-                [row],
-                operacion.filtros
-            ).length
-        );
-    }
-
-    await guardarTablaLocalInternetLento(operacion.tabla, nuevasFilas);
-}
-
-function crearQueryLocalInternetLento(tabla) {
-    const estado = {
-        tabla,
-        filtros: [],
-        ordenes: [],
-        seleccion: "*",
-        limite: null,
-        desde: null,
-        hasta: null,
-        opcionesSelect: {},
-        operacionEscritura: null,
-        payloadEscritura: null
-    };
-
-    const query = {
-        select(seleccion = "*", opciones = {}) {
-            estado.seleccion = seleccion;
-            estado.opcionesSelect = opciones || {};
-            return query;
-        },
-
-        eq(campo, valor) {
-            estado.filtros.push({ campo, tipo: "eq", valor });
-            return query;
-        },
-
-        neq(campo, valor) {
-            estado.filtros.push({ campo, tipo: "neq", valor });
-            return query;
-        },
-
-        in(campo, valores) {
-            estado.filtros.push({
-                campo,
-                tipo: "in",
-                valor: Array.isArray(valores) ? [...valores] : []
-            });
-            return query;
-        },
-
-        gte(campo, valor) {
-            estado.filtros.push({ campo, tipo: "gte", valor });
-            return query;
-        },
-
-        gt(campo, valor) {
-            estado.filtros.push({ campo, tipo: "gt", valor });
-            return query;
-        },
-
-        lte(campo, valor) {
-            estado.filtros.push({ campo, tipo: "lte", valor });
-            return query;
-        },
-
-        lt(campo, valor) {
-            estado.filtros.push({ campo, tipo: "lt", valor });
-            return query;
-        },
-
-        not(campo, operador, valor) {
-            estado.filtros.push({
-                campo,
-                tipo: "not",
-                operador,
-                valor
-            });
-            return query;
-        },
-
-        order(campo, opciones = {}) {
-            estado.ordenes.push({
-                campo,
-                ascending: opciones?.ascending !== false
-            });
-            return query;
-        },
-
-        limit(cantidad) {
-            estado.limite = Number(cantidad);
-            return query;
-        },
-
-        range(desde, hasta) {
-            estado.desde = Number(desde);
-            estado.hasta = Number(hasta);
-            return query;
-        },
-
-        async maybeSingle() {
-            const resultado = await query._resolver();
-            return {
-                data: resultado.data.length ? resultado.data[0] : null,
-                error: null
-            };
-        },
-
-        async single() {
-            const resultado = await query._resolver();
-            return {
-                data: resultado.data.length ? resultado.data[0] : null,
-                error: resultado.data.length ? null :
-                    new Error("No se encontró el registro solicitado.")
-            };
-        },
-
-        async _resolver() {
-            let filas = await leerTablaLocalInternetLento(tabla);
-
-            filas = aplicarFiltrosInternetLento(filas, estado.filtros);
-            filas = ordenarInternetLento(filas, estado.ordenes);
-
-            const total = filas.length;
-
-            if (estado.desde != null) {
-                const hasta = estado.hasta == null
-                    ? total - 1
-                    : estado.hasta;
-                filas = filas.slice(estado.desde, hasta + 1);
-            }
-
-            if (estado.desde == null && estado.limite != null) {
-                filas = filas.slice(0, estado.limite);
-            }
-
-            const datos = seleccionarCamposInternetLento(
-                filas,
-                estado.seleccion
-            );
-
-            if (estado.opcionesSelect?.head) {
-                return {
-                    data: null,
-                    error: null,
-                    count: total
-                };
-            }
-
-            return {
-                data: datos,
-                error: null,
-                count: estado.opcionesSelect?.count ? total : null
-            };
-        },
-
-        async upsert(payload, options = {}) {
-            const registros = Array.isArray(payload) ? payload : [payload];
-
-            const filas = await leerTablaLocalInternetLento(tabla);
-            const nuevasFilas = [...filas];
-            const columnas = obtenerColumnasConflictoInternetLento(options);
-
-            registros.forEach(registro => {
-                const nuevo = clonarLocalInternetLento(registro);
-
-                if (nuevo && nuevo.id == null && !columnas.length) {
-                    nuevo.id = generarIdLocalInternetLento(tabla, nuevasFilas);
-                }
-
-                const indice = nuevasFilas.findIndex(row =>
-                    coincidenConflictoInternetLento(
-                        row,
-                        nuevo,
-                        columnas
-                    )
-                );
-
-                if (indice >= 0) {
-                    nuevasFilas[indice] = {
-                        ...nuevasFilas[indice],
-                        ...nuevo
-                    };
-                } else {
-                    nuevasFilas.push(nuevo);
-                }
-            });
-
-            await guardarTablaLocalInternetLento(tabla, nuevasFilas);
-
-            /*
-             * Se encola cada registro por separado para que la sincronización
-             * remota afecte únicamente al dato que cambió.
-             */
-            for (const registro of registros) {
-                await guardarOperacionInternetLento({
-                    tipo: "upsert",
-                    tabla,
-                    payload: registro,
-                    options
-                });
-            }
-
-            programarSincronizacionInternetLento();
-            return { data: registros, error: null };
-        },
-
-        async insert(payload) {
-            const registros = Array.isArray(payload) ? payload : [payload];
-            const filas = await leerTablaLocalInternetLento(tabla);
-            const nuevasFilas = [...filas];
-            const locales = [];
-
-            registros.forEach(registro => {
-                const nuevo = clonarLocalInternetLento(registro);
-
-                if (nuevo && nuevo.id == null) {
-                    nuevo.id = generarIdLocalInternetLento(
-                        tabla,
-                        nuevasFilas
-                    );
-                }
-
-                nuevasFilas.push(nuevo);
-                locales.push(nuevo);
-            });
-
-            await guardarTablaLocalInternetLento(tabla, nuevasFilas);
-
-            for (const registro of locales) {
-                await guardarOperacionInternetLento({
-                    tipo: "insert",
-                    tabla,
-                    payload: registro
-                });
-            }
-
-            programarSincronizacionInternetLento();
-            return { data: locales, error: null };
-        },
-
-        update(payload) {
-            estado.operacionEscritura = "update";
-            estado.payloadEscritura = clonarLocalInternetLento(payload);
-            return query;
-        },
-
-        delete() {
-            estado.operacionEscritura = "delete";
-            return query;
-        },
-
-        async _ejecutarEscritura() {
-            const filtros = clavesFiltroInternetLento(estado.filtros);
-            const filas = await leerTablaLocalInternetLento(tabla);
-
-            if (estado.operacionEscritura === "update") {
-                const nuevasFilas = filas.map(row =>
-                    aplicarFiltrosInternetLento([row], estado.filtros).length
-                        ? { ...row, ...clonarLocalInternetLento(estado.payloadEscritura) }
-                        : row
-                );
-
-                await guardarTablaLocalInternetLento(tabla, nuevasFilas);
-
-                await guardarOperacionInternetLento({
-                    tipo: "update",
-                    tabla,
-                    filtros,
-                    payload: estado.payloadEscritura
-                });
-
-                programarSincronizacionInternetLento();
-
-                return {
-                    data: null,
-                    error: null
-                };
-            }
-
-            if (estado.operacionEscritura === "delete") {
-                const afectadas = filas.filter(row =>
-                    aplicarFiltrosInternetLento(
-                        [row],
-                        estado.filtros
-                    ).length
-                );
-
-                const nuevasFilas = filas.filter(row =>
-                    !aplicarFiltrosInternetLento(
-                        [row],
-                        estado.filtros
-                    ).length
-                );
-
-                await guardarTablaLocalInternetLento(tabla, nuevasFilas);
-
-                await guardarOperacionInternetLento({
-                    tipo: "delete",
-                    tabla,
-                    filtros
-                });
-
-                programarSincronizacionInternetLento();
-
-                return {
-                    data: afectadas,
-                    error: null
-                };
-            }
-
-            return {
-                data: null,
-                error: new Error("Operación local no reconocida.")
-            };
-        },
-
-        then(resolve, reject) {
-            return query._ejecutarEscritura().then(resolve, reject);
-        }
-    };
-
-    return query;
-}
-
-async function sincronizarOperacionInternetLento(operacion) {
-    let respuesta;
-
-    if (operacion.tipo === "upsert") {
-        respuesta = await supabaseOnlineClient
-            .from(operacion.tabla)
-            .upsert(operacion.payload, operacion.options || {});
-    } else if (operacion.tipo === "insert") {
-        /*
-         * En una inserción offline puede existir un id temporal negativo.
-         * No se envía ese id: Supabase genera el definitivo.
-         */
-        let payload = clonarLocalInternetLento(operacion.payload);
-
-        if (payload && Number(payload.id) < 0) {
-            delete payload.id;
-        }
-
-        const resultado = await supabaseOnlineClient
-            .from(operacion.tabla)
-            .insert(payload)
-            .select();
-
-        respuesta = {
-            error: resultado.error,
-            data: resultado.data
-        };
-
-        if (!respuesta.error && Array.isArray(resultado.data) && resultado.data[0]) {
-            const nuevo = resultado.data[0];
-            const temporal = operacion.payload?.id;
-
-            if (temporal != null && nuevo.id != null) {
-                await reconciliarIdLocalInternetLento(
-                    operacion.tabla,
-                    temporal,
-                    nuevo.id
-                );
-            }
-        }
-    } else if (operacion.tipo === "update") {
-        let consulta = supabaseOnlineClient
-            .from(operacion.tabla)
-            .update(operacion.payload);
-
-        for (const filtro of (operacion.filtros || [])) {
-            if (filtro.tipo === "eq") consulta = consulta.eq(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "neq") consulta = consulta.neq(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "in") consulta = consulta.in(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "gte") consulta = consulta.gte(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "gt") consulta = consulta.gt(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "lte") consulta = consulta.lte(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "lt") consulta = consulta.lt(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "not") consulta = consulta.not(filtro.campo, filtro.operador, filtro.valor);
-        }
-
-        respuesta = await consulta;
-    } else if (operacion.tipo === "delete") {
-        let consulta = supabaseOnlineClient
-            .from(operacion.tabla)
-            .delete();
-
-        for (const filtro of (operacion.filtros || [])) {
-            if (filtro.tipo === "eq") consulta = consulta.eq(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "neq") consulta = consulta.neq(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "in") consulta = consulta.in(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "gte") consulta = consulta.gte(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "gt") consulta = consulta.gt(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "lte") consulta = consulta.lte(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "lt") consulta = consulta.lt(filtro.campo, filtro.valor);
-            else if (filtro.tipo === "not") consulta = consulta.not(filtro.campo, filtro.operador, filtro.valor);
-        }
-
-        respuesta = await consulta;
-    }
-
-    if (respuesta?.error) {
-        throw respuesta.error;
-    }
-}
-
-async function reconciliarIdLocalInternetLento(tabla, temporal, definitivo) {
-    const filas = await leerTablaLocalInternetLento(tabla);
-    const actualizadas = filas.map(row =>
-        String(row?.id) === String(temporal)
-            ? { ...row, id: definitivo }
-            : row
-    );
-    await guardarTablaLocalInternetLento(tabla, actualizadas);
-
-    const cola = await obtenerColaInternetLento();
-    for (const item of cola) {
-        if (item.tabla !== tabla) continue;
-
-        let cambio = false;
-        if (item.payload && String(item.payload.id) === String(temporal)) {
-            item.payload.id = definitivo;
-            cambio = true;
-        }
-
-        (item.filtros || []).forEach(filtro => {
-            if (filtro.campo === "id" &&
-                String(filtro.valor) === String(temporal)) {
-                filtro.valor = definitivo;
-                cambio = true;
-            }
-        });
-
-        if (cambio) {
-            await idbPoner("cola", item);
-        }
-    }
-}
-
-async function eliminarOperacionColaInternetLento(id) {
-    await idbEliminar("cola", id);
-}
-
-async function sincronizarColaInternetLento() {
-    if (!modoInternetLentoActivo || internetLentoSincronizando) {
-        return;
-    }
-
-    if (!navigator.onLine) {
-        mostrarAvisoInternetLento(
-            "No hay conexión. Los datos siguen guardados en el celular."
-        );
-        return;
-    }
-
-    internetLentoSincronizando = true;
-
-    try {
-        let cola = await obtenerColaInternetLento();
-
-        for (const operacion of cola) {
-            try {
-                await sincronizarOperacionInternetLento(operacion);
-                await eliminarOperacionColaInternetLento(operacion.id);
-            } catch (error) {
-                console.error(
-                    "No se pudo sincronizar un dato del modo Internet lento:",
-                    error
-                );
-
-                mostrarAvisoInternetLento(
-                    "Hay datos que todavía no se pudieron guardar en la base de datos."
-                );
-                return;
-            }
-        }
-
-        cola = await obtenerColaInternetLento();
-
-        if (cola.length === 0) {
-            ocultarAvisoInternetLento();
-        }
-    } finally {
-        internetLentoSincronizando = false;
-    }
-}
-
-function programarSincronizacionInternetLento() {
-    if (!modoInternetLentoActivo) return;
-
-    /*
-     * Se deja respirar al navegador para que la edición continúe sin esperar
-     * la respuesta de Internet.
-     */
-    setTimeout(() => {
-        sincronizarColaInternetLento().catch(error => {
-            console.error("Error en sincronización en segundo plano:", error);
-            mostrarAvisoInternetLento(
-                "No se pudo guardar un dato todavía. Permanece protegido en el celular."
-            );
-        });
-    }, 0);
-}
-
-async function intentarGuardarInternetLento() {
-    if (!modoInternetLentoActivo) return;
-
-    if (!navigator.onLine) {
-        mostrarAvisoInternetLento(
-            "No hay conexión en este momento. El dato sigue protegido en el celular."
-        );
-        return;
-    }
-
-    ocultarAvisoInternetLento();
-    await sincronizarColaInternetLento();
-
-    const cola = await obtenerColaInternetLento();
-    if (cola.length > 0) {
-        mostrarAvisoInternetLento(
-            "Todavía queda algún dato sin guardar. Puedes volver a intentar."
-        );
-    }
-}
-
-async function descargarBaseInternetLento() {
-    const db = await abrirBDInternetLento();
-
-    for (const tabla of TABLAS_MODO_INTERNET_LENTO) {
-        const filas = [];
-        const tamanoPagina = 1000;
-        let desde = 0;
-
-        while (true) {
-            const { data, error } = await supabaseOnlineClient
-                .from(tabla)
-                .select("*")
-                .range(desde, desde + tamanoPagina - 1);
-
-            if (error) {
-                throw new Error(
-                    `No se pudo copiar la tabla ${tabla}: ${error.message || error}`
-                );
-            }
-
-            const lote = Array.isArray(data) ? data : [];
-            filas.push(...lote);
-
-            if (lote.length < tamanoPagina) break;
-            desde += tamanoPagina;
-        }
-
-        await guardarTablaLocalInternetLento(tabla, filas);
-    }
-
-    await idbPoner("meta", {
-        clave: "ultima_copia",
-        fecha: Date.now(),
-        tablas: [...TABLAS_MODO_INTERNET_LENTO]
-    });
-
-    return db;
-}
-
-async function activarModoInternetLento() {
-    if (modoInternetLentoActivo) {
-        await intentarGuardarInternetLento();
-        return;
-    }
-
-    const boton = document.getElementById("botonInternetLento");
-
-    if (boton) {
-        boton.disabled = true;
-        boton.textContent = "📶 Copiando base...";
-    }
-
-    try {
-        /*
-         * La copia completa se hace SOLO al activar este botón.
-         * Si una tabla no puede copiarse, no se entra en modo local para
-         * evitar trabajar con una base incompleta.
-         */
-        await descargarBaseInternetLento();
-
-        modoInternetLentoActivo = true;
-        supabaseClient = {
-            from: tabla => crearQueryLocalInternetLento(tabla)
-        };
-        actualizarBotonInternetLento();
-
-        await sincronizarColaInternetLento();
-
-        mostrarMensaje(
-            "✓ Internet lento activado. La base quedó copiada en el celular y los cambios se sincronizarán en segundo plano."
-        );
-
-        window.addEventListener(
-            "online",
-            programarSincronizacionInternetLento
-        );
-
-        if (!window.__internetLentoIntervalo) {
-            window.__internetLentoIntervalo = setInterval(
-                programarSincronizacionInternetLento,
-                20000
-            );
-        }
-    } catch (error) {
-        console.error("No se pudo activar Internet lento:", error);
-        modoInternetLentoActivo = false;
-        supabaseClient = supabaseOnlineClient;
-        actualizarBotonInternetLento();
-
-        alert(
-            "No se pudo activar \"Internet lento\" porque la copia de la base no terminó.\n\n" +
-            (error?.message || error)
-        );
-    } finally {
-        if (boton) {
-            boton.disabled = false;
-            actualizarBotonInternetLento();
-        }
-    }
-}
-
-async function desactivarModoInternetLento() {
-    const cola = await obtenerColaInternetLento();
-
-    if (cola.length > 0) {
-        const continuar = confirm(
-            "Todavía hay datos que no pudieron sincronizarse.\n\n" +
-            "Si desactivas ahora, los datos permanecerán guardados en el celular " +
-            "para no perderlos, pero no se enviarán hasta volver a activar Internet lento.\n\n" +
-            "¿Deseas desactivar de todos modos?"
-        );
-
-        if (!continuar) return;
-    }
-
-    await sincronizarColaInternetLento();
-
-    const colaFinal = await obtenerColaInternetLento();
-
-    if (colaFinal.length > 0) {
-        mostrarAvisoInternetLento(
-            "Hay datos sin guardar. Se conservarán en el celular."
-        );
-    }
-
-    modoInternetLentoActivo = false;
-    supabaseClient = supabaseOnlineClient;
-    actualizarBotonInternetLento();
-}
-
-async function alternarModoInternetLento() {
-    if (modoInternetLentoActivo) {
-        await desactivarModoInternetLento();
-    } else {
-        await activarModoInternetLento();
-    }
-}
-
-/* Si la página se recarga, el modo NO se activa solo:
-   el usuario debe pulsar nuevamente el botón para trabajar localmente. */
-
+/* =====================================================
+   CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
+===================================================== */
 
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
@@ -27666,6 +26813,32 @@ document.addEventListener("contextmenu", function(event) {
     if (!modoPresidenteAsistenciaQR || desbloqueandoPresidenteQR) return;
     event.preventDefault();
 }, true);
+
+
+function verificarTablasConexionLenta() {
+    try {
+        const codigo = Array.from(document.scripts).map(x => x.textContent || "").join("\n");
+        const tablasDetectadas = new Set();
+        const rx = /\.from\(\s*["']([^"']+)["']\s*\)\s*\.(?:insert|upsert|update|delete)\b/g;
+        let m;
+        while ((m = rx.exec(codigo))) tablasDetectadas.add(m[1]);
+
+        const faltantes = Array.from(tablasDetectadas).filter(t => !TABLAS_CONEXION_LENTA.includes(t));
+        if (faltantes.length) {
+            const aviso = "⚠️ ADVERTENCIA: hay datos que el modo Conexión lenta todavía no puede sincronizar automáticamente: " + faltantes.join(", ");
+            console.warn(aviso);
+            setTimeout(() => alert(aviso), 100);
+        }
+    } catch (e) {
+        console.warn("No se pudo verificar la cobertura de sincronización:", e);
+    }
+}
+
+/* Inicialización de la casilla "Conexión lenta". */
+document.addEventListener("DOMContentLoaded", function() {
+    verificarTablasConexionLenta();
+    inicializarConexionLenta().catch(error => console.warn("Inicialización de conexión lenta:", error));
+});
 </script>
 
 <div id="modalConfigArchivosEstudiantes" class="modal-fondo oculto" onclick="cerrarConfiguracionArchivosEstudiantes(event)">
