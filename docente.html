@@ -7581,6 +7581,123 @@ const TABLAS_MODO_OFFLINE=["actividades","anotaciones","anotaciones_actividades"
 const DB_OFFLINE_NOMBRE="docentqr_offline_db",DB_OFFLINE_VERSION=2,STORE_TABLAS="tablas",STORE_META="meta",STORE_COLA="cola",STORE_ARCHIVOS="archivos",CLAVE_MODO="docentqr_modo_datos";
 let modoDatosOffline=localStorage.getItem(CLAVE_MODO)==="offline",sincronizandoDatos=false;
 
+/* =====================================================
+   AVISO DE OTRO DISPOSITIVO EN MODO OFFLINE
+   Se registra el estado en los metadatos del mismo usuario de Supabase,
+   para que los demás dispositivos puedan saber que otro celular está Offline.
+   El aviso es informativo: nunca impide entrar ni trabajar en Offline.
+===================================================== */
+const CLAVE_DISPOSITIVO_OFFLINE="docentqr_dispositivo_offline_id";
+const CLAVE_DISPOSITIVOS_OFFLINE="docentqr_dispositivos_offline";
+const INTERVALO_AVISO_DISPOSITIVO_OFFLINE=15000;
+let intervaloAvisoDispositivoOffline=null;
+
+function obtenerIdDispositivoOffline(){
+  let id=localStorage.getItem(CLAVE_DISPOSITIVO_OFFLINE);
+  if(!id){
+    id=(crypto?.randomUUID ? crypto.randomUUID() : `disp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    localStorage.setItem(CLAVE_DISPOSITIVO_OFFLINE,id);
+  }
+  return id;
+}
+
+async function obtenerDispositivosOfflineRegistrados(){
+  try{
+    const {data,error}=await supabaseClient.auth.getUser();
+    if(error||!data?.user)return [];
+    const lista=data.user.user_metadata?.[CLAVE_DISPOSITIVOS_OFFLINE];
+    return Array.isArray(lista)?lista:[];
+  }catch(e){
+    console.warn("No se pudo consultar el estado Offline de otros dispositivos:",e);
+    return [];
+  }
+}
+
+function limpiarDispositivosOffline(lista){
+  const ahora=Date.now();
+  return (Array.isArray(lista)?lista:[])
+    .filter(x=>x&&x.id)
+    .filter(x=>x.id!==obtenerIdDispositivoOffline())
+    .filter(x=>{
+      /* Un registro se mantiene mientras no sea marcado como Online.
+         El vencimiento solo limpia registros antiguos abandonados. */
+      const t=Number(x.actualizado_en||0);
+      return !t || ahora-t < 30*24*60*60*1000;
+    });
+}
+
+async function registrarEsteDispositivoOffline(){
+  try{
+    const id=obtenerIdDispositivoOffline();
+    const {data,error}=await supabaseClient.auth.getUser();
+    if(error||!data?.user)return;
+    const metadata={...(data.user.user_metadata||{})};
+    const existentes=Array.isArray(metadata[CLAVE_DISPOSITIVOS_OFFLINE])
+      ? metadata[CLAVE_DISPOSITIVOS_OFFLINE] : [];
+    const otros=existentes.filter(x=>x&&x.id&&x.id!==id);
+    otros.push({id,actualizado_en:Date.now(),modo:"offline"});
+    metadata[CLAVE_DISPOSITIVOS_OFFLINE]=otros;
+    const r=await supabaseClient.auth.updateUser({data:metadata});
+    if(r.error)console.warn("No se pudo registrar este dispositivo como Offline:",r.error);
+  }catch(e){
+    console.warn("No se pudo registrar el modo Offline del dispositivo:",e);
+  }
+}
+
+async function registrarEsteDispositivoOnline(){
+  try{
+    const id=localStorage.getItem(CLAVE_DISPOSITIVO_OFFLINE);
+    if(!id)return;
+    const {data,error}=await supabaseClient.auth.getUser();
+    if(error||!data?.user)return;
+    const metadata={...(data.user.user_metadata||{})};
+    const lista=Array.isArray(metadata[CLAVE_DISPOSITIVOS_OFFLINE])
+      ? metadata[CLAVE_DISPOSITIVOS_OFFLINE] : [];
+    const nueva=lista.filter(x=>x&&x.id&&x.id!==id);
+    if(nueva.length===lista.length)return;
+    metadata[CLAVE_DISPOSITIVOS_OFFLINE]=nueva;
+    const r=await supabaseClient.auth.updateUser({data:metadata});
+    if(r.error)console.warn("No se pudo registrar este dispositivo como Online:",r.error);
+  }catch(e){
+    console.warn("No se pudo limpiar el estado Offline del dispositivo:",e);
+  }
+}
+
+async function hayOtroDispositivoOffline(){
+  const lista=await obtenerDispositivosOfflineRegistrados();
+  return limpiarDispositivosOffline(lista).length>0;
+}
+
+async function advertirOtroDispositivoOffline(mostrarSiempre=false){
+  if(modoDatosOffline || !navigator.onLine)return false;
+  try{
+    const lista=limpiarDispositivosOffline(await obtenerDispositivosOfflineRegistrados());
+    if(!lista.length)return false;
+    const mensaje=
+      "⚠️ ADVERTENCIA\n\n"+
+      "Hay otro dispositivo en modo OFFLINE.\n\n"+
+      "Si colocas este dispositivo en modo OFFLINE, habrá más de un dispositivo trabajando con datos sin sincronizar.\n\n"+
+      "¿Está seguro de continuar?\n\n"+
+      "Esta advertencia no impide continuar.";
+    alert(mensaje);
+    return true;
+  }catch(e){
+    if(mostrarSiempre)console.warn(e);
+    return false;
+  }
+}
+
+function iniciarAvisoContinuoDispositivoOffline(){
+  if(intervaloAvisoDispositivoOffline)clearInterval(intervaloAvisoDispositivoOffline);
+  if(modoDatosOffline)return;
+  intervaloAvisoDispositivoOffline=setInterval(()=>{
+    if(!modoDatosOffline && navigator.onLine){
+      advertirOtroDispositivoOffline(false);
+    }
+  },INTERVALO_AVISO_DISPOSITIVO_OFFLINE);
+}
+
+
 function abrirDBOffline(){
   if(window.__docentqrDB) return Promise.resolve(window.__docentqrDB);
   return new Promise((resolve,reject)=>{
@@ -7623,10 +7740,16 @@ async function obtenerTodasLasFilasOnline(tabla){
 async function descargarBaseCompletaAlCelular(){
   if(sincronizandoDatos)return;sincronizandoDatos=true;const b=document.getElementById("botonModoDatos");if(b)b.disabled=true;
   try{
+    /* Solo informa: nunca bloquea el cambio a Offline. */
+    await advertirOtroDispositivoOffline(true);
     for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){const t=TABLAS_MODO_OFFLINE[i];mostrarProgresoModoDatos(`Descargando ${t} (${i+1}/${TABLAS_MODO_OFFLINE.length})...`);await guardarTablaOffline(t,await obtenerTodasLasFilasOnline(t))}
     await descargarStorageAlCelular();
     await idbPut(STORE_META,{clave:"ultima_descarga_completa",valor:new Date().toISOString()});
-    modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");actualizarInterfazModoDatos();mostrarMensaje("✓ Base de datos completa copiada al celular. La aplicación está Offline.");
+    modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");
+    if(intervaloAvisoDispositivoOffline){clearInterval(intervaloAvisoDispositivoOffline);intervaloAvisoDispositivoOffline=null;}
+    /* Se registra después de completar la copia para no marcar Offline si la descarga falló. */
+    await registrarEsteDispositivoOffline();
+    actualizarInterfazModoDatos();mostrarMensaje("✓ Base de datos completa copiada al celular. La aplicación está Offline.");
   }finally{sincronizandoDatos=false;if(b)b.disabled=false}
 }
 
@@ -8291,6 +8414,8 @@ async function sincronizarCambiosOffline(){
     }
 
     modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online");
+    await registrarEsteDispositivoOnline();
+    iniciarAvisoContinuoDispositivoOffline();
 
     for(let i=0;i<TABLAS_MODO_OFFLINE.length;i++){
       const t=TABLAS_MODO_OFFLINE[i];
@@ -8328,7 +8453,18 @@ async function cambiarModoDatos(){
     }
   }catch(e){console.error(e);modoDatosOffline=true;localStorage.setItem(CLAVE_MODO,"offline");actualizarInterfazModoDatos("Offline · sincronización pendiente");alert("No se pudo completar la sincronización. La aplicación permanece Offline para no perder los datos.\n\n"+(e.message||e))}
 }
-(async()=>{try{if(modoDatosOffline&&!await hayCopiaOfflineCompleta()){modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online")}actualizarInterfazModoDatos()}catch(e){console.warn(e)}})();
+(async()=>{try{
+  if(modoDatosOffline&&!await hayCopiaOfflineCompleta()){
+    modoDatosOffline=false;localStorage.setItem(CLAVE_MODO,"online");
+  }
+  if(!modoDatosOffline){
+    await registrarEsteDispositivoOnline();
+    actualizarInterfazModoDatos();
+    iniciarAvisoContinuoDispositivoOffline();
+  }else{
+    actualizarInterfazModoDatos();
+  }
+}catch(e){console.warn(e)}})();
 
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
