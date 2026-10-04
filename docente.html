@@ -7750,9 +7750,6 @@ async function sincronizarBaseConexionLenta(){
     try{
         conexionLentaSincronizando=false; await procesarColaConexionLenta();
         await descargarBaseCompletaConexionLenta();
-        if (typeof cargarPendientesInicio === "function") {
-            await cargarPendientesInicio();
-        }
     }catch(e){console.warn("No se pudo completar la sincronización:",e);}
     finally{conexionLentaSincronizando=false;actualizarPanelConexionLenta();}
 }
@@ -7760,9 +7757,6 @@ async function activarConexionLenta(){
     if(conexionLentaActiva||conexionLentaInicializando)return;
     conexionLentaInicializando=true; const estado=document.getElementById("estadoConexionLenta"); if(estado){estado.textContent="⏳ Copiando base de datos al celular...";estado.classList.add("visible");}
     try{await abrirDBConexionLenta();await descargarBaseCompletaConexionLenta();conexionLentaActiva=true;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"1");actualizarPanelConexionLenta();
-        if (typeof cargarPendientesInicio === "function") {
-            await cargarPendientesInicio();
-        }
         if(conexionLentaIntervalo)clearInterval(conexionLentaIntervalo); conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);
         if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);
     }catch(e){conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");if(estado){estado.textContent="⚠️ No se pudo preparar la copia local.";estado.classList.add("visible","error");}alert("No se pudo activar la conexión lenta:\n\n"+(e?.message||e));}
@@ -7781,11 +7775,7 @@ async function cambiarConexionLenta(valor){if(valor)await activarConexionLenta()
 async function inicializarConexionLenta(){
     const check=document.getElementById("conexionLenta"); if(!check)return; const guardado=localStorage.getItem(CLAVE_MODO_CONEXION_LENTA)==="1";
     if(!guardado){check.checked=false;return;}
-    try{await abrirDBConexionLenta();const base=await leerTablaConexionLenta("matematica");if(!base.length){check.checked=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");return;}conexionLentaActiva=true;check.checked=true;actualizarPanelConexionLenta();
-        if (typeof cargarPendientesInicio === "function") {
-            await cargarPendientesInicio();
-        }
-        conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);}
+    try{await abrirDBConexionLenta();const base=await leerTablaConexionLenta("matematica");if(!base.length){check.checked=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");return;}conexionLentaActiva=true;check.checked=true;actualizarPanelConexionLenta();conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);}
     catch(e){console.warn("No se pudo restaurar conexión lenta:",e);check.checked=false;conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");}
 }
 
@@ -8751,30 +8741,62 @@ async function cargarPendientesInicio() {
          *
          * No se modifica ninguna otra función de la aplicación.
          */
-        const [resultadoActividades, resultadoAsistencias] = await Promise.all([
-            supabaseClient
+        /*
+         * En Conexión lenta, los filtros gte/lt de la copia local convierten
+         * los valores a Number(). Eso no funciona con fechas YYYY-MM-DD.
+         * Por eso, sólo aquí se descargan las filas necesarias y la fecha se
+         * filtra después como texto. En modo normal se conserva la consulta
+         * original a Supabase.
+         */
+        const consultaActividades = conexionLentaActiva
+            ? supabaseClient
+                .from("actividades")
+                .select("id,curso,nombre,categoria,fecha,hora_inicio,hora_fin,orden")
+                .order("fecha", { ascending: true })
+                .order("hora_inicio", { ascending: true })
+                .order("orden", { ascending: true })
+            : supabaseClient
                 .from("actividades")
                 .select("id,curso,nombre,categoria,fecha,hora_inicio,hora_fin,orden")
                 .gte("fecha", hoy)
                 .order("fecha", { ascending: true })
                 .order("hora_inicio", { ascending: true })
                 .order("orden", { ascending: true })
-                .limit(100),
+                .limit(100);
 
-            supabaseClient
+        const consultaAsistencias = conexionLentaActiva
+            ? supabaseClient
+                .from("asistencia_horarios")
+                .select("curso,fecha,hora_entrada")
+                .order("fecha", { ascending: true })
+                .order("hora_entrada", { ascending: true })
+            : supabaseClient
                 .from("asistencia_horarios")
                 .select("curso,fecha,hora_entrada")
                 .gte("fecha", hoy)
                 .order("fecha", { ascending: true })
                 .order("hora_entrada", { ascending: true })
-                .limit(100)
+                .limit(100);
+
+        const [resultadoActividades, resultadoAsistencias] = await Promise.all([
+            consultaActividades,
+            consultaAsistencias
         ]);
 
         if (resultadoActividades.error) throw resultadoActividades.error;
         if (resultadoAsistencias.error) throw resultadoAsistencias.error;
 
-        const actividadesInicio = resultadoActividades.data || [];
-        const horariosAsistencia = resultadoAsistencias.data || [];
+        const actividadesInicio = (resultadoActividades.data || []).filter(a =>
+            String(a.fecha || "").slice(0, 10) >= hoy
+        );
+        const horariosAsistencia = (resultadoAsistencias.data || []).filter(a =>
+            String(a.fecha || "").slice(0, 10) >= hoy
+        );
+
+        if (conexionLentaActiva) {
+            actividadesInicio.splice(100);
+            horariosAsistencia.splice(100);
+        }
 
         const pendientes = [];
 
