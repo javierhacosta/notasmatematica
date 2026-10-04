@@ -7763,7 +7763,21 @@ async function activarConexionLenta(){
     finally{conexionLentaInicializando=false;actualizarPanelConexionLenta();}
 }
 async function desactivarConexionLenta(){
-    if (conexionLentaActiva && navigator.onLine) {
+    /* La conexión lenta no puede desactivarse sin Internet, porque
+       primero debe poder sincronizarse la información local pendiente. */
+    if (!navigator.onLine) {
+        const check = document.getElementById("conexionLenta");
+        if (check) check.checked = true;
+        const estado = document.getElementById("estadoConexionLenta");
+        if (estado) {
+            estado.textContent = "⚠️ Sin Internet: Conexión lenta sigue activa";
+            estado.classList.add("visible", "error");
+        }
+        alert("⚠️ No tienes Internet.\n\nNo se puede desactivar la Conexión lenta hasta recuperar la conexión a Internet.");
+        return;
+    }
+
+    if (conexionLentaActiva) {
         try { await procesarColaConexionLenta(); } catch (e) { console.warn("No se pudo enviar toda la cola antes de desactivar:", e); }
     }
     conexionLentaActiva=false;
