@@ -1418,6 +1418,34 @@ td:first-child {
     font-weight: bold;
     cursor: pointer;
 }
+.historial-dato-claro,
+.conflicto-datos-claro {
+    display: grid;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    line-height: 1.4;
+}
+
+.conflicto-datos-json {
+    margin: 0;
+    padding: 9px;
+    background: #f7f7f7;
+    border-radius: 7px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.historial-dato-claro strong,
+.conflicto-datos-claro strong {
+    color: #37474f;
+}
+
 .historial-restaurar:hover { background: #d95f00; }
 @media (max-width: 600px) {
     .modal-historial { max-width: 100%; max-height: 94vh; }
@@ -7697,12 +7725,44 @@ async function mostrarConflictoVersiones(op,base,servidor){
     const nombre=op.tabla==="calificaciones"?"Calificación":op.tabla;
     const intro=document.createElement("div");intro.innerHTML=`<p style="line-height:1.5;margin:0 0 14px">El mismo dato fue modificado mientras este dispositivo estaba Offline.</p><p style="margin:0 0 14px"><strong>Tabla:</strong> ${String(nombre).replace(/</g,"&lt;")}</p>`;
     const versiones=document.createElement("div");versiones.style.cssText="display:grid;gap:10px";
-    const tarjeta=(tituloTexto,estado,valor,fecha,detalle)=>{
-      const x=document.createElement("div");x.style.cssText="border:1px solid #ddd;border-radius:12px;padding:13px;background:#fafafa";
-      x.innerHTML=`<div style="font-weight:800;font-size:16px">${tituloTexto} — ${estado}</div><div style="margin-top:6px;line-height:1.45"><strong>Fecha:</strong> ${formatearFechaConflicto(fecha)}<br><strong>Datos:</strong> <code style="white-space:pre-wrap;word-break:break-word">${JSON.stringify(valor??null,null,2).replace(/</g,"&lt;")}</code>${detalle?`<br><small>${detalle}</small>`:""}</div>`;return x;
+    const tarjeta=(tituloTexto,estado,valor,fecha,detalle,esLocal)=>{
+      const x=document.createElement("div");
+      x.style.cssText="border:1px solid #ddd;border-radius:12px;padding:13px;background:#fafafa";
+      const datosClaros = esLocal
+        ? obtenerDatosLegiblesConflicto(op)
+        : (op.tabla === "calificaciones"
+            ? obtenerDatosLegiblesConflicto({...op, datos: valor})
+            : `<pre class="conflicto-datos-json">${escapeHTML(JSON.stringify(valor??null,null,2))}</pre>`);
+      x.innerHTML=`
+        <div style="font-weight:800;font-size:16px">${tituloTexto} — ${estado}</div>
+        <div style="margin-top:8px;line-height:1.45">
+          <strong>🕒 Fecha y hora:</strong> ${formatearFechaConflicto(fecha)}
+        </div>
+        <div style="margin-top:9px">
+          ${datosClaros}
+        </div>
+        ${detalle?`<div style="margin-top:8px;color:#666;font-size:12px">${detalle}</div>`:""}
+      `;
+      return x;
     };
-    versiones.appendChild(tarjeta("📱 Este celular",etiquetaLocal,op.datos,localFecha,"Fecha registrada cuando se realizó el cambio Offline."));
-    versiones.appendChild(tarjeta("☁️ Servidor",etiquetaServidor,servidor,servidorFecha,"La fecha exacta solo se muestra si la tabla dispone de un campo de modificación."));
+    versiones.appendChild(tarjeta(
+      "📱 Este celular",
+      etiquetaLocal,
+      op.datos,
+      localFecha,
+      "Hora local de Bolivia en la que este celular registró el cambio mientras estaba Offline.",
+      true
+    ));
+    versiones.appendChild(tarjeta(
+      "☁️ Servidor",
+      etiquetaServidor,
+      servidor,
+      servidorFecha,
+      servidorFecha
+        ? "Hora de modificación registrada por el servidor, convertida a la hora de Bolivia."
+        : "No se encontró una fecha de modificación en los datos del servidor.",
+      false
+    ));
     const nota=document.createElement("p");nota.style.cssText="margin:15px 0 18px;line-height:1.45;color:#555;font-size:13px";
     nota.textContent=servidorFecha?"La versión más reciente se determina comparando las fechas de modificación.":"La tabla no proporciona una fecha de modificación del servidor; por seguridad, revisa ambas versiones antes de elegir.";
     const acciones=document.createElement("div");acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap";
@@ -23887,18 +23947,142 @@ function formatearFechaHistorial(fecha) {
     if (!fecha) return "";
     const d = new Date(fecha);
     if (isNaN(d.getTime())) return String(fecha);
+
+    // Las fechas almacenadas en ISO suelen estar en UTC (terminan en Z).
+    // Para que el historial siempre muestre la hora de Bolivia, se fuerza
+    // la zona horaria America/La_Paz (UTC-4), independientemente de la
+    // configuración horaria del teléfono.
     return d.toLocaleString("es-BO", {
+        timeZone: "America/La_Paz",
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
-        minute: "2-digit"
+        minute: "2-digit",
+        hour12: false
     });
 }
 
 function valorHistorial(valor) {
     if (valor === null || valor === undefined || valor === "") return "—";
     return String(valor);
+}
+
+/* =====================================================
+   HISTORIAL OFFLINE — PRESENTACIÓN CLARA Y HORA DE BOLIVIA
+===================================================== */
+
+function obtenerNombreEstudianteHistorial(estudianteId, registro) {
+    const id = Number(estudianteId);
+
+    // Primero usa el nombre que ya quedó guardado en el historial.
+    if (registro && String(registro.estudiante_nombre || "").trim()) {
+        return String(registro.estudiante_nombre).trim();
+    }
+
+    // Si no existe, busca al estudiante en la lista cargada en el celular.
+    const lista = Array.isArray(estudiantes) ? estudiantes : [];
+    const estudiante = lista.find(e => Number(e.id) === id);
+
+    return estudiante
+        ? String(
+            estudiante.nombre ||
+            estudiante.nombre_completo ||
+            estudiante.nombres ||
+            ""
+        ).trim()
+        : "";
+}
+
+function formatearFechaHoraBoliviaHistorial(fecha) {
+    if (!fecha) return "Fecha no disponible";
+
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return String(fecha);
+
+    return d.toLocaleString("es-BO", {
+        timeZone: "America/La_Paz",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+}
+
+function textoFechaEntregaHistorial(fecha) {
+    if (!fecha) return "Sin fecha de entrega";
+
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return String(fecha);
+
+    return formatearFechaHoraBoliviaHistorial(fecha);
+}
+
+function obtenerDatosLegiblesHistorial(item) {
+    const datos = item.new_data || item.old_data || {};
+    const esCalificacion = item.table_name === "calificaciones";
+
+    if (!esCalificacion) {
+        return "";
+    }
+
+    const estudianteNombre = obtenerNombreEstudianteHistorial(
+        datos.estudiante_id ?? item.estudiante_id,
+        item
+    );
+
+    const actividadNombre = String(
+        item.actividad_nombre ||
+        obtenerNombreActividad(datos.actividad_id) ||
+        ""
+    ).trim();
+
+    const nota = datos.nota;
+    const entrega = datos.fecha_entrega;
+    const observacion = datos.observacion;
+
+    return `
+        <div class="historial-dato-claro">
+            <div><strong>👤 Estudiante:</strong> ${escapeHTML(estudianteNombre || "No encontrado")}</div>
+            <div><strong>📝 Actividad:</strong> ${escapeHTML(actividadNombre || "No disponible")}</div>
+            <div><strong>🔢 Nota:</strong> ${escapeHTML(valorHistorial(nota))}</div>
+            <div><strong>📅 Fecha de entrega:</strong> ${escapeHTML(textoFechaEntregaHistorial(entrega))}</div>
+            <div><strong>💬 Observación:</strong> ${escapeHTML(valorHistorial(observacion))}</div>
+        </div>
+    `;
+}
+
+function obtenerDatosLegiblesConflicto(op) {
+    const datos = op?.datos || {};
+    const registro = Array.isArray(datos) ? datos[0] : datos;
+    const esCalificacion = op?.tabla === "calificaciones";
+
+    if (!esCalificacion || !registro || typeof registro !== "object") {
+        return `<pre class="conflicto-datos-json">${escapeHTML(JSON.stringify(datos ?? null, null, 2))}</pre>`;
+    }
+
+    const estudianteNombre = obtenerNombreEstudianteHistorial(
+        registro.estudiante_id,
+        registro
+    );
+
+    const actividadNombre = String(
+        registro.actividad_nombre ||
+        obtenerNombreActividad(registro.actividad_id) ||
+        ""
+    ).trim();
+
+    return `
+        <div class="conflicto-datos-claro">
+            <div><strong>👤 Estudiante:</strong> ${escapeHTML(estudianteNombre || "No encontrado")}</div>
+            <div><strong>📝 Actividad:</strong> ${escapeHTML(actividadNombre || "No disponible")}</div>
+            <div><strong>🔢 Nota:</strong> ${escapeHTML(valorHistorial(registro.nota))}</div>
+            <div><strong>📅 Fecha de entrega:</strong> ${escapeHTML(textoFechaEntregaHistorial(registro.fecha_entrega))}</div>
+            <div><strong>💬 Observación:</strong> ${escapeHTML(valorHistorial(registro.observacion))}</div>
+        </div>
+    `;
 }
 
 function obtenerCampoCambioHistorial(item) {
@@ -24102,11 +24286,16 @@ async function cargarHistorial() {
                 </div>
                 <div class="historial-detalles">
                     <div><strong>Curso:</strong> ${escapeHTML(valorHistorial(item.curso))}</div>
-                    <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(estudiante))}</div>
+                    <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(
+                        obtenerNombreEstudianteHistorial(item.estudiante_id, item) || estudiante
+                    ))}</div>
                     <div><strong>Actividad:</strong> ${escapeHTML(valorHistorial(actividad))}</div>
                     <div><strong>Categoría:</strong> ${escapeHTML(valorHistorial(categoria))}</div>
                     ${esTipoDia ? `<div><strong>Fecha del día:</strong> ${escapeHTML(formatearFechaGuardadaAsistencia(item.fecha))}</div>` : ""}
                 </div>
+                ${item.table_name === "calificaciones"
+                    ? obtenerDatosLegiblesHistorial(item)
+                    : ""}
                 <div class="historial-cambio">
                     <strong>${escapeHTML(cambio.campo)}:</strong>
                     ${escapeHTML(cambio.antes)} → ${escapeHTML(cambio.despues)}
