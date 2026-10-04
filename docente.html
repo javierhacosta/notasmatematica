@@ -7704,13 +7704,31 @@ async function liberarDispositivoOfflineDelServidor(){
   }
 }
 
+function formatearFechaOfflineBolivia(fecha){
+  if(!fecha)return "hora no disponible";
+  const d=new Date(fecha);
+  if(Number.isNaN(d.getTime()))return "hora no disponible";
+  const partes=new Intl.DateTimeFormat("es-BO",{
+    timeZone:"America/La_Paz",
+    day:"numeric",month:"long",year:"numeric",
+    hour:"numeric",minute:"2-digit",hour12:true
+  }).formatToParts(d);
+  const get=n=>partes.find(x=>x.type===n)?.value||"";
+  let periodo=get("dayPeriod").toLowerCase().replace(".","");
+  return `${get("day")} de ${get("month")} de ${get("year")} hrs. ${get("hour")}:${get("minute")} ${periodo}`;
+}
+
 async function confirmarEntradaModoOffline(){
   const otros=await obtenerDispositivosOfflineEnServidor();
   if(!otros.length)return true;
 
+  const otro=otros
+    .filter(x=>x?.fecha_offline)
+    .sort((a,b)=>new Date(b.fecha_offline)-new Date(a.fecha_offline))[0] || otros[0];
+  const horaOffline=formatearFechaOfflineBolivia(otro?.fecha_offline);
   const mensaje=
-    "⚠️ Hay otro dispositivo en modo Offline.\\n\\n"+
-    "¿Está seguro de continuar en modo Offline?";
+    `⚠️ Otro dispositivo fue puesto en modo Offline el ${horaOffline}.\n\n`+
+    "¿Desea continuar en modo Offline?";
 
   return window.confirm(mensaje);
 }
