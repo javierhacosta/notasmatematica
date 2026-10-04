@@ -7750,6 +7750,9 @@ async function sincronizarBaseConexionLenta(){
     try{
         conexionLentaSincronizando=false; await procesarColaConexionLenta();
         await descargarBaseCompletaConexionLenta();
+        if (typeof cargarPendientesInicio === "function") {
+            await cargarPendientesInicio();
+        }
     }catch(e){console.warn("No se pudo completar la sincronización:",e);}
     finally{conexionLentaSincronizando=false;actualizarPanelConexionLenta();}
 }
@@ -7757,6 +7760,9 @@ async function activarConexionLenta(){
     if(conexionLentaActiva||conexionLentaInicializando)return;
     conexionLentaInicializando=true; const estado=document.getElementById("estadoConexionLenta"); if(estado){estado.textContent="⏳ Copiando base de datos al celular...";estado.classList.add("visible");}
     try{await abrirDBConexionLenta();await descargarBaseCompletaConexionLenta();conexionLentaActiva=true;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"1");actualizarPanelConexionLenta();
+        if (typeof cargarPendientesInicio === "function") {
+            await cargarPendientesInicio();
+        }
         if(conexionLentaIntervalo)clearInterval(conexionLentaIntervalo); conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);
         if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);
     }catch(e){conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");if(estado){estado.textContent="⚠️ No se pudo preparar la copia local.";estado.classList.add("visible","error");}alert("No se pudo activar la conexión lenta:\n\n"+(e?.message||e));}
@@ -7775,7 +7781,11 @@ async function cambiarConexionLenta(valor){if(valor)await activarConexionLenta()
 async function inicializarConexionLenta(){
     const check=document.getElementById("conexionLenta"); if(!check)return; const guardado=localStorage.getItem(CLAVE_MODO_CONEXION_LENTA)==="1";
     if(!guardado){check.checked=false;return;}
-    try{await abrirDBConexionLenta();const base=await leerTablaConexionLenta("matematica");if(!base.length){check.checked=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");return;}conexionLentaActiva=true;check.checked=true;actualizarPanelConexionLenta();conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);}
+    try{await abrirDBConexionLenta();const base=await leerTablaConexionLenta("matematica");if(!base.length){check.checked=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");return;}conexionLentaActiva=true;check.checked=true;actualizarPanelConexionLenta();
+        if (typeof cargarPendientesInicio === "function") {
+            await cargarPendientesInicio();
+        }
+        conexionLentaIntervalo=setInterval(sincronizarBaseConexionLenta,INTERVALO_SINCRONIZACION_LENTA_MS);if(navigator.onLine)setTimeout(sincronizarBaseConexionLenta,1000);}
     catch(e){console.warn("No se pudo restaurar conexión lenta:",e);check.checked=false;conexionLentaActiva=false;localStorage.setItem(CLAVE_MODO_CONEXION_LENTA,"0");}
 }
 
