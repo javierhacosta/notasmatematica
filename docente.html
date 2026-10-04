@@ -7478,7 +7478,7 @@ Cancelar
 
 <div id="modalAnotacionCurso" class="modal-fondo oculto" onclick="cerrarAnotacionCurso(event)"><div class="modal-anotacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotación del curso</h3><button class="boton-cerrar-modal" onclick="cerrarAnotacionCurso()">×</button></div><div class="modal-cuerpo"><textarea id="textoAnotacionCurso" placeholder="Escribe la anotación..."></textarea><div class="modal-acciones"><button class="boton-cancelar" onclick="cerrarAnotacionCurso()">Cancelar</button><button class="boton-crear-modal" onclick="guardarAnotacionCurso()">Guardar anotación</button></div></div></div></div>
 <div id="modalAnotacionActividad" class="modal-fondo oculto" onclick="cerrarAnotacionActividad(event)"><div class="modal-anotacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotación de actividad</h3><button class="boton-cerrar-modal" onclick="cerrarAnotacionActividad()">×</button></div><div class="modal-cuerpo"><textarea id="textoAnotacionActividad" placeholder="Escribe la anotación de esta actividad..."></textarea><div class="modal-acciones"><button class="boton-cancelar" onclick="cerrarAnotacionActividad()">Cancelar</button><button class="boton-crear-modal" onclick="guardarAnotacionActividad()">Guardar anotación</button></div></div></div></div>
-<div id="modalListadoAnotaciones" class="modal-fondo oculto" onclick="cerrarListadoAnotaciones(event)"><div class="modal-historial" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotaciones</h3><button class="boton-cerrar-modal" onclick="cerrarListadoAnotaciones()">×</button></div><div class="historial-cuerpo"><div class="anotaciones-filtros"><select id="filtroAnotacionesCurso"><option value="">Todos</option></select><input id="buscarAnotaciones" placeholder="Buscar anotación..."></div><div class="tabla-contenedor"><table class="tabla-anotaciones"><thead><tr><th>Curso</th><th>Fecha</th><th>Anotación</th></tr></thead><tbody id="tablaAnotaciones"></tbody></table></div></div></div></div>
+<div id="modalListadoAnotaciones" class="modal-fondo oculto" onclick="cerrarListadoAnotaciones(event)"><div class="modal-historial" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>🗒️ Anotaciones</h3><button class="boton-cerrar-modal" onclick="cerrarListadoAnotaciones()">×</button></div><div class="historial-cuerpo"><div class="anotaciones-filtros"><select id="filtroAnotacionesCurso"><option value="">Todos</option></select><input id="buscarAnotaciones" placeholder="Buscar anotación..."></div><div class="tabla-contenedor"><table class="tabla-anotaciones"><thead><tr><th>Curso</th><th>Fecha</th><th>Actividad</th><th>Anotación</th></tr></thead><tbody id="tablaAnotaciones"></tbody></table></div></div></div></div>
 <script>
 const _scriptsDiferidos = {};
 function cargarScriptDiferido(url, globalName) {
@@ -26294,13 +26294,63 @@ async function obtenerAnotacionesGlobales(force = false) {
     if (anotacionesCacheGlobal && !force) return anotacionesCacheGlobal;
     if (cargandoAnotacionesGlobal && !force) return cargandoAnotacionesGlobal;
 
-    cargandoAnotacionesGlobal = supabaseClient
-        .from("anotaciones")
-        .select("curso,fecha,anotacion")
-        .order("fecha", { ascending: false })
-        .then(({ data, error }) => {
-            if (error) throw error;
-            anotacionesCacheGlobal = data || [];
+    cargandoAnotacionesGlobal = Promise.all([
+        supabaseClient
+            .from("anotaciones")
+            .select("curso,fecha,anotacion")
+            .order("fecha", { ascending: false }),
+        supabaseClient
+            .from("anotaciones_actividades")
+            .select("actividad_id,anotacion")
+    ])
+        .then(async ([resultadoCurso, resultadoActividad]) => {
+            if (resultadoCurso.error) throw resultadoCurso.error;
+            if (resultadoActividad.error) throw resultadoActividad.error;
+
+            const anotacionesCurso = (resultadoCurso.data || []).map(x => ({
+                curso: x.curso,
+                fecha: x.fecha,
+                actividad: "",
+                anotacion: x.anotacion
+            }));
+
+            const registrosActividad = resultadoActividad.data || [];
+            const idsActividades = [...new Set(
+                registrosActividad.map(x => Number(x.actividad_id)).filter(Number.isFinite)
+            )];
+            let actividadesPorId = {};
+
+            if (idsActividades.length) {
+                const { data: actividadesData, error: errorActividades } =
+                    await supabaseClient
+                        .from("actividades")
+                        .select("id,curso,nombre,fecha")
+                        .in("id", idsActividades);
+                if (errorActividades) throw errorActividades;
+                (actividadesData || []).forEach(a => {
+                    actividadesPorId[String(a.id)] = a;
+                });
+            }
+
+            const anotacionesActividad = registrosActividad
+                .map(x => {
+                    const actividad = actividadesPorId[String(x.actividad_id)];
+                    const texto = String(x.anotacion || "").trim();
+                    if (!actividad || !texto) return null;
+                    return {
+                        curso: actividad.curso,
+                        fecha: actividad.fecha,
+                        actividad: actividad.nombre,
+                        anotacion: texto
+                    };
+                })
+                .filter(Boolean);
+
+            return [...anotacionesCurso, ...anotacionesActividad]
+                .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")));
+        })
+        .then(data => {
+            anotacionesCacheGlobal = data;
             return anotacionesCacheGlobal;
         })
         .finally(() => {
@@ -26361,8 +26411,15 @@ async function cargarListadoAnotaciones(force = false) {
         const f = fc.value;
         const b = buscador.value.toLowerCase();
         body.innerHTML = data
-            .filter(x => (!f || x.curso === f) && (!b || String(x.anotacion).toLowerCase().includes(b)))
-            .map(x => `<tr><td>${x.curso}</td><td>${x.fecha}</td><td>${x.anotacion}</td></tr>`)
+            .filter(x =>
+                (!f || x.curso === f) &&
+                (!b ||
+                    String(x.anotacion || "").toLowerCase().includes(b) ||
+                    String(x.actividad || "").toLowerCase().includes(b))
+            )
+            .map(x =>
+                `<tr><td>${x.curso || ""}</td><td>${x.fecha || ""}</td><td>${x.actividad || ""}</td><td>${x.anotacion || ""}</td></tr>`
+            )
             .join("");
     };
 
