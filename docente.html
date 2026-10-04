@@ -1418,34 +1418,6 @@ td:first-child {
     font-weight: bold;
     cursor: pointer;
 }
-.historial-dato-claro,
-.conflicto-datos-claro {
-    display: grid;
-    gap: 5px;
-    margin-top: 6px;
-    padding: 10px;
-    background: #fff;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    line-height: 1.4;
-}
-
-.conflicto-datos-json {
-    margin: 0;
-    padding: 9px;
-    background: #f7f7f7;
-    border-radius: 7px;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-size: 12px;
-    font-family: monospace;
-}
-
-.historial-dato-claro strong,
-.conflicto-datos-claro strong {
-    color: #37474f;
-}
-
 .historial-restaurar:hover { background: #d95f00; }
 @media (max-width: 600px) {
     .modal-historial { max-width: 100%; max-height: 94vh; }
@@ -7712,73 +7684,136 @@ async function obtenerServidorParaConflicto(op,base){
 
 async function mostrarConflictoVersiones(op,base,servidor){
   const localFecha=op.creado||op.fechaCambio||new Date().toISOString();
-  const servidorFecha=obtenerMarcaTiempoRegistro(servidor);
-  const localNueva=servidorFecha ? new Date(localFecha)>new Date(servidorFecha) : null;
-  const etiquetaLocal=localNueva===true?"NUEVO":localNueva===false?"ANTIGUO":"CAMBIO LOCAL";
-  const etiquetaServidor=localNueva===true?"ANTIGUO":localNueva===false?"NUEVO":"CAMBIO EN SERVIDOR";
 
-  return await new Promise(resolve=>{
+  /*
+   * Para calificaciones puede haber varios estudiantes dentro de una misma
+   * operación Offline. En ese caso mostramos primero la opción de resolver
+   * TODOS juntos o revisar SIGUIENTE ESTUDIANTE.
+   */
+  const bases=Array.isArray(base)?base:[base];
+  const servidores=Array.isArray(servidor)?servidor:[servidor];
+  const datosLocales=Array.isArray(op.datos)?op.datos:[op.datos];
+
+  const nombreEstudiante=(registro)=>{
+    const id=registro?.estudiante_id;
+    const encontrado=(typeof estudiantes!=='undefined'&&Array.isArray(estudiantes))
+      ? estudiantes.find(e=>String(e?.id)===String(id)) : null;
+    return registro?.estudiante_nombre || encontrado?.nombre || encontrado?.nombre_completo || encontrado?.nombres ||
+      (id!=null ? `Estudiante ${id}` : 'Estudiante');
+  };
+
+  const etiquetaEstudiante=(registro)=>op.tabla==="calificaciones"
+    ? nombreEstudiante(registro) : null;
+
+  const registroServidorPara=(registro,indice)=>{
+    if(op.tabla!=="calificaciones") return servidores[indice] ?? servidores[0] ?? null;
+    const id=registro?.estudiante_id, actividad=registro?.actividad_id;
+    return servidores.find(x=>String(x?.estudiante_id)===String(id)&&String(x?.actividad_id)===String(actividad))
+      ?? servidores[indice] ?? servidores[0] ?? null;
+  };
+
+  const fechaServidor=(registro,indice)=>obtenerMarcaTiempoRegistro(registroServidorPara(registro,indice));
+
+  const construirModal=(registro,indice,mostrarNavegacion=true)=>new Promise(resolve=>{
+    const servidorReg=registroServidorPara(registro,indice);
+    const localFechaItem=registro?.fecha_modificacion||registro?.updated_at||registro?.created_at||localFecha;
+    const servidorFecha=fechaServidor(registro,indice);
+    const localNueva=servidorFecha ? new Date(localFechaItem)>new Date(servidorFecha) : null;
+    const etiquetaLocal=localNueva===true?"NUEVO":localNueva===false?"ANTIGUO":"CAMBIO LOCAL";
+    const etiquetaServidor=localNueva===true?"ANTIGUO":localNueva===false?"NUEVO":"CAMBIO EN SERVIDOR";
+
     document.getElementById("modalConflictoVersiones")?.remove();
     const f=document.createElement("div");f.id="modalConflictoVersiones";f.style.cssText="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box";
     const c=document.createElement("div");c.style.cssText="width:min(560px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 12px 45px rgba(0,0,0,.4);font-family:Arial,sans-serif";
     const titulo=document.createElement("h3");titulo.textContent="⚠️ Conflicto de datos";titulo.style.cssText="margin:0 0 14px;color:#173b68;font-size:21px";
     const nombre=op.tabla==="calificaciones"?"Calificación":op.tabla;
-    const intro=document.createElement("div");intro.innerHTML=`<p style="line-height:1.5;margin:0 0 14px">El mismo dato fue modificado mientras este dispositivo estaba Offline.</p><p style="margin:0 0 14px"><strong>Tabla:</strong> ${String(nombre).replace(/</g,"&lt;")}</p>`;
+    const quien=etiquetaEstudiante(registro);
+    const intro=document.createElement("div");intro.innerHTML=`<p style="line-height:1.5;margin:0 0 10px">El mismo dato fue modificado mientras este dispositivo estaba Offline.</p>${quien?`<p style="margin:0 0 10px;font-size:17px"><strong>👤 Estudiante:</strong> ${String(quien).replace(/</g,"&lt;")}</p>`:""}<p style="margin:0 0 14px"><strong>Tabla:</strong> ${String(nombre).replace(/</g,"&lt;")}</p>`;
     const versiones=document.createElement("div");versiones.style.cssText="display:grid;gap:10px";
-    const tarjeta=(tituloTexto,estado,valor,fecha,detalle,esLocal)=>{
-      const x=document.createElement("div");
-      x.style.cssText="border:1px solid #ddd;border-radius:12px;padding:13px;background:#fafafa";
-      const datosClaros = esLocal
-        ? obtenerDatosLegiblesConflicto(op)
-        : (op.tabla === "calificaciones"
-            ? obtenerDatosLegiblesConflicto({...op, datos: valor})
-            : `<pre class="conflicto-datos-json">${escapeHTML(JSON.stringify(valor??null,null,2))}</pre>`);
-      x.innerHTML=`
-        <div style="font-weight:800;font-size:16px">${tituloTexto} — ${estado}</div>
-        <div style="margin-top:8px;line-height:1.45">
-          <strong>🕒 Fecha y hora:</strong> ${formatearFechaConflicto(fecha)}
-        </div>
-        <div style="margin-top:9px">
-          ${datosClaros}
-        </div>
-        ${detalle?`<div style="margin-top:8px;color:#666;font-size:12px">${detalle}</div>`:""}
-      `;
-      return x;
+    const tarjeta=(tituloTexto,estado,valor,fecha,detalle)=>{
+      const x=document.createElement("div");x.style.cssText="border:1px solid #ddd;border-radius:12px;padding:13px;background:#fafafa";
+      x.innerHTML=`<div style="font-weight:800;font-size:16px">${tituloTexto} — ${estado}</div><div style="margin-top:6px;line-height:1.45"><strong>Fecha:</strong> ${formatearFechaConflicto(fecha)}<br><strong>Datos:</strong> <code style="white-space:pre-wrap;word-break:break-word">${JSON.stringify(valor??null,null,2).replace(/</g,"&lt;")}</code>${detalle?`<br><small>${detalle}</small>`:""}</div>`;return x;
     };
-    versiones.appendChild(tarjeta(
-      "📱 Este celular",
-      etiquetaLocal,
-      op.datos,
-      localFecha,
-      "Hora local de Bolivia en la que este celular registró el cambio mientras estaba Offline.",
-      true
-    ));
-    versiones.appendChild(tarjeta(
-      "☁️ Servidor",
-      etiquetaServidor,
-      servidor,
-      servidorFecha,
-      servidorFecha
-        ? "Hora de modificación registrada por el servidor, convertida a la hora de Bolivia."
-        : "No se encontró una fecha de modificación en los datos del servidor.",
-      false
-    ));
+    versiones.appendChild(tarjeta("📱 Este celular",etiquetaLocal,registro,localFechaItem,"Cambio realizado Offline en este celular."));
+    versiones.appendChild(tarjeta("☁️ Servidor",etiquetaServidor,servidorReg,servidorFecha,"Versión que actualmente está registrada en el servidor."));
     const nota=document.createElement("p");nota.style.cssText="margin:15px 0 18px;line-height:1.45;color:#555;font-size:13px";
-    nota.textContent=servidorFecha?"La versión más reciente se determina comparando las fechas de modificación.":"La tabla no proporciona una fecha de modificación del servidor; por seguridad, revisa ambas versiones antes de elegir.";
+    nota.textContent=servidorFecha?"Elige qué versión deseas conservar.":"No hay fecha de modificación del servidor; revisa ambas versiones antes de elegir.";
     const acciones=document.createElement("div");acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap";
     const bServidor=document.createElement("button");bServidor.textContent="☁️ Conservar servidor";bServidor.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#1677d2;color:#fff;font-weight:700";
     const bLocal=document.createElement("button");bLocal.textContent="📱 Conservar este celular";bLocal.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#16804b;color:#fff;font-weight:700";
     const cerrar=v=>{f.remove();resolve(v)};bServidor.onclick=()=>cerrar("servidor");bLocal.onclick=()=>cerrar("local");
     acciones.append(bServidor,bLocal);c.append(titulo,intro,versiones,nota,acciones);f.append(c);document.body.append(f);
   });
+
+  /* Si no es una operación de calificaciones múltiple, se conserva el
+     comportamiento anterior: una sola decisión para el conflicto. */
+  if(op.tabla!=="calificaciones" || bases.length<=1){
+    return await construirModal(bases[0],0,false);
+  }
+
+  /* Dos cuadros de selección: TODOS o SIGUIENTE ESTUDIANTE. */
+  return await new Promise(resolve=>{
+    document.getElementById("modalConflictoVersiones")?.remove();
+    const f=document.createElement("div");f.id="modalConflictoVersiones";f.style.cssText="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box";
+    const c=document.createElement("div");c.style.cssText="width:min(560px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 12px 45px rgba(0,0,0,.4);font-family:Arial,sans-serif";
+    const titulo=document.createElement("h3");titulo.textContent="⚠️ Conflicto de calificaciones";titulo.style.cssText="margin:0 0 14px;color:#173b68;font-size:21px";
+    const texto=document.createElement("p");texto.style.cssText="line-height:1.5;margin:0 0 15px";texto.innerHTML=`Se encontraron cambios de <strong>${bases.length}</strong> estudiante(s). ¿Cómo deseas resolverlos?`;
+    const opciones=document.createElement("div");opciones.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0";
+    const crearOpcion=(icono,tituloTexto,descripcion,valor)=>{
+      const b=document.createElement("button");b.type="button";b.style.cssText="border:2px solid #d5dce5;border-radius:14px;background:#f8fafc;padding:16px 12px;text-align:left;cursor:pointer";
+      b.innerHTML=`<div style="font-size:18px;font-weight:800;color:#173b68">${icono} ${tituloTexto}</div><div style="margin-top:7px;font-size:13px;line-height:1.4;color:#555">${descripcion}</div>`;
+      b.onclick=()=>{f.remove();resolve({modo:valor});};return b;
+    };
+    opciones.append(
+      crearOpcion("☑️","TODOS","Elegir una sola opción para todos los estudiantes, como hasta ahora.","todos"),
+      crearOpcion("👤","SIGUIENTE ESTUDIANTE","Revisar cada estudiante y elegir Este celular o Servidor individualmente.","siguiente")
+    );
+    c.append(titulo,texto,opciones);f.append(c);document.body.append(f);
+  }).then(async seleccion=>{
+    if(seleccion.modo==="todos"){
+      const primera=bases[0];
+      const decision=await construirModal(primera,0,true);
+      return {modo:"todos",decision};
+    }
+
+    const decisiones=[];
+    for(let i=0;i<bases.length;i++){
+      const registro=bases[i];
+      const decision=await construirModal(registro,i,true);
+      decisiones.push({
+        estudiante_id:registro?.estudiante_id,
+        actividad_id:registro?.actividad_id,
+        decision
+      });
+    }
+    return {modo:"siguiente",decisiones};
+  });
 }
 
 async function resolverConflictoVersionGeneral(op){
   if(!op.base) return null;
   if(op.tipo!=="update" && op.tipo!=="upsert") return null;
+  const bases=Array.isArray(op.base)?op.base:[op.base];
   const servidor=await obtenerServidorParaConflicto(op,op.base);
   if(!servidor || !servidor.length)return null;
-  const b=Array.isArray(op.base)?op.base[0]:op.base;
+
+  if(op.tabla==="calificaciones" && bases.length>1){
+    const conflictos=[];
+    const servidoresConflicto=[];
+    bases.forEach((b,i)=>{
+      const s=servidor.find(x=>String(x?.estudiante_id)===String(b?.estudiante_id)&&String(x?.actividad_id)===String(b?.actividad_id)) ?? servidor[i];
+      if(s && !registrosIgualesParaConflicto(b,s)){
+        conflictos.push(b);
+        servidoresConflicto.push(s);
+      }
+    });
+    if(!conflictos.length)return null;
+    const opConflicto={...op,datos:(Array.isArray(op.datos)?op.datos:[op.datos]).filter(d=>conflictos.some(b=>String(b?.estudiante_id)===String(d?.estudiante_id)&&String(b?.actividad_id)===String(d?.actividad_id)))};
+    const decision=await mostrarConflictoVersiones(opConflicto,conflictos,servidoresConflicto);
+    return {servidor:servidoresConflicto,base:conflictos,decision};
+  }
+
+  const b=bases[0];
   const s=servidor[0];
   if(registrosIgualesParaConflicto(b,s))return null;
   return {servidor:s,base:b,decision:await mostrarConflictoVersiones(op,b,s)};
@@ -8189,7 +8224,29 @@ async function sincronizarCambiosOffline(){
       if((op.tipo==="update"||op.tipo==="upsert") && op.base){
         const conflictoVersion=await resolverConflictoVersionGeneral(op);
         if(conflictoVersion){
-          if(conflictoVersion.decision==="servidor"){
+          const decision=conflictoVersion.decision;
+
+          /* Resolución por estudiante: solo se eliminan de esta operación
+             las calificaciones que el docente decidió conservar del servidor. */
+          if(decision && decision.modo==="siguiente" && Array.isArray(decision.decisiones)){
+            const elegidosServidor=new Set(
+              decision.decisiones
+                .filter(x=>x.decision==="servidor")
+                .map(x=>`${x.estudiante_id}|${x.actividad_id}`)
+            );
+            if(op.tabla==="calificaciones" && Array.isArray(datos)){
+              datos=datos.filter(x=>!elegidosServidor.has(`${x?.estudiante_id}|${x?.actividad_id}`));
+              if(datos.length===0){
+                await idbDelQueue(op.id);
+                continue;
+              }
+            }
+          }else if(decision && decision.modo==="todos"){
+            if(decision.decision==="servidor"){
+              await idbDelQueue(op.id);
+              continue;
+            }
+          }else if(decision==="servidor"){
             await idbDelQueue(op.id);
             continue;
           }
@@ -23947,142 +24004,18 @@ function formatearFechaHistorial(fecha) {
     if (!fecha) return "";
     const d = new Date(fecha);
     if (isNaN(d.getTime())) return String(fecha);
-
-    // Las fechas almacenadas en ISO suelen estar en UTC (terminan en Z).
-    // Para que el historial siempre muestre la hora de Bolivia, se fuerza
-    // la zona horaria America/La_Paz (UTC-4), independientemente de la
-    // configuración horaria del teléfono.
     return d.toLocaleString("es-BO", {
-        timeZone: "America/La_Paz",
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
+        minute: "2-digit"
     });
 }
 
 function valorHistorial(valor) {
     if (valor === null || valor === undefined || valor === "") return "—";
     return String(valor);
-}
-
-/* =====================================================
-   HISTORIAL OFFLINE — PRESENTACIÓN CLARA Y HORA DE BOLIVIA
-===================================================== */
-
-function obtenerNombreEstudianteHistorial(estudianteId, registro) {
-    const id = Number(estudianteId);
-
-    // Primero usa el nombre que ya quedó guardado en el historial.
-    if (registro && String(registro.estudiante_nombre || "").trim()) {
-        return String(registro.estudiante_nombre).trim();
-    }
-
-    // Si no existe, busca al estudiante en la lista cargada en el celular.
-    const lista = Array.isArray(estudiantes) ? estudiantes : [];
-    const estudiante = lista.find(e => Number(e.id) === id);
-
-    return estudiante
-        ? String(
-            estudiante.nombre ||
-            estudiante.nombre_completo ||
-            estudiante.nombres ||
-            ""
-        ).trim()
-        : "";
-}
-
-function formatearFechaHoraBoliviaHistorial(fecha) {
-    if (!fecha) return "Fecha no disponible";
-
-    const d = new Date(fecha);
-    if (Number.isNaN(d.getTime())) return String(fecha);
-
-    return d.toLocaleString("es-BO", {
-        timeZone: "America/La_Paz",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-    });
-}
-
-function textoFechaEntregaHistorial(fecha) {
-    if (!fecha) return "Sin fecha de entrega";
-
-    const d = new Date(fecha);
-    if (Number.isNaN(d.getTime())) return String(fecha);
-
-    return formatearFechaHoraBoliviaHistorial(fecha);
-}
-
-function obtenerDatosLegiblesHistorial(item) {
-    const datos = item.new_data || item.old_data || {};
-    const esCalificacion = item.table_name === "calificaciones";
-
-    if (!esCalificacion) {
-        return "";
-    }
-
-    const estudianteNombre = obtenerNombreEstudianteHistorial(
-        datos.estudiante_id ?? item.estudiante_id,
-        item
-    );
-
-    const actividadNombre = String(
-        item.actividad_nombre ||
-        obtenerNombreActividad(datos.actividad_id) ||
-        ""
-    ).trim();
-
-    const nota = datos.nota;
-    const entrega = datos.fecha_entrega;
-    const observacion = datos.observacion;
-
-    return `
-        <div class="historial-dato-claro">
-            <div><strong>👤 Estudiante:</strong> ${escapeHTML(estudianteNombre || "No encontrado")}</div>
-            <div><strong>📝 Actividad:</strong> ${escapeHTML(actividadNombre || "No disponible")}</div>
-            <div><strong>🔢 Nota:</strong> ${escapeHTML(valorHistorial(nota))}</div>
-            <div><strong>📅 Fecha de entrega:</strong> ${escapeHTML(textoFechaEntregaHistorial(entrega))}</div>
-            <div><strong>💬 Observación:</strong> ${escapeHTML(valorHistorial(observacion))}</div>
-        </div>
-    `;
-}
-
-function obtenerDatosLegiblesConflicto(op) {
-    const datos = op?.datos || {};
-    const registro = Array.isArray(datos) ? datos[0] : datos;
-    const esCalificacion = op?.tabla === "calificaciones";
-
-    if (!esCalificacion || !registro || typeof registro !== "object") {
-        return `<pre class="conflicto-datos-json">${escapeHTML(JSON.stringify(datos ?? null, null, 2))}</pre>`;
-    }
-
-    const estudianteNombre = obtenerNombreEstudianteHistorial(
-        registro.estudiante_id,
-        registro
-    );
-
-    const actividadNombre = String(
-        registro.actividad_nombre ||
-        obtenerNombreActividad(registro.actividad_id) ||
-        ""
-    ).trim();
-
-    return `
-        <div class="conflicto-datos-claro">
-            <div><strong>👤 Estudiante:</strong> ${escapeHTML(estudianteNombre || "No encontrado")}</div>
-            <div><strong>📝 Actividad:</strong> ${escapeHTML(actividadNombre || "No disponible")}</div>
-            <div><strong>🔢 Nota:</strong> ${escapeHTML(valorHistorial(registro.nota))}</div>
-            <div><strong>📅 Fecha de entrega:</strong> ${escapeHTML(textoFechaEntregaHistorial(registro.fecha_entrega))}</div>
-            <div><strong>💬 Observación:</strong> ${escapeHTML(valorHistorial(registro.observacion))}</div>
-        </div>
-    `;
 }
 
 function obtenerCampoCambioHistorial(item) {
@@ -24286,16 +24219,11 @@ async function cargarHistorial() {
                 </div>
                 <div class="historial-detalles">
                     <div><strong>Curso:</strong> ${escapeHTML(valorHistorial(item.curso))}</div>
-                    <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(
-                        obtenerNombreEstudianteHistorial(item.estudiante_id, item) || estudiante
-                    ))}</div>
+                    <div><strong>Estudiante:</strong> ${escapeHTML(valorHistorial(estudiante))}</div>
                     <div><strong>Actividad:</strong> ${escapeHTML(valorHistorial(actividad))}</div>
                     <div><strong>Categoría:</strong> ${escapeHTML(valorHistorial(categoria))}</div>
                     ${esTipoDia ? `<div><strong>Fecha del día:</strong> ${escapeHTML(formatearFechaGuardadaAsistencia(item.fecha))}</div>` : ""}
                 </div>
-                ${item.table_name === "calificaciones"
-                    ? obtenerDatosLegiblesHistorial(item)
-                    : ""}
                 <div class="historial-cambio">
                     <strong>${escapeHTML(cambio.campo)}:</strong>
                     ${escapeHTML(cambio.antes)} → ${escapeHTML(cambio.despues)}
