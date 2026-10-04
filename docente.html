@@ -7712,7 +7712,7 @@ async function obtenerServidorParaConflicto(op,base){
 
 let politicaConflictosSincronizacion = null;
 
-async function mostrarConflictoVersiones(op,base,servidor){
+async function mostrarConflictoVersiones(op,base,servidor,haySiguienteEstudiante=true){
   const localFecha=op.creado||op.fechaCambio||new Date().toISOString();
   const servidorFecha=obtenerMarcaTiempoRegistro(servidor);
   const localNueva=servidorFecha ? new Date(localFecha)>new Date(servidorFecha) : null;
@@ -7769,22 +7769,26 @@ async function mostrarConflictoVersiones(op,base,servidor){
     nota.textContent=servidorFecha?"La versión más reciente se determina comparando las fechas de modificación.":"La tabla no proporciona una fecha de modificación del servidor; por seguridad, revisa ambas versiones antes de elegir.";
     const selectorModo=document.createElement("div");
     selectorModo.style.cssText="margin:0 0 15px;padding:11px 12px;border:1px solid #ddd;border-radius:10px;background:#f8fafc";
-    selectorModo.innerHTML=`
-      <div style="font-weight:800;margin-bottom:8px;color:#37474f">¿Cómo quieres resolver los conflictos?</div>
-      <label style="display:flex;align-items:center;gap:8px;margin:7px 0;cursor:pointer;font-weight:normal">
-        <input type="radio" name="modoConflictoSincronizacion" value="todos" checked style="width:18px;height:18px;margin:0">
-        <span><strong>TODOS</strong> — usar la misma elección para todos los estudiantes.</span>
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;margin:7px 0;cursor:pointer;font-weight:normal">
-        <input type="radio" name="modoConflictoSincronizacion" value="siguiente" style="width:18px;height:18px;margin:0">
-        <span><strong>SIGUIENTE ESTUDIANTE</strong> — decidir viendo cada estudiante.</span>
-      </label>`;
+    if(haySiguienteEstudiante){
+      selectorModo.innerHTML=`
+        <div style="font-weight:800;margin-bottom:8px;color:#37474f">¿Cómo quieres resolver los conflictos?</div>
+        <label style="display:flex;align-items:center;gap:8px;margin:7px 0;cursor:pointer;font-weight:normal">
+          <input type="radio" name="modoConflictoSincronizacion" value="todos" checked style="width:18px;height:18px;margin:0">
+          <span><strong>TODOS</strong> — usar la misma elección para todos los estudiantes.</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin:7px 0;cursor:pointer;font-weight:normal">
+          <input type="radio" name="modoConflictoSincronizacion" value="siguiente" style="width:18px;height:18px;margin:0">
+          <span><strong>SIGUIENTE ESTUDIANTE</strong> — decidir viendo cada estudiante.</span>
+        </label>`;
+    }
 
     const acciones=document.createElement("div");acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap";
     const bServidor=document.createElement("button");bServidor.textContent="☁️ Conservar servidor";bServidor.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#1677d2;color:#fff;font-weight:700";
     const bLocal=document.createElement("button");bLocal.textContent="📱 Conservar este celular";bLocal.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#16804b;color:#fff;font-weight:700";
     const cerrar=v=>{
-      const modo=selectorModo.querySelector('input[name="modoConflictoSincronizacion"]:checked')?.value||"todos";
+      const modo=haySiguienteEstudiante
+        ? (selectorModo.querySelector('input[name="modoConflictoSincronizacion"]:checked')?.value||"todos")
+        : "todos";
       if(modo==="todos")politicaConflictosSincronizacion=v;
       else politicaConflictosSincronizacion=null;
       f.remove();resolve({decision:v,modo});
@@ -7794,7 +7798,7 @@ async function mostrarConflictoVersiones(op,base,servidor){
   });
 }
 
-async function resolverConflictoVersionGeneral(op){
+async function resolverConflictoVersionGeneral(op,haySiguienteEstudiante=true){
   if(!op.base) return null;
   if(op.tipo!=="update" && op.tipo!=="upsert") return null;
   const servidor=await obtenerServidorParaConflicto(op,op.base);
@@ -7812,7 +7816,7 @@ async function resolverConflictoVersionGeneral(op){
     };
   }
 
-  return {servidor:s,base:b,decision:await mostrarConflictoVersiones(op,b,s)};
+  return {servidor:s,base:b,decision:await mostrarConflictoVersiones(op,b,s,haySiguienteEstudiante)};
 }
 
 async function ejecutarLocal(q){
@@ -8213,13 +8217,18 @@ async function sincronizarCambiosOffline(){
   try{
     const cola=(await idbAll(STORE_COLA)).sort((a,b)=>a.id-b.id),map=new Map();
 
-    for(const op of cola){
+    for(let indiceOp=0;indiceOp<cola.length;indiceOp++){
+      const op=cola[indiceOp];
       const datos=traducirIds(copia(op.datos),map),fs=traducirIds(copia(op.filtros||[]),map);
+      const haySiguienteEstudiante=cola.slice(indiceOp+1).some(x=>
+        (x.tipo==="update"||x.tipo==="upsert") && x.base &&
+        (Array.isArray(x.base)?x.base.length>0:true)
+      );
 
       /* Conflicto general: el registro cambió en el servidor mientras este
          dispositivo estaba Offline. Preguntamos antes de sobrescribir. */
       if((op.tipo==="update"||op.tipo==="upsert") && op.base){
-        const conflictoVersion=await resolverConflictoVersionGeneral(op);
+        const conflictoVersion=await resolverConflictoVersionGeneral(op,haySiguienteEstudiante);
         if(conflictoVersion){
           if(conflictoVersion.decision==="servidor"){
             await idbDelQueue(op.id);
