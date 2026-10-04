@@ -7613,6 +7613,117 @@ function filtrosCoinciden(fila,fs){
   })
 }
 function idTemporal(filas){const n=filas.map(r=>Number(r&&r.id)).filter(Number.isFinite);return Math.min(-1,(n.length?Math.min(...n):0)-1)}
+function obtenerMarcaTiempoRegistro(registro){
+  if(!registro || typeof registro!=="object") return null;
+  const campos=["updated_at","modified_at","modificado_en","fecha_modificacion","changed_at","updatedAt","modifiedAt"];
+  for(const c of campos){
+    if(registro[c]){
+      const d=new Date(registro[c]);
+      if(!Number.isNaN(d.getTime())) return d.toISOString();
+    }
+  }
+  return null;
+}
+
+function formatearFechaConflicto(fecha){
+  if(!fecha)return "Fecha no disponible";
+  const d=new Date(fecha);
+  if(Number.isNaN(d.getTime()))return String(fecha);
+  return d.toLocaleString("es-BO",{dateStyle:"short",timeStyle:"short"});
+}
+
+function registrosIgualesParaConflicto(a,b){
+  const limpiar=v=>{
+    if(v&&typeof v==="object"&& !Array.isArray(v)){
+      const o={};Object.keys(v).sort().forEach(k=>{
+        if(!["updated_at","modified_at","modificado_en","fecha_modificacion","changed_at","updatedAt","modifiedAt"].includes(k))o[k]=limpiar(v[k]);
+      });return o;
+    }
+    if(Array.isArray(v))return v.map(limpiar);
+    return v;
+  };
+  return JSON.stringify(limpiar(a??null))===JSON.stringify(limpiar(b??null));
+}
+
+async function obtenerServidorParaConflicto(op,base){
+  if(!base || !op || !op.tabla) return null;
+  const claves=[];
+  const lista=Array.isArray(base)?base:[base];
+  const datos=Array.isArray(op.datos)?op.datos:[op.datos];
+  const conf=op.onConflict||[];
+
+  for(const b of lista){
+    if(!b)continue;
+    if(conf.length){
+      const filtro=conf.map(c=>[c,b[c]]);
+      if(filtro.some(([,v])=>v===undefined||v===null))continue;
+      let q=_fromOnlineOriginal(op.tabla).select("*");
+      filtro.forEach(([c,v])=>{q=q.eq(c,v)});
+      const r=await q.maybeSingle();
+      if(r.error)throw r.error;
+      claves.push(r.data||null);
+    }else if(b.id!=null){
+      const r=await _fromOnlineOriginal(op.tabla).select("*").eq("id",b.id).maybeSingle();
+      if(r.error)throw r.error;
+      claves.push(r.data||null);
+    }else{
+      const filtros=op.filtros||[];
+      if(!filtros.length)continue;
+      let q=_fromOnlineOriginal(op.tabla).select("*");
+      filtros.forEach(f=>{
+        if(f.operador==="eq")q=q.eq(f.campo,f.valor);
+        else if(f.operador==="in")q=q.in(f.campo,f.valor);
+      });
+      const r=await q;
+      if(r.error)throw r.error;
+      claves.push(...(r.data||[]));
+    }
+  }
+  return claves;
+}
+
+async function mostrarConflictoVersiones(op,base,servidor){
+  const localFecha=op.creado||op.fechaCambio||new Date().toISOString();
+  const servidorFecha=obtenerMarcaTiempoRegistro(servidor);
+  const localNueva=servidorFecha ? new Date(localFecha)>new Date(servidorFecha) : null;
+  const etiquetaLocal=localNueva===true?"NUEVO":localNueva===false?"ANTIGUO":"CAMBIO LOCAL";
+  const etiquetaServidor=localNueva===true?"ANTIGUO":localNueva===false?"NUEVO":"CAMBIO EN SERVIDOR";
+
+  return await new Promise(resolve=>{
+    document.getElementById("modalConflictoVersiones")?.remove();
+    const f=document.createElement("div");f.id="modalConflictoVersiones";f.style.cssText="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box";
+    const c=document.createElement("div");c.style.cssText="width:min(560px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;box-shadow:0 12px 45px rgba(0,0,0,.4);font-family:Arial,sans-serif";
+    const titulo=document.createElement("h3");titulo.textContent="⚠️ Conflicto de datos";titulo.style.cssText="margin:0 0 14px;color:#173b68;font-size:21px";
+    const nombre=op.tabla==="calificaciones"?"Calificación":op.tabla;
+    const intro=document.createElement("div");intro.innerHTML=`<p style="line-height:1.5;margin:0 0 14px">El mismo dato fue modificado mientras este dispositivo estaba Offline.</p><p style="margin:0 0 14px"><strong>Tabla:</strong> ${String(nombre).replace(/</g,"&lt;")}</p>`;
+    const versiones=document.createElement("div");versiones.style.cssText="display:grid;gap:10px";
+    const tarjeta=(tituloTexto,estado,valor,fecha,detalle)=>{
+      const x=document.createElement("div");x.style.cssText="border:1px solid #ddd;border-radius:12px;padding:13px;background:#fafafa";
+      x.innerHTML=`<div style="font-weight:800;font-size:16px">${tituloTexto} — ${estado}</div><div style="margin-top:6px;line-height:1.45"><strong>Fecha:</strong> ${formatearFechaConflicto(fecha)}<br><strong>Datos:</strong> <code style="white-space:pre-wrap;word-break:break-word">${JSON.stringify(valor??null,null,2).replace(/</g,"&lt;")}</code>${detalle?`<br><small>${detalle}</small>`:""}</div>`;return x;
+    };
+    versiones.appendChild(tarjeta("📱 Este celular",etiquetaLocal,op.datos,localFecha,"Fecha registrada cuando se realizó el cambio Offline."));
+    versiones.appendChild(tarjeta("☁️ Servidor",etiquetaServidor,servidor,servidorFecha,"La fecha exacta solo se muestra si la tabla dispone de un campo de modificación."));
+    const nota=document.createElement("p");nota.style.cssText="margin:15px 0 18px;line-height:1.45;color:#555;font-size:13px";
+    nota.textContent=servidorFecha?"La versión más reciente se determina comparando las fechas de modificación.":"La tabla no proporciona una fecha de modificación del servidor; por seguridad, revisa ambas versiones antes de elegir.";
+    const acciones=document.createElement("div");acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap";
+    const bServidor=document.createElement("button");bServidor.textContent="☁️ Conservar servidor";bServidor.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#1677d2;color:#fff;font-weight:700";
+    const bLocal=document.createElement("button");bLocal.textContent="📱 Conservar este celular";bLocal.style.cssText="border:0;border-radius:10px;padding:12px 15px;background:#16804b;color:#fff;font-weight:700";
+    const cerrar=v=>{f.remove();resolve(v)};bServidor.onclick=()=>cerrar("servidor");bLocal.onclick=()=>cerrar("local");
+    acciones.append(bServidor,bLocal);c.append(titulo,intro,versiones,nota,acciones);f.append(c);document.body.append(f);
+  });
+}
+
+async function resolverConflictoVersionGeneral(op){
+  if(!op.base) return null;
+  if(op.tipo!=="update" && op.tipo!=="upsert") return null;
+  const servidor=await obtenerServidorParaConflicto(op,op.base);
+  if(!servidor || !servidor.length)return null;
+  const b=Array.isArray(op.base)?op.base[0]:op.base;
+  const s=servidor[0];
+  if(registrosIgualesParaConflicto(b,s))return null;
+  return {servidor:s,base:b,decision:await mostrarConflictoVersiones(op,b,s)};
+}
+
 async function ejecutarLocal(q){
   const filas=await leerTablaOffline(q.tabla),fs=q.filtros||[],conf=q.conflicto||[];let afectados=[];
   if(q.tipo==="insert"||q.tipo==="upsert"){
@@ -7650,8 +7761,17 @@ class ConsultaOffline{
   single(){this.q.modo="single";return this}
   async _run(){
     if(this.q.tipo){
+      const filasAntes=await leerTablaOffline(this.tabla);
+      let base=null;
+      if(this.q.tipo==="upsert" && this.q.conflicto.length){
+        const lista=Array.isArray(this.q.datos)?this.q.datos:[this.q.datos];
+        base=lista.map(r=>filasAntes.find(f=>this.q.conflicto.every(c=>String(f?.[c])===String(r?.[c])))).filter(Boolean);
+      }else if(this.q.tipo==="update"||this.q.tipo==="delete"){
+        base=filasAntes.filter(f=>filtrosCoinciden(f,this.q.filtros));
+      }else if(this.q.tipo==="insert")base=null;
+      const creado=new Date().toISOString();
       const data=await ejecutarLocal({tabla:this.tabla,tipo:this.q.tipo,datos:this.q.datos,filtros:this.q.filtros,conflicto:this.q.conflicto});
-      await idbAddQueue({creado:new Date().toISOString(),tabla:this.tabla,tipo:this.q.tipo,datos:copia(this.q.datos),filtros:copia(this.q.filtros),onConflict:this.q.conflicto});
+      await idbAddQueue({creado,tabla:this.tabla,tipo:this.q.tipo,datos:copia(this.q.datos),filtros:copia(this.q.filtros),onConflict:this.q.conflicto,base:copia(base)});
       return {data,error:null};
     }
     let r=(await leerTablaOffline(this.tabla)).filter(x=>filtrosCoinciden(x,this.q.filtros));
@@ -8003,6 +8123,20 @@ async function sincronizarCambiosOffline(){
 
     for(const op of cola){
       const datos=traducirIds(copia(op.datos),map),fs=traducirIds(copia(op.filtros||[]),map);
+
+      /* Conflicto general: el registro cambió en el servidor mientras este
+         dispositivo estaba Offline. Preguntamos antes de sobrescribir. */
+      if((op.tipo==="update"||op.tipo==="upsert") && op.base){
+        const conflictoVersion=await resolverConflictoVersionGeneral(op);
+        if(conflictoVersion){
+          if(conflictoVersion.decision==="servidor"){
+            await idbDelQueue(op.id);
+            continue;
+          }
+          /* "local": se continúa y se sobrescribe el servidor con el cambio
+             pendiente de este dispositivo. */
+        }
+      }
 
       /*
        * Si una actividad fue eliminada desde otro dispositivo, la aplicación
