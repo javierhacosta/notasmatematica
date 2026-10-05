@@ -6861,12 +6861,9 @@ Cancelar
                         type="button"
                         id="botonFotoCalificacionQR"
                         class="boton-foto-actividad boton-foto-calificacion"
-                        title="Tomar foto (mantén pulsado para configurar)"
-                        aria-label="Tomar foto"
-                        onpointerdown="iniciarPulsacionFotoCalificacion(event)"
-                        onpointerup="cancelarPulsacionFotoCalificacion(event)"
-                        onpointercancel="cancelarPulsacionFotoCalificacion(event)"
-                        onpointerleave="cancelarPulsacionFotoCalificacion(event)">
+                        title="Tomar fotografía"
+                        aria-label="Tomar fotografía"
+                        onclick="abrirCapturaFotoActividadDesdeCalificacion()">
                         📷
                     </button>
                 </div>
@@ -14087,33 +14084,26 @@ async function guardarFotoActividadConfirmada(){
                 .update(reg)
                 .eq("id",p.fotoExistente.id);
         }else{
-            // Para una fotografía nueva usamos INSERT directo.
-            // Así no exigimos UPDATE sólo por usar upsert.
+            // Insertar directamente. No usamos .select() aquí porque
+            // una política SELECT restrictiva no debe impedir el INSERT.
             q=await supabaseClient
                 .from("fotos_actividades")
-                .insert([reg])
-                .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
-                .single();
+                .insert(reg);
 
             // Si ya existe la combinación actividad + estudiante,
-            // actualizamos ese registro sin volver a subir otra fila.
+            // actualizamos ese registro.
             if(q.error && q.error.code==="23505"){
                 q=await supabaseClient
                     .from("fotos_actividades")
                     .update(reg)
                     .eq("actividad_id",reg.actividad_id)
-                    .eq("estudiante_id",reg.estudiante_id)
-                    .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
-                    .single();
+                    .eq("estudiante_id",reg.estudiante_id);
             }
         }
         if(q.error){
             const detalle=[q.error.message,q.error.code,q.error.details,q.error.hint]
                 .filter(Boolean).join(" | ");
             throw new Error("Base de datos: "+detalle);
-        }
-        if(!q.data || !q.data.id){
-            throw new Error("La base de datos no confirmó el registro de la fotografía.");
         }
 
         // Sólo después de confirmar el nuevo archivo se elimina el anterior.
@@ -14122,6 +14112,11 @@ async function guardarFotoActividadConfirmada(){
             if(anterior.error)console.warn("La nueva foto se guardó, pero no se pudo eliminar la anterior:",anterior.error);
         }
 
+        fotosActividades[`${reg.actividad_id}|${reg.estudiante_id}`]={
+            ...reg,
+            id:p.fotoExistente?.id||null,
+            created_at:new Date().toISOString()
+        };
         await cargarFotosActividades();
         actualizarCeldasFotosActividad(p.actividad.id);
         actualizarFotoCalificacionVisible();
