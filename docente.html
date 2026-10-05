@@ -20934,7 +20934,6 @@ async function prepararCalificacionQR(
         <br>
         <strong>Presentación:</strong>
         <span id="presentacionQR">—</span>
-        ${obtenerFotoActividad(actividadQRSeleccionada.id,data.id) ? `<button type="button" class="foto-qr-boton" onclick="abrirFotoActividadDesdeCelda('${encodeURIComponent(JSON.stringify(obtenerFotoActividad(actividadQRSeleccionada.id,data.id)))}')">📷 Ver fotografía</button>` : ""}
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
@@ -21018,12 +21017,6 @@ async function actualizarFotoCalificacionVisible() {
     const foto = obtenerFotoActividad(actividadQRSeleccionada.id, estudianteQRSeleccionado.id);
     if (!foto || !foto.ruta) return;
 
-    const texto = document.createElement("div");
-    texto.textContent = "📷 Fotografía guardada";
-    texto.style.fontWeight = "600";
-    texto.style.marginBottom = "6px";
-    contenedor.appendChild(texto);
-
     try {
         const { data, error } = await supabaseClient.storage
             .from(BUCKET_ARCHIVOS_ESTUDIANTES)
@@ -21033,21 +21026,88 @@ async function actualizarFotoCalificacionVisible() {
         if (data?.signedUrl) {
             const img = document.createElement("img");
             img.src = data.signedUrl;
-            img.alt = "Fotografía guardada del estudiante";
+            img.alt = "Fotografía del estudiante";
             img.title = "Abrir fotografía";
-            img.onclick = () => abrirFotoActividad(foto);
+            img.dataset.fotoCodificada = encodeURIComponent(JSON.stringify(foto));
+            img.addEventListener("pointerdown", iniciarPulsacionFotoCalificacion);
+            img.addEventListener("pointerup", finalizarPulsacionFotoCalificacion);
+            img.addEventListener("pointercancel", cancelarPulsacionFotoCalificacion);
+            img.addEventListener("click", abrirFotoCalificacionAlTocar);
             contenedor.appendChild(img);
         }
     } catch (error) {
         console.warn("No se pudo mostrar la miniatura de la fotografía:", error);
     }
 
-    const abrir = document.createElement("button");
-    abrir.type = "button";
-    abrir.textContent = "Ver fotografía";
-    abrir.onclick = () => abrirFotoActividad(foto);
-    contenedor.appendChild(abrir);
     contenedor.classList.remove("oculto");
+}
+
+let temporizadorFotoCalificacion = null;
+let pulsacionLargaFotoCalificacion = false;
+
+function obtenerFotoDesdeElementoCalificacion(img) {
+    try {
+        return JSON.parse(decodeURIComponent(img.dataset.fotoCodificada || ""));
+    } catch (e) {
+        return null;
+    }
+}
+
+function iniciarPulsacionFotoCalificacion(e) {
+    pulsacionLargaFotoCalificacion = false;
+    if (temporizadorFotoCalificacion) clearTimeout(temporizadorFotoCalificacion);
+    temporizadorFotoCalificacion = setTimeout(() => {
+        pulsacionLargaFotoCalificacion = true;
+        const foto = obtenerFotoDesdeElementoCalificacion(e.currentTarget);
+        if (foto) mostrarMenuFotoCalificacion(foto);
+    }, 650);
+}
+
+function finalizarPulsacionFotoCalificacion(e) {
+    if (temporizadorFotoCalificacion) {
+        clearTimeout(temporizadorFotoCalificacion);
+        temporizadorFotoCalificacion = null;
+    }
+    if (pulsacionLargaFotoCalificacion) {
+        e.preventDefault();
+        e.stopPropagation();
+        setTimeout(() => { pulsacionLargaFotoCalificacion = false; }, 0);
+    }
+}
+
+function cancelarPulsacionFotoCalificacion() {
+    if (temporizadorFotoCalificacion) {
+        clearTimeout(temporizadorFotoCalificacion);
+        temporizadorFotoCalificacion = null;
+    }
+    pulsacionLargaFotoCalificacion = false;
+}
+
+function abrirFotoCalificacionAlTocar(e) {
+    if (pulsacionLargaFotoCalificacion) return;
+    const foto = obtenerFotoDesdeElementoCalificacion(e.currentTarget);
+    if (foto) abrirFotoActividad(foto);
+}
+
+function mostrarMenuFotoCalificacion(foto) {
+    const c = encodeURIComponent(JSON.stringify(foto));
+    cerrarMenuFotoActividad();
+    const d = document.createElement("div");
+    d.id = "menuFotoActividad";
+    d.className = "modal-fondo";
+    d.innerHTML = `<div class="menu-foto-actividad" onclick="event.stopPropagation()">
+        <div class="modal-cabecera">
+            <h3>📷 Fotografía</h3>
+            <button type="button" class="boton-cerrar-modal" onclick="cerrarMenuFotoActividad()">×</button>
+        </div>
+        <div class="menu-foto-opciones">
+            <button type="button" onclick="cerrarMenuFotoActividad();cambiarFotoActividad('${c}')">🔄 Cambiar</button>
+            <button type="button" onclick="cerrarMenuFotoActividad();editarFotoActividad('${c}')">✏️ Editar</button>
+            <button type="button" class="opcion-borrar-foto" onclick="cerrarMenuFotoActividad();borrarFotoActividad('${c}')">🗑️ Borrar</button>
+        </div>
+    </div>`;
+    d.addEventListener("click", cerrarMenuFotoActividad);
+    document.body.appendChild(d);
 }
 
 
@@ -26772,7 +26832,7 @@ if (document.readyState === "loading") {
 </div>
 
 <style>
-.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.foto-calificacion-acciones{display:flex;align-items:center;gap:8px;margin:0 0 12px}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}.boton-foto-calificacion{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;font-size:18px!important}.foto-calificacion-y-anteriores{display:flex;align-items:center;gap:8px;margin:0 0 8px}.foto-calificacion-y-anteriores .qr-mostrar-actividades-anteriores{flex:1;margin:0}.foto-calificacion-guardada{margin:0 0 12px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;text-align:center}.foto-calificacion-guardada img{display:block;width:120px;max-width:100%;height:90px;object-fit:cover;border-radius:6px;margin:0 auto 6px;cursor:pointer}.foto-calificacion-guardada button{border:0;background:transparent;cursor:pointer;font-size:13px}
+.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.foto-calificacion-acciones{display:flex;align-items:center;gap:8px;margin:0 0 12px}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}.boton-foto-calificacion{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;font-size:18px!important}.foto-calificacion-y-anteriores{display:flex;align-items:center;gap:8px;margin:0 0 8px}.foto-calificacion-y-anteriores .qr-mostrar-actividades-anteriores{flex:1;margin:0}.foto-calificacion-guardada{margin:0 0 12px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;text-align:center}.foto-calificacion-guardada img{display:block;width:120px;max-width:100%;height:90px;object-fit:cover;border-radius:6px;margin:0 auto;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.foto-calificacion-guardada button{border:0;background:transparent;cursor:pointer;font-size:13px}
 .foto-actividad-celda{min-width:55px;width:55px;text-align:center;white-space:nowrap}.boton-foto-icono{width:32px;height:32px;border:none;border-radius:7px;padding:0;cursor:pointer;font-size:17px;background:#1565c0;color:white;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.menu-foto-actividad{width:100%;max-width:330px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.menu-foto-opciones{display:flex;flex-direction:column;padding:12px;gap:8px}.menu-foto-opciones button{border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;background:#f1f3f5;color:#333;text-align:left}.menu-foto-opciones .opcion-borrar-foto{background:#ffebee;color:#c62828}.foto-qr-boton{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:7px 10px;border:0;border-radius:7px;background:#6a1b9a;color:white;font-weight:bold;cursor:pointer}.modal-foto-config,.modal-foto-confirmacion{width:100%;max-width:480px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.foto-config-cuerpo,.foto-confirmacion-cuerpo{padding:18px}.foto-config-cuerpo label{display:block;font-weight:bold;margin-bottom:6px}.foto-config-cuerpo input,.foto-config-cuerpo select{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:16px}.foto-config-ayuda{font-size:12px;color:#666;margin-top:5px;line-height:1.35}.foto-confirmacion-nombre{font-size:20px;font-weight:bold;color:#1557a6;margin:8px 0 14px}.foto-confirmacion-preview{width:100%;max-height:45vh;object-fit:contain;background:#111;border-radius:8px;display:block;margin-bottom:12px}.foto-config-acciones,.foto-confirmacion-acciones{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}.foto-config-acciones button,.foto-confirmacion-acciones button{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}.boton-foto-cancelar{background:#777;color:white}.boton-foto-guardar,.boton-foto-confirmar{background:#16803c;color:white}.boton-foto-rechazar{background:#c62828;color:white}@media(max-width:600px){.foto-actividad-celda{min-width:55px;width:55px}.boton-foto-icono{width:32px;height:32px}.modal-foto-config,.modal-foto-confirmacion{max-width:100%}}
 </style>
 
