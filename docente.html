@@ -14077,10 +14077,34 @@ async function guardarFotoActividadConfirmada(){
         };
 
         mostrarMensaje("💾 Registrando la fotografía...");
-        const q=p.modo==="cambiar"&&p.fotoExistente?.id
-            ?await supabaseClient.from("fotos_actividades").update(reg).eq("id",p.fotoExistente.id)
-            :await supabaseClient.from("fotos_actividades").upsert(reg,{onConflict:"actividad_id,estudiante_id"});
-        if(q.error)throw new Error("Base de datos: "+(q.error.message||q.error));
+        let q;
+        if(p.modo==="cambiar"&&p.fotoExistente?.id){
+            q=await supabaseClient
+                .from("fotos_actividades")
+                .update(reg)
+                .eq("id",p.fotoExistente.id);
+        }else{
+            // Para una fotografía nueva usamos INSERT directo.
+            // Así no exigimos UPDATE sólo por usar upsert.
+            q=await supabaseClient
+                .from("fotos_actividades")
+                .insert(reg);
+
+            // Si ya existe la combinación actividad + estudiante,
+            // actualizamos ese registro sin volver a subir otra fila.
+            if(q.error && q.error.code==="23505"){
+                q=await supabaseClient
+                    .from("fotos_actividades")
+                    .update(reg)
+                    .eq("actividad_id",reg.actividad_id)
+                    .eq("estudiante_id",reg.estudiante_id);
+            }
+        }
+        if(q.error){
+            const detalle=[q.error.message,q.error.code,q.error.details,q.error.hint]
+                .filter(Boolean).join(" | ");
+            throw new Error("Base de datos: "+detalle);
+        }
 
         // Sólo después de confirmar el nuevo archivo se elimina el anterior.
         if(p.modo==="cambiar"&&p.fotoExistente?.ruta&&p.fotoExistente.ruta!==ruta){
