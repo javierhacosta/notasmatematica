@@ -5506,26 +5506,6 @@ table tbody tr:nth-child(10n+10) td {
 #textoAnotacionActividad{width:100%;min-height:140px;resize:vertical;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px}
 .anotaciones-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.anotaciones-filtros>*{flex:1;min-width:130px}
 .tabla-anotaciones{width:100%;border-collapse:collapse}.tabla-anotaciones th,.tabla-anotaciones td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}.tabla-anotaciones th{background:#f0f0f0}
-.foto-camara-continua {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 9px 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #fafafa;
-    color: #444;
-    font-size: 14px;
-    cursor: pointer;
-}
-.foto-camara-continua input {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    cursor: pointer;
-}
-
 </style>
 
 <style>
@@ -14082,7 +14062,7 @@ function cancelarPulsacionFotoCalificacion(e){
     if(e.type==="pointerup")abrirCapturaFotoActividadDesdeCalificacion();
 }
 
-function abrirCapturaFotoActividad(a,m="nueva",f=null){fotoActividadActual=a;fotoActividadModo=m;const i=document.getElementById("inputFotoActividad");if(!i)return;if(m==="nueva"){mantenerCamaraFotoActividad=true;const cb=document.getElementById("mantenerCamaraFotoActividad");if(cb)cb.checked=true}i.value="";i.dataset.fotoExistente=f?encodeURIComponent(JSON.stringify(f)):"";i.click()}
+function abrirCapturaFotoActividad(a,m="nueva",f=null){fotoActividadActual=a;fotoActividadModo=m;const i=document.getElementById("inputFotoActividad");if(!i)return;i.value="";i.dataset.fotoExistente=f?encodeURIComponent(JSON.stringify(f)):"";i.click()}
 async function detectarCIEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
@@ -14252,15 +14232,10 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
         mostrarConfirmacionFotoActividad(file,e,n,!!existente);
     }catch(e){
         alert(e.message||"No se pudo procesar la fotografía.");
-        // Si la opción está activa, volver directamente a la cámara para el siguiente estudiante.
-        // Esto también cubre el caso en que la fotografía no contiene un QR válido.
-        if(m==="nueva" && mantenerCamaraFotoActividad){
-            setTimeout(()=>abrirCapturaFotoActividad(a,"nueva"),120);
-        }
     }
 }
-function cerrarConfirmacionFotoActividad(e){if(e&&e.target===e.currentTarget)return;const cb=document.getElementById("mantenerCamaraFotoActividad");if(cb)mantenerCamaraFotoActividad=!!cb.checked;const modal=document.getElementById("modalConfirmacionFotoActividad");const preview=document.getElementById("previewFotoActividad");if(preview?.dataset.url){URL.revokeObjectURL(preview.dataset.url);delete preview.dataset.url}modal?.classList.add("oculto");fotoActividadArchivoPendiente=null}
-function rechazarFotoActividad(){const p=fotoActividadArchivoPendiente;const cb=document.getElementById("mantenerCamaraFotoActividad");mantenerCamaraFotoActividad=!!cb?.checked;if(mantenerCamaraFotoActividad&&p?.actividad&&fotoActividadModo==="nueva"){cerrarConfirmacionFotoActividad();setTimeout(()=>abrirCapturaFotoActividad(p.actividad,"nueva"),120);return}cerrarConfirmacionFotoActividad()}
+function cerrarConfirmacionFotoActividad(e){if(e&&e.target!==e.currentTarget)return;const modal=document.getElementById("modalConfirmacionFotoActividad");const preview=document.getElementById("previewFotoActividad");if(preview?.dataset.url){URL.revokeObjectURL(preview.dataset.url);delete preview.dataset.url}modal?.classList.add("oculto");fotoActividadArchivoPendiente=null}
+function rechazarFotoActividad(){cerrarConfirmacionFotoActividad()}
 async function comprimirFotoCalidad(file,nivel){
     if(nivel==="original")return file;
     try{
@@ -14356,13 +14331,8 @@ async function guardarFotoActividadConfirmada(){
         await cargarFotosActividades();
         actualizarCeldasFotosActividad(p.actividad.id);
         actualizarFotoCalificacionVisible();
-        const cb=document.getElementById("mantenerCamaraFotoActividad");
-        mantenerCamaraFotoActividad=!!cb?.checked;
         cerrarConfirmacionFotoActividad();
         const nombreEstudiante=p.estudiante.nombre||[p.estudiante.nombres,p.estudiante.paterno].filter(Boolean).join(" ")||"el estudiante";
-        if(mantenerCamaraFotoActividad && fotoActividadModo==="nueva"){
-            setTimeout(()=>abrirCapturaFotoActividad(p.actividad,"nueva"),180);
-        }
         mostrarMensaje(`✓ Fotografía guardada para ${nombreEstudiante}.`);
     }catch(e){
         console.error("Error al guardar fotografía de actividad:",e);
@@ -14371,7 +14341,7 @@ async function guardarFotoActividadConfirmada(){
 }
 async function cambiarFotoActividad(c){const f=datosFotoCodificados(c),a=actividades.find(x=>String(x.id)===String(f?.actividad_id));if(a)abrirCapturaFotoActividad(a,"cambiar",f)}
 window.guardarFotoActividadConfirmada=guardarFotoActividadConfirmada;
-async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
+async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);if(Number(f.actividad_id)===Number(actividadQRSeleccionada?.id)&&Number(f.estudiante_id)===Number(estudianteQRSeleccionado?.id)){await actualizarFotoCalificacionVisible()}mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){const f=datosFotoCodificados(c);if(!f)return;const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;const nombre=nombreArchivoSeguro(nuevo.trim())||actual,nuevoNombre=nombre.toLowerCase().endsWith(".jpg")?nombre:nombre+".jpg";try{const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`,m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Nombre actualizado.")}catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}}
 /* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
 
@@ -27254,7 +27224,7 @@ if (document.readyState === "loading") {
 </style>
 
 <div id="modalConfigFotoActividad" class="modal-fondo oculto" onclick="cerrarConfigFotoActividad(event)"><div class="modal-foto-config" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>⚙️ Configuración de fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigFotoActividad()">×</button></div><div class="foto-config-cuerpo"><label for="calidadFotoActividad">Calidad de la imagen</label><select id="calidadFotoActividad"><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option><option value="original">Original</option></select><br><br><label for="nombreFotoActividad">Nombre común del archivo</label><input type="text" id="nombreFotoActividad" placeholder="Nombre de la foto" oninput="actualizarEjemploNombreFotoActividad()"><div class="foto-config-campo-nombre"><label>Agregar al nombre</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input id="nombreFotoActividadFecha" type="checkbox" onchange="actualizarEjemploNombreFotoActividad()"><span>Fecha</span></label><label class="config-archivos-opcion"><input id="nombreFotoActividadLista" type="checkbox" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Número de lista</span></label></div></div><div class="foto-config-campo-nombre"><label>Posición del número de lista</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="inicio" onchange="actualizarEjemploNombreFotoActividad()"><span>Al inicio</span></label><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="final" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Al final</span></label></div><div class="foto-config-ayuda">Los números de un dígito llevan 0 delante: 01, 02, 03...</div></div><div class="foto-config-ejemplo">Ejemplo: <strong id="ejemploNombreFotoActividad">foto_01.jpg</strong></div></div><div class="foto-config-acciones"><button type="button" class="boton-foto-cancelar" onclick="cerrarConfigFotoActividad()">Cancelar</button><button type="button" class="boton-foto-guardar" onclick="guardarConfigFotoActividad()">Guardar</button></div></div></div>
-<div id="modalConfirmacionFotoActividad" class="modal-fondo oculto" onclick="cerrarConfirmacionFotoActividad(event)"><div class="modal-foto-confirmacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Confirmar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfirmacionFotoActividad()">×</button></div><div class="foto-confirmacion-cuerpo"><img id="previewFotoActividad" class="foto-confirmacion-preview" alt="Vista previa"><div>La foto corresponde a:</div><div id="nombreEstudianteFotoActividad" class="foto-confirmacion-nombre">—</div><div id="nombreArchivoFotoActividad" class="foto-config-ayuda"></div><label class="foto-camara-continua"><input type="checkbox" id="mantenerCamaraFotoActividad" checked><span>Mantener la cámara abierta para seguir fotografiando</span></label></div><div class="foto-confirmacion-acciones"><button type="button" class="boton-foto-rechazar" onclick="rechazarFotoActividad()">Cancelar</button><button type="button" class="boton-foto-confirmar" onclick="guardarFotoActividadConfirmada()">Guardar</button></div></div></div>
+<div id="modalConfirmacionFotoActividad" class="modal-fondo oculto" onclick="cerrarConfirmacionFotoActividad(event)"><div class="modal-foto-confirmacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Confirmar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfirmacionFotoActividad()">×</button></div><div class="foto-confirmacion-cuerpo"><img id="previewFotoActividad" class="foto-confirmacion-preview" alt="Vista previa"><div>La foto corresponde a:</div><div id="nombreEstudianteFotoActividad" class="foto-confirmacion-nombre">—</div><div id="nombreArchivoFotoActividad" class="foto-config-ayuda"></div></div><div class="foto-confirmacion-acciones"><button type="button" class="boton-foto-rechazar" onclick="rechazarFotoActividad()">Cancelar</button><button type="button" class="boton-foto-confirmar" onclick="guardarFotoActividadConfirmada()">Guardar</button></div></div></div>
 <input type="file" id="inputFotoActividad" accept="image/*" capture="environment" style="display:none">
 <script>
 document.getElementById("inputFotoActividad")?.addEventListener("change",async function(){
@@ -27280,8 +27250,6 @@ let fotoActividadModo = "nueva";
 let fotoActividadArchivoPendiente = null;
 let temporizadorPulsacionFotoActividad = null;
 let pulsacionLargaFotoActividad = false;
-// Mantener la cámara de actividades abierta para fotografiar varios estudiantes.
-let mantenerCamaraFotoActividad = true;
 const CLAVE_CONFIG_FOTOS_ACTIVIDADES = "configFotosActividades_v1";
 function obtenerConfigFotoActividad(id){try{const x=JSON.parse(localStorage.getItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES)||"{}");return Object.assign({calidad:"media",nombre:"",incluirFecha:false,incluirNumeroLista:true,posicionNumeroLista:"final"},x[String(id)]||{})}catch(_){return{calidad:"media",nombre:"",incluirFecha:false,incluirNumeroLista:true,posicionNumeroLista:"final"}}}
 function guardarConfigFotoActividadLocal(id,c){try{const x=JSON.parse(localStorage.getItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES)||"{}");x[String(id)]=c;localStorage.setItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES,JSON.stringify(x))}catch(_) {}}
