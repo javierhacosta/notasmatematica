@@ -14132,7 +14132,7 @@ async function cambiarFotoActividad(c){const f=datosFotoCodificados(c),a=activid
 window.guardarFotoActividadConfirmada=guardarFotoActividadConfirmada;
 async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){const f=datosFotoCodificados(c);if(!f)return;const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;const nombre=nombreArchivoSeguro(nuevo.trim())||actual,nuevoNombre=nombre.toLowerCase().endsWith(".jpg")?nombre:nombre+".jpg";try{const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`,m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Nombre actualizado.")}catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}}
-document.getElementById("inputFotoActividad")?.addEventListener("change",async function(){const file=this.files?.[0],a=fotoActividadActual,m=fotoActividadModo,f=this.dataset.fotoExistente?datosFotoCodificados(this.dataset.fotoExistente):null;this.value="";if(!file||!a)return;if(m==="calificacion"){await procesarFotoActividadParaCalificacion(file,a);return}await procesarFotoActividadSeleccionada(file,a,m,f)});
+/* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
 
 /* =====================================================
    ENTREGA: FECHA Y HORA
@@ -26776,6 +26776,21 @@ if (document.readyState === "loading") {
 <div id="modalConfigFotoActividad" class="modal-fondo oculto" onclick="cerrarConfigFotoActividad(event)"><div class="modal-foto-config" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Configuración de fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigFotoActividad()">×</button></div><div class="foto-config-cuerpo"><label for="calidadFotoActividad">Calidad de la imagen</label><select id="calidadFotoActividad"><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option><option value="original">Original</option></select><br><br><label for="nombreFotoActividad">Nombre</label><input type="text" id="nombreFotoActividad" placeholder="Nombre de la foto"><div class="foto-config-ayuda">El número de lista se añadirá automáticamente. Ejemplo: 4A_32_evaluacion_1_01.jpg</div></div><div class="foto-config-acciones"><button type="button" class="boton-foto-cancelar" onclick="cerrarConfigFotoActividad()">Cancelar</button><button type="button" class="boton-foto-guardar" onclick="guardarConfigFotoActividad()">Guardar</button></div></div></div>
 <div id="modalConfirmacionFotoActividad" class="modal-fondo oculto" onclick="cerrarConfirmacionFotoActividad(event)"><div class="modal-foto-confirmacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Confirmar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfirmacionFotoActividad()">×</button></div><div class="foto-confirmacion-cuerpo"><img id="previewFotoActividad" class="foto-confirmacion-preview" alt="Vista previa"><div>La foto corresponde a:</div><div id="nombreEstudianteFotoActividad" class="foto-confirmacion-nombre">—</div><div id="nombreArchivoFotoActividad" class="foto-config-ayuda"></div></div><div class="foto-confirmacion-acciones"><button type="button" class="boton-foto-rechazar" onclick="rechazarFotoActividad()">Cancelar</button><button type="button" class="boton-foto-confirmar" onclick="guardarFotoActividadConfirmada()">Guardar</button></div></div></div>
 <input type="file" id="inputFotoActividad" accept="image/*" capture="environment" style="display:none">
+<script>
+document.getElementById("inputFotoActividad")?.addEventListener("change",async function(){
+    const file=this.files?.[0];
+    const a=fotoActividadActual;
+    const m=fotoActividadModo;
+    const f=this.dataset.fotoExistente?datosFotoCodificados(this.dataset.fotoExistente):null;
+    this.value="";
+    if(!file||!a)return;
+    if(m==="calificacion"){
+        await procesarFotoActividadParaCalificacion(file,a);
+        return;
+    }
+    await procesarFotoActividadSeleccionada(file,a,m,f);
+});
+</script>
 
 <script>
 const BUCKET_ARCHIVOS_ESTUDIANTES = "archivos_estudiantes";
