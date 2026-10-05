@@ -6863,7 +6863,11 @@ Cancelar
                         class="boton-foto-actividad boton-foto-calificacion"
                         title="Tomar fotografía"
                         aria-label="Tomar fotografía"
-                        onclick="abrirCapturaFotoActividadDesdeCalificacion()">
+                        onpointerdown="iniciarPulsacionFotoCalificacionCamara(event)"
+                        onpointerup="finalizarPulsacionFotoCalificacionCamara(event)"
+                        onpointercancel="cancelarPulsacionFotoCalificacionCamara()"
+                        onpointerleave="cancelarPulsacionFotoCalificacionCamara()"
+                        onclick="clickFotoCalificacionCamara(event)">
                         📷
                     </button>
                 </div>
@@ -21044,6 +21048,10 @@ async function actualizarFotoCalificacionVisible() {
 
 let temporizadorFotoCalificacion = null;
 let pulsacionLargaFotoCalificacion = false;
+let bloquearSiguienteClickFotoCalificacion = false;
+let temporizadorCamaraFotoCalificacion = null;
+let pulsacionLargaCamaraFotoCalificacion = false;
+let bloquearSiguienteClickCamaraFotoCalificacion = false;
 
 function obtenerFotoDesdeElementoCalificacion(img) {
     try {
@@ -21071,7 +21079,9 @@ function finalizarPulsacionFotoCalificacion(e) {
     if (pulsacionLargaFotoCalificacion) {
         e.preventDefault();
         e.stopPropagation();
-        setTimeout(() => { pulsacionLargaFotoCalificacion = false; }, 0);
+        bloquearSiguienteClickFotoCalificacion = true;
+        pulsacionLargaFotoCalificacion = false;
+        setTimeout(() => { bloquearSiguienteClickFotoCalificacion = false; }, 400);
     }
 }
 
@@ -21084,9 +21094,53 @@ function cancelarPulsacionFotoCalificacion() {
 }
 
 function abrirFotoCalificacionAlTocar(e) {
-    if (pulsacionLargaFotoCalificacion) return;
+    if (pulsacionLargaFotoCalificacion || bloquearSiguienteClickFotoCalificacion) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+    }
     const foto = obtenerFotoDesdeElementoCalificacion(e.currentTarget);
     if (foto) abrirFotoActividad(foto);
+}
+
+function iniciarPulsacionFotoCalificacionCamara(e) {
+    pulsacionLargaCamaraFotoCalificacion = false;
+    if (temporizadorCamaraFotoCalificacion) clearTimeout(temporizadorCamaraFotoCalificacion);
+    temporizadorCamaraFotoCalificacion = setTimeout(() => {
+        pulsacionLargaCamaraFotoCalificacion = true;
+        bloquearSiguienteClickCamaraFotoCalificacion = true;
+        if (actividadQRSeleccionada) abrirConfigFotoActividad(actividadQRSeleccionada);
+    }, 650);
+}
+
+function finalizarPulsacionFotoCalificacionCamara(e) {
+    if (temporizadorCamaraFotoCalificacion) {
+        clearTimeout(temporizadorCamaraFotoCalificacion);
+        temporizadorCamaraFotoCalificacion = null;
+    }
+    if (pulsacionLargaCamaraFotoCalificacion) {
+        e.preventDefault();
+        e.stopPropagation();
+        pulsacionLargaCamaraFotoCalificacion = false;
+        setTimeout(() => { bloquearSiguienteClickCamaraFotoCalificacion = false; }, 400);
+    } else if (e.type === "pointerup") {
+        abrirCapturaFotoActividadDesdeCalificacion();
+    }
+}
+
+function cancelarPulsacionFotoCalificacionCamara() {
+    if (temporizadorCamaraFotoCalificacion) {
+        clearTimeout(temporizadorCamaraFotoCalificacion);
+        temporizadorCamaraFotoCalificacion = null;
+    }
+    pulsacionLargaCamaraFotoCalificacion = false;
+}
+
+function clickFotoCalificacionCamara(e) {
+    if (bloquearSiguienteClickCamaraFotoCalificacion) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
 }
 
 function mostrarMenuFotoCalificacion(foto) {
