@@ -6847,28 +6847,32 @@ Cancelar
                 class="info-estudiante-qr">
             </div>
 
-            <div class="foto-calificacion-acciones">
-                <button
-                    type="button"
-                    id="botonFotoCalificacionQR"
-                    class="boton-foto-actividad boton-foto-calificacion"
-                    title="Tomar fotografía del estudiante (mantén pulsado para configurar)"
-                    aria-label="Tomar fotografía del estudiante"
-                    onpointerdown="iniciarPulsacionFotoCalificacion(event)"
-                    onpointerup="cancelarPulsacionFotoCalificacion(event)"
-                    onpointercancel="cancelarPulsacionFotoCalificacion(event)"
-                    onpointerleave="cancelarPulsacionFotoCalificacion(event)">
-                    📷 Tomar foto
-                </button>
+            <div class="foto-calificacion-y-anteriores">
+                <label class="qr-mostrar-actividades-anteriores">
+                    <input
+                        type="checkbox"
+                        id="mostrarActividadesAnterioresQR"
+                        onchange="actualizarActividadesAnterioresQR()">
+                    <span>Mostrar actividades anteriores</span>
+                </label>
+
+                <div class="foto-calificacion-acciones">
+                    <button
+                        type="button"
+                        id="botonFotoCalificacionQR"
+                        class="boton-foto-actividad boton-foto-calificacion"
+                        title="Tomar foto (mantén pulsado para configurar)"
+                        aria-label="Tomar foto"
+                        onpointerdown="iniciarPulsacionFotoCalificacion(event)"
+                        onpointerup="cancelarPulsacionFotoCalificacion(event)"
+                        onpointercancel="cancelarPulsacionFotoCalificacion(event)"
+                        onpointerleave="cancelarPulsacionFotoCalificacion(event)">
+                        📷
+                    </button>
+                </div>
             </div>
 
-            <label class="qr-mostrar-actividades-anteriores">
-                <input
-                    type="checkbox"
-                    id="mostrarActividadesAnterioresQR"
-                    onchange="actualizarActividadesAnterioresQR()">
-                <span>Mostrar actividades anteriores</span>
-            </label>
+            <div id="fotoCalificacionGuardada" class="foto-calificacion-guardada oculto"></div>
 
             <div class="qr-notas-rapidas">
 
@@ -14031,7 +14035,7 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){try{mostrarMensaje(
 function cerrarConfirmacionFotoActividad(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalConfirmacionFotoActividad")?.classList.add("oculto");fotoActividadArchivoPendiente=null}
 function rechazarFotoActividad(){cerrarConfirmacionFotoActividad()}
 async function comprimirFotoCalidad(file,nivel){if(nivel==="original")return file;const op=({alta:{q:.82,m:2400},media:{q:.65,m:1800},baja:{q:.45,m:1400}})[nivel]||{q:.65,m:1800};const b=await createImageBitmap(file);let w=b.width,h=b.height;if(Math.max(w,h)>op.m){const q=op.m/Math.max(w,h);w=Math.round(w*q);h=Math.round(h*q)}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(b,0,0,w,h);b.close?.();const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",op.q));return blob?new File([blob],"foto.jpg",{type:"image/jpeg"}):file}
-async function guardarFotoActividadConfirmada(){const p=fotoActividadArchivoPendiente;if(!p)return;try{mostrarMensaje("💾 Guardando fotografía...");const cfg=obtenerConfigFotoActividad(p.actividad.id),archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media"),archivo=new File([archivo0],p.nombre,{type:"image/jpeg"}),ruta=`${p.estudiante.id}/${p.nombre}`;if(p.modo==="cambiar"&&p.fotoExistente?.ruta)await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([p.fotoExistente.ruta]);const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:"image/jpeg"});if(up.error)throw up.error;const reg={actividad_id:Number(p.actividad.id),estudiante_id:Number(p.estudiante.id),ruta,nombre_archivo:p.nombre};const q=p.modo==="cambiar"&&p.fotoExistente?.id?await supabaseClient.from("fotos_actividades").update(reg).eq("id",p.fotoExistente.id):await supabaseClient.from("fotos_actividades").upsert(reg,{onConflict:"actividad_id,estudiante_id"});if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(p.actividad.id);cerrarConfirmacionFotoActividad();mostrarMensaje(`✓ Fotografía guardada para ${p.estudiante.nombre||[p.estudiante.nombres,p.estudiante.paterno].filter(Boolean).join(" ")||"el estudiante"}. Archivo: Archivos/${p.estudiante.id}/${p.nombre}`)}catch(e){alert("No se pudo guardar la fotografía. Verifica la tabla fotos_actividades y el bucket archivos_estudiantes.\n\n"+(e.message||e))}}
+async function guardarFotoActividadConfirmada(){const p=fotoActividadArchivoPendiente;if(!p)return;try{mostrarMensaje("💾 Guardando fotografía...");const cfg=obtenerConfigFotoActividad(p.actividad.id),archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media"),archivo=new File([archivo0],p.nombre,{type:"image/jpeg"}),ruta=`${p.estudiante.id}/${p.nombre}`;if(p.modo==="cambiar"&&p.fotoExistente?.ruta)await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([p.fotoExistente.ruta]);const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:"image/jpeg"});if(up.error)throw up.error;const reg={actividad_id:Number(p.actividad.id),estudiante_id:Number(p.estudiante.id),ruta,nombre_archivo:p.nombre};const q=p.modo==="cambiar"&&p.fotoExistente?.id?await supabaseClient.from("fotos_actividades").update(reg).eq("id",p.fotoExistente.id):await supabaseClient.from("fotos_actividades").upsert(reg,{onConflict:"actividad_id,estudiante_id"});if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(p.actividad.id);actualizarFotoCalificacionVisible();cerrarConfirmacionFotoActividad();mostrarMensaje(`✓ Fotografía guardada para ${p.estudiante.nombre||[p.estudiante.nombres,p.estudiante.paterno].filter(Boolean).join(" ")||"el estudiante"}. Archivo: Archivos/${p.estudiante.id}/${p.nombre}`)}catch(e){alert("No se pudo guardar la fotografía. Verifica la tabla fotos_actividades y el bucket archivos_estudiantes.\n\n"+(e.message||e))}}
 async function cambiarFotoActividad(c){const f=datosFotoCodificados(c),a=actividades.find(x=>String(x.id)===String(f?.actividad_id));if(a)abrirCapturaFotoActividad(a,"cambiar",f)}
 async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){const f=datosFotoCodificados(c);if(!f)return;const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;const nombre=nombreArchivoSeguro(nuevo.trim())||actual,nuevoNombre=nombre.toLowerCase().endsWith(".jpg")?nombre:nombre+".jpg";try{const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`,m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Nombre actualizado.")}catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}}
@@ -20838,6 +20842,8 @@ async function prepararCalificacionQR(
         ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
 
+    actualizarFotoCalificacionVisible();
+
     const notaInput =
     document.getElementById(
         "notaQR"
@@ -20901,6 +20907,51 @@ async function prepararCalificacionQR(
 
     procesandoQR = false;
 
+}
+
+
+async function actualizarFotoCalificacionVisible() {
+    const contenedor = document.getElementById("fotoCalificacionGuardada");
+    if (!contenedor) return;
+
+    contenedor.innerHTML = "";
+    contenedor.classList.add("oculto");
+
+    if (!estudianteQRSeleccionado || !actividadQRSeleccionada) return;
+
+    const foto = obtenerFotoActividad(actividadQRSeleccionada.id, estudianteQRSeleccionado.id);
+    if (!foto || !foto.ruta) return;
+
+    const texto = document.createElement("div");
+    texto.textContent = "📷 Fotografía guardada";
+    texto.style.fontWeight = "600";
+    texto.style.marginBottom = "6px";
+    contenedor.appendChild(texto);
+
+    try {
+        const { data, error } = await supabaseClient.storage
+            .from(BUCKET_ARCHIVOS_ESTUDIANTES)
+            .createSignedUrl(foto.ruta, 600);
+        if (error) throw error;
+
+        if (data?.signedUrl) {
+            const img = document.createElement("img");
+            img.src = data.signedUrl;
+            img.alt = "Fotografía guardada del estudiante";
+            img.title = "Abrir fotografía";
+            img.onclick = () => abrirFotoActividad(foto);
+            contenedor.appendChild(img);
+        }
+    } catch (error) {
+        console.warn("No se pudo mostrar la miniatura de la fotografía:", error);
+    }
+
+    const abrir = document.createElement("button");
+    abrir.type = "button";
+    abrir.textContent = "Ver fotografía";
+    abrir.onclick = () => abrirFotoActividad(foto);
+    contenedor.appendChild(abrir);
+    contenedor.classList.remove("oculto");
 }
 
 
@@ -26625,7 +26676,7 @@ if (document.readyState === "loading") {
 </div>
 
 <style>
-.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.foto-calificacion-acciones{display:flex;justify-content:center}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}
+.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.foto-calificacion-acciones{display:flex;align-items:center;gap:8px;margin:0 0 12px}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}.boton-foto-calificacion{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;font-size:18px!important}.foto-calificacion-y-anteriores{display:flex;align-items:center;gap:8px;margin:0 0 8px}.foto-calificacion-y-anteriores .qr-mostrar-actividades-anteriores{flex:1;margin:0}.foto-calificacion-guardada{margin:0 0 12px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;text-align:center}.foto-calificacion-guardada img{display:block;width:120px;max-width:100%;height:90px;object-fit:cover;border-radius:6px;margin:0 auto 6px;cursor:pointer}.foto-calificacion-guardada button{border:0;background:transparent;cursor:pointer;font-size:13px}
 .foto-actividad-celda{min-width:155px;white-space:nowrap}.foto-acciones{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap}.foto-actividad-celda button{border:none;border-radius:5px;padding:5px 7px;cursor:pointer;font-size:13px}.boton-foto-ver{background:#1565c0;color:white}.boton-foto-cambiar{background:#ef6c00;color:white}.boton-foto-editar{background:#555;color:white}.boton-foto-borrar{background:#c62828;color:white}.foto-actividad-vacia{color:#999;font-size:13px}.foto-qr-boton{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:7px 10px;border:0;border-radius:7px;background:#6a1b9a;color:white;font-weight:bold;cursor:pointer}.modal-foto-config,.modal-foto-confirmacion{width:100%;max-width:480px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.foto-config-cuerpo,.foto-confirmacion-cuerpo{padding:18px}.foto-config-cuerpo label{display:block;font-weight:bold;margin-bottom:6px}.foto-config-cuerpo input,.foto-config-cuerpo select{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:16px}.foto-config-ayuda{font-size:12px;color:#666;margin-top:5px;line-height:1.35}.foto-confirmacion-nombre{font-size:20px;font-weight:bold;color:#1557a6;margin:8px 0 14px}.foto-confirmacion-preview{width:100%;max-height:45vh;object-fit:contain;background:#111;border-radius:8px;display:block;margin-bottom:12px}.foto-config-acciones,.foto-confirmacion-acciones{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}.foto-config-acciones button,.foto-confirmacion-acciones button{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}.boton-foto-cancelar{background:#777;color:white}.boton-foto-guardar,.boton-foto-confirmar{background:#16803c;color:white}.boton-foto-rechazar{background:#c62828;color:white}@media(max-width:600px){.foto-actividad-celda{min-width:135px}.foto-actividad-celda button{font-size:12px;padding:5px}.modal-foto-config,.modal-foto-confirmacion{max-width:100%}}
 </style>
 
