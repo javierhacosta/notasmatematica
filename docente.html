@@ -13979,7 +13979,7 @@ function crearActividadHTML(
    FOTOGRAFÍAS DE ACTIVIDADES
 ===================================================== */
 function renderFotoActividadCelda(a,e){const fotos=obtenerFotosActividad(a,e);if(!fotos.length)return`<button type="button" class="boton-foto-agregar" title="Añadir fotografía" aria-label="Añadir fotografía" onclick="anadirFotoActividadDesdeCelda(${a},${e})">+</button>`;return fotos.map(f=>{const c=encodeURIComponent(JSON.stringify(f));return`<button type="button" class="boton-foto-icono" title="Ver fotografía" data-foto-codificada="${c}" onpointerdown="iniciarPulsacionMenuFotoActividad(event,'${c}')" onpointerup="finalizarPulsacionMenuFotoActividad(event,'${c}')" onpointercancel="cancelarPulsacionMenuFotoActividad()" onclick="abrirFotoActividadDesdeCelda('${c}')">📸</button>`}).join('')}
-function anadirFotoActividadDesdeCelda(a,e){const actividad=actividades.find(x=>String(x.id)===String(a));const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'nueva');}}
+function anadirFotoActividadDesdeCelda(a,e){const actividad=actividades.find(x=>String(x.id)===String(a));const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'directa');}}
 function datosFotoCodificados(c){try{return JSON.parse(decodeURIComponent(c))}catch(_){return null}}
 function abrirFotoActividadDesdeCelda(c){if(pulsacionLargaMenuFotoActividad)return;const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
 let temporizadorMenuFotoActividad=null;let pulsacionLargaMenuFotoActividad=false;
@@ -14039,7 +14039,7 @@ function abrirCapturaFotoActividadDesdeCalificacion(){
     if(!a||!e){alert("No hay un estudiante y una actividad seleccionados.");return}
     fotoActividadActual=a;
     fotoActividadModo="calificacion";
-    hablarNombreFotoActividad(e);
+    if("speechSynthesis" in window)window.speechSynthesis.cancel();
     const i=document.getElementById("inputFotoActividad");
     if(!i)return;
     i.value="";
@@ -14151,7 +14151,25 @@ function hablarNombreFotoActividad(e){
     if(!nombre||!("speechSynthesis" in window))return;
     try{
         window.speechSynthesis.cancel();
-        const voz=new SpeechSynthesisUtterance(`Estudiante identificado: ${nombre}`);
+        const nombreVoz=String(nombre)
+            .replace(/N[º°]/gi," número ")
+            .replace(/\b(1)ro\b/gi,"primero")
+            .replace(/\b(2)do\b/gi,"segundo")
+            .replace(/\b(3)ro\b/gi,"tercero")
+            .replace(/\b(4)to\b/gi,"cuarto")
+            .replace(/\b(5)to\b/gi,"quinto")
+            .replace(/\b(6)to\b/gi,"sexto")
+            .replace(/\b(7)mo\b/gi,"séptimo")
+            .replace(/\b(8)vo\b/gi,"octavo")
+            .replace(/\b(9)no\b/gi,"noveno")
+            .replace(/\b(10)mo\b/gi,"décimo")
+            .replace(/[º°ª]/g," ")
+            .replace(/[&+_=|\\/<>#@*~^`]/g," ")
+            .replace(/[()[\]{}]/g," ")
+            .replace(/[-_]+/g," ")
+            .replace(/\s+/g," ")
+            .trim();
+        const voz=new SpeechSynthesisUtterance(`Estudiante identificado: ${nombreVoz}`);
         voz.lang="es-ES";
         voz.rate=0.95;
         voz.pitch=1;
@@ -14162,7 +14180,11 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
     try{
         let e=null;
         let existente=null;
-        if(m==="cambiar"&&f?.estudiante_id){
+        if(m==="directa"){
+            e=estudianteQRSeleccionado;
+            if(!e)throw new Error("No hay un estudiante seleccionado para guardar la fotografía.");
+            existente=obtenerFotoActividad(a.id,e.id)||null;
+        }else if(m==="cambiar"&&f?.estudiante_id){
             e=(estudiantes||[]).find(x=>String(x.id)===String(f.estudiante_id))||null;
             if(!e){
                 const r=await supabaseClient.from("matematica").select("id,ci,nombre,paterno,materno,nombres,num_lista,curso").eq("id",f.estudiante_id).maybeSingle();
@@ -14171,7 +14193,6 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
             }
             if(!e)throw new Error("No se encontró el estudiante de la fotografía.");
             existente=f;
-            hablarNombreFotoActividad(e);
         }else{
             mostrarMensaje("🔎 Buscando el QR del estudiante en la foto...");
             const ci=await detectarCIEnImagen(file);
