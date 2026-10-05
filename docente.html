@@ -14034,8 +14034,71 @@ async function procesarFotoActividadParaCalificacion(file,a){
 async function procesarFotoActividadSeleccionada(file,a,m,f){try{mostrarMensaje("🔎 Buscando el QR del estudiante en la foto...");const ci=await detectarCIEnImagen(file);if(!ci)throw new Error("No se encontró un código QR de estudiante en la fotografía.");let e=buscarEstudianteQRLocal(ci);if(!e){const r=await supabaseClient.from("matematica").select("id,ci,nombre,paterno,nombres,num_lista,curso").eq("ci",ci).maybeSingle();if(r.error)throw r.error;e=r.data}if(!e)throw new Error("No se encontró ningún estudiante con el QR detectado.");if(e.curso!==cursoSeleccionado)throw new Error(`El estudiante pertenece al curso ${e.curso} y no al curso seleccionado ${cursoSeleccionado}.`);const c=obtenerConfigFotoActividad(a.id),n=construirNombreFotoActividad(a,e,c.nombre||nombreFotoActividadPorDefecto(a));fotoActividadArchivoPendiente={file,actividad:a,modo:m,fotoExistente:f,estudiante:e,nombre:n};const p=document.getElementById("previewFotoActividad");p.src=URL.createObjectURL(file);p.onload=()=>URL.revokeObjectURL(p.src);document.getElementById("nombreEstudianteFotoActividad").textContent=String(e.nombre||[e.nombres,e.paterno].filter(Boolean).join(" ")||"Estudiante").trim();document.getElementById("nombreArchivoFotoActividad").textContent=`Archivo: ${n}`;document.getElementById("modalConfirmacionFotoActividad").classList.remove("oculto")}catch(e){alert(e.message||"No se pudo procesar la fotografía.")}}
 function cerrarConfirmacionFotoActividad(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalConfirmacionFotoActividad")?.classList.add("oculto");fotoActividadArchivoPendiente=null}
 function rechazarFotoActividad(){cerrarConfirmacionFotoActividad()}
-async function comprimirFotoCalidad(file,nivel){if(nivel==="original")return file;const op=({alta:{q:.82,m:2400},media:{q:.65,m:1800},baja:{q:.45,m:1400}})[nivel]||{q:.65,m:1800};const b=await createImageBitmap(file);let w=b.width,h=b.height;if(Math.max(w,h)>op.m){const q=op.m/Math.max(w,h);w=Math.round(w*q);h=Math.round(h*q)}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(b,0,0,w,h);b.close?.();const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",op.q));return blob?new File([blob],"foto.jpg",{type:"image/jpeg"}):file}
-async function guardarFotoActividadConfirmada(){const p=fotoActividadArchivoPendiente;if(!p)return;try{mostrarMensaje("💾 Guardando fotografía...");const cfg=obtenerConfigFotoActividad(p.actividad.id),archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media"),archivo=new File([archivo0],p.nombre,{type:"image/jpeg"}),ruta=`${p.estudiante.id}/${p.nombre}`;if(p.modo==="cambiar"&&p.fotoExistente?.ruta)await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([p.fotoExistente.ruta]);const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:"image/jpeg"});if(up.error)throw up.error;const reg={actividad_id:Number(p.actividad.id),estudiante_id:Number(p.estudiante.id),ruta,nombre_archivo:p.nombre};const q=p.modo==="cambiar"&&p.fotoExistente?.id?await supabaseClient.from("fotos_actividades").update(reg).eq("id",p.fotoExistente.id):await supabaseClient.from("fotos_actividades").upsert(reg,{onConflict:"actividad_id,estudiante_id"});if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(p.actividad.id);actualizarFotoCalificacionVisible();cerrarConfirmacionFotoActividad();mostrarMensaje(`✓ Fotografía guardada para ${p.estudiante.nombre||[p.estudiante.nombres,p.estudiante.paterno].filter(Boolean).join(" ")||"el estudiante"}. Archivo: Archivos/${p.estudiante.id}/${p.nombre}`)}catch(e){alert("No se pudo guardar la fotografía. Verifica la tabla fotos_actividades y el bucket archivos_estudiantes.\n\n"+(e.message||e))}}
+async function comprimirFotoCalidad(file,nivel){
+    if(nivel==="original")return file;
+    try{
+        const op=({alta:{q:.82,m:2400},media:{q:.65,m:1800},baja:{q:.45,m:1400}})[nivel]||{q:.65,m:1800};
+        const b=await createImageBitmap(file);let w=b.width,h=b.height;
+        if(Math.max(w,h)>op.m){const q=op.m/Math.max(w,h);w=Math.round(w*q);h=Math.round(h*q)}
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        const ctx=c.getContext("2d");
+        if(!ctx){b.close?.();return file}
+        ctx.drawImage(b,0,0,w,h);b.close?.();
+        const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",op.q));
+        return blob?new File([blob],"foto.jpg",{type:"image/jpeg"}):file;
+    }catch(error){
+        console.warn("No se pudo comprimir la fotografía; se guardará el archivo original.",error);
+        return file;
+    }
+}
+
+async function guardarFotoActividadConfirmada(){
+    const p=fotoActividadArchivoPendiente;
+    if(!p)return;
+    try{
+        mostrarMensaje("💾 Preparando fotografía...");
+        const cfg=obtenerConfigFotoActividad(p.actividad.id);
+        const archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media");
+        const tipo=archivo0.type||"image/jpeg";
+        const archivo=new File([archivo0],p.nombre,{type:tipo});
+        const ruta=`${p.estudiante.id}/${p.nombre}`;
+
+        mostrarMensaje("💾 Guardando fotografía en Archivos...");
+        const up=await supabaseClient.storage
+            .from(BUCKET_ARCHIVOS_ESTUDIANTES)
+            .upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:tipo});
+        if(up.error)throw new Error("Storage: "+(up.error.message||up.error));
+
+        const reg={
+            actividad_id:Number(p.actividad.id),
+            estudiante_id:Number(p.estudiante.id),
+            ruta:ruta,
+            nombre_archivo:p.nombre
+        };
+
+        mostrarMensaje("💾 Registrando la fotografía...");
+        const q=p.modo==="cambiar"&&p.fotoExistente?.id
+            ?await supabaseClient.from("fotos_actividades").update(reg).eq("id",p.fotoExistente.id)
+            :await supabaseClient.from("fotos_actividades").upsert(reg,{onConflict:"actividad_id,estudiante_id"});
+        if(q.error)throw new Error("Base de datos: "+(q.error.message||q.error));
+
+        // Sólo después de confirmar el nuevo archivo se elimina el anterior.
+        if(p.modo==="cambiar"&&p.fotoExistente?.ruta&&p.fotoExistente.ruta!==ruta){
+            const anterior=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([p.fotoExistente.ruta]);
+            if(anterior.error)console.warn("La nueva foto se guardó, pero no se pudo eliminar la anterior:",anterior.error);
+        }
+
+        await cargarFotosActividades();
+        actualizarCeldasFotosActividad(p.actividad.id);
+        actualizarFotoCalificacionVisible();
+        cerrarConfirmacionFotoActividad();
+        const nombreEstudiante=p.estudiante.nombre||[p.estudiante.nombres,p.estudiante.paterno].filter(Boolean).join(" ")||"el estudiante";
+        mostrarMensaje(`✓ Fotografía guardada para ${nombreEstudiante}.`);
+    }catch(e){
+        console.error("Error al guardar fotografía de actividad:",e);
+        alert("No se pudo guardar la fotografía.\n\n"+(e.message||e)+"\n\nSi el mensaje indica 'fotos_actividades', falta crear esa tabla o permitir INSERT/UPDATE. Si indica 'Storage', revisa los permisos del bucket archivos_estudiantes.");
+    }
+}
 async function cambiarFotoActividad(c){const f=datosFotoCodificados(c),a=actividades.find(x=>String(x.id)===String(f?.actividad_id));if(a)abrirCapturaFotoActividad(a,"cambiar",f)}
 async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){const f=datosFotoCodificados(c);if(!f)return;const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;const nombre=nombreArchivoSeguro(nuevo.trim())||actual,nuevoNombre=nombre.toLowerCase().endsWith(".jpg")?nombre:nombre+".jpg";try{const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`,m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Nombre actualizado.")}catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}}
