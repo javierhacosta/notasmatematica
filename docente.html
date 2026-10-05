@@ -13389,6 +13389,16 @@ function crearActividadHTML(
         }
     );
 
+    const botonConfigFotoQR = document.createElement("button");
+    botonConfigFotoQR.type = "button";
+    botonConfigFotoQR.className = "boton-bloquear boton-config-foto-qr";
+    botonConfigFotoQR.textContent = "⚙️";
+    botonConfigFotoQR.title = "Configurar fotografía de la actividad";
+    botonConfigFotoQR.addEventListener("click", function(event) {
+        event.stopPropagation();
+        abrirConfigFotoActividad(actividad);
+    });
+
     const botonGuardarActividad =
     document.createElement(
         "button"
@@ -13420,6 +13430,10 @@ function crearActividadHTML(
 
     derecha.appendChild(
         botonEscanearQR
+    );
+
+    derecha.appendChild(
+        botonConfigFotoQR
     );
 
 
@@ -13962,9 +13976,48 @@ function mostrarMenuFotoActividad(c){const f=datosFotoCodificados(c);if(!f)retur
 function actualizarCeldasFotosActividad(a){document.querySelectorAll(`.foto-actividad-celda[data-foto-actividad="${a}"]`).forEach(td=>td.innerHTML=renderFotoActividadCelda(a,td.dataset.fotoEstudiante))}
 function iniciarPulsacionFotoActividad(e,a){pulsacionLargaFotoActividad=false;if(temporizadorPulsacionFotoActividad)clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=setTimeout(()=>{pulsacionLargaFotoActividad=true;abrirConfigFotoActividad(a)},650)}
 function cancelarPulsacionFotoActividad(e,a){if(temporizadorPulsacionFotoActividad){clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=null}if(pulsacionLargaFotoActividad){e.preventDefault();e.stopPropagation();pulsacionLargaFotoActividad=false;return}if(e.type==="pointerup")abrirCapturaFotoActividad(a,"nueva")}
-function abrirConfigFotoActividad(a){fotoActividadActual=a;const c=obtenerConfigFotoActividad(a.id);document.getElementById("calidadFotoActividad").value=c.calidad||"media";document.getElementById("nombreFotoActividad").value=c.nombre||nombreFotoActividadPorDefecto(a);document.getElementById("modalConfigFotoActividad").classList.remove("oculto")}
+function abrirConfigFotoActividad(a){
+    fotoActividadActual=a;
+    const c=obtenerConfigFotoActividad(a.id);
+    const calidad=document.getElementById("calidadFotoActividad");
+    const nombre=document.getElementById("nombreFotoActividad");
+    const fecha=document.getElementById("nombreFotoActividadFecha");
+    const lista=document.getElementById("nombreFotoActividadLista");
+    if(calidad) calidad.value=c.calidad||"media";
+    if(nombre) nombre.value=c.nombre||nombreFotoActividadPorDefecto(a);
+    if(fecha) fecha.checked=!!c.incluirFecha;
+    if(lista) lista.checked=c.incluirNumeroLista!==false;
+    document.querySelectorAll('input[name="posicionNumeroListaFotoActividad"]').forEach(r=>{r.checked=r.value===(c.posicionNumeroLista||"final")});
+    actualizarEjemploNombreFotoActividad();
+    document.getElementById("modalConfigFotoActividad").classList.remove("oculto")
+}
 function cerrarConfigFotoActividad(e){if(e&&e.target!==e.currentTarget)return;document.getElementById("modalConfigFotoActividad")?.classList.add("oculto");fotoActividadActual=null}
-function guardarConfigFotoActividad(){if(!fotoActividadActual)return;guardarConfigFotoActividadLocal(fotoActividadActual.id,{calidad:document.getElementById("calidadFotoActividad").value||"media",nombre:document.getElementById("nombreFotoActividad").value.trim()||nombreFotoActividadPorDefecto(fotoActividadActual)});cerrarConfigFotoActividad();mostrarMensaje("✓ Configuración de fotografía guardada.")}
+function guardarConfigFotoActividad(){
+    if(!fotoActividadActual)return;
+    const nombre=nombreArchivoSeguro(document.getElementById("nombreFotoActividad")?.value.trim()||nombreFotoActividadPorDefecto(fotoActividadActual)).replace(/\.[^.]+$/i,"")||nombreFotoActividadPorDefecto(fotoActividadActual);
+    guardarConfigFotoActividadLocal(fotoActividadActual.id,{
+        calidad:document.getElementById("calidadFotoActividad")?.value||"media",
+        nombre,
+        incluirFecha:!!document.getElementById("nombreFotoActividadFecha")?.checked,
+        incluirNumeroLista:!!document.getElementById("nombreFotoActividadLista")?.checked,
+        posicionNumeroLista:document.querySelector('input[name="posicionNumeroListaFotoActividad"]:checked')?.value||"final"
+    });
+    cerrarConfigFotoActividad();
+    mostrarMensaje("✓ Configuración de fotografía guardada.")
+}
+function actualizarEjemploNombreFotoActividad(){
+    const vista=document.getElementById("ejemploNombreFotoActividad");
+    if(!vista)return;
+    const a=fotoActividadActual;
+    const base=nombreArchivoSeguro(document.getElementById("nombreFotoActividad")?.value||nombreFotoActividadPorDefecto(a)).replace(/\.[^.]+$/i,"")||"foto";
+    const fecha=document.getElementById("nombreFotoActividadFecha")?.checked?fechaNombreArchivo():"";
+    const numero=document.getElementById("nombreFotoActividadLista")?.checked?"01":"";
+    const partes=[base];
+    if(fecha)partes.push(fecha);
+    if(numero&&document.querySelector('input[name="posicionNumeroListaFotoActividad"]:checked')?.value==="inicio")return vista.textContent=`${numero}_${partes.join("_")}.jpg`;
+    if(numero)partes.push(numero);
+    vista.textContent=`${partes.join("_")}.jpg`;
+}
 function abrirCapturaFotoActividadDesdeCalificacion(){
     const a=actividadQRSeleccionada;
     const e=estudianteQRSeleccionado;
@@ -26886,11 +26939,11 @@ if (document.readyState === "loading") {
 </div>
 
 <style>
-.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.foto-calificacion-acciones{display:flex;align-items:center;gap:8px;margin:0 0 12px}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}.boton-foto-calificacion{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;font-size:18px!important}.foto-calificacion-y-anteriores{display:flex;align-items:center;gap:8px;margin:0 0 8px}.foto-calificacion-y-anteriores .qr-mostrar-actividades-anteriores{flex:1;margin:0}.foto-calificacion-guardada{margin:0 0 12px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;text-align:center}.foto-calificacion-guardada img{display:block;width:120px;max-width:100%;height:90px;object-fit:cover;border-radius:6px;margin:0 auto;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.foto-calificacion-guardada button{border:0;background:transparent;cursor:pointer;font-size:13px}
-.foto-actividad-celda{min-width:55px;width:55px;text-align:center;white-space:nowrap}.boton-foto-icono{width:32px;height:32px;border:none;border-radius:7px;padding:0;cursor:pointer;font-size:17px;background:#1565c0;color:white;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.menu-foto-actividad{width:100%;max-width:330px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.menu-foto-opciones{display:flex;flex-direction:column;padding:12px;gap:8px}.menu-foto-opciones button{border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;background:#f1f3f5;color:#333;text-align:left}.menu-foto-opciones .opcion-borrar-foto{background:#ffebee;color:#c62828}.foto-qr-boton{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:7px 10px;border:0;border-radius:7px;background:#6a1b9a;color:white;font-weight:bold;cursor:pointer}.modal-foto-config,.modal-foto-confirmacion{width:100%;max-width:480px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.foto-config-cuerpo,.foto-confirmacion-cuerpo{padding:18px}.foto-config-cuerpo label{display:block;font-weight:bold;margin-bottom:6px}.foto-config-cuerpo input,.foto-config-cuerpo select{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:16px}.foto-config-ayuda{font-size:12px;color:#666;margin-top:5px;line-height:1.35}.foto-confirmacion-nombre{font-size:20px;font-weight:bold;color:#1557a6;margin:8px 0 14px}.foto-confirmacion-preview{width:100%;max-height:45vh;object-fit:contain;background:#111;border-radius:8px;display:block;margin-bottom:12px}.foto-config-acciones,.foto-confirmacion-acciones{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}.foto-config-acciones button,.foto-confirmacion-acciones button{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}.boton-foto-cancelar{background:#777;color:white}.boton-foto-guardar,.boton-foto-confirmar{background:#16803c;color:white}.boton-foto-rechazar{background:#c62828;color:white}@media(max-width:600px){.foto-actividad-celda{min-width:55px;width:55px}.boton-foto-icono{width:32px;height:32px}.modal-foto-config,.modal-foto-confirmacion{max-width:100%}}
+.boton-foto-actividad{background:#6a1b9a!important;color:white;width:38px;height:34px;padding:0;border:none;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}.boton-foto-actividad:hover{background:#4a148c!important}.boton-foto-calificacion{width:auto!important;min-width:150px;margin:10px auto 14px}.boton-config-foto-qr{background:#6a1b9a!important}.boton-config-foto-qr:hover{background:#4a148c!important}.foto-calificacion-acciones{display:flex;align-items:center;gap:8px;margin:0 0 12px}.foto-calificacion-acciones .boton-foto-actividad{touch-action:manipulation}.foto-calificacion-acciones .boton-foto-actividad:disabled{opacity:.55;cursor:not-allowed}.boton-foto-calificacion{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;font-size:18px!important}.foto-calificacion-y-anteriores{display:flex;align-items:center;gap:8px;margin:0 0 8px}.foto-calificacion-y-anteriores .qr-mostrar-actividades-anteriores{flex:1;margin:0}.foto-calificacion-guardada{margin:0 0 12px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;text-align:center}.foto-calificacion-guardada img{display:block;width:120px;max-width:100%;height:90px;object-fit:cover;border-radius:6px;margin:0 auto;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.foto-calificacion-guardada button{border:0;background:transparent;cursor:pointer;font-size:13px}
+.foto-actividad-celda{min-width:55px;width:55px;text-align:center;white-space:nowrap}.boton-foto-icono{width:32px;height:32px;border:none;border-radius:7px;padding:0;cursor:pointer;font-size:17px;background:#1565c0;color:white;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.menu-foto-actividad{width:100%;max-width:330px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.menu-foto-opciones{display:flex;flex-direction:column;padding:12px;gap:8px}.menu-foto-opciones button{border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;background:#f1f3f5;color:#333;text-align:left}.menu-foto-opciones .opcion-borrar-foto{background:#ffebee;color:#c62828}.foto-qr-boton{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:7px 10px;border:0;border-radius:7px;background:#6a1b9a;color:white;font-weight:bold;cursor:pointer}.modal-foto-config,.modal-foto-confirmacion{width:100%;max-width:480px;background:white;border-radius:14px;box-shadow:0 10px 35px rgba(0,0,0,.3);overflow:hidden}.foto-config-cuerpo,.foto-confirmacion-cuerpo{padding:18px}.foto-config-cuerpo label{display:block;font-weight:bold;margin-bottom:6px}.foto-config-campo-nombre{margin-top:14px}.foto-config-campo-nombre>label{margin-bottom:6px}.foto-config-opciones-nombre{display:flex;gap:7px;flex-wrap:wrap}.foto-config-opcion{display:flex!important;align-items:center;gap:6px;padding:7px 9px;border:1px solid #ddd;border-radius:8px;font-weight:normal!important;margin:0!important}.foto-config-opcion input{width:18px!important;height:18px!important;margin:0}.foto-config-ejemplo{margin-top:12px;padding:9px 10px;border:1px solid #ddd;border-radius:8px;background:#fafafa;overflow-wrap:anywhere}.foto-config-cuerpo input,.foto-config-cuerpo select{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:16px}.foto-config-ayuda{font-size:12px;color:#666;margin-top:5px;line-height:1.35}.foto-confirmacion-nombre{font-size:20px;font-weight:bold;color:#1557a6;margin:8px 0 14px}.foto-confirmacion-preview{width:100%;max-height:45vh;object-fit:contain;background:#111;border-radius:8px;display:block;margin-bottom:12px}.foto-config-acciones,.foto-confirmacion-acciones{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}.foto-config-acciones button,.foto-confirmacion-acciones button{border:0;border-radius:7px;padding:10px 14px;font-weight:bold;cursor:pointer}.boton-foto-cancelar{background:#777;color:white}.boton-foto-guardar,.boton-foto-confirmar{background:#16803c;color:white}.boton-foto-rechazar{background:#c62828;color:white}@media(max-width:600px){.foto-actividad-celda{min-width:55px;width:55px}.boton-foto-icono{width:32px;height:32px}.modal-foto-config,.modal-foto-confirmacion{max-width:100%}}
 </style>
 
-<div id="modalConfigFotoActividad" class="modal-fondo oculto" onclick="cerrarConfigFotoActividad(event)"><div class="modal-foto-config" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Configuración de fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigFotoActividad()">×</button></div><div class="foto-config-cuerpo"><label for="calidadFotoActividad">Calidad de la imagen</label><select id="calidadFotoActividad"><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option><option value="original">Original</option></select><br><br><label for="nombreFotoActividad">Nombre</label><input type="text" id="nombreFotoActividad" placeholder="Nombre de la foto"><div class="foto-config-ayuda">El número de lista se añadirá automáticamente. Ejemplo: 4A_32_evaluacion_1_01.jpg</div></div><div class="foto-config-acciones"><button type="button" class="boton-foto-cancelar" onclick="cerrarConfigFotoActividad()">Cancelar</button><button type="button" class="boton-foto-guardar" onclick="guardarConfigFotoActividad()">Guardar</button></div></div></div>
+<div id="modalConfigFotoActividad" class="modal-fondo oculto" onclick="cerrarConfigFotoActividad(event)"><div class="modal-foto-config" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>⚙️ Configuración de fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigFotoActividad()">×</button></div><div class="foto-config-cuerpo"><label for="calidadFotoActividad">Calidad de la imagen</label><select id="calidadFotoActividad"><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option><option value="original">Original</option></select><br><br><label for="nombreFotoActividad">Nombre común del archivo</label><input type="text" id="nombreFotoActividad" placeholder="Nombre de la foto" oninput="actualizarEjemploNombreFotoActividad()"><div class="foto-config-campo-nombre"><label>Agregar al nombre</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input id="nombreFotoActividadFecha" type="checkbox" onchange="actualizarEjemploNombreFotoActividad()"><span>Fecha</span></label><label class="config-archivos-opcion"><input id="nombreFotoActividadLista" type="checkbox" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Número de lista</span></label></div></div><div class="foto-config-campo-nombre"><label>Posición del número de lista</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="inicio" onchange="actualizarEjemploNombreFotoActividad()"><span>Al inicio</span></label><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="final" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Al final</span></label></div><div class="foto-config-ayuda">Los números de un dígito llevan 0 delante: 01, 02, 03...</div></div><div class="foto-config-ejemplo">Ejemplo: <strong id="ejemploNombreFotoActividad">foto_01.jpg</strong></div></div><div class="foto-config-acciones"><button type="button" class="boton-foto-cancelar" onclick="cerrarConfigFotoActividad()">Cancelar</button><button type="button" class="boton-foto-guardar" onclick="guardarConfigFotoActividad()">Guardar</button></div></div></div>
 <div id="modalConfirmacionFotoActividad" class="modal-fondo oculto" onclick="cerrarConfirmacionFotoActividad(event)"><div class="modal-foto-confirmacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Confirmar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfirmacionFotoActividad()">×</button></div><div class="foto-confirmacion-cuerpo"><img id="previewFotoActividad" class="foto-confirmacion-preview" alt="Vista previa"><div>La foto corresponde a:</div><div id="nombreEstudianteFotoActividad" class="foto-confirmacion-nombre">—</div><div id="nombreArchivoFotoActividad" class="foto-config-ayuda"></div></div><div class="foto-confirmacion-acciones"><button type="button" class="boton-foto-rechazar" onclick="rechazarFotoActividad()">Cancelar</button><button type="button" class="boton-foto-confirmar" onclick="guardarFotoActividadConfirmada()">Guardar</button></div></div></div>
 <input type="file" id="inputFotoActividad" accept="image/*" capture="environment" style="display:none">
 <script>
@@ -26918,10 +26971,22 @@ let fotoActividadArchivoPendiente = null;
 let temporizadorPulsacionFotoActividad = null;
 let pulsacionLargaFotoActividad = false;
 const CLAVE_CONFIG_FOTOS_ACTIVIDADES = "configFotosActividades_v1";
-function obtenerConfigFotoActividad(id){try{const x=JSON.parse(localStorage.getItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES)||"{}");return Object.assign({calidad:"media",nombre:""},x[String(id)]||{})}catch(_){return{calidad:"media",nombre:""}}}
+function obtenerConfigFotoActividad(id){try{const x=JSON.parse(localStorage.getItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES)||"{}");return Object.assign({calidad:"media",nombre:"",incluirFecha:false,incluirNumeroLista:true,posicionNumeroLista:"final"},x[String(id)]||{})}catch(_){return{calidad:"media",nombre:"",incluirFecha:false,incluirNumeroLista:true,posicionNumeroLista:"final"}}}
 function guardarConfigFotoActividadLocal(id,c){try{const x=JSON.parse(localStorage.getItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES)||"{}");x[String(id)]=c;localStorage.setItem(CLAVE_CONFIG_FOTOS_ACTIVIDADES,JSON.stringify(x))}catch(_) {}}
 function nombreFotoActividadPorDefecto(a){if(!a)return"foto";const curso=nombreArchivoSeguro(a.curso||cursoSeleccionado||"curso");const palabras=String(a.nombre||"actividad").trim().split(/\s+/).slice(0,4).join("_");return nombreArchivoSeguro((curso+"_"+a.id+"_"+palabras).toLowerCase())}
-function construirNombreFotoActividad(a,e,n){const base=nombreArchivoSeguro(n||nombreFotoActividadPorDefecto(a)).replace(/\.[^.]+$/i,"")||"foto";const num=String(e?.num_lista??"").trim().match(/^\d+$/)?String(e.num_lista).padStart(2,"0"):String(e?.num_lista??"");return `${base}_${num}.jpg`}
+function construirNombreFotoActividad(a,e,n){
+    const c=obtenerConfigFotoActividad(a?.id);
+    const base=nombreArchivoSeguro(n||c.nombre||nombreFotoActividadPorDefecto(a)).replace(/\.[^.]+$/i,"")||"foto";
+    const partes=[base];
+    if(c.incluirFecha)partes.push(fechaNombreArchivo());
+    const textoNumero=String(e?.num_lista??"").trim();
+    const num=/^\d+$/.test(textoNumero)?textoNumero.padStart(2,"0"):textoNumero;
+    if(c.incluirNumeroLista&&num){
+        if(c.posicionNumeroLista==="inicio")return `${num}_${partes.join("_")}.jpg`;
+        partes.push(num);
+    }
+    return `${partes.join("_")}.jpg`;
+}
 async function cargarFotosActividades(){fotosActividades={};const ids=(actividades||[]).map(a=>Number(a.id)).filter(Number.isFinite);if(!ids.length)return;try{const{data,error}=await supabaseClient.from("fotos_actividades").select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at").in("actividad_id",ids);if(error)throw error;(data||[]).forEach(f=>fotosActividades[`${f.actividad_id}|${f.estudiante_id}`]=f)}catch(e){console.warn("No se pudieron cargar las fotografías de actividades:",e)}}
 function obtenerFotoActividad(a,e){return fotosActividades[`${a}|${e}`]||null}
 async function abrirFotoActividad(f){if(!f?.ruta)return;try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);if(error)throw error;if(data?.signedUrl)window.open(data.signedUrl,"_blank","noopener")}catch(e){alert("No se pudo abrir la fotografía.\n\n"+(e.message||e))}}
