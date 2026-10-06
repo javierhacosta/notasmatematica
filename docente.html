@@ -670,6 +670,28 @@ input, select {
     background: #006b73;
 }
 
+/* Iconos animados de cámara: línea de escaneo (opción 1). */
+.icono-camara-animado {
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    vertical-align: middle;
+    overflow: visible;
+}
+.icono-camara-animado .linea-escaneo {
+    animation: mover-linea-escaneo 1.7s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+@keyframes mover-linea-escaneo {
+    0%, 100% { transform: translateY(-7px); opacity: .35; }
+    50% { transform: translateY(7px); opacity: 1; }
+}
+.boton-escanear-qr .icono-camara-animado,
+.boton-foto-actividad-qr .icono-camara-animado {
+    pointer-events: none;
+}
+
 /* =====================================================
    BOTÓN DE GUARDADO MANUAL POR ACTIVIDAD
    Solo aparece cuando se modifica manualmente una nota
@@ -13367,6 +13389,25 @@ function crearActividadHTML(
     );
 
 
+    function iconoCamaraQRAnimado() {
+        return `<svg class="icono-camara-animado" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M4.5 9.5h6l2-3h7l2 3h6v17h-23z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <rect x="9" y="13" width="5" height="5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            <rect x="18" y="13" width="5" height="5" fill="none" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M9 22h3m2 0h2m2 0h1m2 0h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            <path class="linea-escaneo" d="M5 16h22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>`;
+    }
+
+    function iconoCamaraActividadAnimado() {
+        return `<svg class="icono-camara-animado" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path d="M5 10.5h5l1.8-3h8.4l1.8 3H27v15H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="16" cy="18" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="16" cy="18" r="1.2" fill="currentColor"/>
+            <path class="linea-escaneo" d="M6 18h20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>`;
+    }
+
     const botonEscanearQR =
     document.createElement(
         "button"
@@ -13375,8 +13416,7 @@ function crearActividadHTML(
     botonEscanearQR.className =
     "boton-bloquear boton-escanear-qr";
 
-    botonEscanearQR.textContent =
-    "📷";
+    botonEscanearQR.innerHTML = iconoCamaraQRAnimado();
 
     botonEscanearQR.title =
     "Escanear QR del estudiante y registrar calificación";
@@ -13402,7 +13442,7 @@ function crearActividadHTML(
     const botonFotoActividadQR = document.createElement("button");
     botonFotoActividadQR.type = "button";
     botonFotoActividadQR.className = "boton-bloquear boton-foto-actividad-qr";
-    botonFotoActividadQR.textContent = "📸";
+    botonFotoActividadQR.innerHTML = iconoCamaraActividadAnimado();
     botonFotoActividadQR.title = "Tomar fotografía e identificar al estudiante por QR";
     botonFotoActividadQR.addEventListener("click", function(event) {
         event.stopPropagation();
@@ -14341,7 +14381,7 @@ async function guardarFotoActividadConfirmada(){
 }
 async function cambiarFotoActividad(c){const f=datosFotoCodificados(c),a=actividades.find(x=>String(x.id)===String(f?.actividad_id));if(a)abrirCapturaFotoActividad(a,"cambiar",f)}
 window.guardarFotoActividadConfirmada=guardarFotoActividadConfirmada;
-async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);if(Number(f.actividad_id)===Number(actividadQRSeleccionada?.id)&&Number(f.estudiante_id)===Number(estudianteQRSeleccionado?.id)){await actualizarFotoCalificacionVisible()}mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
+async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){const f=datosFotoCodificados(c);if(!f)return;const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;const nombre=nombreArchivoSeguro(nuevo.trim())||actual,nuevoNombre=nombre.toLowerCase().endsWith(".jpg")?nombre:nombre+".jpg";try{const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`,m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);mostrarMensaje("✓ Nombre actualizado.")}catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}}
 /* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
 
