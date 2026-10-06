@@ -917,22 +917,6 @@ input, select {
     align-items: end;
 }
 
-.observacion-qr-cabecera {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 7px;
-}
-
-.observacion-qr-cabecera label {
-    margin-bottom: 0;
-}
-
-.observacion-qr-cabecera .boton-foto-calificacion {
-    flex: 0 0 38px;
-}
-
 .qr-nota-observacion .campo {
     margin-bottom: 0;
 }
@@ -1071,10 +1055,14 @@ input, select {
 .modal-calificacion-qr {
     width: 100%;
     max-width: 430px;
+    max-height: calc(100vh - 30px);
     background: white;
     border-radius: 14px;
     box-shadow: 0 10px 35px rgba(0,0,0,.30);
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 }
 
 .info-estudiante-qr {
@@ -1166,6 +1154,11 @@ input, select {
     .modal-qr,
     .modal-calificacion-qr {
         max-width: 100%;
+    }
+
+    .modal-calificacion-qr {
+        max-height: calc(100vh - 20px);
+        -webkit-overflow-scrolling: touch;
     }
 }
 
@@ -6883,6 +6876,32 @@ Cancelar
                 class="info-estudiante-qr">
             </div>
 
+            <div class="foto-calificacion-y-anteriores">
+                <label class="qr-mostrar-actividades-anteriores">
+                    <input
+                        type="checkbox"
+                        id="mostrarActividadesAnterioresQR"
+                        onchange="actualizarActividadesAnterioresQR()">
+                    <span>Mostrar actividades anteriores</span>
+                </label>
+
+                <div class="foto-calificacion-acciones">
+                    <button
+                        type="button"
+                        id="botonFotoCalificacionQR"
+                        class="boton-foto-actividad boton-foto-calificacion"
+                        title="Tomar fotografía"
+                        aria-label="Tomar fotografía"
+                        onpointerdown="iniciarPulsacionFotoCalificacionCamara(event)"
+                        onpointerup="finalizarPulsacionFotoCalificacionCamara(event)"
+                        onpointercancel="cancelarPulsacionFotoCalificacionCamara()"
+                        onpointerleave="cancelarPulsacionFotoCalificacionCamara()"
+                        onclick="clickFotoCalificacionCamara(event)">
+                        📷
+                    </button>
+                </div>
+            </div>
+
             <div id="fotoCalificacionGuardada" class="foto-calificacion-guardada oculto"></div>
 
             <div class="qr-notas-rapidas">
@@ -6928,27 +6947,11 @@ Cancelar
 
                 </div>
 
-                <div class="campo campo-observacion-qr">
+                <div class="campo">
 
-                    <div class="observacion-qr-cabecera">
-                        <label>
-                            Observación
-                        </label>
-
-                        <button
-                            type="button"
-                            id="botonFotoCalificacionQR"
-                            class="boton-foto-actividad boton-foto-calificacion"
-                            title="Tomar fotografía"
-                            aria-label="Tomar fotografía"
-                            onpointerdown="iniciarPulsacionFotoCalificacionCamara(event)"
-                            onpointerup="finalizarPulsacionFotoCalificacionCamara(event)"
-                            onpointercancel="cancelarPulsacionFotoCalificacionCamara()"
-                            onpointerleave="cancelarPulsacionFotoCalificacionCamara()"
-                            onclick="clickFotoCalificacionCamara(event)">
-                            📷
-                        </button>
-                    </div>
+                    <label>
+                        Observación
+                    </label>
 
                     <textarea
                         id="observacionQR"
@@ -21191,19 +21194,8 @@ async function prepararCalificacionQR(
         <br>
         <strong>Presentación:</strong>
         <span id="presentacionQR">—</span>
-        <label class="qr-mostrar-actividades-anteriores">
-            <input
-                type="checkbox"
-                id="mostrarActividadesAnterioresQR"
-                onchange="actualizarActividadesAnterioresQR()">
-            <span>Mostrar actividades anteriores</span>
-        </label>
+        ${construirActividadesAnterioresQR(data.id, actividadQRSeleccionada)}
     `;
-
-    const anterioresQR = construirActividadesAnterioresQR(data.id, actividadQRSeleccionada);
-    if (anterioresQR) {
-        info.insertAdjacentHTML("beforeend", anterioresQR);
-    }
 
     actualizarFotoCalificacionVisible();
 
@@ -21303,6 +21295,7 @@ async function actualizarFotoCalificacionVisible() {
             img.src = data.signedUrl;
             img.alt = "Fotografía del estudiante";
             img.title = "Abrir fotografía";
+
             const codigo = encodeURIComponent(JSON.stringify(foto));
             img.dataset.fotoCodificada = codigo;
             img.addEventListener("click", () => abrirFotoCalificacionAlTocar({currentTarget:img, target:img}));
@@ -21310,7 +21303,6 @@ async function actualizarFotoCalificacionVisible() {
 
             const acciones = document.createElement("div");
             acciones.className = "galeria-foto-acciones";
-
             const cambiar = document.createElement("button");
             cambiar.type = "button";
             cambiar.title = "Cambiar imagen";
