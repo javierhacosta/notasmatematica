@@ -14198,11 +14198,23 @@ function obtenerNombreCompletoFotoActividad(e){
     return String(e.nombre||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||e.nombres||e.paterno||"").replace(/\s+/g," ").trim();
 }
 function hablarNombreFotoActividad(e){
-    const nombre=obtenerNombreCompletoFotoActividad(e);
-    if(!nombre||!("speechSynthesis" in window))return;
+    if(!e||!("speechSynthesis" in window))return;
+
     try{
         window.speechSynthesis.cancel();
-        const nombreVoz=String(nombre)
+
+        // Para la voz se usan directamente NOMBRES + PATERNO + MATERNO.
+        // No se utiliza "e.nombre", porque puede venir en mayúsculas o
+        // contener formatos que algunas voces interpretan como letras.
+        const partes=[
+            e.nombres,
+            e.paterno,
+            e.materno
+        ]
+        .map(v=>String(v||"").trim())
+        .filter(Boolean);
+
+        let nombreVoz=partes.join(" ")
             .replace(/N[º°]/gi," número ")
             .replace(/\b(1)ro\b/gi,"primero")
             .replace(/\b(2)do\b/gi,"segundo")
@@ -14215,17 +14227,36 @@ function hablarNombreFotoActividad(e){
             .replace(/\b(9)no\b/gi,"noveno")
             .replace(/\b(10)mo\b/gi,"décimo")
             .replace(/[º°ª]/g," ")
-            .replace(/[&+_=|\\/<>#@*~^`]/g," ")
+            .replace(/[&+_=|\\\/<>#@*~^`]/g," ")
             .replace(/[()[\]{}]/g," ")
             .replace(/[-_]+/g," ")
             .replace(/\s+/g," ")
-            .trim();
-        const voz=new SpeechSynthesisUtterance(`Estudiante identificado: ${nombreVoz}`);
+            .trim()
+            .toLocaleLowerCase("es-ES");
+
+        if(!nombreVoz)return;
+
+        // La H inicial es muda en español. Esto evita que algunas voces
+        // la interpreten como una letra (por ejemplo, "Hacosta").
+        nombreVoz=nombreVoz.replace(/\bh(?=[aeiouáéíóúü])/gi,"");
+
+        const voz=new SpeechSynthesisUtterance(
+            `Estudiante identificado: ${nombreVoz}`
+        );
         voz.lang="es-ES";
         voz.rate=0.95;
         voz.pitch=1;
+
+        // Preferir una voz en español para evitar que el navegador
+        // aplique pronunciación de otro idioma y deletree nombres.
+        const voces=window.speechSynthesis.getVoices();
+        const vozEspanol=voces.find(v=>/^es(-|_)/i.test(v.lang));
+        if(vozEspanol)voz.voice=vozEspanol;
+
         window.speechSynthesis.speak(voz);
-    }catch(error){console.warn("No se pudo reproducir la voz del estudiante:",error)}
+    }catch(error){
+        console.warn("No se pudo reproducir la voz del estudiante:",error);
+    }
 }
 async function procesarFotoActividadSeleccionada(file,a,m,f){
     try{
