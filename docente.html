@@ -13394,19 +13394,27 @@ function crearActividadHTML(
     botonConfigFotoQR.className = "boton-bloquear boton-config-foto-qr";
     botonConfigFotoQR.textContent = "⚙️";
     botonConfigFotoQR.title = "Configurar fotografía de la actividad";
-    botonConfigFotoQR.addEventListener("click", function(event) {
-        event.stopPropagation();
-        abrirConfigFotoActividad(actividad);
-    });
+    botonConfigFotoQR.style.display = "none";
 
     const botonFotoActividadQR = document.createElement("button");
     botonFotoActividadQR.type = "button";
     botonFotoActividadQR.className = "boton-bloquear boton-foto-actividad-qr";
     botonFotoActividadQR.textContent = "📷";
-    botonFotoActividadQR.title = "Tomar fotografía e identificar al estudiante por QR";
-    botonFotoActividadQR.addEventListener("click", function(event) {
+    botonFotoActividadQR.title = "Tomar fotografía e identificar al estudiante por QR. Mantén presionado para configurar la fotografía";
+    botonFotoActividadQR.addEventListener("pointerdown", function(event) {
         event.stopPropagation();
-        abrirCapturaFotoActividad(actividad, "nueva");
+        iniciarPulsacionFotoActividad(event, actividad);
+    });
+    botonFotoActividadQR.addEventListener("pointerup", function(event) {
+        event.stopPropagation();
+        finalizarPulsacionFotoActividad(event, actividad);
+    });
+    botonFotoActividadQR.addEventListener("pointercancel", function(event) {
+        event.stopPropagation();
+        cancelarPulsacionFotoActividad(event, actividad);
+    });
+    botonFotoActividadQR.addEventListener("pointerleave", function(event) {
+        cancelarPulsacionFotoActividad(event, actividad);
     });
 
     const botonGuardarActividad =
