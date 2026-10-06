@@ -670,27 +670,62 @@ input, select {
     background: #006b73;
 }
 
-/* Iconos animados de cámara: línea de escaneo (opción 1). */
+/* Iconos animados de cámara/QR: color y movimiento, sin cambiar su funcionamiento. */
 .icono-camara-animado {
-    display: inline-block;
-    width: 25px;
-    height: 25px;
-    vertical-align: middle;
-    overflow: visible;
+    display:inline-block;
+    width:28px;
+    height:28px;
+    vertical-align:middle;
+    overflow:visible;
+    animation: iconoCamaraFlotar 1.8s ease-in-out infinite;
+    transform-origin:center;
+    pointer-events:none;
 }
 .icono-camara-animado .linea-escaneo {
-    animation: mover-linea-escaneo 1.7s ease-in-out infinite;
-    transform-box: fill-box;
-    transform-origin: center;
+    animation:mover-linea-escaneo-color 1.45s ease-in-out infinite;
+    transform-box:fill-box;
+    transform-origin:center;
 }
-@keyframes mover-linea-escaneo {
-    0%, 100% { transform: translateY(-7px); opacity: .35; }
-    50% { transform: translateY(7px); opacity: 1; }
+.icono-foto-color .lente-pulso-color {
+    animation:lenteCamaraPulso 1.25s ease-in-out infinite;
+    transform-box:fill-box;
+    transform-origin:center;
+}
+@keyframes mover-linea-escaneo-color {
+    0%,100% { transform:translateY(-8px); opacity:.35; }
+    50% { transform:translateY(8px); opacity:1; }
+}
+@keyframes lenteCamaraPulso {
+    0%,100% { transform:scale(.75); opacity:.65; }
+    50% { transform:scale(1.35); opacity:1; }
+}
+@keyframes iconoCamaraFlotar {
+    0%,100% { transform:translateY(0) scale(1); }
+    50% { transform:translateY(-1.5px) scale(1.04); }
 }
 .boton-escanear-qr .icono-camara-animado,
-.boton-foto-actividad-qr .icono-camara-animado {
-    pointer-events: none;
+.boton-foto-actividad-qr .icono-camara-animado { pointer-events:none; }
+
+/* =====================================================
+   ICONOS DEL HTML: color y animación suave.
+   Se aplican sólo a iconos visuales dentro de controles/títulos.
+===================================================== */
+.icono-ui-animado {
+    display:inline-block;
+    margin-inline:.04em;
+    transform-origin:center;
+    animation:iconoUIFlotar 1.8s ease-in-out infinite;
+    will-change:transform;
 }
+.icono-ui-animado[data-icono-tipo="alerta"],
+.icono-ui-animado[data-icono-tipo="error"] { animation:iconoUIAlerta 1.25s ease-in-out infinite; }
+.icono-ui-animado[data-icono-tipo="config"],
+.icono-ui-animado[data-icono-tipo="actualizar"] { animation:iconoUIGiro 2.4s linear infinite; }
+.icono-ui-animado[data-icono-tipo="borrar"] { animation:iconoUIBajar 1.45s ease-in-out infinite; }
+@keyframes iconoUIFlotar { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-2px) scale(1.08)} }
+@keyframes iconoUIAlerta { 0%,100%{transform:scale(1) rotate(0)} 25%{transform:scale(1.12) rotate(-5deg)} 75%{transform:scale(1.12) rotate(5deg)} }
+@keyframes iconoUIGiro { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+@keyframes iconoUIBajar { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px) scale(1.06)} }
 
 /* =====================================================
    BOTÓN DE GUARDADO MANUAL POR ACTIVIDAD
@@ -13390,21 +13425,21 @@ function crearActividadHTML(
 
 
     function iconoCamaraQRAnimado() {
-        return `<svg class="icono-camara-animado" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M4.5 9.5h6l2-3h7l2 3h6v17h-23z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <rect x="9" y="13" width="5" height="5" fill="none" stroke="currentColor" stroke-width="1.7"/>
-            <rect x="18" y="13" width="5" height="5" fill="none" stroke="currentColor" stroke-width="1.7"/>
-            <path d="M9 22h3m2 0h2m2 0h1m2 0h2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-            <path class="linea-escaneo" d="M5 16h22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        return `<svg class="icono-camara-animado icono-qr-color" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+            <defs><linearGradient id="gradQRColor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00e5ff"/><stop offset=".55" stop-color="#7c4dff"/><stop offset="1" stop-color="#ff4081"/></linearGradient></defs>
+            <rect x="4" y="7" width="32" height="28" rx="6" fill="rgba(255,255,255,.08)" stroke="url(#gradQRColor)" stroke-width="2.4"/>
+            <path d="M9 12h6v6H9zm16 0h6v6h-6zM9 22h6v6H9zm16 3h6v3h-6z" fill="none" stroke="url(#gradQRColor)" stroke-width="2"/>
+            <path class="linea-escaneo linea-escaneo-color" d="M7 20h26" fill="none" stroke="#00e5ff" stroke-width="2.4" stroke-linecap="round"/>
         </svg>`;
     }
 
     function iconoCamaraActividadAnimado() {
-        return `<svg class="icono-camara-animado" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M5 10.5h5l1.8-3h8.4l1.8 3H27v15H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <circle cx="16" cy="18" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/>
-            <circle cx="16" cy="18" r="1.2" fill="currentColor"/>
-            <path class="linea-escaneo" d="M6 18h20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        return `<svg class="icono-camara-animado icono-foto-color" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+            <defs><linearGradient id="gradFotoColor" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#00c853"/><stop offset=".5" stop-color="#00b0ff"/><stop offset="1" stop-color="#ff9100"/></linearGradient></defs>
+            <path d="M5 12h8l2.4-4h9.2l2.4 4h8v22H5z" fill="rgba(255,255,255,.08)" stroke="url(#gradFotoColor)" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="20" cy="23" r="7" fill="none" stroke="url(#gradFotoColor)" stroke-width="2.5"/>
+            <circle cx="20" cy="23" r="2.2" fill="#00e5ff" class="lente-pulso-color"/>
+            <circle cx="30" cy="17" r="1.8" fill="#ff4081"/>
         </svg>`;
     }
 
@@ -27520,6 +27555,51 @@ document.addEventListener("contextmenu", function(event) {
     <div class="config-archivos-acciones"><button type="button" class="boton-cancelar-config-archivos" onclick="cerrarConfiguracionArchivosEstudiantes()">Cancelar</button><button type="button" class="boton-guardar-config-archivos" onclick="guardarConfiguracionArchivosEstudiantes()">Guardar</button></div>
   </div>
 </div>
+
+<script>
+(function(){
+    const iconos={
+        "⚙️":"config","🔄":"actualizar","✏️":"editar","🗑️":"borrar","💾":"guardar",
+        "⚠️":"alerta","❌":"error","✅":"ok","🔒":"bloqueo","🔓":"desbloqueo","👁️":"ver",
+        "📅":"fecha","📝":"nota","⏰":"tiempo","📋":"lista","📌":"fijar","⭐":"favorito",
+        "📁":"carpeta","📎":"archivo","📚":"libros","🎓":"curso","🏫":"aula","👤":"persona",
+        "🔄":"actualizar","📦":"paquete","📸":"foto","📷":"camara"
+    };
+    const emojiRegex=new RegExp("("+Object.keys(iconos).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+")","gu");
+    function mejorarIconos(root){
+        const base=(root.nodeType===1?root:document.body);
+        const selector='button,h1,h2,h3,h4,h5,h6,.modal-cabecera,.titulo-archivos-estudiantes,.detalle-aviso-cambios,.menu-foto-opciones';
+        const elementos=[];
+        if(base.matches?.(selector)) elementos.push(base);
+        elementos.push(...base.querySelectorAll?.(selector)||[]);
+        elementos.forEach(el=>{
+            if(el.closest('svg')) return;
+            const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,{acceptNode(n){
+                emojiRegex.lastIndex=0; if(!n.nodeValue || !emojiRegex.test(n.nodeValue)) return NodeFilter.FILTER_REJECT;
+                if(n.parentElement?.closest('.icono-ui-animado')) return NodeFilter.FILTER_REJECT;
+                if(['SCRIPT','STYLE'].includes(n.parentElement?.tagName)) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }});
+            const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(n=>{
+                const frag=document.createDocumentFragment(); let last=0; emojiRegex.lastIndex=0; let m;
+                while((m=emojiRegex.exec(n.nodeValue))){
+                    if(m.index>last) frag.appendChild(document.createTextNode(n.nodeValue.slice(last,m.index)));
+                    const span=document.createElement('span'); span.className='icono-ui-animado'; span.dataset.iconoTipo=iconos[m[0]]||'general'; span.setAttribute('aria-hidden','true'); span.textContent=m[0]; frag.appendChild(span); last=m.index+m[0].length;
+                }
+                if(last<n.nodeValue.length) frag.appendChild(document.createTextNode(n.nodeValue.slice(last)));
+                n.parentNode?.replaceChild(frag,n);
+            });
+        });
+    }
+    function iniciar(){ mejorarIconos(document.body); }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',iniciar,{once:true}); else iniciar();
+    const obs=new MutationObserver(muts=>{
+        for(const m of muts){ for(const n of m.addedNodes){ if(n.nodeType===1) mejorarIconos(n); } }
+    });
+    obs.observe(document.body,{childList:true,subtree:true});
+})();
+</script>
 </body>
 
 </html>
