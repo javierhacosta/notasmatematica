@@ -762,6 +762,15 @@ button:hover {
 }
 
 
+
+.fotos-actividad-consulta { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.miniatura-foto-actividad { width:58px; height:58px; object-fit:cover; border-radius:8px; border:1px solid #d0d7de; cursor:pointer; display:block; }
+.miniatura-foto-actividad:hover { opacity:.88; }
+#visorFotoActividadConsulta { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.82); display:flex; align-items:center; justify-content:center; padding:20px; }
+#visorFotoActividadConsulta.oculto { display:none; }
+#visorFotoActividadConsulta img { max-width:95vw; max-height:90vh; object-fit:contain; border-radius:10px; }
+#visorFotoActividadConsulta .cerrar-visor-foto { position:absolute; top:12px; right:14px; width:42px; height:42px; margin:0; padding:0; border-radius:50%; font-size:28px; background:#fff; color:#222; }
+
 </style>
 
 </head>
@@ -2071,6 +2080,59 @@ async function mostrarDetalles() {
         const calificaciones =
             await respuestaNotas.json();
 
+        // Fotografías de las actividades del estudiante.
+        // Si no se pueden cargar, la consulta de calificaciones continúa normalmente.
+        let fotosActividadesConsulta = {};
+        try {
+            const respuestaFotos = await fetch(
+                `${SUPABASE_URL}/rest/v1/fotos_actividades?` +
+                `estudiante_id=eq.${encodeURIComponent(alumnoActual.id)}` +
+                `&actividad_id=in.(${ids.join(",")})` +
+                `&select=id,actividad_id,ruta,nombre_archivo,created_at` +
+                `&order=created_at`,
+                {
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+            if (respuestaFotos.ok) {
+                const fotos = await respuestaFotos.json();
+                await Promise.all((fotos || []).map(async foto => {
+                    if (!foto.ruta) return;
+                    try {
+                        const respuestaUrl = await fetch(
+                            `${SUPABASE_URL}/storage/v1/object/sign/archivos_estudiantes/${foto.ruta.split("/").map(encodeURIComponent).join("/")}`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "apikey": SUPABASE_KEY,
+                                    "Authorization": `Bearer ${SUPABASE_KEY}`,
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    expiresIn: 600
+                                })
+                            }
+                        );
+                        if (respuestaUrl.ok) {
+                            const datosUrl = await respuestaUrl.json();
+                            const firmada = datosUrl?.signedURL || datosUrl?.signedUrl;
+                            if (firmada) {
+                                foto.url = firmada.startsWith("http")
+                                    ? firmada
+                                    : `${SUPABASE_URL}/storage/v1${firmada}`;
+                            }
+                        }
+                    } catch (_) {}
+                    if (foto.url) {
+                        (fotosActividadesConsulta[foto.actividad_id] ||= []).push(foto);
+                    }
+                }));
+            }
+        } catch (_) {}
+
 
         const mapa = {};
 
@@ -2349,6 +2411,21 @@ async function mostrarDetalles() {
                                 Number(nota)
                             );
 
+                        const fotosActividad =
+                            fotosActividadesConsulta[actividad.id] || [];
+
+                        const fotosHTML = fotosActividad.length
+                            ? `<div class="fotos-actividad-consulta">${fotosActividad.map(f => `
+                                <img
+                                    src="${escapeHTML(f.url)}"
+                                    class="miniatura-foto-actividad"
+                                    alt="Fotografía de la actividad"
+                                    title="Ver fotografía"
+                                    onclick="abrirFotoActividadConsulta('${String(f.url).replace(/'/g, "&#039;")}')"
+                                >
+                            `).join("")}</div>`
+                            : "";
+
 
                         html += `
 
@@ -2406,6 +2483,8 @@ async function mostrarDetalles() {
 
                                     </div>
 
+
+                                    ${fotosHTML}
 
                                     ${
                                         observacion
@@ -3132,6 +3211,27 @@ function escapeHTML(texto) {
             "&#039;"
         );
 
+}
+
+
+
+function abrirFotoActividadConsulta(url) {
+    if (!url) return;
+    let visor = document.getElementById("visorFotoActividadConsulta");
+    if (!visor) {
+        visor = document.createElement("div");
+        visor.id = "visorFotoActividadConsulta";
+        visor.className = "oculto";
+        visor.innerHTML = `<button type="button" class="cerrar-visor-foto" aria-label="Cerrar fotografía" onclick="cerrarFotoActividadConsulta()">×</button><img alt="Fotografía de la actividad">`;
+        visor.addEventListener("click", e => { if (e.target === visor) cerrarFotoActividadConsulta(); });
+        document.body.appendChild(visor);
+    }
+    visor.querySelector("img").src = url;
+    visor.classList.remove("oculto");
+}
+function cerrarFotoActividadConsulta() {
+    const visor = document.getElementById("visorFotoActividadConsulta");
+    if (visor) visor.classList.add("oculto");
 }
 
 
