@@ -14282,8 +14282,8 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
     try{
         let e=null;
         let existente=null;
-        if(m==="directa"){
-            e=estudianteQRSeleccionado;
+        if(m==="directa" || m==="nueva"){
+            e=estudianteQRSeleccionado || detalleEstudianteQRActual;
             if(!e)throw new Error("No hay un estudiante seleccionado para guardar la fotografía.");
             existente=obtenerFotoActividad(a.id,e.id)||null;
         }else if(m==="cambiar"&&f?.estudiante_id){
@@ -14451,6 +14451,9 @@ async function guardarFotoActividadConfirmada(){
         }
         await cargarFotosActividades();
         actualizarCeldasFotosActividad(p.actividad.id);
+        if(typeof actualizarCeldasFotosDetalleEstudianteQR === "function") {
+            actualizarCeldasFotosDetalleEstudianteQR(p.actividad.id);
+        }
         actualizarFotoCalificacionVisible();
         const cb=document.getElementById("mantenerCamaraFotoActividad");
         mantenerCamaraFotoActividad=!!cb?.checked;
@@ -23486,12 +23489,16 @@ function actualizarCalculoDetalleEstudianteQR() {
 ===================================================== */
 async function cargarFotosActividadesDetalleEstudianteQR(listaActividades){
     const ids=(listaActividades||[]).map(a=>a?.id).filter(id=>id!==null&&id!==undefined&&String(id)!=="");
-    if(!ids.length)return;
+    const estudianteId=detalleEstudianteQRActual?.id;
+    if(!ids.length||estudianteId===null||estudianteId===undefined)return;
     try{
         const{data,error}=await supabaseClient.from("fotos_actividades")
             .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
-            .in("actividad_id",ids).order("created_at",{ascending:true});
+            .in("actividad_id",ids).eq("estudiante_id",estudianteId).order("created_at",{ascending:true});
         if(error)throw error;
+        // Reemplazar solamente las fotos de este estudiante para evitar
+        // duplicados y garantizar que la ficha use los datos recién cargados.
+        ids.forEach(id=>{delete fotosActividades[`${id}|${estudianteId}`]});
         (data||[]).forEach(f=>{
             const k=`${f.actividad_id}|${f.estudiante_id}`;
             (fotosActividades[k]||(fotosActividades[k]=[])).push(f);
@@ -23525,7 +23532,18 @@ async function cargarPreviewsFotosDetalleEstudianteQR(){
     const imagenes=document.querySelectorAll('#detalleEstudianteQR .detalle-foto-miniatura[data-detalle-foto-ruta]');
     await Promise.all(Array.from(imagenes).map(async img=>{
         const ruta=img.dataset.detalleFotoRuta;if(!ruta)return;
-        try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,600);if(error)throw error;if(data?.signedUrl)img.src=data.signedUrl}catch(e){console.warn('No se pudo cargar la vista previa de una foto:',e)}
+        try{
+            const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,600);
+            if(error)throw error;
+            if(data?.signedUrl){
+                img.src=data.signedUrl;
+                img.classList.add('cargada');
+            }
+        }catch(e){
+            img.alt='No se pudo cargar la foto';
+            img.title='No se pudo cargar la vista previa';
+            console.warn('No se pudo cargar la vista previa de una foto:',ruta,e);
+        }
     }));
 }
 function abrirFotoDetalleEstudianteQR(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
@@ -23540,10 +23558,13 @@ function anadirFotoDetalleEstudianteQR(actividadId,estudianteId){
 }
 function cambiarFotoDetalleEstudianteQR(c){
     const f=datosFotoCodificados(c);if(!f)return;
-    const actividad=(actividades||[]).find(a=>String(a.id)===String(f.actividad_id));
+    const lista=detalleEstudianteQRActual?.__detalleActividadesListaQR||[];
+    const actividad=lista.find(a=>String(a.id)===String(f.actividad_id)) ||
+        (actividades||[]).find(a=>String(a.id)===String(f.actividad_id));
     if(!actividad){alert('No se encontró la actividad de la fotografía.');return}
     if(!confirm(`¿Desea reemplazar la imagen "${f.nombre_archivo||'esta foto'}"?`))return;
-    estudianteQRSeleccionado=detalleEstudianteQRActual;abrirCapturaFotoActividad(actividad,'cambiar',f);
+    estudianteQRSeleccionado=detalleEstudianteQRActual;
+    abrirCapturaFotoActividad(actividad,'cambiar',f);
 }
 function editarFotoDetalleEstudianteQR(c){editarFotoActividad(c)}
 async function borrarFotoDetalleEstudianteQR(c){
