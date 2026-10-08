@@ -3870,6 +3870,19 @@ table tbody tr:nth-child(10n+10) td {
 .detalle-resumen-asistencia .contador strong {
     display:block; font-size:21px; color:#1557a6;
 }
+
+.detalle-foto-celda { min-width:92px; width:92px; text-align:center !important; vertical-align:middle !important; }
+.detalle-foto-contenedor { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+.detalle-foto-miniatura { width:58px; height:58px; object-fit:cover; border-radius:7px; border:1px solid #ccc; cursor:pointer; display:block; }
+.detalle-foto-sin-imagen { color:#999; font-size:12px; }
+.detalle-foto-agregar { width:30px; height:30px; border:none; border-radius:6px; background:#16803c; color:white; font-size:21px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.detalle-foto-acciones { display:flex; align-items:center; justify-content:center; gap:3px; flex-wrap:wrap; }
+.detalle-foto-accion { width:27px; height:27px; padding:0; border:none; border-radius:5px; color:white; font-size:14px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.detalle-foto-accion-cambiar { background:#1565c0; }
+.detalle-foto-accion-editar { background:#ef6c00; }
+.detalle-foto-accion-borrar { background:#c62828; }
+@media (max-width:600px) { .detalle-foto-celda { min-width:82px; width:82px; } .detalle-foto-miniatura { width:52px; height:52px; } }
+
 .detalle-vacio { padding:12px; color:#666; text-align:center; }
 .detalle-cargando { padding:25px; text-align:center; color:#555; font-weight:bold; }
 .detalle-badge {
@@ -23015,6 +23028,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     }
 
     detalleEstudianteQRActual = estudiante;
+    detalleEstudianteQRActual.__detalleFotosQR = fotosDetalleQR;
     detalleEdicionQRActiva = false;
     detalleCambiosQR = new Map();
     detalleDatosOriginalesQR = new Map();
@@ -23063,6 +23077,36 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             fecha_entrega:c.fecha_entrega || ""
         };
     });
+
+    // Fotografías de las actividades de este estudiante.
+    let fotosDetalleQR = {};
+    try {
+        const idsActividadesFotoDetalle = actividadesTodas.map(a => Number(a.id)).filter(Number.isFinite);
+        if (idsActividadesFotoDetalle.length) {
+            const respuestaFotosDetalle = await supabaseClient
+                .from("fotos_actividades")
+                .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
+                .eq("estudiante_id", estudianteId)
+                .in("actividad_id", idsActividadesFotoDetalle)
+                .order("created_at", { ascending:true });
+            if (!respuestaFotosDetalle.error) {
+                (respuestaFotosDetalle.data || []).forEach(f => {
+                    const clave = String(f.actividad_id);
+                    (fotosDetalleQR[clave] || (fotosDetalleQR[clave] = [])).push(f);
+                });
+                await Promise.all(Object.keys(fotosDetalleQR).map(async clave => {
+                    await Promise.all(fotosDetalleQR[clave].map(async f => {
+                        try {
+                            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);
+                            f.url_firmada_detalle = firmado?.data?.signedUrl || "";
+                        } catch (_) { f.url_firmada_detalle = ""; }
+                    }));
+                }));
+            }
+        }
+    } catch (error) {
+        console.warn("No se pudieron cargar las fotografías de la ficha del estudiante:", error);
+    }
 
     const actividades3T = actividadesTodas.filter(a => Number(a.trimestre) === 3);
     const nota3T = calcularNota3TDetalleQR(actividades3T, calMap);
@@ -23187,6 +23231,18 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                 <td class="detalle-celda-observacion">
                     <span class="detalle-valor-observacion">${escapeHTML(observacion || "—")}</span>
                 </td>
+                <td class="detalle-celda-foto" data-actividad-foto-detalle="${Number(a.id)}">
+                    ${(() => {
+                        const fotos = fotosDetalleQR[String(a.id)] || [];
+                        if (!fotos.length) return '<span class="detalle-foto-sin-imagen">Sin foto</span>';
+                        return `<div class="detalle-foto-contenedor">${fotos.map(f => {
+                            const c = encodeURIComponent(JSON.stringify(f));
+                            return f.url_firmada_detalle
+                                ? `<img class="detalle-foto-miniatura" src="${escapeHTML(f.url_firmada_detalle)}" alt="Foto" title="Abrir fotografía" onclick="abrirFotoActividadDesdeDetalleQR('${c}')">`
+                                : `<button type="button" class="detalle-foto-accion detalle-foto-accion-cambiar" title="Abrir fotografía" onclick="abrirFotoActividadDesdeDetalleQR('${c}')">📷</button>`;
+                        }).join("")}</div>`;
+                    })()}
+                </td>
             </tr>
         `;
     }).join("");
@@ -23229,6 +23285,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <td>3er trimestre</td>
             <td class="detalle-promedio-valor">${valor === null ? "—" : String(valor)}</td>
             <td>Promedio de las actividades</td>
+            <td class="detalle-celda-foto">—</td>
         </tr>
     `).join("");
     const filasActividadesConPromedios = filasActividades + filasPromediosActividades;
@@ -23329,11 +23386,11 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla detalle-tabla-actividades-general">
                     <thead>
-                        <tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th></tr>
+                        <tr><th>Actividad</th><th>Fecha</th><th>Nota</th><th>Observación</th><th>Foto</th></tr>
                     </thead>
                     <tbody>
                         ${filasActividadesConPromedios ||
-                          '<tr><td colspan="4" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
+                          '<tr><td colspan="5" class="detalle-vacio">No existen actividades registradas.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -23445,6 +23502,14 @@ function actualizarCalculoDetalleEstudianteQR() {
     }
 }
 
+function obtenerDatosFotoDetalleQR(codificado){try{return JSON.parse(decodeURIComponent(codificado))}catch(_){return null}}
+function abrirFotoActividadDesdeDetalleQR(codificado){const f=obtenerDatosFotoDetalleQR(codificado);if(f)abrirFotoActividad(f)}
+function anadirFotoActividadDesdeDetalleQR(actividadId){const estudiante=detalleEstudianteQRActual;const actividad=(estudiante?.__detalleActividadesListaQR||[]).find(a=>String(a.id)===String(actividadId))||actividades.find(a=>String(a.id)===String(actividadId));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,"directa")}}
+function cambiarFotoActividadDesdeDetalleQR(c){const f=obtenerDatosFotoDetalleQR(c);if(f)cambiarFotoActividad(encodeURIComponent(JSON.stringify(f)))}
+function editarFotoActividadDesdeDetalleQR(c){const f=obtenerDatosFotoDetalleQR(c);if(f)editarFotoActividad(encodeURIComponent(JSON.stringify(f)))}
+function borrarFotoActividadDesdeDetalleQR(c){const f=obtenerDatosFotoDetalleQR(c);if(f)borrarFotoActividad(encodeURIComponent(JSON.stringify(f)))}
+function activarControlesFotosDetalleQR(){const e=detalleEstudianteQRActual;if(!e)return;document.querySelectorAll('#detalleEstudianteQR tr[data-actividad-detalle]').forEach(fila=>{const id=String(fila.dataset.actividadDetalle),celda=fila.querySelector('.detalle-celda-foto');if(!celda)return;const fotos=Array.isArray(e.__detalleFotosQR?.[id])?e.__detalleFotosQR[id]:[];const html=fotos.map(f=>{const c=encodeURIComponent(JSON.stringify(f));const img=f.url_firmada_detalle?`<img class="detalle-foto-miniatura" src="${escapeHTML(f.url_firmada_detalle)}" alt="Fotografía" title="Abrir fotografía" onclick="abrirFotoActividadDesdeDetalleQR('${c}')">`:`<button type="button" class="detalle-foto-accion detalle-foto-accion-cambiar" title="Abrir fotografía" onclick="abrirFotoActividadDesdeDetalleQR('${c}')">📷</button>`;return `<div class="detalle-foto-contenedor">${img}<div class="detalle-foto-acciones"><button type="button" class="detalle-foto-accion detalle-foto-accion-cambiar" title="Cambiar fotografía" onclick="cambiarFotoActividadDesdeDetalleQR('${c}')">🔄</button><button type="button" class="detalle-foto-accion detalle-foto-accion-editar" title="Editar nombre" onclick="editarFotoActividadDesdeDetalleQR('${c}')">✏️</button><button type="button" class="detalle-foto-accion detalle-foto-accion-borrar" title="Borrar fotografía" onclick="borrarFotoActividadDesdeDetalleQR('${c}')">🗑️</button></div></div>`}).join('');celda.innerHTML=`<div class="detalle-foto-contenedor"><button type="button" class="detalle-foto-agregar" title="Añadir nueva fotografía" onclick="anadirFotoActividadDesdeDetalleQR('${id}')">+</button>${html}</div>`})}
+
 function activarEdicionDetalleEstudianteQR() {
     if (detalleEdicionQRActiva) return;
 
@@ -23521,6 +23586,8 @@ function activarEdicionDetalleEstudianteQR() {
     });
 
     detalleEdicionQRActiva = true;
+
+    activarControlesFotosDetalleQR();
 
     const botonEditar = document.getElementById("botonEditarDetalleQR");
     if (botonEditar) botonEditar.style.display = "none";
