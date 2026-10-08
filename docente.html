@@ -14374,6 +14374,19 @@ async function comprimirFotoCalidad(file,nivel){
     }
 }
 
+async function obtenerFotosActividadServidor(actividadId, estudianteId){
+    const aId=Number(actividadId), eId=Number(estudianteId);
+    if(!Number.isFinite(aId)||!Number.isFinite(eId))throw new Error("No se pudo identificar la actividad o el estudiante.");
+    const {data,error}=await supabaseClient
+        .from("fotos_actividades")
+        .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
+        .eq("actividad_id",aId)
+        .eq("estudiante_id",eId)
+        .order("created_at",{ascending:true});
+    if(error)throw new Error("No se pudo comprobar las fotografías guardadas. No se realizó ningún cambio.\n\n"+(error.message||error));
+    return Array.isArray(data)?data:[];
+}
+
 async function guardarFotoActividadConfirmada(){
     const p=fotoActividadArchivoPendiente;
     if(!p){
@@ -14381,6 +14394,26 @@ async function guardarFotoActividadConfirmada(){
         return;
     }
     try{
+        mostrarMensaje("🔎 Comprobando las fotografías guardadas...");
+        const fotosServidor=await obtenerFotosActividadServidor(p.actividad.id,p.estudiante.id);
+
+        // Nunca convertir una operación NUEVA en un reemplazo. Si durante una
+        // conexión lenta apareció una foto que no estaba en memoria, se genera
+        // un nombre nuevo y se inserta como otro registro.
+        if(p.modo!=="cambiar"){
+            p.fotoExistente=null;
+            p.nombre=obtenerNombreFotoActividadUnicoServidor(p.actividad.id,p.estudiante.id,p.nombre,fotosServidor);
+        }else{
+            // El reemplazo solamente se permite si fue elegido expresamente y
+            // la foto objetivo todavía existe en la BD.
+            const objetivo=fotosServidor.find(x=>String(x.id)===String(p.fotoExistente?.id));
+            if(!objetivo){
+                throw new Error("La imagen que se intentaba reemplazar ya no está disponible. No se reemplazó ninguna imagen.\n\nVuelva a seleccionar la fotografía y confirme nuevamente el reemplazo.");
+            }
+            p.fotoExistente=objetivo;
+            p.nombre=objetivo.nombre_archivo||p.nombre;
+        }
+
         mostrarMensaje("💾 Preparando fotografía...");
         const cfg=obtenerConfigFotoActividad(p.actividad.id);
         const archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media");
@@ -14389,9 +14422,11 @@ async function guardarFotoActividadConfirmada(){
         const ruta=`${p.estudiante.id}/${p.nombre}`;
 
         mostrarMensaje("💾 Guardando fotografía en Archivos...");
+        // IMPORTANTE: solo una operación de REEMPLAZO confirmada puede usar
+        // upsert. Una foto NUEVA jamás puede sobrescribir un archivo existente.
         const up=await supabaseClient.storage
             .from(BUCKET_ARCHIVOS_ESTUDIANTES)
-            .upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:tipo});
+            .upload(ruta,archivo,{cacheControl:"3600",upsert:p.modo==="cambiar",contentType:tipo});
         if(up.error)throw new Error("Storage: "+(up.error.message||up.error));
 
         const reg={
@@ -14415,14 +14450,11 @@ async function guardarFotoActividadConfirmada(){
                 .from("fotos_actividades")
                 .insert(reg);
 
-            // En modo "nueva" no reemplazar silenciosamente una foto existente.
-            // Si la base de datos tiene una restricción única actividad+estudiante,
-            // se informa para no perder la fotografía anterior.
+            // En modo NUEVA, cualquier conflicto se considera un error y
+            // jamás se transforma en UPDATE/reemplazo.
             if(q.error && q.error.code==="23505"){
                 throw new Error(
-                    "No se pudo añadir la nueva fotografía porque la restricción única de fotos_actividades " +
-                    "todavía está activa. Ejecuta en Supabase el SQL para eliminar " +
-                    "fotos_actividades_actividad_id_estudiante_id_key. La fotografía anterior se conserva."
+                    "No se pudo añadir la nueva fotografía porque ya existe un registro con esos datos. La fotografía anterior se conserva y no fue reemplazada."
                 );
             }
         }
@@ -14473,19 +14505,91 @@ async function cambiarFotoActividad(c){
     abrirCapturaFotoActividad(a,"cambiar",f);
 }
 window.guardarFotoActividadConfirmada=guardarFotoActividadConfirmada;
-async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
+async function borrarFotoActividad(c){
+    const f=datosFotoCodificados(c);
+    if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;
+    try{
+        // Comprobar en el servidor antes de borrar. Así una vista antigua por
+        // conexión lenta nunca puede eliminar otra fotografía por accidente.
+        const {data:actual,error:errConsulta}=await supabaseClient
+            .from("fotos_actividades")
+            .select("id,actividad_id,estudiante_id,ruta,nombre_archivo")
+            .eq("id",f.id)
+            .maybeSingle();
+        if(errConsulta)throw new Error("No se pudo comprobar la fotografía. No se realizó ningún cambio.\n\n"+(errConsulta.message||errConsulta));
+        if(!actual)throw new Error("La fotografía ya no existe en el servidor. No se realizó ningún cambio.");
+        if(String(actual.ruta||"")!==String(f.ruta||""))throw new Error("La fotografía cambió mientras se realizaba la operación. No se eliminó ninguna imagen. Vuelva a intentarlo.");
+
+        // Primero se elimina el registro de la BD. Si falla, el archivo físico
+        // tampoco se toca, evitando borrar una imagen que todavía está registrada.
+        const q=await supabaseClient.from("fotos_actividades").delete().eq("id",actual.id);
+        if(q.error)throw q.error;
+
+        if(actual.ruta){
+            const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([actual.ruta]);
+            if(r.error)console.warn("La fotografía se quitó del registro, pero no se pudo eliminar el archivo de Storage:",r.error);
+        }
+        await cargarFotosActividades();
+        actualizarCeldasFotosActividad(actual.actividad_id);
+        await actualizarFotosDetalleQR(actual.actividad_id,actual.estudiante_id);
+        await actualizarFotoCalificacionVisible();
+        mostrarMensaje("✓ Fotografía eliminada.");
+    }catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}
+}
 async function editarFotoActividad(c){
     const f=datosFotoCodificados(c);if(!f)return;
-    const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");
-    const nuevo=prompt("Nuevo nombre de la fotografía:",actual);if(nuevo===null)return;
-    const nombreBase=nombreArchivoSeguro(nuevo.trim())||actual;
-    let nuevoNombre=nombreBase.toLowerCase().endsWith(".jpg")?nombreBase:nombreBase+".jpg";
-    nuevoNombre=obtenerNombreFotoActividadUnico(f.actividad_id,f.estudiante_id,nuevoNombre,f.id);
+    const actualNombre=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");
+    const nuevo=prompt("Nuevo nombre de la fotografía:",actualNombre);if(nuevo===null)return;
+    const nombreBase=nombreArchivoSeguro(nuevo.trim())||actualNombre;
+    let nombreSolicitado=nombreBase.toLowerCase().endsWith(".jpg")?nombreBase:nombreBase+".jpg";
     try{
-        const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`;
-        const m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;
-        const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;
-        await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Nombre actualizado.")
+        // Obtener el registro actual y todos los nombres desde el servidor para
+        // que una conexión lenta no permita usar un nombre que ya existe.
+        const {data:fotosServidor,error:errConsulta}=await supabaseClient
+            .from("fotos_actividades")
+            .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
+            .eq("actividad_id",Number(f.actividad_id))
+            .eq("estudiante_id",Number(f.estudiante_id))
+            .order("created_at",{ascending:true});
+        if(errConsulta)throw new Error("No se pudo comprobar las fotografías. No se realizó ningún cambio.\n\n"+(errConsulta.message||errConsulta));
+        const objetivo=(fotosServidor||[]).find(x=>String(x.id)===String(f.id));
+        if(!objetivo)throw new Error("La fotografía ya no existe en el servidor. No se realizó ningún cambio.");
+        if(String(objetivo.ruta||"")!==String(f.ruta||""))throw new Error("La fotografía cambió mientras se realizaba la operación. No se modificó ninguna imagen. Vuelva a intentarlo.");
+
+        const nuevoNombre=obtenerNombreFotoActividadUnicoServidor(
+            f.actividad_id,
+            f.estudiante_id,
+            nombreSolicitado,
+            fotosServidor||[],
+            f.id
+        );
+        const partes=String(objetivo.ruta||"").split("/");
+        const rutaActual=objetivo.ruta;
+        const ruta=`${partes[0]}/${nuevoNombre}`;
+        if(ruta===rutaActual && nuevoNombre===objetivo.nombre_archivo){
+            mostrarMensaje("✓ El nombre no cambió.");
+            return;
+        }
+
+        const m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(rutaActual,ruta);
+        if(m.error)throw m.error;
+
+        const q=await supabaseClient
+            .from("fotos_actividades")
+            .update({ruta,nombre_archivo:nuevoNombre})
+            .eq("id",objetivo.id)
+            .eq("ruta",rutaActual);
+        if(q.error){
+            // Intentar devolver el archivo a su nombre anterior si la BD no
+            // pudo actualizarse. Así no queda una foto registrada con ruta vieja.
+            try{await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(ruta,rutaActual)}catch(rollbackError){console.warn("No se pudo revertir el cambio de nombre en Storage:",rollbackError)}
+            throw q.error;
+        }
+        await cargarFotosActividades();
+        actualizarCeldasFotosActividad(f.actividad_id);
+        await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);
+        await actualizarFotoCalificacionVisible();
+        mostrarMensaje("✓ Nombre actualizado.")
     }catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}
 }
 /* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
@@ -27563,10 +27667,13 @@ async function cargarFotosActividades(){fotosActividades={};const ids=(actividad
 function obtenerFotosActividad(a,e){const v=fotosActividades[`${a}|${e}`];return Array.isArray(v)?v:(v?[v]:[])}
 function obtenerFotoActividad(a,e){const fotos=obtenerFotosActividad(a,e);return fotos.length?fotos[fotos.length-1]:null}
 function obtenerNombreFotoActividadUnico(a,e,nombre,excluirId=null){
+    return obtenerNombreFotoActividadUnicoServidor(a,e,nombre,obtenerFotosActividad(a,e),excluirId);
+}
+function obtenerNombreFotoActividadUnicoServidor(a,e,nombre,fotos,excluirId=null){
     let base=String(nombre||"foto").replace(/\.[^.]+$/i,"")||"foto";
     let candidato=`${base}.jpg`;
-    const fotos=obtenerFotosActividad(a,e);
-    const usados=new Set(fotos.filter(f=>excluirId==null||String(f.id)!==String(excluirId)).map(f=>String(f.nombre_archivo||"").toLowerCase()));
+    const lista=Array.isArray(fotos)?fotos:[];
+    const usados=new Set(lista.filter(f=>excluirId==null||String(f.id)!==String(excluirId)).map(f=>String(f.nombre_archivo||"").toLowerCase()));
     if(!usados.has(candidato.toLowerCase()))return candidato;
     let numero=2;
     while(usados.has(`${base}_${numero}.jpg`.toLowerCase()))numero++;
