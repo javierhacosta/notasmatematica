@@ -23553,8 +23553,59 @@ function anadirFotoDetalleEstudianteQR(actividadId,estudianteId){
         (actividades||[]).find(a=>String(a.id)===String(actividadId));
     const estudiante=(estudiantes||[]).find(e=>String(e.id)===String(estudianteId))||detalleEstudianteQRActual;
     if(!actividad||!estudiante){alert('No se encontró la actividad o el estudiante.');return}
-    estudianteQRSeleccionado=estudiante;
-    abrirCapturaFotoActividad(actividad,'nueva');
+    // Este botón usa un selector de archivo propio para no pasar por el flujo
+    // general que intenta identificar al estudiante mediante QR.
+    let input=document.getElementById('inputFotoDetalleEstudianteQR');
+    if(!input){
+        input=document.createElement('input');
+        input.type='file';
+        input.id='inputFotoDetalleEstudianteQR';
+        input.accept='image/*';
+        input.capture='environment';
+        input.style.display='none';
+        document.body.appendChild(input);
+        input.addEventListener('change',async function(){
+            const file=this.files?.[0];
+            const a=this._actividadDetalleQR;
+            const e=this._estudianteDetalleQR;
+            this.value='';
+            if(file&&a&&e) await guardarFotoNuevaDetalleEstudianteQR(file,a,e);
+        });
+    }
+    input._actividadDetalleQR=actividad;
+    input._estudianteDetalleQR=estudiante;
+    input.click();
+}
+async function guardarFotoNuevaDetalleEstudianteQR(file,actividad,estudiante){
+    try{
+        mostrarMensaje('💾 Guardando fotografía...');
+        const cfg=obtenerConfigFotoActividad(actividad.id);
+        let nombre=construirNombreFotoActividad(actividad,estudiante,cfg.nombre||nombreFotoActividadPorDefecto(actividad));
+        nombre=obtenerNombreFotoActividadUnico(actividad.id,estudiante.id,nombre);
+        const comprimida=await comprimirFotoCalidad(file,cfg.calidad||'media');
+        const tipo=comprimida.type||file.type||'image/jpeg';
+        const archivo=new File([comprimida],nombre,{type:tipo});
+        const ruta=`${estudiante.id}/${nombre}`;
+        const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,archivo,{cacheControl:'3600',upsert:false,contentType:tipo});
+        if(up.error)throw up.error;
+        const q=await supabaseClient.from('fotos_actividades').insert({
+            actividad_id:Number(actividad.id),
+            estudiante_id:Number(estudiante.id),
+            ruta,
+            nombre_archivo:nombre
+        });
+        if(q.error){
+            await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);
+            throw q.error;
+        }
+        await cargarFotosActividades();
+        actualizarCeldasFotosDetalleEstudianteQR(actividad.id);
+        try{actualizarCeldasFotosActividad(actividad.id)}catch(_){}
+        mostrarMensaje('✓ Fotografía añadida correctamente.');
+    }catch(error){
+        console.error('Error al añadir fotografía desde la ficha:',error);
+        alert('No se pudo añadir la fotografía.\n\n'+(error.message||error));
+    }
 }
 function cambiarFotoDetalleEstudianteQR(c){
     const f=datosFotoCodificados(c);if(!f)return;
