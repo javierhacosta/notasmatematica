@@ -23076,6 +23076,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     try {
         if (typeof cargarFotosActividades === "function") await cargarFotosActividades();
+        await cargarFotosActividadesDetalleEstudianteQR(actividadesTodas);
     } catch (e) {
         console.warn("No se pudieron preparar las fotos para la ficha del estudiante:", e);
     }
@@ -23200,7 +23201,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
         });
 
         return `
-            <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${Number(a.id)}">
+            <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${escapeHTML(String(a.id))}">
                 <td class="detalle-celda-nombre">${escapeHTML(a.nombre || "")}</td>
                 <td>
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
@@ -23214,8 +23215,8 @@ async function mostrarDetalleEstudianteQR(estudiante) {
                     <span class="detalle-valor-observacion">${escapeHTML(observacion || "—")}</span>
                 </td>
                 <td class="detalle-foto-celda"
-                    data-detalle-foto-actividad="${Number(a.id)}"
-                    data-detalle-foto-estudiante="${Number(estudiante.id)}">
+                    data-detalle-foto-actividad="${escapeHTML(String(a.id))}"
+                    data-detalle-foto-estudiante="${escapeHTML(String(estudiante.id))}">
                     ${renderFotoDetalleEstudianteQR(a.id, estudiante.id, false)}
                 </td>
             </tr>
@@ -23483,11 +23484,25 @@ function actualizarCalculoDetalleEstudianteQR() {
 /* =====================================================
    FOTOS EN LA FICHA "INFORMACIÓN COMPLETA DEL ESTUDIANTE"
 ===================================================== */
+async function cargarFotosActividadesDetalleEstudianteQR(listaActividades){
+    const ids=(listaActividades||[]).map(a=>a?.id).filter(id=>id!==null&&id!==undefined&&String(id)!=="");
+    if(!ids.length)return;
+    try{
+        const{data,error}=await supabaseClient.from("fotos_actividades")
+            .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
+            .in("actividad_id",ids).order("created_at",{ascending:true});
+        if(error)throw error;
+        (data||[]).forEach(f=>{
+            const k=`${f.actividad_id}|${f.estudiante_id}`;
+            (fotosActividades[k]||(fotosActividades[k]=[])).push(f);
+        });
+    }catch(e){console.warn("No se pudieron cargar las fotografías de la ficha del estudiante:",e)}
+}
 function renderFotoDetalleEstudianteQR(actividadId, estudianteId, modoEdicion=false){
     const fotos=obtenerFotosActividad(actividadId,estudianteId);
     if(!fotos.length){
         return modoEdicion
-            ? `<div class="detalle-foto-edicion"><button type="button" class="detalle-foto-agregar" title="Añadir nueva foto" aria-label="Añadir nueva foto" onclick="anadirFotoDetalleEstudianteQR(${Number(actividadId)},${Number(estudianteId)})">+</button></div>`
+            ? `<div class="detalle-foto-edicion"><button type="button" class="detalle-foto-agregar" title="Añadir nueva foto" aria-label="Añadir nueva foto" onclick="anadirFotoDetalleEstudianteQR(${JSON.stringify(String(actividadId))},${JSON.stringify(String(estudianteId))})">+</button></div>`
             : `<span class="detalle-foto-sin-imagen">—</span>`;
     }
     const fotosHTML=fotos.map(f=>{
@@ -23503,7 +23518,7 @@ function renderFotoDetalleEstudianteQR(actividadId, estudianteId, modoEdicion=fa
             </div>`:''}
         </div>`;
     }).join('');
-    const agregar=modoEdicion?`<button type="button" class="detalle-foto-agregar" title="Añadir nueva foto" aria-label="Añadir nueva foto" onclick="anadirFotoDetalleEstudianteQR(${Number(actividadId)},${Number(estudianteId)})">+</button>`:'';
+    const agregar=modoEdicion?`<button type="button" class="detalle-foto-agregar" title="Añadir nueva foto" aria-label="Añadir nueva foto" onclick="anadirFotoDetalleEstudianteQR(${JSON.stringify(String(actividadId))},${JSON.stringify(String(estudianteId))})">+</button>`:'';
     return `<div class="detalle-fotos-contenedor">${fotosHTML}${agregar}</div>`;
 }
 async function cargarPreviewsFotosDetalleEstudianteQR(){
@@ -23515,10 +23530,13 @@ async function cargarPreviewsFotosDetalleEstudianteQR(){
 }
 function abrirFotoDetalleEstudianteQR(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
 function anadirFotoDetalleEstudianteQR(actividadId,estudianteId){
-    const actividad=(actividades||[]).find(a=>String(a.id)===String(actividadId));
+    const lista=detalleEstudianteQRActual?.__detalleActividadesListaQR||[];
+    const actividad=lista.find(a=>String(a.id)===String(actividadId)) ||
+        (actividades||[]).find(a=>String(a.id)===String(actividadId));
     const estudiante=(estudiantes||[]).find(e=>String(e.id)===String(estudianteId))||detalleEstudianteQRActual;
     if(!actividad||!estudiante){alert('No se encontró la actividad o el estudiante.');return}
-    estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'nueva');
+    estudianteQRSeleccionado=estudiante;
+    abrirCapturaFotoActividad(actividad,'nueva');
 }
 function cambiarFotoDetalleEstudianteQR(c){
     const f=datosFotoCodificados(c);if(!f)return;
