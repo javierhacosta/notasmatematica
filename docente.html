@@ -14453,7 +14453,7 @@ async function guardarFotoActividadConfirmada(){
         }
         await cargarFotosActividades();
         actualizarCeldasFotosActividad(p.actividad.id);
-        actualizarFotosDetalleQR(p.actividad.id, p.estudiante.id);
+        await actualizarFotosDetalleQR(p.actividad.id, p.estudiante.id);
         actualizarFotoCalificacionVisible();
         const cb=document.getElementById("mantenerCamaraFotoActividad");
         mantenerCamaraFotoActividad=!!cb?.checked;
@@ -14476,7 +14476,7 @@ async function cambiarFotoActividad(c){
     abrirCapturaFotoActividad(a,"cambiar",f);
 }
 window.guardarFotoActividadConfirmada=guardarFotoActividadConfirmada;
-async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
+async function borrarFotoActividad(c){const f=datosFotoCodificados(c);if(!f||!confirm(`¿Borrar la fotografía de ${f.nombre_archivo||"este estudiante"}?`))return;try{if(f.ruta){const r=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(r.error)throw r.error}const q=await supabaseClient.from("fotos_actividades").delete().eq("id",f.id);if(q.error)throw q.error;await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Fotografía eliminada.")}catch(e){alert("No se pudo borrar la fotografía.\n\n"+(e.message||e))}}
 async function editarFotoActividad(c){
     const f=datosFotoCodificados(c);if(!f)return;
     const actual=String(f.nombre_archivo||"").replace(/\.[^.]+$/i,"");
@@ -14488,7 +14488,7 @@ async function editarFotoActividad(c){
         const ruta=`${f.ruta.split("/")[0]}/${nuevoNombre}`;
         const m=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).move(f.ruta,ruta);if(m.error)throw m.error;
         const q=await supabaseClient.from("fotos_actividades").update({ruta,nombre_archivo:nuevoNombre}).eq("id",f.id);if(q.error)throw q.error;
-        await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Nombre actualizado.")
+        await cargarFotosActividades();actualizarCeldasFotosActividad(f.actividad_id);await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);await actualizarFotoCalificacionVisible();mostrarMensaje("✓ Nombre actualizado.")
     }catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}
 }
 /* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
@@ -23550,12 +23550,38 @@ async function cargarPreviewsFotosDetalleQR() {
     }));
 }
 
-function actualizarFotosDetalleQR(actividadId, estudianteId) {
-    const fila = document.querySelector(`#detalleEstudianteQR tr[data-actividad-detalle="${actividadId}"]`);
-    const celda = fila?.querySelector(".detalle-celda-fotos");
-    if (!celda) return;
-    celda.innerHTML = renderFotosDetalleActividadQR(actividadId, estudianteId);
-    cargarPreviewsFotosDetalleQR();
+async function actualizarFotosDetalleQR(actividadId, estudianteId) {
+    // Refrescar únicamente las fotos de esta actividad/estudiante desde la BD.
+    // No depender de cargarFotosActividades(), porque esa carga general puede
+    // dejar momentáneamente fuera la fila que se acaba de modificar.
+    const aId = Number(actividadId);
+    const eId = Number(estudianteId);
+    if (!Number.isFinite(aId) || !Number.isFinite(eId)) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from("fotos_actividades")
+            .select("id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at")
+            .eq("actividad_id", aId)
+            .eq("estudiante_id", eId)
+            .order("created_at", { ascending: true });
+        if (error) throw error;
+
+        const clave = `${aId}|${eId}`;
+        const lista = Array.isArray(data) ? data : [];
+        if (lista.length) fotosActividades[clave] = lista;
+        else delete fotosActividades[clave];
+
+        const fila = document.querySelector(`#detalleEstudianteQR tr[data-actividad-detalle="${CSS.escape(String(actividadId))}"]`)
+            || document.querySelector(`#detalleEstudianteQR tr[data-actividad-detalle="${aId}"]`);
+        const celda = fila?.querySelector(".detalle-celda-fotos");
+        if (!celda) return;
+
+        celda.innerHTML = renderFotosDetalleActividadQR(actividadId, estudianteId);
+        await cargarPreviewsFotosDetalleQR();
+    } catch (error) {
+        console.warn("No se pudo actualizar la columna Foto del detalle:", error);
+    }
 }
 
 function anadirFotoDetalleActividadQR(actividadId, estudianteId) {
