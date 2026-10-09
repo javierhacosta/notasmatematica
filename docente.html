@@ -5557,6 +5557,9 @@ table tbody tr:nth-child(10n+10) td {
     cursor: pointer;
 }
 
+
+/* Fotografías por estudiante y fecha de asistencia */
+.celda-fotos-asistencia{min-width:110px}.fotos-asistencia-lista{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center}.foto-asistencia-item{display:flex;flex-direction:column;align-items:center;gap:3px}.foto-asistencia-miniatura{width:58px;height:58px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #ccc}.acciones-foto-asistencia{display:flex;justify-content:center;gap:5px;margin-top:4px}.acciones-foto-asistencia button,.botones-foto-asistencia button{border:0;border-radius:5px;padding:4px 7px;cursor:pointer;font-size:14px}.tabla-asistencia.asistencia-bloqueada .acciones-foto-asistencia,.tabla-asistencia.asistencia-bloqueada .botones-foto-asistencia{display:none!important}
 </style>
 
 <style>
@@ -6101,6 +6104,8 @@ Selecciona un curso
 <th>🔵</th>
 <th>🔴</th>
 <th>Observaciones</th>
+<th>Foto</th>
+<th>Foto</th>
 
 </tr>
 
@@ -6116,7 +6121,7 @@ Selecciona un curso
 <tr>
 
 <td
-    colspan="8"
+    colspan="9"
     class="fila-guardar-tabla">
 
 <button
@@ -9536,6 +9541,9 @@ function bloquearDesbloquearAsistencia() {
 
     }
 
+    document.querySelectorAll("#tablaAsistencia tr[data-estudiante]").forEach(fila => {
+        cargarFotosAsistenciaEstudiante(fila.dataset.estudiante);
+    });
     actualizarBotonHoraAsistencia();
 
 }
@@ -11105,6 +11113,64 @@ function actualizarResumenAsistencia() {
 }
 
 
+
+/* Fotos de asistencia vinculadas al estudiante y a la fecha seleccionada. */
+let archivoFotoAsistenciaPendiente=null;
+function seleccionarFotoAsistencia(estudianteId,fotoId=null){
+ if(!asistenciaDesbloqueada){alert("Desbloquee la tabla de asistencia para modificar fotografías.");return;}
+ if(fotoId&&!confirm("¿Desea reemplazar esta fotografía?"))return;
+ archivoFotoAsistenciaPendiente={estudianteId:String(estudianteId),fotoId};
+ let input=document.getElementById("inputFotoAsistencia");
+ if(!input){input=document.createElement("input");input.type="file";input.accept="image/*";input.capture="environment";input.id="inputFotoAsistencia";input.hidden=true;document.body.appendChild(input);input.addEventListener("change",guardarFotoAsistenciaSeleccionada);}
+ input.value="";input.click();
+}
+async function cargarFotosAsistenciaEstudiante(estudianteId){
+ const cont=document.getElementById("fotosAsistencia-"+estudianteId);if(!cont)return;
+ const fecha=document.getElementById("fechaAsistencia")?.value;
+ if(!fecha||!cursoSeleccionado){cont.textContent="";return;}
+ try{
+  const {data,error}=await supabaseClient.from("fotos_asistencia").select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo").eq("curso_id",cursoSeleccionado).eq("fecha",fecha).eq("estudiante_id",estudianteId).order("id");
+  if(error)throw error;cont.innerHTML="";
+  for(const f of(data||[])){
+   const signed=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);if(signed.error)continue;
+   const item=document.createElement("div");item.className="foto-asistencia-item";
+   const img=document.createElement("img");img.className="foto-asistencia-miniatura";img.src=signed.data.signedUrl;img.alt="Foto";img.onclick=()=>window.open(signed.data.signedUrl,"_blank");item.appendChild(img);
+   if(asistenciaDesbloqueada){const acts=document.createElement("div");acts.className="botones-foto-asistencia";const ed=document.createElement("button");ed.textContent="✏️";ed.title="Reemplazar";ed.onclick=()=>seleccionarFotoAsistencia(estudianteId,f.id);const del=document.createElement("button");del.textContent="🗑️";del.title="Eliminar";del.onclick=()=>eliminarFotoAsistencia(f);acts.append(ed,del);item.appendChild(acts);}
+   cont.appendChild(item);
+  }
+  const add=document.querySelector(`.acciones-foto-asistencia[data-estudiante="${estudianteId}"]`);if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
+  if(!(data||[]).length)cont.textContent="—";
+ }catch(e){console.error("Fotos de asistencia:",e);cont.textContent="";}
+}
+async function guardarFotoAsistenciaSeleccionada(ev){
+ const file=ev.target.files?.[0],p=archivoFotoAsistenciaPendiente;if(!file||!p)return;
+ const fecha=document.getElementById("fechaAsistencia")?.value;
+ try{
+  if(!fecha||!cursoSeleccionado)throw new Error("Seleccione curso y fecha.");
+  let ruta,nombre;
+  if(p.fotoId){
+   const q=await supabaseClient.from("fotos_asistencia").select("ruta,nombre_archivo").eq("id",p.fotoId).maybeSingle();if(q.error||!q.data)throw new Error("La fotografía ya no existe.");
+   ruta=q.data.ruta;nombre=q.data.nombre_archivo;
+   const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,file,{upsert:true,contentType:file.type||"image/jpeg"});if(up.error)throw up.error;
+  }else{
+   const ext=(file.name.match(/\.(jpg|jpeg|png|webp)$/i)||[])[1]||"jpg";nombre=`asistencia_${fecha}_${p.estudianteId}_${Date.now()}.${ext}`;
+   ruta=`asistencia/${cursoSeleccionado}/${fecha}/${p.estudianteId}/${nombre}`;
+   const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,file,{upsert:false,contentType:file.type||"image/jpeg"});if(up.error)throw up.error;
+   const ins=await supabaseClient.from("fotos_asistencia").insert({curso_id:cursoSeleccionado,fecha,estudiante_id:Number(p.estudianteId),ruta,nombre_archivo:nombre});
+   if(ins.error){await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);throw ins.error;}
+  }
+  await cargarFotosAsistenciaEstudiante(p.estudianteId);
+ }catch(e){alert("No se pudo guardar la foto de asistencia. Compruebe que exista la tabla fotos_asistencia y sus permisos.\n\n"+(e.message||e));}
+ finally{archivoFotoAsistenciaPendiente=null;ev.target.value="";}
+}
+async function eliminarFotoAsistencia(f){
+ if(!asistenciaDesbloqueada||!confirm("¿Eliminar esta fotografía?"))return;
+ try{const q=await supabaseClient.from("fotos_asistencia").delete().eq("id",f.id);if(q.error)throw q.error;
+ const rm=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(rm.error)console.warn(rm.error);
+ await cargarFotosAsistenciaEstudiante(f.estudiante_id);
+ }catch(e){alert("No se pudo eliminar la fotografía.\n\n"+(e.message||e));}
+}
+
 function mostrarTablaAsistencia() {
 
     const tbody =
@@ -11375,12 +11441,19 @@ function mostrarTablaAsistencia() {
                 >
 
             </td>
+            <td class="celda-fotos-asistencia">
+                <div class="fotos-asistencia-lista" id="fotosAsistencia-${estudiante.id}">Cargando…</div>
+                <div class="acciones-foto-asistencia" data-estudiante="${estudiante.id}" style="display:none">
+                    <button type="button" title="Añadir foto" onclick="seleccionarFotoAsistencia('${estudiante.id}')">➕</button>
+                </div>
+            </td>
 
         `;
 
         tbody.appendChild(
             fila
         );
+        cargarFotosAsistenciaEstudiante(estudiante.id);
 
     });
 
