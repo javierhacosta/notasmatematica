@@ -5560,6 +5560,25 @@ table tbody tr:nth-child(10n+10) td {
 
 /* Fotografías por estudiante y fecha de asistencia */
 .celda-fotos-asistencia{min-width:110px}.fotos-asistencia-lista{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center}.foto-asistencia-item{display:flex;flex-direction:column;align-items:center;gap:3px}.foto-asistencia-miniatura{width:58px;height:58px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #ccc}.acciones-foto-asistencia{display:flex;justify-content:center;gap:5px;margin-top:4px}.acciones-foto-asistencia button,.botones-foto-asistencia button{border:0;border-radius:5px;padding:4px 7px;cursor:pointer;font-size:14px}.tabla-asistencia.asistencia-bloqueada .acciones-foto-asistencia,.tabla-asistencia.asistencia-bloqueada .botones-foto-asistencia{display:none!important}
+
+
+/* Ajustes exclusivos de la ventana de pendientes de asistencia QR */
+.estados-pendiente-iconos {
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+}
+.estados-pendiente-iconos .radio-asistencia { flex:0 0 auto; }
+.estados-pendiente-iconos .boton-estado { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:7px; }
+.estados-pendiente-iconos .radio-asistencia input:checked + label .boton-estado { outline:3px solid #263238; outline-offset:1px; opacity:1; }
+.tabla-pendientes-asistencia .celda-fotos-asistencia { min-width:100px; }
+.tabla-pendientes-asistencia .fotos-asistencia-lista { min-width:55px; }
+@media (max-width:600px) {
+ .estados-pendiente-iconos { gap:3px; }
+ .estados-pendiente-iconos .boton-estado { width:27px; height:29px; font-size:15px; }
+}
 </style>
 
 <style>
@@ -6777,8 +6796,9 @@ Cancelar
                         <tr>
                             <th>N°</th>
                             <th>Nombre</th>
-                            <th>Elegir asistencia</th>
+                            <th>Asistencia</th>
                             <th>Observación</th>
+                            <th>Foto</th>
                         </tr>
                     </thead>
                     <tbody id="tablaPendientesAsistencia"></tbody>
@@ -11157,7 +11177,9 @@ async function prepararFotoAsistencia(file){
 /* Fotos de asistencia vinculadas al estudiante y a la fecha seleccionada. */
 let archivoFotoAsistenciaPendiente=null;
 function seleccionarFotoAsistencia(estudianteId,fotoId=null){
- if(!asistenciaDesbloqueada){alert("Desbloquee la tabla de asistencia para modificar fotografías.");return;}
+ if(!asistenciaDesbloqueada && !document.getElementById("modalPendientesAsistencia")?.classList.contains("oculto")) {
+  // La ventana de pendientes permite gestionar fotos del estudiante y fecha seleccionados.
+ } else if(!asistenciaDesbloqueada){alert("Desbloquee la tabla de asistencia para modificar fotografías.");return;}
  if(!cursoSeleccionado){alert("Primero seleccione un curso.");return;}
  const fecha=document.getElementById("fechaAsistencia")?.value;
  if(!fecha){alert("Seleccione la fecha de asistencia.");return;}
@@ -11233,6 +11255,7 @@ async function guardarFotoAsistenciaSeleccionada(ev){
    if(ins.error){await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);throw new Error("La imagen se subió, pero no se pudo registrar en fotos_asistencia. Revise las columnas y políticas RLS. Detalle: "+ins.error.message);}
   }
   await cargarFotosAsistenciaEstudiante(p.estudianteId);
+  await cargarFotosPendientesAsistencia(p.estudianteId);
   mostrarMensaje("✓ Foto de asistencia guardada.");
  }catch(e){console.error("Error al guardar foto de asistencia:",e);alert("No se pudo guardar la foto de asistencia.\n\n"+(e.message||e));}
  finally{archivoFotoAsistenciaPendiente=null;input.value="";}
@@ -11243,6 +11266,7 @@ async function eliminarFotoAsistencia(f){
   const q=await supabaseClient.from("fotos_asistencia").delete().eq("id",f.id);if(q.error)throw q.error;
   const rm=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(rm.error)console.warn(rm.error);
   await cargarFotosAsistenciaEstudiante(f.estudiante_id);
+  await cargarFotosPendientesAsistencia(f.estudiante_id);
  }catch(e){alert("No se pudo eliminar la fotografía.\n\n"+(e.message||e));}
 }
 
@@ -11695,23 +11719,19 @@ function mostrarPendientesAsistencia() {
             <td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td>
             <td class="nombre-pendiente">${escapeHTML(estudiante.nombre)}</td>
             <td>
-                <div class="opciones-pendiente">
-                    <label class="opcion-pendiente" title="Presente">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="asistio" ${estadoActual === "asistio" ? "checked" : ""}>
-                        ✓ Presente
-                    </label>
-                    <label class="opcion-pendiente" title="Atraso">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="atraso" ${estadoActual === "atraso" ? "checked" : ""}>
-                        ⏰ Atraso
-                    </label>
-                    <label class="opcion-pendiente" title="Licencia">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="licencia" ${estadoActual === "licencia" ? "checked" : ""}>
-                        📄 Licencia
-                    </label>
-                    <label class="opcion-pendiente" title="Falta">
-                        <input type="radio" name="pendiente-${estudiante.id}" value="falta" ${estadoActual === "falta" ? "checked" : ""}>
-                        ✕ Falta
-                    </label>
+                <div class="estados-asistencia estados-pendiente-iconos">
+                    ${[
+                      ["asistio","✓","estado-asistio","Presente"],
+                      ["atraso","⏰","estado-atraso","Atraso"],
+                      ["licencia","📄","estado-licencia","Licencia"],
+                      ["falta","✕","estado-falta","Falta"]
+                    ].map(([valor,icono,clase,titulo]) => `
+                      <div class="radio-asistencia">
+                        <input type="radio" name="pendiente-${estudiante.id}" id="pendiente-${valor}-${estudiante.id}" value="${valor}" ${estadoActual === valor ? "checked" : ""}>
+                        <label for="pendiente-${valor}-${estudiante.id}" title="${titulo}">
+                          <span class="boton-estado ${clase}">${icono}</span>
+                        </label>
+                      </div>`).join("")}
                 </div>
             </td>
             <td>
@@ -11723,14 +11743,55 @@ function mostrarPendientesAsistencia() {
                     placeholder="Escribe una observación..."
                 >
             </td>
+            <td class="celda-fotos-asistencia">
+                <div class="fotos-asistencia-lista" id="fotosPendientesAsistencia-${estudiante.id}">Cargando…</div>
+                <div class="acciones-foto-asistencia" style="display:flex">
+                    <button type="button" title="Añadir foto" onclick="seleccionarFotoAsistencia('${estudiante.id}')">➕</button>
+                </div>
+            </td>
         `;
 
         tbody.appendChild(fila);
+        cargarFotosPendientesAsistencia(estudiante.id);
     });
 
     aplicarBloqueoEstadoEnLista(tbody);
     modal.classList.remove("oculto");
     return pendientes.length;
+}
+
+async function cargarFotosPendientesAsistencia(estudianteId) {
+    const cont = document.getElementById("fotosPendientesAsistencia-" + estudianteId);
+    if (!cont) return;
+    const fecha = document.getElementById("fechaAsistencia")?.value;
+    if (!fecha || !cursoSeleccionado || !supabaseClient) { cont.textContent = "—"; return; }
+    try {
+        const {data, error} = await supabaseClient.from("fotos_asistencia")
+            .select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo")
+            .eq("curso_id", cursoSeleccionado).eq("fecha", fecha)
+            .eq("estudiante_id", estudianteId).order("id");
+        if (error) throw error;
+        cont.innerHTML = "";
+        if (!data?.length) { cont.textContent = "—"; return; }
+        for (const f of data) {
+            const signed = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 600);
+            if (signed.error) continue;
+            const item = document.createElement("div"); item.className = "foto-asistencia-item";
+            const img = document.createElement("img"); img.className = "foto-asistencia-miniatura";
+            img.src = signed.data.signedUrl; img.alt = "Foto de asistencia";
+            img.onclick = () => window.open(signed.data.signedUrl, "_blank", "noopener");
+            item.appendChild(img);
+            if (asistenciaDesbloqueada) {
+                const acts = document.createElement("div"); acts.className = "botones-foto-asistencia";
+                const ed = document.createElement("button"); ed.type = "button"; ed.textContent = "✏️"; ed.title = "Reemplazar foto";
+                ed.onclick = () => seleccionarFotoAsistencia(estudianteId, f.id);
+                const del = document.createElement("button"); del.type = "button"; del.textContent = "🗑️"; del.title = "Eliminar foto";
+                del.onclick = () => eliminarFotoAsistencia(f);
+                acts.append(ed, del); item.appendChild(acts);
+            }
+            cont.appendChild(item);
+        }
+    } catch (e) { console.error("Error al cargar fotos pendientes:", e); cont.textContent = "No se pudieron cargar"; }
 }
 
 async function confirmarPendientesAsistencia() {
