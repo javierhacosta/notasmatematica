@@ -14217,64 +14217,99 @@ function obtenerNombreCompletoFotoActividad(e){
     return String(e.nombre||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||e.nombres||e.paterno||"").replace(/\s+/g," ").trim();
 }
 function hablarNombreFotoActividad(e){
-    if(!e||!("speechSynthesis" in window))return;
+    if(!e||!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined")return;
 
-    try{
-        window.speechSynthesis.cancel();
+    // Token independiente para esta función: evita que una recuperación
+    // antigua vuelva a pronunciar el nombre de un estudiante anterior.
+    const token=(window.__vozFotoActividadToken||0)+1;
+    window.__vozFotoActividadToken=token;
 
-        // Para la voz se usan directamente NOMBRES + PATERNO + MATERNO.
-        // No se utiliza "e.nombre", porque puede venir en mayúsculas o
-        // contener formatos que algunas voces interpretan como letras.
-        const partes=[
-            e.nombres,
-            e.paterno,
-            e.materno
-        ]
+    const partes=[e.nombres,e.paterno,e.materno]
         .map(v=>String(v||"").trim())
         .filter(Boolean);
+    let nombreVoz=partes.join(" ")
+        .replace(/N[º°]/gi," número ")
+        .replace(/\b(1)ro\b/gi,"primero")
+        .replace(/\b(2)do\b/gi,"segundo")
+        .replace(/\b(3)ro\b/gi,"tercero")
+        .replace(/\b(4)to\b/gi,"cuarto")
+        .replace(/\b(5)to\b/gi,"quinto")
+        .replace(/\b(6)to\b/gi,"sexto")
+        .replace(/\b(7)mo\b/gi,"séptimo")
+        .replace(/\b(8)vo\b/gi,"octavo")
+        .replace(/\b(9)no\b/gi,"noveno")
+        .replace(/\b(10)mo\b/gi,"décimo")
+        .replace(/[º°ª]/g," ")
+        .replace(/[&+_=|\\\/< >#@*~^`]/g," ")
+        .replace(/[()[\]{}]/g," ")
+        .replace(/[-_]+/g," ")
+        .replace(/\s+/g," ")
+        .trim()
+        .toLocaleLowerCase("es-ES");
+    if(!nombreVoz)return;
 
-        let nombreVoz=partes.join(" ")
-            .replace(/N[º°]/gi," número ")
-            .replace(/\b(1)ro\b/gi,"primero")
-            .replace(/\b(2)do\b/gi,"segundo")
-            .replace(/\b(3)ro\b/gi,"tercero")
-            .replace(/\b(4)to\b/gi,"cuarto")
-            .replace(/\b(5)to\b/gi,"quinto")
-            .replace(/\b(6)to\b/gi,"sexto")
-            .replace(/\b(7)mo\b/gi,"séptimo")
-            .replace(/\b(8)vo\b/gi,"octavo")
-            .replace(/\b(9)no\b/gi,"noveno")
-            .replace(/\b(10)mo\b/gi,"décimo")
-            .replace(/[º°ª]/g," ")
-            .replace(/[&+_=|\\\/<>#@*~^`]/g," ")
-            .replace(/[()[\]{}]/g," ")
-            .replace(/[-_]+/g," ")
-            .replace(/\s+/g," ")
-            .trim()
-            .toLocaleLowerCase("es-ES");
+    // La H inicial es muda en español; no convertir el resto del nombre.
+    nombreVoz=nombreVoz.replace(/\bh(?=[aeiouáéíóúü])/gi,"");
+    const texto=`Estudiante identificado: ${nombreVoz}`;
+    let reintentoUsado=false;
+    let vigilancia=null;
 
-        if(!nombreVoz)return;
+    function reproducir(){
+        if(window.__vozFotoActividadToken!==token)return;
+        try{
+            const sintesis=window.speechSynthesis;
+            const voces=sintesis.getVoices();
+            const voz=new SpeechSynthesisUtterance(texto);
+            voz.lang="es-BO";
+            voz.rate=0.92;
+            voz.pitch=1;
+            const vozEspanol=voces.find(v=>/^es(-|_)bo\b/i.test(v.lang))
+                ||voces.find(v=>/^es(-|_)419\b/i.test(v.lang))
+                ||voces.find(v=>/^es(-|_)es\b/i.test(v.lang))
+                ||voces.find(v=>/^es(-|_)/i.test(v.lang));
+            if(vozEspanol)voz.voice=vozEspanol;
 
-        // La H inicial es muda en español. Esto evita que algunas voces
-        // la interpreten como una letra (por ejemplo, "Hacosta").
-        nombreVoz=nombreVoz.replace(/\bh(?=[aeiouáéíóúü])/gi,"");
+            voz.onend=()=>{if(vigilancia)clearTimeout(vigilancia);};
+            voz.onerror=(evento)=>{
+                if(vigilancia)clearTimeout(vigilancia);
+                // Una sola recuperación para errores transitorios del motor.
+                if(!reintentoUsado&&window.__vozFotoActividadToken===token&&evento.error!=="canceled"&&evento.error!=="interrupted"){
+                    reintentoUsado=true;
+                    setTimeout(()=>{
+                        if(window.__vozFotoActividadToken!==token)return;
+                        try{sintesis.cancel();}catch(_){}
+                        setTimeout(reproducir,250);
+                    },250);
+                }
+            };
+            sintesis.speak(voz);
 
-        const voz=new SpeechSynthesisUtterance(
-            `Estudiante identificado: ${nombreVoz}`
-        );
-        voz.lang="es-ES";
-        voz.rate=0.95;
-        voz.pitch=1;
+            // Algunos navegadores móviles dejan la síntesis pendiente sin iniciar.
+            vigilancia=setTimeout(()=>{
+                if(window.__vozFotoActividadToken!==token||reintentoUsado)return;
+                if(sintesis.pending&&!sintesis.speaking){
+                    reintentoUsado=true;
+                    try{sintesis.cancel();}catch(_){}
+                    setTimeout(reproducir,250);
+                }
+            },3500);
+        }catch(error){
+            console.warn("No se pudo reproducir la voz del estudiante:",error);
+        }
+    }
 
-        // Preferir una voz en español para evitar que el navegador
-        // aplique pronunciación de otro idioma y deletree nombres.
-        const voces=window.speechSynthesis.getVoices();
-        const vozEspanol=voces.find(v=>/^es(-|_)/i.test(v.lang));
-        if(vozEspanol)voz.voice=vozEspanol;
-
-        window.speechSynthesis.speak(voz);
+    try{
+        const sintesis=window.speechSynthesis;
+        sintesis.cancel();
+        // Dar tiempo al motor móvil para liberar una reproducción anterior y
+        // cargar la lista de voces antes de iniciar la nueva locución.
+        setTimeout(()=>{
+            if(window.__vozFotoActividadToken!==token)return;
+            try{sintesis.resume();}catch(_){}
+            reproducir();
+        },180);
     }catch(error){
-        console.warn("No se pudo reproducir la voz del estudiante:",error);
+        console.warn("No se pudo preparar la voz del estudiante:",error);
     }
 }
 async function procesarFotoActividadSeleccionada(file,a,m,f){
