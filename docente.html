@@ -14216,12 +14216,54 @@ function obtenerNombreCompletoFotoActividad(e){
     if(!e)return "";
     return String(e.nombre||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||e.nombres||e.paterno||"").replace(/\s+/g," ").trim();
 }
-let intentoVozFotoActividad = 0;
-function hablarNombreFotoActividad(e){
-    if(!e || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance==='undefined') return;
+/* Motor común de voz: reintenta si la síntesis móvil queda bloqueada. */
+let tokenVozRobusta = 0;
+function reproducirVozRobusta(texto, opciones = {}) {
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+    const frase = String(texto || '').replace(/\s+/g, ' ').trim();
+    if (!frase) return;
+    const token = ++tokenVozRobusta;
+    const sintesis = window.speechSynthesis;
+    let intento = 0;
+    const iniciar = () => {
+        if (token !== tokenVozRobusta) return;
+        try { sintesis.cancel(); if (typeof sintesis.resume === 'function') sintesis.resume(); } catch (_) {}
+        setTimeout(() => {
+            if (token !== tokenVozRobusta) return;
+            let comenzo = false, terminado = false, temporizadorInicio = null;
+            const utterance = new SpeechSynthesisUtterance(frase);
+            utterance.lang = opciones.lang || 'es-BO';
+            utterance.rate = opciones.rate ?? 0.95;
+            utterance.pitch = opciones.pitch ?? 1;
+            utterance.volume = 1;
+            try {
+                const voces = sintesis.getVoices ? sintesis.getVoices() : [];
+                const voz = voces.find(v => /^es-BO$/i.test(v.lang))
+                    || voces.find(v => /^es-(MX|ES|AR|CL|PE|CO|US)$/i.test(v.lang))
+                    || voces.find(v => /^es([_-]|$)/i.test(v.lang));
+                if (voz) utterance.voice = voz;
+            } catch (_) {}
+            const reintentar = () => {
+                if (terminado || token !== tokenVozRobusta) return;
+                terminado = true; clearTimeout(temporizadorInicio);
+                if (intento < 2) { intento++; setTimeout(iniciar, 350 * intento); }
+            };
+            utterance.onstart = () => { comenzo = true; clearTimeout(temporizadorInicio); };
+            utterance.onend = () => { terminado = true; clearTimeout(temporizadorInicio); };
+            utterance.onerror = ev => { console.warn('Error de síntesis de voz:', ev && ev.error ? ev.error : ev); reintentar(); };
+            temporizadorInicio = setTimeout(() => { if (!comenzo) reintentar(); }, 5000);
+            try {
+                sintesis.speak(utterance);
+                if (sintesis.paused && typeof sintesis.resume === 'function') sintesis.resume();
+            } catch (error) { console.warn('No se pudo iniciar la voz:', error); reintentar(); }
+        }, 180);
+    };
+    iniciar();
+}
 
-    const partes=[e.nombres,e.paterno,e.materno]
-        .map(v=>String(v||'').trim()).filter(Boolean);
+function hablarNombreFotoActividad(e){
+    if(!e) return;
+    const partes=[e.nombres,e.paterno,e.materno].map(v=>String(v||'').trim()).filter(Boolean);
     let nombreVoz=partes.join(' ')
         .replace(/N[º°]/gi,' número ')
         .replace(/\b(1)ro\b/gi,'primero').replace(/\b(2)do\b/gi,'segundo')
@@ -14229,67 +14271,13 @@ function hablarNombreFotoActividad(e){
         .replace(/\b(5)to\b/gi,'quinto').replace(/\b(6)to\b/gi,'sexto')
         .replace(/\b(7)mo\b/gi,'séptimo').replace(/\b(8)vo\b/gi,'octavo')
         .replace(/\b(9)no\b/gi,'noveno').replace(/\b(10)mo\b/gi,'décimo')
-        .replace(/[º°ª]/g,' ').replace(/[&+_=|\\\/<>#@*~^`]/g,' ')
+        .replace(/[º°ª]/g,' ').replace(/[&+_=|\\\/< >#@*~^`]/g,' ')
         .replace(/[()[\]{}]/g,' ').replace(/[-_]+/g,' ')
-        .replace(/\s+/g,' ').trim().toLocaleLowerCase('es-ES');
+        .replace(/\s+/g,' ').trim().toLocaleLowerCase('es-BO');
     if(!nombreVoz) return;
-    // La H inicial es muda en español; evita que ciertas voces la lean como una letra.
     nombreVoz=nombreVoz.replace(/\bh(?=[aeiouáéíóúü])/gi,'');
-
-    const id=++intentoVozFotoActividad;
-    const sintesis=window.speechSynthesis;
-    let intento=0;
-    const reproducir=()=>{
-        if(id!==intentoVozFotoActividad || intento>=2) return;
-        intento++;
-        let comenzo=false, terminado=false;
-        try{
-            // En Android/Chrome la cola puede quedar pausada o atascada. Reiniciarla
-            // y esperar antes de enviar el nuevo mensaje suele recuperar la reproducción.
-            try{sintesis.cancel();}catch(_){}
-            try{sintesis.resume();}catch(_){}
-            setTimeout(()=>{
-                if(id!==intentoVozFotoActividad || terminado) return;
-                try{
-                    const utterance=new SpeechSynthesisUtterance(`Estudiante identificado: ${nombreVoz}`);
-                    utterance.lang='es-BO';
-                    utterance.rate=0.92;
-                    utterance.pitch=1;
-                    const voces=sintesis.getVoices()||[];
-                    const voz=voces.find(v=>/^es(-BO|_BO)$/i.test(v.lang))
-                        || voces.find(v=>/^es([_-])/i.test(v.lang));
-                    if(voz) utterance.voice=voz;
-                    utterance.onstart=()=>{comenzo=true;};
-                    utterance.onend=()=>{terminado=true;};
-                    utterance.onerror=()=>{
-                        if(terminado || id!==intentoVozFotoActividad) return;
-                        terminado=true;
-                        if(intento<2) setTimeout(reproducir,350);
-                    };
-                    sintesis.speak(utterance);
-                    // Si Android no inicia el audio, intentar una vez más sin bloquear la app.
-                    setTimeout(()=>{
-                        if(!comenzo && !terminado && id===intentoVozFotoActividad && intento<2){
-                            try{sintesis.cancel();}catch(_){}
-                            terminado=true;
-                            setTimeout(reproducir,400);
-                        }
-                    },2600);
-                }catch(error){
-                    console.warn('No se pudo reproducir la voz del estudiante:',error);
-                    if(intento<2) setTimeout(reproducir,400);
-                }
-            }, intento===1 ? 250 : 500);
-        }catch(error){
-            console.warn('Error al iniciar la voz del estudiante:',error);
-        }
-    };
-    // Algunas versiones de Android cargan las voces de forma asíncrona.
-    const vocesDisponibles=sintesis.getVoices();
-    if(vocesDisponibles && vocesDisponibles.length) reproducir();
-    else setTimeout(reproducir,500);
+    reproducirVozRobusta('Estudiante identificado: '+nombreVoz,{lang:'es-BO',rate:0.95,pitch:1});
 }
-
 async function procesarFotoActividadSeleccionada(file,a,m,f){
     try{
         let e=null;
@@ -21715,21 +21703,14 @@ function numeroNotaParaVozQR(valor) {
 }
 
 function hablarCalificacionQR(nombre, nota, incluirNombre = false) {
-    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
-
+    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
     const nombreVoz = prepararNombreParaVozAsistencia(nombre);
     const notaVoz = numeroNotaParaVozQR(nota);
     const textoVoz = incluirNombre
-        ? [nombreVoz, notaVoz ? `Nota ${notaVoz}` : ""].filter(Boolean).join(" ")
-        : (notaVoz ? notaVoz : "");
+        ? [nombreVoz, notaVoz ? `Nota ${notaVoz}` : ''].filter(Boolean).join(' ')
+        : (notaVoz ? notaVoz : '');
     if (!textoVoz) return;
-
-    window.speechSynthesis.cancel();
-    const voz = new SpeechSynthesisUtterance(textoVoz);
-    voz.lang = "es-ES";
-    voz.rate = velocidadVozAzarAsistencia;
-    voz.pitch = tonoVozAzarAsistencia;
-    window.speechSynthesis.speak(voz);
+    reproducirVozRobusta(textoVoz,{lang:'es-BO',rate:velocidadVozAzarAsistencia,pitch:tonoVozAzarAsistencia});
 }
 
 document.addEventListener("input", function(event) {
@@ -24942,21 +24923,12 @@ function prepararNombreParaVozAsistencia(nombre) {
 }
 
 function hablarConVozAzarAsistencia(texto) {
-    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
-    const textoOriginal = String(texto || "").trim();
-    const esEstadoEspecial =
-        /\sTIENE FALTA$/i.test(textoOriginal) ||
-        /\sESTA CON PERMISO$/i.test(textoOriginal);
-    const textoVoz = esEstadoEspecial
-        ? textoOriginal
-        : prepararNombreParaVozAsistencia(textoOriginal);
+    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
+    const textoOriginal = String(texto || '').trim();
+    const esEstadoEspecial = /\sTIENE FALTA$/i.test(textoOriginal) || /\sESTA CON PERMISO$/i.test(textoOriginal);
+    const textoVoz = esEstadoEspecial ? textoOriginal : prepararNombreParaVozAsistencia(textoOriginal);
     if (!textoVoz) return;
-    window.speechSynthesis.cancel();
-    const voz = new SpeechSynthesisUtterance(textoVoz);
-    voz.lang = "es-ES";
-    voz.rate = velocidadVozAzarAsistencia;
-    voz.pitch = tonoVozAzarAsistencia;
-    window.speechSynthesis.speak(voz);
+    reproducirVozRobusta(textoVoz,{lang:'es-BO',rate:velocidadVozAzarAsistencia,pitch:tonoVozAzarAsistencia});
 }
 
 /* Voz de Estudiante al azar: usa exactamente las columnas nombres + paterno. */
@@ -24968,26 +24940,15 @@ function obtenerNombreVozAzarAsistencia(estudiante) {
 }
 
 function hablarNombreVozAzarAsistencia(estudiante, textoFinal = "") {
-    if (!vozAzarAsistenciaActiva || !("speechSynthesis" in window)) return;
+    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
     const nombre = obtenerNombreVozAzarAsistencia(estudiante);
-    const complemento = String(textoFinal || "").trim();
-    const textoVoz = [nombre, complemento]
-        .filter(Boolean)
-        .join(" ")
-        .replace(/[._\-/,;:]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        // Evita que la síntesis interprete palabras en MAYÚSCULAS como letras.
-        // Se mantiene cada palabra completa, incluidos nombres y textos configurados.
-        .toLocaleLowerCase("es-ES");
+    const complemento = String(textoFinal || '').trim();
+    const textoVoz = [nombre, complemento].filter(Boolean).join(' ')
+        .replace(/[._\-/,;:]+/g, ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('es-BO');
     if (!textoVoz) return;
-    window.speechSynthesis.cancel();
-    const voz = new SpeechSynthesisUtterance(textoVoz);
-    voz.lang = "es-ES";
-    voz.rate = velocidadVozAzarAsistencia;
-    voz.pitch = tonoVozAzarAsistencia;
-    window.speechSynthesis.speak(voz);
+    reproducirVozRobusta(textoVoz,{lang:'es-BO',rate:velocidadVozAzarAsistencia,pitch:tonoVozAzarAsistencia});
 }
+
 let azarAsistenciaTiempoFinalizacion = null;
 let azarAsistenciaUltimoCambio = 0;
 
