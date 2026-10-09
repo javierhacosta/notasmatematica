@@ -6105,7 +6105,6 @@ Selecciona un curso
 <th>🔴</th>
 <th>Observaciones</th>
 <th>Foto</th>
-<th>Foto</th>
 
 </tr>
 
@@ -11126,21 +11125,32 @@ function seleccionarFotoAsistencia(estudianteId,fotoId=null){
 }
 async function cargarFotosAsistenciaEstudiante(estudianteId){
  const cont=document.getElementById("fotosAsistencia-"+estudianteId);if(!cont)return;
+ const fila=cont.closest("tr");
+ const add=fila?.querySelector('.acciones-foto-asistencia[data-estudiante="'+estudianteId+'"]');
+ if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
  const fecha=document.getElementById("fechaAsistencia")?.value;
  if(!fecha||!cursoSeleccionado){cont.textContent="";return;}
  try{
   const {data,error}=await supabaseClient.from("fotos_asistencia").select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo").eq("curso_id",cursoSeleccionado).eq("fecha",fecha).eq("estudiante_id",estudianteId).order("id");
-  if(error)throw error;cont.innerHTML="";
-  for(const f of(data||[])){
-   const signed=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);if(signed.error)continue;
+  if(error)throw error;
+  cont.innerHTML="";
+  const fotos=data||[];
+  if(!fotos.length){cont.textContent="—";return;}
+  for(const f of fotos){
+   const signed=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);
+   if(signed.error){console.warn("No se pudo abrir la foto de asistencia:",signed.error);continue;}
    const item=document.createElement("div");item.className="foto-asistencia-item";
    const img=document.createElement("img");img.className="foto-asistencia-miniatura";img.src=signed.data.signedUrl;img.alt="Foto";img.onclick=()=>window.open(signed.data.signedUrl,"_blank");item.appendChild(img);
-   if(asistenciaDesbloqueada){const acts=document.createElement("div");acts.className="botones-foto-asistencia";const ed=document.createElement("button");ed.textContent="✏️";ed.title="Reemplazar";ed.onclick=()=>seleccionarFotoAsistencia(estudianteId,f.id);const del=document.createElement("button");del.textContent="🗑️";del.title="Eliminar";del.onclick=()=>eliminarFotoAsistencia(f);acts.append(ed,del);item.appendChild(acts);}
+   if(asistenciaDesbloqueada){
+    const acts=document.createElement("div");acts.className="botones-foto-asistencia";
+    const ed=document.createElement("button");ed.type="button";ed.textContent="✏️";ed.title="Reemplazar foto";ed.onclick=()=>seleccionarFotoAsistencia(estudianteId,f.id);
+    const del=document.createElement("button");del.type="button";del.textContent="🗑️";del.title="Eliminar foto";del.onclick=()=>eliminarFotoAsistencia(f);
+    acts.append(ed,del);item.appendChild(acts);
+   }
    cont.appendChild(item);
   }
-  const add=document.querySelector(`.acciones-foto-asistencia[data-estudiante="${estudianteId}"]`);if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
-  if(!(data||[]).length)cont.textContent="—";
- }catch(e){console.error("Fotos de asistencia:",e);cont.textContent="";}
+  if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
+ }catch(e){console.error("Fotos de asistencia:",e);cont.textContent="";if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";}
 }
 async function guardarFotoAsistenciaSeleccionada(ev){
  const file=ev.target.files?.[0],p=archivoFotoAsistenciaPendiente;if(!file||!p)return;
