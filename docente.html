@@ -6951,8 +6951,9 @@ Cancelar
                         onpointerdown="iniciarPulsacionFotoCalificacionCamara(event)"
                         onpointerup="finalizarPulsacionFotoCalificacionCamara(event)"
                         onpointercancel="cancelarPulsacionFotoCalificacionCamara()"
-                        onpointerleave="cancelarPulsacionFotoCalificacionCamara()"
-                        onclick="clickFotoCalificacionCamara(event)">
+                        oncontextmenu="event.preventDefault()"
+                        onclick="clickFotoCalificacionCamara(event)"
+                        style="touch-action: none; user-select: none; -webkit-user-select: none;">
                         📷
                     </button>
                 </div>
@@ -21832,9 +21833,11 @@ function abrirFotoCalificacionAlTocar(e) {
 }
 
 function iniciarPulsacionFotoCalificacionCamara(e) {
+    if (e && e.pointerType === "mouse" && e.button !== 0) return;
     pulsacionLargaCamaraFotoCalificacion = false;
     if (temporizadorCamaraFotoCalificacion) clearTimeout(temporizadorCamaraFotoCalificacion);
     temporizadorCamaraFotoCalificacion = setTimeout(() => {
+        temporizadorCamaraFotoCalificacion = null;
         pulsacionLargaCamaraFotoCalificacion = true;
         bloquearSiguienteClickCamaraFotoCalificacion = true;
         // La pulsación larga en 📷 muestra las acciones de todas las fotos almacenadas.
@@ -21843,16 +21846,19 @@ function iniciarPulsacionFotoCalificacionCamara(e) {
 }
 
 function finalizarPulsacionFotoCalificacionCamara(e) {
+    const fueLarga = pulsacionLargaCamaraFotoCalificacion || bloquearSiguienteClickCamaraFotoCalificacion;
     if (temporizadorCamaraFotoCalificacion) {
         clearTimeout(temporizadorCamaraFotoCalificacion);
         temporizadorCamaraFotoCalificacion = null;
     }
-    if (pulsacionLargaCamaraFotoCalificacion) {
-        e.preventDefault();
-        e.stopPropagation();
+    if (fueLarga) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         pulsacionLargaCamaraFotoCalificacion = false;
-        setTimeout(() => { bloquearSiguienteClickCamaraFotoCalificacion = false; }, 400);
-    } else if (e.type === "pointerup") {
+        setTimeout(() => { bloquearSiguienteClickCamaraFotoCalificacion = false; }, 700);
+    } else if (e && e.type === "pointerup") {
         abrirCapturaFotoActividadDesdeCalificacion();
     }
 }
