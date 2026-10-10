@@ -14371,7 +14371,9 @@ async function procesarFotoActividadParaCalificacion(file,a){
         // En "Registrar calificación" una foto tomada desde la cámara siempre
         // se guarda como NUEVA. Nunca se ofrece reemplazar en este flujo.
         fotoActividadArchivoPendiente={file,actividad:a,modo:"nueva",fotoExistente:null,estudiante:e,nombre:n,origen:"calificacion_nueva"};
-        mostrarConfirmacionFotoActividad(file,e,n,false,"calificacion_nueva");
+        // En Registrar calificación se guarda inmediatamente como foto nueva.
+        // No mostrar la ventana «Confirmar fotografía».
+        await guardarFotoActividadConfirmada();
     }catch(e){alert(e.message||"No se pudo procesar la fotografía.")}
 }
 function mostrarConfirmacionFotoActividad(file,e,nombre,yaExiste,tipoConfirmacion="actividad"){ 
@@ -21718,14 +21720,33 @@ async function actualizarFotoCalificacionVisible() {
             img.src = data.signedUrl;
             img.alt = "Fotografía del estudiante";
             img.title = "Abrir fotografía";
-
+            img.style.touchAction = "pan-x";
             const codigo = encodeURIComponent(JSON.stringify(foto));
             img.dataset.fotoCodificada = codigo;
             img.addEventListener("click", () => abrirFotoCalificacionAlTocar({currentTarget:img, target:img}));
+            let pulsacionFoto = null;
+            let pulsacionLarga = false;
+            img.addEventListener("pointerdown", () => {
+                pulsacionLarga = false;
+                pulsacionFoto = setTimeout(() => {
+                    pulsacionLarga = true;
+                    img.dataset.menuLargo = "1";
+                    mostrarMenuFotoCalificacion(foto);
+                }, 650);
+            });
+            const cancelarPulsacion = () => {
+                if (pulsacionFoto) clearTimeout(pulsacionFoto);
+                pulsacionFoto = null;
+            };
+            img.addEventListener("pointerup", cancelarPulsacion);
+            img.addEventListener("pointerleave", cancelarPulsacion);
+            img.addEventListener("pointercancel", cancelarPulsacion);
+            img.addEventListener("contextmenu", ev => { ev.preventDefault(); mostrarMenuFotoCalificacion(foto); });
             item.appendChild(img);
 
             const acciones = document.createElement("div");
             acciones.className = "galeria-foto-acciones";
+            acciones.style.display = "none";
             const cambiar = document.createElement("button");
             cambiar.type = "button";
             cambiar.title = "Cambiar imagen";
@@ -21816,7 +21837,8 @@ function iniciarPulsacionFotoCalificacionCamara(e) {
     temporizadorCamaraFotoCalificacion = setTimeout(() => {
         pulsacionLargaCamaraFotoCalificacion = true;
         bloquearSiguienteClickCamaraFotoCalificacion = true;
-        if (actividadQRSeleccionada) abrirConfigFotoActividad(actividadQRSeleccionada);
+        // La pulsación larga en la cámara ya no abre configuración.
+        // Las opciones de cada foto aparecen al mantener pulsada su miniatura.
     }, 650);
 }
 
@@ -21863,8 +21885,7 @@ function mostrarMenuFotoCalificacion(foto) {
         </div>
         <div class="menu-foto-opciones">
             <button type="button" onclick="cerrarMenuFotoActividad();cambiarFotoActividad('${c}')">🔄 Cambiar</button>
-            <button type="button" onclick="cerrarMenuFotoActividad();editarFotoActividad('${c}')">✏️ Editar</button>
-            <button type="button" class="opcion-borrar-foto" onclick="cerrarMenuFotoActividad();borrarFotoActividad('${c}')">🗑️ Borrar</button>
+            <button type="button" onclick="cerrarMenuFotoActividad();borrarFotoActividad('${c}')">🗑️ Eliminar</button>
         </div>
     </div>`;
     d.addEventListener("click", cerrarMenuFotoActividad);
