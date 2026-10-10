@@ -13651,7 +13651,6 @@ function crearActividadHTML(
     botonConfigFotoQR.textContent = "⚙️";
     botonConfigFotoQR.title = "Configurar fotografía de la actividad";
     botonConfigFotoQR.style.display = "none";
-    botonFotoActividadQR.style.display = "none";
     botonConfigFotoQR.addEventListener("click", function(event) {
         event.stopPropagation();
         abrirConfigFotoActividad(actividad);
@@ -13668,42 +13667,59 @@ function crearActividadHTML(
     botonSeleccionarFotosQR.className = "boton-bloquear boton-foto-actividad-qr";
     botonSeleccionarFotosQR.textContent = "🖼️";
     botonSeleccionarFotosQR.title = "Seleccionar fotos del celular, detectar QR y guardar por estudiante";
-    let temporizadorMostrarControlesFoto = null;
-    let pulsacionLargaSelectorFotos = false;
     botonSeleccionarFotosQR.addEventListener("click", function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (pulsacionLargaSelectorFotos) {
-            pulsacionLargaSelectorFotos = false;
+        if (botonSeleccionarFotosQR.dataset.pulsacionLarga === "1") {
+            delete botonSeleccionarFotosQR.dataset.pulsacionLarga;
+            event.preventDefault();
+            event.stopPropagation();
             return;
         }
+        event.preventDefault();
+        event.stopPropagation();
         abrirSelectorFotosActividadQR(actividad);
     });
-    botonSeleccionarFotosQR.addEventListener("pointerdown", function(event) {
-        pulsacionLargaSelectorFotos = false;
-        if (temporizadorMostrarControlesFoto) clearTimeout(temporizadorMostrarControlesFoto);
-        temporizadorMostrarControlesFoto = setTimeout(function() {
-            pulsacionLargaSelectorFotos = true;
-            botonFotoActividadQR.style.display = "flex";
-            botonConfigFotoQR.style.display = "flex";
-        }, 650);
-    });
-    function cancelarPulsacionSelectorFotos() {
-        if (temporizadorMostrarControlesFoto) {
-            clearTimeout(temporizadorMostrarControlesFoto);
-            temporizadorMostrarControlesFoto = null;
-        }
-    }
-    botonSeleccionarFotosQR.addEventListener("pointerup", cancelarPulsacionSelectorFotos);
-    botonSeleccionarFotosQR.addEventListener("pointercancel", cancelarPulsacionSelectorFotos);
-    botonSeleccionarFotosQR.addEventListener("pointerleave", cancelarPulsacionSelectorFotos);
 
-    // La cámara de actividades sólo captura al tocarla; mantenerla pulsada no abre configuración.
+    // La cámara de actividades solo se abre con una pulsación normal.
+    // Mantener pulsado este botón no ejecuta ninguna acción.
     botonFotoActividadQR.addEventListener("click", function(event) {
         event.preventDefault();
         event.stopPropagation();
-        if (!pulsacionLargaFotoActividad) abrirCapturaFotoActividad(actividad, "nueva");
-        pulsacionLargaFotoActividad = false;
+        if (bloquearSiguienteClickCamaraFotoCalificacion) return;
+        abrirCapturaFotoActividad(actividad, "nueva");
+    });
+
+    // Por defecto, cámara y configuración permanecen ocultas.
+    botonFotoActividadQR.style.display = "none";
+    botonConfigFotoQR.style.display = "none";
+
+    // Mantener pulsado 🖼️ revela los dos iconos; un toque normal conserva
+    // la selección de imágenes de la galería.
+    let temporizadorMenuFotosActividad = null;
+    let pulsacionLargaMenuFotosActividad = false;
+    botonSeleccionarFotosQR.addEventListener("pointerdown", function(event) {
+        pulsacionLargaMenuFotosActividad = false;
+        temporizadorMenuFotosActividad = setTimeout(function() {
+            pulsacionLargaMenuFotosActividad = true;
+            botonFotoActividadQR.style.display = "inline-flex";
+            botonConfigFotoQR.style.display = "inline-flex";
+        }, 650);
+    });
+    function cancelarMenuFotosActividad(event) {
+        if (temporizadorMenuFotosActividad) {
+            clearTimeout(temporizadorMenuFotosActividad);
+            temporizadorMenuFotosActividad = null;
+        }
+        if (pulsacionLargaMenuFotosActividad) {
+            event.preventDefault();
+            event.stopPropagation();
+            pulsacionLargaMenuFotosActividad = false;
+            botonSeleccionarFotosQR.dataset.pulsacionLarga = "1";
+        }
+    }
+    botonSeleccionarFotosQR.addEventListener("pointerup", cancelarMenuFotosActividad);
+    botonSeleccionarFotosQR.addEventListener("pointercancel", cancelarMenuFotosActividad);
+    botonSeleccionarFotosQR.addEventListener("pointerleave", function(event) {
+        if (event.buttons) cancelarMenuFotosActividad(event);
     });
 
     const botonGuardarActividad =
@@ -14287,7 +14303,7 @@ function datosFotoCodificados(c){try{return JSON.parse(decodeURIComponent(c))}ca
 function abrirFotoActividadDesdeCelda(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
 async function cargarMiniaturasFotosActividad(contenedor=document){const imagenes=contenedor.querySelectorAll(".boton-foto-miniatura-img[data-ruta-foto]");await Promise.all(Array.from(imagenes).map(async img=>{const ruta=img.dataset.rutaFoto;if(!ruta||img.dataset.cargada==="1")return;try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,600);if(!error&&data?.signedUrl){img.src=data.signedUrl;img.dataset.cargada="1"}}catch(error){console.warn("No se pudo mostrar la miniatura de una fotografía:",error)}}))}
 function actualizarCeldasFotosActividad(a){document.querySelectorAll(`.foto-actividad-celda[data-foto-actividad="${a}"]`).forEach(td=>td.innerHTML=renderFotoActividadCelda(a,td.dataset.fotoEstudiante));cargarMiniaturasFotosActividad(document)}
-function iniciarPulsacionFotoActividad(e,a){pulsacionLargaFotoActividad=false;if(temporizadorPulsacionFotoActividad)clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=setTimeout(()=>{pulsacionLargaFotoActividad=true},650)}
+function iniciarPulsacionFotoActividad(e,a){pulsacionLargaFotoActividad=false;if(temporizadorPulsacionFotoActividad)clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=setTimeout(()=>{pulsacionLargaFotoActividad=true;abrirConfigFotoActividad(a)},650)}
 function cancelarPulsacionFotoActividad(e,a){if(temporizadorPulsacionFotoActividad){clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=null}if(pulsacionLargaFotoActividad){e.preventDefault();e.stopPropagation();pulsacionLargaFotoActividad=false;return}if(e.type==="pointerup")abrirCapturaFotoActividad(a,"nueva")}
 function abrirConfigFotoActividad(a){
     fotoActividadActual=a;
