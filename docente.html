@@ -6948,7 +6948,7 @@ Cancelar
                         class="boton-foto-actividad boton-opciones-fotos-calificacion"
                         title="Opciones de fotografías almacenadas"
                         aria-label="Opciones de fotografías almacenadas"
-                        onclick="mostrarMenuFotosCalificacion()">
+                        onclick="mostrarMenuFotosCalificacion(); return false;">
                         ⋮
                     </button>
                     <button
@@ -21865,11 +21865,26 @@ function clickFotoCalificacionCamara(e) {
 }
 
 function mostrarMenuFotosCalificacion() {
-    const contenedor = document.getElementById("fotoCalificacionGuardada");
-    const fotos = contenedor
-        ? Array.from(contenedor.querySelectorAll("img[data-foto-codificada]"))
-            .map(obtenerFotoDesdeElementoCalificacion).filter(Boolean)
-        : [];
+    // Consultar directamente las fotos asociadas al estudiante y actividad actuales.
+    // No depender de que la galería esté visible o haya terminado de dibujarse.
+    let fotos = [];
+    try {
+        if (estudianteQRSeleccionado && actividadQRSeleccionada) {
+            fotos = obtenerFotosActividad(actividadQRSeleccionada.id, estudianteQRSeleccionado.id) || [];
+            if (!Array.isArray(fotos)) fotos = fotos ? [fotos] : [];
+        }
+    } catch (error) {
+        console.warn("No se pudieron consultar las fotografías de la calificación:", error);
+    }
+
+    // Respaldo por si las fotos ya están dibujadas en la galería pero la lista aún no se actualizó.
+    if (!fotos.length) {
+        const contenedor = document.getElementById("fotoCalificacionGuardada");
+        fotos = contenedor
+            ? Array.from(contenedor.querySelectorAll("img[data-foto-codificada]"))
+                .map(obtenerFotoDesdeElementoCalificacion).filter(Boolean)
+            : [];
+    }
     if (!fotos.length) {
         mostrarMensaje("No hay fotografías almacenadas para esta actividad y estudiante.");
         return;
