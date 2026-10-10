@@ -21837,8 +21837,8 @@ function iniciarPulsacionFotoCalificacionCamara(e) {
     temporizadorCamaraFotoCalificacion = setTimeout(() => {
         pulsacionLargaCamaraFotoCalificacion = true;
         bloquearSiguienteClickCamaraFotoCalificacion = true;
-        // La pulsación larga en la cámara ya no abre configuración.
-        // Las opciones de cada foto aparecen al mantener pulsada su miniatura.
+        // La pulsación larga en 📷 muestra las acciones de todas las fotos almacenadas.
+        mostrarMenuFotosCalificacion();
     }, 650);
 }
 
@@ -21870,6 +21870,70 @@ function clickFotoCalificacionCamara(e) {
         e.preventDefault();
         e.stopPropagation();
     }
+}
+
+function mostrarMenuFotosCalificacion() {
+    const contenedor = document.getElementById("fotoCalificacionGuardada");
+    const fotos = contenedor
+        ? Array.from(contenedor.querySelectorAll("img[data-foto-codificada]"))
+            .map(obtenerFotoDesdeElementoCalificacion).filter(Boolean)
+        : [];
+    if (!fotos.length) {
+        mostrarMensaje("No hay fotografías almacenadas para esta actividad y estudiante.");
+        return;
+    }
+
+    cerrarMenuFotoActividad();
+    const fondo = document.createElement("div");
+    fondo.id = "menuFotoActividad";
+    fondo.className = "modal-fondo";
+    const panel = document.createElement("div");
+    panel.className = "menu-foto-actividad";
+    panel.addEventListener("click", ev => ev.stopPropagation());
+
+    const cabecera = document.createElement("div");
+    cabecera.className = "modal-cabecera";
+    const titulo = document.createElement("h3");
+    titulo.textContent = "📷 Fotografías almacenadas";
+    const cerrar = document.createElement("button");
+    cerrar.type = "button";
+    cerrar.className = "boton-cerrar-modal";
+    cerrar.textContent = "×";
+    cerrar.onclick = cerrarMenuFotoActividad;
+    cabecera.append(titulo, cerrar);
+    panel.appendChild(cabecera);
+
+    fotos.forEach((foto, indice) => {
+        const fila = document.createElement("div");
+        fila.className = "menu-foto-opciones";
+        fila.style.flexWrap = "wrap";
+        fila.style.marginTop = "8px";
+        const nombre = document.createElement("div");
+        nombre.textContent = foto.nombre_archivo || `Fotografía ${indice + 1}`;
+        nombre.style.width = "100%";
+        nombre.style.overflowWrap = "anywhere";
+        const cambiar = document.createElement("button");
+        cambiar.type = "button";
+        cambiar.textContent = "🔄 Cambiar";
+        cambiar.onclick = () => {
+            const codigo = encodeURIComponent(JSON.stringify(foto));
+            cerrarMenuFotoActividad();
+            cambiarFotoActividad(codigo);
+        };
+        const eliminar = document.createElement("button");
+        eliminar.type = "button";
+        eliminar.textContent = "🗑️ Eliminar";
+        eliminar.onclick = () => {
+            const codigo = encodeURIComponent(JSON.stringify(foto));
+            cerrarMenuFotoActividad();
+            borrarFotoActividad(codigo);
+        };
+        fila.append(nombre, cambiar, eliminar);
+        panel.appendChild(fila);
+    });
+    fondo.appendChild(panel);
+    fondo.addEventListener("click", cerrarMenuFotoActividad);
+    document.body.appendChild(fondo);
 }
 
 function mostrarMenuFotoCalificacion(foto) {
