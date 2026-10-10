@@ -14554,7 +14554,21 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
         }
         n=obtenerNombreFotoActividadUnico(a.id,e.id,n,fotoAnterior?.id);
         fotoActividadArchivoPendiente={file,actividad:a,modo:modoGuardar,fotoExistente:fotoAnterior,estudiante:e,nombre:n,origen:tipoConfirmacion};
-        mostrarConfirmacionFotoActividad(file,e,n,!!fotoAnterior,tipoConfirmacion);
+        // En la columna Foto: el icono + guarda inmediatamente como imagen nueva.
+        // Desde "Cambiar": ya se pidió autorización antes de abrir la cámara,
+        // por lo que la foto elegida reemplaza directamente la imagen seleccionada.
+        if(m==="nueva"){
+            fotoActividadArchivoPendiente.modo="nueva";
+            fotoActividadArchivoPendiente.fotoExistente=null;
+            fotoActividadArchivoPendiente.nombre=obtenerNombreFotoActividadUnico(a.id,e.id,n);
+            await guardarFotoActividadConfirmada();
+        }else if(m==="cambiar"){
+            fotoActividadArchivoPendiente.modo="cambiar";
+            fotoActividadArchivoPendiente.fotoExistente=fotoAnterior||f;
+            await guardarFotoActividadConfirmada();
+        }else{
+            mostrarConfirmacionFotoActividad(file,e,n,!!fotoAnterior,tipoConfirmacion);
+        }
     }catch(e){
         alert(e.message||"No se pudo procesar la fotografía.");
         // Si la opción está activa, volver directamente a la cámara para el siguiente estudiante.
