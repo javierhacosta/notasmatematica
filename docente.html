@@ -28131,42 +28131,72 @@ function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, e
     fondo.addEventListener("click", e => { if (e.target === fondo) fondo.remove(); });
     document.body.appendChild(fondo);
 }
-function preguntarLeerNombresSinQR(cantidad) {
+function preguntarContinuarLecturaNombres(cantidad) {
     return new Promise(resolve => {
-        const fondo=document.createElement("div"); fondo.className="modal-fondo"; fondo.style.zIndex="10040";
-        const caja=document.createElement("div"); caja.className="modal-actividad"; caja.style.maxWidth="440px";
-        const cab=document.createElement("div"); cab.className="modal-cabecera";
-        const titulo=document.createElement("h3"); titulo.textContent="🔎 Fotografías sin código QR"; cab.appendChild(titulo);
-        const cuerpo=document.createElement("div"); cuerpo.className="modal-cuerpo";
-        const mensaje=document.createElement("p"); mensaje.textContent=`No se encontraron QR en ${cantidad} fotografía${cantidad===1?"":"s"}. ¿Desea continuar leyendo los nombres impresos si no hay QR?`;
-        const acciones=document.createElement("div"); acciones.style.cssText="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px";
-        const terminar=document.createElement("button"); terminar.type="button"; terminar.className="boton-secundario"; terminar.textContent="Terminar";
-        const continuar=document.createElement("button"); continuar.type="button"; continuar.className="boton-principal"; continuar.textContent="Continuar";
-        const cerrar=valor=>{fondo.remove();resolve(valor)};
-        terminar.onclick=()=>cerrar(false); continuar.onclick=()=>cerrar(true);
-        acciones.append(terminar,continuar); cuerpo.append(mensaje,acciones); caja.append(cab,cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
+        const fondo = document.createElement("div");
+        fondo.className = "modal-fondo";
+        fondo.style.zIndex = "10030";
+        const caja = document.createElement("div");
+        caja.className = "modal-actividad";
+        const cab = document.createElement("div");
+        cab.className = "modal-cabecera";
+        const titulo = document.createElement("h3");
+        titulo.textContent = "📷 Fotografías sin código QR";
+        cab.appendChild(titulo);
+        const cuerpo = document.createElement("div");
+        cuerpo.className = "modal-cuerpo";
+        const mensaje = document.createElement("p");
+        mensaje.textContent = "No se encontraron QR en " + cantidad + " fotografías. ¿Desea continuar leyendo los nombres impresos?";
+        const acciones = document.createElement("div");
+        acciones.className = "modal-acciones";
+        const terminar = document.createElement("button");
+        terminar.type = "button";
+        terminar.className = "boton-cancelar";
+        terminar.textContent = "Terminar";
+        const continuar = document.createElement("button");
+        continuar.type = "button";
+        continuar.className = "boton-crear-modal";
+        continuar.textContent = "Continuar";
+        const cerrar = valor => { fondo.remove(); resolve(valor); };
+        terminar.onclick = () => cerrar(false);
+        continuar.onclick = () => cerrar(true);
+        acciones.append(terminar, continuar);
+        cuerpo.append(mensaje, acciones);
+        caja.append(cab, cuerpo);
+        fondo.appendChild(caja);
+        document.body.appendChild(fondo);
     });
 }
+
 document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("change", async function() {
     const archivos = Array.from(this.files || []);
     const actividad = actividadSeleccionadaGaleriaQR;
     this.value = "";
     if (!actividad || !archivos.length) return;
-    const detectados = [], noDetectados = [], errores = [], sinQR = [];
+    const detectados = [], noDetectados = [], errores = [];
     const progreso = mostrarProgresoGaleriaActividadQR(actividad, archivos.length);
-    // Primera pasada: buscar exclusivamente códigos QR en todas las fotografías.
+    const sinQR = [];
+
+    // Primera pasada: buscar QR en TODAS las fotografías y guardar únicamente
+    // las que se identifican mediante QR antes de intentar leer nombres impresos.
     for (let indice = 0; indice < archivos.length; indice++) {
         const file = archivos[indice];
         const base = (indice / archivos.length) * 65;
         try {
-            await progreso.actualizar(indice, 0, "Preparando imagen: " + file.name, base + 1);
-            await progreso.actualizar(indice, 1, "Primero: buscando el código QR de " + file.name + "...", base + 4);
+            await progreso.actualizar(indice, 0, "Preparando imagen: " + file.name, base + 2);
+            await progreso.actualizar(indice, 1, "Buscando y leyendo el código QR de " + file.name + "...", base + 8);
             const ci = await detectarCIEnImagen(file);
-            if (!ci) { sinQR.push({file,indice}); continue; }
-            await progreso.actualizar(indice, 3, "QR detectado (" + ci + "). Buscando al estudiante registrado...", base + 7);
+            if (!ci) {
+                sinQR.push({ file, indice });
+                await progreso.actualizar(indice, 1, "No se encontró QR en " + file.name + ". Se revisará después de terminar la búsqueda de QR.", base + 12);
+                continue;
+            }
+            await progreso.actualizar(indice, 3, "QR detectado (" + ci + "). Buscando al estudiante registrado...", base + 14);
             let estudiante = buscarEstudianteQRLocal(ci);
             if (!estudiante) {
-                const r = await supabaseClient.from("matematica").select("id,ci,nombre,paterno,materno,nombres,num_lista,curso").eq("ci", ci).maybeSingle();
+                const r = await supabaseClient.from("matematica")
+                    .select("id,ci,nombre,paterno,materno,nombres,num_lista,curso")
+                    .eq("ci", ci).maybeSingle();
                 if (r.error) throw r.error;
                 estudiante = r.data;
             }
@@ -28174,51 +28204,65 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                 noDetectados.push(file.name + (estudiante ? " (pertenece a otro curso)" : " (QR sin estudiante registrado)"));
                 continue;
             }
-            await progreso.actualizar(indice, 4, "QR confirmado. Guardando fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 10);
-            const cfg=obtenerConfigFotoActividad(actividad.id);
-            let nombre=construirNombreFotoActividad(actividad,estudiante,cfg.nombre||nombreFotoActividadPorDefecto(actividad));
-            nombre=obtenerNombreFotoActividadUnico(actividad.id,estudiante.id,nombre);
-            fotoActividadArchivoPendiente={file,actividad,modo:"nueva",fotoExistente:null,estudiante,nombre,origen:"galeria_qr"};
-            fotoActividadModo="galeria_qr";
-            const guardada=await guardarFotoActividadConfirmada();
-            if(guardada) detectados.push("QR: "+(obtenerNombreCompletoFotoActividad(estudiante)||("Estudiante "+estudiante.id)));
-            else errores.push(file.name+": no se confirmó el guardado.");
-        } catch(err) { errores.push(file.name+": "+(err?.message||String(err))); }
-        await progreso.actualizar(indice,1,"Búsqueda de QR completada para esta imagen.",base+12);
-    }
-    // Preguntar antes de activar OCR; si el usuario termina, no se leen nombres.
-    if (sinQR.length) {
-        progreso.cerrar();
-        const continuar=await preguntarLeerNombresSinQR(sinQR.length);
-        if (!continuar) {
-            sinQR.forEach(x=>noDetectados.push(x.file.name+" (sin QR; lectura de nombres cancelada)"));
-        } else {
-            const progresoOCR=mostrarProgresoGaleriaActividadQR(actividad,archivos.length);
-            for(let j=0;j<sinQR.length;j++) {
-                const {file,indice}=sinQR[j];
-                try {
-                    await progresoOCR.actualizar(indice,2,"No se encontró QR. Ahora leyendo el nombre impreso de "+file.name+"...",65+(j/sinQR.length)*30);
-                    const estudiante=await leerNombreEstudianteEnImagen(file);
-                    if(!estudiante) { noDetectados.push(file.name+" (sin QR y nombre no identificado con seguridad)"); continue; }
-                    await progresoOCR.actualizar(indice,3,"Nombre leído: "+(obtenerNombreCompletoFotoActividad(estudiante)||"estudiante")+". Verificando curso...",65+(j/sinQR.length)*30+3);
-                    if(String(estudiante.curso)!==String(cursoSeleccionado)) { noDetectados.push(file.name+" (el nombre corresponde a otro curso)"); continue; }
-                    await progresoOCR.actualizar(indice,4,"Nombre confirmado. Guardando fotografía para "+(obtenerNombreCompletoFotoActividad(estudiante)||"el estudiante")+"...",65+((j+0.8)/sinQR.length)*30);
-                    const cfg=obtenerConfigFotoActividad(actividad.id);
-                    let nombre=construirNombreFotoActividad(actividad,estudiante,cfg.nombre||nombreFotoActividadPorDefecto(actividad));
-                    nombre=obtenerNombreFotoActividadUnico(actividad.id,estudiante.id,nombre);
-                    fotoActividadArchivoPendiente={file,actividad,modo:"nueva",fotoExistente:null,estudiante,nombre,origen:"galeria_qr"};
-                    fotoActividadModo="galeria_qr";
-                    const guardada=await guardarFotoActividadConfirmada();
-                    if(guardada) detectados.push("Nombre: "+(obtenerNombreCompletoFotoActividad(estudiante)||("Estudiante "+estudiante.id)));
-                    else errores.push(file.name+": no se confirmó el guardado.");
-                } catch(err) { errores.push(file.name+": "+(err?.message||String(err))); }
-            }
-            progresoOCR.cerrar();
+            await progreso.actualizar(indice, 4, "QR confirmado. Guardando la fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 18);
+            const cfg = obtenerConfigFotoActividad(actividad.id);
+            let nombre = construirNombreFotoActividad(actividad, estudiante, cfg.nombre || nombreFotoActividadPorDefecto(actividad));
+            nombre = obtenerNombreFotoActividadUnico(actividad.id, estudiante.id, nombre);
+            fotoActividadArchivoPendiente = { file, actividad, modo: "nueva", fotoExistente: null, estudiante, nombre, origen: "galeria_qr" };
+            fotoActividadModo = "galeria_qr";
+            const guardada = await guardarFotoActividadConfirmada();
+            if (guardada) detectados.push("QR: " + (obtenerNombreCompletoFotoActividad(estudiante) || ("Estudiante " + estudiante.id)));
+            else errores.push(file.name + ": no se confirmó el guardado.");
+        } catch (err) {
+            errores.push(file.name + ": " + (err?.message || String(err)));
         }
-    } else progreso.cerrar();
-    fotoActividadArchivoPendiente=null;
+        await progreso.actualizar(indice, 1, "Búsqueda de QR: " + file.name + " procesada.", ((indice + 1) / archivos.length) * 65);
+    }
+
+    // Preguntar una sola vez, cuando ya terminó la búsqueda de QR en todas.
+    if (sinQR.length) {
+        await progreso.actualizar(archivos.length - 1, 2, "Búsqueda de QR terminada. Esperando su decisión sobre " + sinQR.length + " fotografías sin QR...", 65);
+        const continuar = await preguntarContinuarLecturaNombres(sinQR.length);
+        if (continuar) {
+            for (let j = 0; j < sinQR.length; j++) {
+                const { file, indice } = sinQR[j];
+                const base = 65 + (j / sinQR.length) * 35;
+                try {
+                    await progreso.actualizar(indice, 2, "Leyendo el nombre impreso en " + file.name + "...", base + 3);
+                    const estudiante = await leerNombreEstudianteEnImagen(file);
+                    if (!estudiante) {
+                        noDetectados.push(file.name + " (sin QR y nombre no identificado con seguridad)");
+                        continue;
+                    }
+                    await progreso.actualizar(indice, 3, "Nombre leído: " + (obtenerNombreCompletoFotoActividad(estudiante) || "estudiante") + ". Verificando que pertenezca al curso...", base + 8);
+                    if (String(estudiante.curso) !== String(cursoSeleccionado)) {
+                        noDetectados.push(file.name + " (pertenece a otro curso)");
+                        continue;
+                    }
+                    await progreso.actualizar(indice, 4, "Guardando la fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 14);
+                    const cfg = obtenerConfigFotoActividad(actividad.id);
+                    let nombre = construirNombreFotoActividad(actividad, estudiante, cfg.nombre || nombreFotoActividadPorDefecto(actividad));
+                    nombre = obtenerNombreFotoActividadUnico(actividad.id, estudiante.id, nombre);
+                    fotoActividadArchivoPendiente = { file, actividad, modo: "nueva", fotoExistente: null, estudiante, nombre, origen: "galeria_qr" };
+                    fotoActividadModo = "galeria_qr";
+                    const guardada = await guardarFotoActividadConfirmada();
+                    if (guardada) detectados.push("Nombre: " + (obtenerNombreCompletoFotoActividad(estudiante) || ("Estudiante " + estudiante.id)));
+                    else errores.push(file.name + ": no se confirmó el guardado.");
+                } catch (err) {
+                    errores.push(file.name + ": " + (err?.message || String(err)));
+                }
+                await progreso.actualizar(indice, 4, "Imagen procesada. Continuando con la siguiente fotografía...", 65 + ((j + 1) / sinQR.length) * 35);
+            }
+        } else {
+            sinQR.forEach(({file}) => noDetectados.push(file.name + " (sin QR; lectura del nombre no realizada)"));
+        }
+    }
+
+    fotoActividadArchivoPendiente = null;
+    await progreso.actualizar(archivos.length - 1, 4, "Actualizando la galería y preparando el resumen final...", 100);
     try { await cargarFotosActividades(); actualizarCeldasFotosActividad(actividad.id); } catch (_) {}
-    mostrarResumenGaleriaActividadQR(actividad,detectados,noDetectados,errores);
+    progreso.cerrar();
+    mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores);
 });
 </script>
 
