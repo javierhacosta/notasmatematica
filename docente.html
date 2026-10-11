@@ -28001,14 +28001,45 @@ function normalizarNombreOCRActividad(valor) {
 }
 async function leerNombreEnImagenActividad(file) {
     const motor = await cargarOCRNombresActividad();
-    const resultado = await motor.recognize(file, "spa");
-    return String(resultado?.data?.text || "").trim();
+    // Leer la imagen original y una versión mejorada para texto pequeño, sombras o bajo contraste.
+    const textos = [];
+    try {
+        const original = await motor.recognize(file, "spa+eng", { logger: () => {} });
+        textos.push(String(original?.data?.text || ""));
+    } catch (e) {
+        // Algunas instalaciones no tienen descargado spa; probar el modelo inglés como respaldo.
+        const original = await motor.recognize(file, "eng", { logger: () => {} });
+        textos.push(String(original?.data?.text || ""));
+    }
+    try {
+        const bitmap = await createImageBitmap(file);
+        try {
+            const escala = Math.min(3, Math.max(1.5, 1800 / Math.max(bitmap.width, bitmap.height)));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(bitmap.width * escala));
+            canvas.height = Math.max(1, Math.round(bitmap.height * escala));
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
+            ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const im = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < im.data.length; i += 4) {
+                const gris = Math.round(im.data[i] * .299 + im.data[i+1] * .587 + im.data[i+2] * .114);
+                const valor = gris > 175 ? 255 : (gris < 105 ? 0 : gris);
+                im.data[i] = im.data[i+1] = im.data[i+2] = valor;
+            }
+            ctx.putImageData(im, 0, 0);
+            const mejorada = await motor.recognize(canvas, "eng", { logger: () => {} });
+            textos.push(String(mejorada?.data?.text || ""));
+        } finally { bitmap.close?.(); }
+    } catch (e) { console.warn("No se pudo mejorar la imagen para leer el nombre:", e); }
+    return textos.sort((a,b) => normalizarNombreOCRActividad(b).length - normalizarNombreOCRActividad(a).length).join(" ").trim();
 }
 function buscarEstudiantePorNombreOCR(textoOCR) {
     const texto = normalizarNombreOCRActividad(textoOCR);
     if (!texto) return null;
     const lista = (Array.isArray(estudiantes) ? estudiantes : []).filter(e => String(e.curso) === String(cursoSeleccionado));
-    const palabrasOCR = new Set(texto.split(" ").filter(x => x.length > 1));
+    const palabrasOCR = texto.split(" ").filter(x => x.length > 1);
+    const distancia = (a,b) => { const v=Array.from({length:b.length+1},(_,i)=>i); for(let i=1;i<=a.length;i++){let previo=v[0];v[0]=i;for(let j=1;j<=b.length;j++){const tmp=v[j];v[j]=Math.min(v[j]+1,v[j-1]+1,previo+(a[i-1]===b[j-1]?0:1));previo=tmp;}}return v[b.length]; };
+    const coincide = token => palabrasOCR.some(p => p===token || (Math.min(p.length,token.length)>=5 && distancia(p,token)<=1));
     let mejor = null, mejorPuntaje = 0, segundoPuntaje = 0;
     for (const e of lista) {
         const variantes = [
@@ -28019,19 +28050,18 @@ function buscarEstudiantePorNombreOCR(textoOCR) {
         ].map(normalizarNombreOCRActividad).filter(Boolean);
         let puntaje = 0;
         for (const nombre of variantes) {
-            if (texto.includes(nombre) && nombre.length >= 5) puntaje = Math.max(puntaje, 100 + nombre.length);
             const tokens = [...new Set(nombre.split(" ").filter(x => x.length > 1))];
-            if (tokens.length) {
-                const coinciden = tokens.filter(t => palabrasOCR.has(t)).length;
-                const cobertura = coinciden / tokens.length;
-                // Exigir coincidencia de al menos dos palabras, o de un nombre completo inequívoco.
-                if (coinciden >= 2) puntaje = Math.max(puntaje, cobertura * 100 + coinciden);
-            }
+            if (!tokens.length) continue;
+            const coinciden = tokens.filter(coincide).length;
+            const cobertura = coinciden / tokens.length;
+            // Aceptar nombre parcial si al menos dos palabras coinciden y la coincidencia es claramente única.
+            if (coinciden >= 2) puntaje = Math.max(puntaje, cobertura * 100 + coinciden);
+            if (texto.includes(nombre) && nombre.length >= 5) puntaje = Math.max(puntaje, 100 + nombre.length);
         }
         if (puntaje > mejorPuntaje) { segundoPuntaje = mejorPuntaje; mejorPuntaje = puntaje; mejor = e; }
         else if (puntaje > segundoPuntaje) segundoPuntaje = puntaje;
     }
-    if (mejorPuntaje < 70 || (segundoPuntaje > 0 && mejorPuntaje - segundoPuntaje < 8)) return null;
+    if (mejorPuntaje < 55 || (segundoPuntaje > 0 && mejorPuntaje - segundoPuntaje < 10)) return null;
     return mejor;
 }
 function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores) {
