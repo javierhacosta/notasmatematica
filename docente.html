@@ -14297,7 +14297,7 @@ function crearActividadHTML(
 /* =====================================================
    FOTOGRAFÍAS DE ACTIVIDADES
 ===================================================== */
-function renderFotoActividadCelda(a,e){const fotos=obtenerFotosActividad(a,e);const botonAgregar=`<button type="button" class="boton-foto-agregar" title="Añadir fotografía" aria-label="Añadir fotografía" onclick="anadirFotoActividadDesdeCelda(${a},${e})">+</button>`;if(!fotos.length)return botonAgregar;const botonesFotos=fotos.map(f=>{const c=encodeURIComponent(JSON.stringify(f));const ruta=escapeHTML(f.ruta||"");return`<div class="foto-actividad-item"><button type="button" class="boton-foto-icono boton-foto-miniatura" title="Ver fotografía" data-foto-codificada="${c}" onclick="abrirFotoActividadDesdeCelda('${c}')"><img class="boton-foto-miniatura-img" data-ruta-foto="${ruta}" alt="Foto"></button><div class="foto-actividad-controles"><button type="button" title="Cambiar foto" aria-label="Cambiar foto" onclick="cambiarFotoActividad('${c}')">📸</button><button type="button" title="Editar texto" aria-label="Editar texto" onclick="editarFotoActividad('${c}')">✏️</button><button type="button" class="opcion-borrar-foto" title="Eliminar" aria-label="Eliminar" onclick="borrarFotoActividad('${c}')">🗑️</button></div></div>`}).join('');return botonesFotos+botonAgregar}
+function renderFotoActividadCelda(a,e){const fotos=obtenerFotosActividad(a,e);const botonAgregar=`<button type="button" class="boton-foto-agregar" title="Añadir fotografía" aria-label="Añadir fotografía" onclick="anadirFotoActividadDesdeCelda(${a},${e})">+</button><button type="button" class="boton-foto-agregar" title="Importar fotos del celular y detectar QR" aria-label="Importar fotos del celular y detectar QR" onclick="abrirSelectorFotosActividadQRPorId(${a})">📥</button>`;if(!fotos.length)return botonAgregar;const botonesFotos=fotos.map(f=>{const c=encodeURIComponent(JSON.stringify(f));const ruta=escapeHTML(f.ruta||"");return`<div class="foto-actividad-item"><button type="button" class="boton-foto-icono boton-foto-miniatura" title="Ver fotografía" data-foto-codificada="${c}" onclick="abrirFotoActividadDesdeCelda('${c}')"><img class="boton-foto-miniatura-img" data-ruta-foto="${ruta}" alt="Foto"></button><div class="foto-actividad-controles"><button type="button" title="Cambiar foto" aria-label="Cambiar foto" onclick="cambiarFotoActividad('${c}')">📸</button><button type="button" title="Editar texto" aria-label="Editar texto" onclick="editarFotoActividad('${c}')">✏️</button><button type="button" class="opcion-borrar-foto" title="Eliminar" aria-label="Eliminar" onclick="borrarFotoActividad('${c}')">🗑️</button></div></div>`}).join('');return botonesFotos+botonAgregar}
 function anadirFotoActividadDesdeCelda(a,e){const actividad=actividades.find(x=>String(x.id)===String(a));const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'directa');}}
 function datosFotoCodificados(c){try{return JSON.parse(decodeURIComponent(c))}catch(_){return null}}
 function abrirFotoActividadDesdeCelda(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
@@ -27972,12 +27972,67 @@ document.getElementById("inputFotoActividad")?.addEventListener("change",async f
 
 <script>
 let actividadSeleccionadaGaleriaQR = null;
+function abrirSelectorFotosActividadQRPorId(id) {
+    const actividad = (actividades || []).find(x => String(x.id) === String(id));
+    if (!actividad) { alert("No se encontró la actividad seleccionada."); return; }
+    abrirSelectorFotosActividadQR(actividad);
+}
 function abrirSelectorFotosActividadQR(actividad) {
     actividadSeleccionadaGaleriaQR = actividad;
     const input = document.getElementById("inputFotosGaleriaActividadQR");
     if (!input) { alert("No se pudo abrir la selección de fotografías."); return; }
     input.value = "";
     input.click();
+}
+async function cargarOCRNombresActividad() {
+    if (window.Tesseract) return window.Tesseract;
+    await new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("No se pudo cargar el lector de nombres. Comprueba la conexión a Internet."));
+        document.head.appendChild(script);
+    });
+    if (!window.Tesseract) throw new Error("El lector de nombres no está disponible.");
+    return window.Tesseract;
+}
+function normalizarNombreOCRActividad(valor) {
+    return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+async function leerNombreEnImagenActividad(file) {
+    const motor = await cargarOCRNombresActividad();
+    const resultado = await motor.recognize(file, "spa");
+    return String(resultado?.data?.text || "").trim();
+}
+function buscarEstudiantePorNombreOCR(textoOCR) {
+    const texto = normalizarNombreOCRActividad(textoOCR);
+    if (!texto) return null;
+    const lista = (Array.isArray(estudiantes) ? estudiantes : []).filter(e => String(e.curso) === String(cursoSeleccionado));
+    const palabrasOCR = new Set(texto.split(" ").filter(x => x.length > 1));
+    let mejor = null, mejorPuntaje = 0, segundoPuntaje = 0;
+    for (const e of lista) {
+        const variantes = [
+            [e.paterno, e.materno, e.nombres].filter(Boolean).join(" "),
+            [e.paterno, e.materno, e.nombre].filter(Boolean).join(" "),
+            [e.nombre, e.paterno, e.materno].filter(Boolean).join(" "),
+            e.nombre, e.nombres
+        ].map(normalizarNombreOCRActividad).filter(Boolean);
+        let puntaje = 0;
+        for (const nombre of variantes) {
+            if (texto.includes(nombre) && nombre.length >= 5) puntaje = Math.max(puntaje, 100 + nombre.length);
+            const tokens = [...new Set(nombre.split(" ").filter(x => x.length > 1))];
+            if (tokens.length) {
+                const coinciden = tokens.filter(t => palabrasOCR.has(t)).length;
+                const cobertura = coinciden / tokens.length;
+                // Exigir coincidencia de al menos dos palabras, o de un nombre completo inequívoco.
+                if (coinciden >= 2) puntaje = Math.max(puntaje, cobertura * 100 + coinciden);
+            }
+        }
+        if (puntaje > mejorPuntaje) { segundoPuntaje = mejorPuntaje; mejorPuntaje = puntaje; mejor = e; }
+        else if (puntaje > segundoPuntaje) segundoPuntaje = puntaje;
+    }
+    if (mejorPuntaje < 70 || (segundoPuntaje > 0 && mejorPuntaje - segundoPuntaje < 8)) return null;
+    return mejor;
 }
 function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores) {
     const anterior = document.getElementById("resumenGaleriaActividadQR");
@@ -28037,18 +28092,26 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     const detectados = [], noDetectados = [], errores = [];
     for (const file of archivos) {
         try {
+            // Primero intenta QR; si la imagen no tiene QR, lee el nombre impreso
+            // (por ejemplo: QUISPE APAZA JUAN) y lo compara con la lista del curso.
             const ci = await detectarCIEnImagen(file);
-            if (!ci) { noDetectados.push(file.name + " (sin QR válido)"); continue; }
-            let estudiante = buscarEstudianteQRLocal(ci);
+            let estudiante = null;
+            if (ci) {
+                estudiante = buscarEstudianteQRLocal(ci);
+                if (!estudiante) {
+                    const r = await supabaseClient.from("matematica")
+                        .select("id,ci,nombre,paterno,materno,nombres,num_lista,curso")
+                        .eq("ci", ci).maybeSingle();
+                    if (r.error) throw r.error;
+                    estudiante = r.data;
+                }
+            }
             if (!estudiante) {
-                const r = await supabaseClient.from("matematica")
-                    .select("id,ci,nombre,paterno,materno,nombres,num_lista,curso")
-                    .eq("ci", ci).maybeSingle();
-                if (r.error) throw r.error;
-                estudiante = r.data;
+                const textoLeido = await leerNombreEnImagenActividad(file);
+                estudiante = buscarEstudiantePorNombreOCR(textoLeido);
             }
             if (!estudiante || String(estudiante.curso) !== String(cursoSeleccionado)) {
-                noDetectados.push(file.name + (estudiante ? " (pertenece a otro curso)" : " (QR sin estudiante registrado)"));
+                noDetectados.push(file.name + (estudiante ? " (pertenece a otro curso)" : " (no se pudo leer o relacionar el nombre con seguridad)"));
                 continue;
             }
             const cfg = obtenerConfigFotoActividad(actividad.id);
