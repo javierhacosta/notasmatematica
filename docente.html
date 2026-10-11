@@ -28032,6 +28032,55 @@ function abrirSelectorFotosActividadQR(actividad) {
     input.value = "";
     input.click();
 }
+function mostrarProgresoGaleriaActividadQR(actividad, total) {
+    const anterior = document.getElementById("progresoGaleriaActividadQR");
+    if (anterior) anterior.remove();
+    const fondo = document.createElement("div");
+    fondo.id = "progresoGaleriaActividadQR";
+    fondo.className = "modal-fondo";
+    fondo.style.zIndex = "10030";
+    fondo.style.display = "flex";
+    fondo.style.alignItems = "center";
+    fondo.style.justifyContent = "center";
+    const caja = document.createElement("div");
+    caja.className = "modal-actividad";
+    caja.style.maxWidth = "480px";
+    const cab = document.createElement("div");
+    cab.className = "modal-cabecera";
+    const titulo = document.createElement("h3");
+    titulo.textContent = "📷 Procesando fotografías";
+    cab.appendChild(titulo);
+    const cuerpo = document.createElement("div");
+    cuerpo.className = "modal-cuerpo";
+    const actividadTxt = document.createElement("p");
+    actividadTxt.textContent = "Actividad: " + String(actividad?.nombre || "Actividad");
+    const contador = document.createElement("p");
+    contador.style.fontWeight = "bold";
+    const barraFondo = document.createElement("div");
+    barraFondo.style.cssText = "height:12px;background:#e5e7eb;border-radius:8px;overflow:hidden;margin:10px 0 14px";
+    const barra = document.createElement("div");
+    barra.style.cssText = "height:100%;width:0%;background:#2563eb;border-radius:8px;transition:width .2s";
+    barraFondo.appendChild(barra);
+    const porcentaje = document.createElement("p");
+    porcentaje.style.cssText = "text-align:right;font-weight:bold;margin:0 0 12px";
+    const detalle = document.createElement("p");
+    detalle.style.cssText = "font-weight:600;margin-bottom:8px";
+    const pasos = document.createElement("ol");
+    pasos.style.cssText = "padding-left:22px;line-height:1.7;margin-bottom:0";
+    ["Preparando las imágenes seleccionadas", "Buscando códigos QR", "Leyendo nombres impresos si no hay QR", "Comparando con estudiantes del curso", "Guardando las fotografías en sus registros"].forEach(t => { const li=document.createElement("li"); li.textContent=t; pasos.appendChild(li); });
+    cuerpo.append(actividadTxt, contador, barraFondo, porcentaje, detalle, pasos);
+    caja.append(cab, cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
+    return { actualizar(indice, etapa, mensaje, pct) {
+        const n = Math.min(total, indice + 1);
+        contador.textContent = "Imagen " + n + " de " + total;
+        detalle.textContent = mensaje;
+        barra.style.width = Math.max(0, Math.min(100, pct)) + "%";
+        porcentaje.textContent = Math.round(Math.max(0, Math.min(100, pct))) + "%";
+        Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
+        return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    }, cerrar() { fondo.remove(); } };
+}
+
 function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores) {
     const anterior = document.getElementById("resumenGaleriaActividadQR");
     if (anterior) anterior.remove();
@@ -28088,11 +28137,17 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     this.value = "";
     if (!actividad || !archivos.length) return;
     const detectados = [], noDetectados = [], errores = [];
-    for (const file of archivos) {
+    const progreso = mostrarProgresoGaleriaActividadQR(actividad, archivos.length);
+    for (let indice = 0; indice < archivos.length; indice++) {
+        const file = archivos[indice];
+        const base = (indice / archivos.length) * 100;
         try {
+            await progreso.actualizar(indice, 0, "Preparando imagen: " + file.name, base + 2);
+            await progreso.actualizar(indice, 1, "Buscando y leyendo el código QR de " + file.name + "...", base + 8);
             const ci = await detectarCIEnImagen(file);
             let estudiante = null;
             if (ci) {
+                await progreso.actualizar(indice, 3, "QR detectado (" + ci + "). Buscando al estudiante registrado...", base + 12);
                 estudiante = buscarEstudianteQRLocal(ci);
                 if (!estudiante) {
                     const r = await supabaseClient.from("matematica")
@@ -28102,14 +28157,16 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                     estudiante = r.data;
                 }
             } else {
-                mostrarMensaje("🔎 No se encontró QR; leyendo el nombre escrito en la foto...");
+                await progreso.actualizar(indice, 2, "No se encontró QR. Cargando el lector y leyendo el nombre impreso en la imagen...", base + 10);
                 estudiante = await leerNombreEstudianteEnImagen(file);
                 if (!estudiante) { noDetectados.push(file.name + " (sin QR y nombre no identificado con seguridad)"); continue; }
+                await progreso.actualizar(indice, 3, "Nombre leído: " + (obtenerNombreCompletoFotoActividad(estudiante) || "estudiante") + ". Verificando que pertenezca al curso...", base + 15);
             }
             if (!estudiante || String(estudiante.curso) !== String(cursoSeleccionado)) {
                 noDetectados.push(file.name + (estudiante ? " (pertenece a otro curso)" : " (QR sin estudiante registrado)"));
                 continue;
             }
+            await progreso.actualizar(indice, 4, "Identidad confirmada. Preparando nombre de archivo y guardando la foto para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 18);
             const cfg = obtenerConfigFotoActividad(actividad.id);
             let nombre = construirNombreFotoActividad(actividad, estudiante, cfg.nombre || nombreFotoActividadPorDefecto(actividad));
             nombre = obtenerNombreFotoActividadUnico(actividad.id, estudiante.id, nombre);
@@ -28124,9 +28181,12 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         } catch (err) {
             errores.push(file.name + ": " + (err?.message || String(err)));
         }
+        await progreso.actualizar(indice, 4, "Imagen procesada. Continuando con la siguiente fotografía...", ((indice + 1) / archivos.length) * 100);
     }
     fotoActividadArchivoPendiente = null;
+    await progreso.actualizar(archivos.length - 1, 4, "Actualizando la galería y preparando el resumen final...", 100);
     try { await cargarFotosActividades(); actualizarCeldasFotosActividad(actividad.id); } catch (_) {}
+    progreso.cerrar();
     mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores);
 });
 </script>
