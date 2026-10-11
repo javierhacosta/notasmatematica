@@ -14378,58 +14378,101 @@ function cancelarPulsacionFotoCalificacion(e){
 
 function abrirCapturaFotoActividad(a,m="nueva",f=null){fotoActividadActual=a;fotoActividadModo=m;const i=document.getElementById("inputFotoActividad");if(!i)return;if(m==="nueva"){mantenerCamaraFotoActividad=true;const cb=document.getElementById("mantenerCamaraFotoActividad");if(cb)cb.checked=true}i.value="";i.dataset.fotoExistente=f?encodeURIComponent(JSON.stringify(f)):"";i.click()}
 async function leerNombreEstudianteEnImagen(file){
-    // OCR de respaldo: solo se usa cuando la imagen no contiene un QR válido.
+    // OCR optimizado únicamente para la zona superior, donde está impreso el nombre.
     if(typeof Tesseract === "undefined"){
         await new Promise((resolve,reject)=>{
             const existente=document.querySelector('script[data-tesseract-ocr="1"]');
-            if(existente){existente.addEventListener("load",resolve,{once:true});existente.addEventListener("error",()=>reject(new Error("No se pudo cargar el lector de letras.")),{once:true});return;}
+            if(existente){
+                if(existente.dataset.loaded==="1"){resolve();return;}
+                existente.addEventListener("load",()=>{existente.dataset.loaded="1";resolve();},{once:true});
+                existente.addEventListener("error",()=>reject(new Error("No se pudo cargar el lector de letras. Comprueba tu conexión a Internet.")),{once:true});
+                return;
+            }
             const script=document.createElement("script");
             script.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-            script.dataset.tesseractOcr="1";script.onload=resolve;script.onerror=()=>reject(new Error("No se pudo cargar el lector de letras. Comprueba tu conexión a Internet."));
+            script.dataset.tesseractOcr="1";
+            script.onload=()=>{script.dataset.loaded="1";resolve();};
+            script.onerror=()=>reject(new Error("No se pudo cargar el lector de letras. Comprueba tu conexión a Internet."));
             document.head.appendChild(script);
         });
     }
-    // Leer la página completa y también la franja superior, donde suele estar el nombre del estudiante.
+
     const bitmap=await createImageBitmap(file);
-    const prepararRecorte=(x,y,w,h,escala=2)=>{
-        const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*escala));c.height=Math.max(1,Math.round(h*escala));
-        const ctx=c.getContext("2d");ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
-        ctx.drawImage(bitmap,x,y,w,h,0,0,c.width,c.height);
-        const im=ctx.getImageData(0,0,c.width,c.height);
-        for(let i=0;i<im.data.length;i+=4){const gris=im.data[i]*.299+im.data[i+1]*.587+im.data[i+2]*.114;const v=gris>180?255:gris<100?0:Math.round((gris-100)*3.1875);im.data[i]=im.data[i+1]=im.data[i+2]=v;}
-        ctx.putImageData(im,0,0);return c;
-    };
     let textos=[];
     try{
-        const completo=await Tesseract.recognize(file,"spa+eng",{logger:()=>{}});
-        if(completo?.data?.text)textos.push(completo.data.text);
-    }catch(e){console.warn("No se pudo leer el documento completo con OCR",e)}
-    try{
-        const alto=Math.round(bitmap.height*.30);
-        const recorte=prepararRecorte(0,0,bitmap.width,alto,2);
-        const superior=await Tesseract.recognize(recorte,"spa+eng",{logger:()=>{}});
-        if(superior?.data?.text)textos.push(superior.data.text);
+        // Recorta el 40 % superior para excluir operaciones y respuestas escritas más abajo.
+        const alto=Math.max(1,Math.round(bitmap.height*.40));
+        const escala=Math.min(3,Math.max(2,2600/Math.max(1,bitmap.width)));
+        const base=document.createElement("canvas");
+        base.width=Math.max(1,Math.round(bitmap.width*escala));
+        base.height=Math.max(1,Math.round(alto*escala));
+        const ctx=base.getContext("2d",{willReadFrequently:true});
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,base.width,base.height);
+        ctx.drawImage(bitmap,0,0,bitmap.width,alto,0,0,base.width,base.height);
+
+        // Variante de alto contraste para nombres impresos con poca luz o fondo gris.
+        const mejorada=document.createElement("canvas");
+        mejorada.width=base.width;mejorada.height=base.height;
+        const mctx=mejorada.getContext("2d",{willReadFrequently:true});
+        const imagen=mctx.createImageData(base.width,base.height);
+        const original=ctx.getImageData(0,0,base.width,base.height).data;
+        for(let i=0;i<original.length;i+=4){
+            const gris=original[i]*.299+original[i+1]*.587+original[i+2]*.114;
+            const contraste=Math.max(0,Math.min(255,(gris-128)*1.65+128));
+            imagen.data[i]=imagen.data[i+1]=imagen.data[i+2]=contraste;
+            imagen.data[i+3]=255;
+        }
+        mctx.putImageData(imagen,0,0);
+
+        // Reconocer texto de la franja superior en dos versiones y combinar resultados.
+        for(const imagenOCR of [base,mejorada]){
+            try{
+                const resultado=await Tesseract.recognize(imagenOCR,"spa+eng",{logger:()=>{}});
+                if(resultado?.data?.text)textos.push(resultado.data.text);
+            }catch(e){console.warn("No se pudo leer una versión del encabezado con OCR",e);}
+        }
     }finally{bitmap.close?.()}
+
     const normalizarNombre=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ").trim();
     const texto=normalizarNombre(textos.join(" "));
     if(!texto)return null;
     const lista=(typeof estudiantes!="undefined"?estudiantes:[]).filter(e=>String(e.curso)===String(cursoSeleccionado));
-    const tokensOCR=new Set(texto.split(" ").filter(t=>t.length>=3));
+    const tokensOCR=[...new Set(texto.split(" ").filter(t=>t.length>=3))];
+
+    // Tolera uno o dos errores típicos del OCR, sin aceptar coincidencias por un solo nombre.
+    const distancia=(a,b)=>{
+        if(Math.abs(a.length-b.length)>1)return 2;
+        let prev=Array.from({length:b.length+1},(_,i)=>i);
+        for(let i=1;i<=a.length;i++){
+            const actual=[i];let minimo=i;
+            for(let j=1;j<=b.length;j++){
+                actual[j]=Math.min(actual[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+                minimo=Math.min(minimo,actual[j]);
+            }
+            if(minimo>1)return 2;
+            prev=actual;
+        }
+        return prev[b.length];
+    };
     const candidatos=lista.map(e=>{
         const nombre=normalizarNombre(obtenerNombreCompletoFotoActividad(e));
         const tokens=nombre.split(" ").filter(t=>t.length>=3);
         if(tokens.length<2)return {e,score:0,coincidencias:0};
         let coincidencias=0;
         for(const token of tokens){
-            if(texto.includes(token)||[...tokensOCR].some(o=>o.length>=3&&(o.includes(token)||token.includes(o))&&Math.abs(o.length-token.length)<=3))coincidencias++;
+            const encontrado=tokensOCR.some(o=>o===token || (Math.min(o.length,token.length)>=5&&distancia(o,token)<=1));
+            if(encontrado)coincidencias++;
         }
         return {e,score:coincidencias/tokens.length,coincidencias};
-    }).filter(x=>x.coincidencias>=2&&x.score>=0.6).sort((a,b)=>b.score-a.score||b.coincidencias-a.coincidencias);
+    }).filter(x=>x.coincidencias>=2&&x.score>=.60)
+      .sort((a,b)=>b.score-a.score||b.coincidencias-a.coincidencias);
     if(!candidatos.length)return null;
-    if(candidatos.length>1&&candidatos[0].score===candidatos[1].score&&candidatos[0].coincidencias===candidatos[1].coincidencias)return null;
+    // Si los dos mejores resultados son demasiado parecidos, no asignar una foto equivocada.
+    if(candidatos.length>1 && (candidatos[0].score-candidatos[1].score<.20 || candidatos[0].coincidencias===candidatos[1].coincidencias))return null;
     return candidatos[0].e;
 }
-
 async function detectarCIEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
