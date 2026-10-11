@@ -14389,11 +14389,31 @@ async function leerNombreEstudianteEnImagen(file){
             document.head.appendChild(script);
         });
     }
-    const resultado=await Tesseract.recognize(file,"spa+eng");
-    const texto=String(resultado?.data?.text||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ").trim();
+    // Leer la página completa y también la franja superior, donde suele estar el nombre del estudiante.
+    const bitmap=await createImageBitmap(file);
+    const prepararRecorte=(x,y,w,h,escala=2)=>{
+        const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*escala));c.height=Math.max(1,Math.round(h*escala));
+        const ctx=c.getContext("2d");ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+        ctx.drawImage(bitmap,x,y,w,h,0,0,c.width,c.height);
+        const im=ctx.getImageData(0,0,c.width,c.height);
+        for(let i=0;i<im.data.length;i+=4){const gris=im.data[i]*.299+im.data[i+1]*.587+im.data[i+2]*.114;const v=gris>180?255:gris<100?0:Math.round((gris-100)*3.1875);im.data[i]=im.data[i+1]=im.data[i+2]=v;}
+        ctx.putImageData(im,0,0);return c;
+    };
+    let textos=[];
+    try{
+        const completo=await Tesseract.recognize(file,"spa+eng",{logger:()=>{}});
+        if(completo?.data?.text)textos.push(completo.data.text);
+    }catch(e){console.warn("No se pudo leer el documento completo con OCR",e)}
+    try{
+        const alto=Math.round(bitmap.height*.30);
+        const recorte=prepararRecorte(0,0,bitmap.width,alto,2);
+        const superior=await Tesseract.recognize(recorte,"spa+eng",{logger:()=>{}});
+        if(superior?.data?.text)textos.push(superior.data.text);
+    }finally{bitmap.close?.()}
+    const normalizarNombre=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ").trim();
+    const texto=normalizarNombre(textos.join(" "));
     if(!texto)return null;
     const lista=(typeof estudiantes!="undefined"?estudiantes:[]).filter(e=>String(e.curso)===String(cursoSeleccionado));
-    const normalizarNombre=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9\s]/g," ").replace(/\s+/g," ").trim();
     const tokensOCR=new Set(texto.split(" ").filter(t=>t.length>=3));
     const candidatos=lista.map(e=>{
         const nombre=normalizarNombre(obtenerNombreCompletoFotoActividad(e));
@@ -14401,7 +14421,7 @@ async function leerNombreEstudianteEnImagen(file){
         if(tokens.length<2)return {e,score:0,coincidencias:0};
         let coincidencias=0;
         for(const token of tokens){
-            if(texto.includes(token)||[...tokensOCR].some(o=>o.length>=4&&(o.includes(token)||token.includes(o))&&Math.abs(o.length-token.length)<=2))coincidencias++;
+            if(texto.includes(token)||[...tokensOCR].some(o=>o.length>=3&&(o.includes(token)||token.includes(o))&&Math.abs(o.length-token.length)<=3))coincidencias++;
         }
         return {e,score:coincidencias/tokens.length,coincidencias};
     }).filter(x=>x.coincidencias>=2&&x.score>=0.6).sort((a,b)=>b.score-a.score||b.coincidencias-a.coincidencias);
