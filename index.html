@@ -3654,6 +3654,43 @@ if (fechaNacimiento) {
         temporizadorInicio = setTimeout(comprobar, 0);
     }
 
+    // Sincroniza el movimiento horizontal con el desplazamiento vertical de la página.
+    // Cuanto más rápido se desplaza la página, más rápido avanza la tabla visible.
+    let ultimaPosicionPagina = window.scrollY || window.pageYOffset || 0;
+    let ultimoDesplazamientoTabla = 0;
+    window.addEventListener('scroll', () => {
+        const posicionActual = window.scrollY || window.pageYOffset || 0;
+        const diferenciaVertical = posicionActual - ultimaPosicionPagina;
+        ultimaPosicionPagina = posicionActual;
+        if (Math.abs(diferenciaVertical) < 0.5) return;
+
+        const tablas = Array.from(document.querySelectorAll(
+            '.tabla-actividades-contenedor, .tabla-asistencia-contenedor'
+        )).filter(contenedor => {
+            const tabla = contenedor.querySelector('.tabla-actividades, .tabla-asistencia-horizontal');
+            return tabla && contenedor.isConnected &&
+                contenedor.scrollWidth > contenedor.clientWidth + 8 &&
+                estaEnZonaCentral(contenedor);
+        });
+        if (!tablas.length) return;
+
+        // Si hay varias tablas en la zona central, sincronizar la más cercana al centro.
+        const centroPantalla = (window.innerHeight || document.documentElement.clientHeight) / 2;
+        tablas.sort((a, b) => {
+            const ra = a.getBoundingClientRect();
+            const rb = b.getBoundingClientRect();
+            return Math.abs((ra.top + ra.bottom) / 2 - centroPantalla) -
+                   Math.abs((rb.top + rb.bottom) / 2 - centroPantalla);
+        });
+        const contenedor = tablas[0];
+        const maximo = Math.max(0, contenedor.scrollWidth - contenedor.clientWidth);
+        // El factor conserva un movimiento natural y escala con la velocidad de la página.
+        const movimientoHorizontal = diferenciaVertical * 0.65;
+        contenedor.scrollLeft = Math.max(0, Math.min(maximo,
+            contenedor.scrollLeft + movimientoHorizontal));
+        ultimoDesplazamientoTabla = performance.now();
+    }, { passive: true });
+
     ['pointerdown', 'touchstart', 'wheel', 'keydown', 'mousedown'].forEach(evento =>
         document.addEventListener(evento, detenerPorInteraccion, { passive: true })
     );
