@@ -925,6 +925,34 @@ button:hover {
   overflow-wrap: anywhere;
   word-break: normal;
 }
+/* Tercera fila de actividades: estado de entrega y fecha de presentación. */
+.tabla-actividades tbody tr:nth-child(2) td {
+  min-width: 72px;
+  width: 72px;
+  max-width: 120px;
+  padding: 5px 3px;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.tabla-actividades .actividad-estado-fila {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.tabla-actividades .actividad-estado-fila .actividad-estado-entrega,
+.tabla-actividades .actividad-estado-fila .actividad-fecha-entrega {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-size: 11px;
+  line-height: 1.25;
+}
 </style>
 
 </head>
@@ -1545,20 +1573,40 @@ function aplicarVistaDosFilas() {
     const thead = document.createElement('thead');
     const filaTitulos = document.createElement('tr');
     const filaNotas = document.createElement('tr');
+    const filaEstado = document.createElement('tr');
     actividades.forEach(item => {
       const detalle = item.querySelector('.actividad-nombre');
       const nota = item.querySelector('.actividad-nota');
       const th = document.createElement('th');
       const td = document.createElement('td');
+      const tdEstado = document.createElement('td');
       if (detalle) th.innerHTML = `<span class="encabezado-rotado">${detalle.innerHTML}</span>`;
-      if (nota) td.innerHTML = nota.innerHTML;
+      if (nota) {
+        const contenidoNota = nota.cloneNode(true);
+        const estado = contenidoNota.querySelector('.actividad-estado-entrega');
+        const fechaPresentacion = contenidoNota.querySelector('.actividad-fecha-entrega');
+        const detallesEstado = document.createElement('div');
+        detallesEstado.className = 'actividad-estado-fila';
+        if (estado) {
+          detallesEstado.appendChild(estado.cloneNode(true));
+          estado.remove();
+        }
+        if (fechaPresentacion) {
+          detallesEstado.appendChild(fechaPresentacion.cloneNode(true));
+          fechaPresentacion.remove();
+        }
+        td.innerHTML = contenidoNota.innerHTML;
+        tdEstado.appendChild(detallesEstado);
+      }
       filaTitulos.appendChild(th);
       filaNotas.appendChild(td);
+      filaEstado.appendChild(tdEstado);
       item.remove();
     });
     thead.appendChild(filaTitulos);
     const tbody = document.createElement('tbody');
     tbody.appendChild(filaNotas);
+    tbody.appendChild(filaEstado);
     tabla.appendChild(thead); tabla.appendChild(tbody);
     const envoltura = document.createElement('div');
     envoltura.className = 'tabla-actividades-contenedor';
