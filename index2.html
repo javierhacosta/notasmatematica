@@ -804,6 +804,28 @@ button:hover {
  .actividad-nota { font-size:14px; }
 }
 
+
+/* Vista horizontal tipo hoja de cÃ¡lculo: detalles arriba y valores debajo */
+.tabla-actividades-contenedor, .tabla-asistencia-contenedor {
+  width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden;
+  -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y;
+}
+.tabla-actividades, .tabla-asistencia-horizontal {
+  border-collapse:collapse; table-layout:auto; width:max-content; min-width:100%;
+  font-size:13px; background:#fff;
+}
+.tabla-actividades th, .tabla-actividades td,
+.tabla-asistencia-horizontal th, .tabla-asistencia-horizontal td {
+  border:1px solid #d9dee5; padding:9px 12px; text-align:center;
+  vertical-align:middle; min-width:76px; max-width:210px;
+}
+.tabla-actividades th, .tabla-asistencia-horizontal th {
+  background:#f1f4f8; color:#374151; font-weight:600; white-space:normal;
+}
+.tabla-actividades td { white-space:normal; }
+.tabla-asistencia-horizontal th { white-space:nowrap; }
+.tabla-asistencia-horizontal td { font-size:20px; }
+
 </style>
 
 </head>
@@ -1411,6 +1433,67 @@ function calcularNotaAnual(nota1, nota2, nota3) {
     );
 }
 
+
+
+/* Reorganiza los registros en dos filas: encabezados arriba y notas/iconos debajo. */
+function aplicarVistaDosFilas() {
+  document.querySelectorAll('.categoria').forEach(categoria => {
+    if (categoria.querySelector('.tabla-actividades')) return;
+    const actividades = Array.from(categoria.querySelectorAll(':scope > .actividad-fila'));
+    if (!actividades.length) return;
+    const tabla = document.createElement('table');
+    tabla.className = 'tabla-actividades';
+    const thead = document.createElement('thead');
+    const filaTitulos = document.createElement('tr');
+    const filaNotas = document.createElement('tr');
+    actividades.forEach(item => {
+      const detalle = item.querySelector('.actividad-nombre');
+      const nota = item.querySelector('.actividad-nota');
+      const th = document.createElement('th');
+      const td = document.createElement('td');
+      if (detalle) th.innerHTML = detalle.innerHTML;
+      if (nota) td.innerHTML = nota.innerHTML;
+      filaTitulos.appendChild(th);
+      filaNotas.appendChild(td);
+      item.remove();
+    });
+    thead.appendChild(filaTitulos);
+    const tbody = document.createElement('tbody');
+    tbody.appendChild(filaNotas);
+    tabla.appendChild(thead); tabla.appendChild(tbody);
+    const envoltura = document.createElement('div');
+    envoltura.className = 'tabla-actividades-contenedor';
+    envoltura.appendChild(tabla);
+    const titulo = categoria.querySelector('.categoria-titulo');
+    if (titulo && titulo.nextSibling) categoria.insertBefore(envoltura, titulo.nextSibling);
+    else categoria.appendChild(envoltura);
+  });
+
+  document.querySelectorAll('#tablaDetalleAsistencia .tabla-asistencia').forEach(original => {
+    if (original.dataset.dosFilas === '1') return;
+    const registros = Array.from(original.querySelectorAll('tbody tr'));
+    if (!registros.length) return;
+    const tabla = document.createElement('table');
+    tabla.className = 'tabla-asistencia-horizontal';
+    const thead = document.createElement('thead');
+    const filaFechas = document.createElement('tr');
+    const tbody = document.createElement('tbody');
+    const filaIconos = document.createElement('tr');
+    registros.forEach(tr => {
+      const celdas = tr.querySelectorAll('td');
+      if (!celdas.length) return;
+      const th = document.createElement('th');
+      th.innerHTML = celdas[0].innerHTML;
+      filaFechas.appendChild(th);
+      const td = document.createElement('td');
+      if (celdas[1]) td.innerHTML = celdas[1].innerHTML;
+      filaIconos.appendChild(td);
+    });
+    thead.appendChild(filaFechas); tbody.appendChild(filaIconos);
+    tabla.appendChild(thead); tabla.appendChild(tbody);
+    original.replaceWith(tabla);
+  });
+}
 
 /* =================================================
    MOSTRAR RESULTADO
@@ -2637,7 +2720,7 @@ async function mostrarDetalles() {
         contenedor.innerHTML =
             html;
 
-
+        aplicarVistaDosFilas();
         await mostrarAsistenciaEnDetalle();
 
     }
@@ -2892,6 +2975,7 @@ async function mostrarAsistenciaEnDetalle() {
         `;
 
         contenedor.insertAdjacentHTML("beforeend", asistenciaHTML);
+        aplicarVistaDosFilas();
 
     } catch(error) {
         console.error(error);
