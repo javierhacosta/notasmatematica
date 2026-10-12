@@ -771,6 +771,108 @@ button:hover {
 #visorFotoActividadConsulta img { max-width:95vw; max-height:90vh; object-fit:contain; border-radius:10px; }
 #visorFotoActividadConsulta .cerrar-visor-foto { position:absolute; top:12px; right:14px; width:42px; height:42px; margin:0; padding:0; border-radius:50%; font-size:28px; background:#fff; color:#222; }
 
+
+/* Cada actividad se presenta en dos filas: detalle y luego nota. */
+.actividad-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    gap: 0;
+}
+.actividad-nombre { grid-column: 1; grid-row: 1; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.actividad-fecha { margin-top: 5px; }
+.actividad-nota { grid-column: 1; grid-row: 2; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; text-align:left; padding-top:8px; margin-top:8px; border-top:1px dashed #e2e7ee; white-space:normal; }
+.actividad-nota > div:first-child { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.actividad-observacion { max-width:none; text-align:left; width:100%; }
+.resumen-categoria { gap:12px; }
+.promedio-valor { white-space:nowrap; font-size:17px; }
+.tabla-asistencia-contenedor, .centralizador-tabla-contenedor { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; }
+/* En asistencia, cada registro ocupa dos filas apiladas: fecha y estado/icono. */
+.tabla-asistencia { min-width:0; width:100%; }
+.tabla-asistencia thead { display:none; }
+.tabla-asistencia tbody tr { display:block; width:100%; padding:5px 0; border-bottom:1px solid #e5e7eb; }
+.tabla-asistencia tbody td { display:block; width:100%; box-sizing:border-box; text-align:left; padding:7px 10px; }
+.tabla-asistencia tbody td:first-child { font-weight:600; background:#f7f9fc; border-radius:7px 7px 0 0; }
+.tabla-asistencia tbody td:nth-child(2) { min-height:38px; border-radius:0 0 7px 7px; }
+.centralizador-tabla { min-width:560px; }
+.icono-dia-asistencia { border:0; background:transparent; color:inherit; width:auto; margin:0; padding:3px 8px; font-size:21px; cursor:pointer; border-radius:8px; }
+.icono-dia-asistencia:focus-visible { outline:2px solid #1557a6; }
+@media(max-width:500px) {
+ .contenedor { padding:16px; }
+ .actividad-fila { padding:12px 9px; }
+ .actividad-nota { font-size:14px; }
+}
+
+
+/* Vista horizontal tipo hoja de cálculo: detalles arriba y valores debajo */
+.tabla-actividades-contenedor, .tabla-asistencia-contenedor {
+  width:100%; max-width:100%; overflow-x:auto; overflow-y:hidden;
+  -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y;
+}
+.tabla-actividades, .tabla-asistencia-horizontal {
+  border-collapse:collapse; table-layout:auto; width:max-content; min-width:100%;
+  font-size:13px; background:#fff;
+}
+.tabla-actividades th, .tabla-actividades td,
+.tabla-asistencia-horizontal th, .tabla-asistencia-horizontal td {
+  border:1px solid #d9dee5; padding:9px 12px; text-align:center;
+  vertical-align:middle; min-width:76px; max-width:210px;
+}
+.tabla-actividades th, .tabla-asistencia-horizontal th {
+  background:#f1f4f8; color:#374151; font-weight:600; white-space:normal;
+}
+.tabla-actividades td { white-space:normal; }
+.tabla-asistencia-horizontal th { white-space:nowrap; }
+.tabla-asistencia-horizontal td { font-size:20px; }
+
+
+/* Encabezados girados para reducir el ancho de las columnas, como en Excel. */
+.tabla-actividades th,
+.tabla-asistencia-horizontal th {
+  position: relative;
+  box-sizing: border-box;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 190px;
+  min-height: 190px;
+  padding: 4px !important;
+  vertical-align: bottom;
+  overflow: hidden;
+}
+.tabla-actividades th .encabezado-rotado,
+.tabla-asistencia-horizontal th .encabezado-rotado {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 172px;
+  max-width: none;
+  max-height: 172px;
+  box-sizing: border-box;
+  padding: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  text-align: left;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+}
+.tabla-asistencia-horizontal th .encabezado-fecha-rotado {
+  width: 172px;
+  white-space: nowrap;
+  text-align: center;
+}
+.tabla-actividades td,
+.tabla-asistencia-horizontal td {
+  min-width: 52px;
+  width: 52px;
+  max-width: 90px;
+  padding: 8px 5px;
+}
+.tabla-actividades td { overflow-wrap: anywhere; }
+
 </style>
 
 </head>
@@ -1378,6 +1480,67 @@ function calcularNotaAnual(nota1, nota2, nota3) {
     );
 }
 
+
+
+/* Reorganiza los registros en dos filas: encabezados arriba y notas/iconos debajo. */
+function aplicarVistaDosFilas() {
+  document.querySelectorAll('.categoria').forEach(categoria => {
+    if (categoria.querySelector('.tabla-actividades')) return;
+    const actividades = Array.from(categoria.querySelectorAll(':scope > .actividad-fila'));
+    if (!actividades.length) return;
+    const tabla = document.createElement('table');
+    tabla.className = 'tabla-actividades';
+    const thead = document.createElement('thead');
+    const filaTitulos = document.createElement('tr');
+    const filaNotas = document.createElement('tr');
+    actividades.forEach(item => {
+      const detalle = item.querySelector('.actividad-nombre');
+      const nota = item.querySelector('.actividad-nota');
+      const th = document.createElement('th');
+      const td = document.createElement('td');
+      if (detalle) th.innerHTML = `<span class="encabezado-rotado">${detalle.innerHTML}</span>`;
+      if (nota) td.innerHTML = nota.innerHTML;
+      filaTitulos.appendChild(th);
+      filaNotas.appendChild(td);
+      item.remove();
+    });
+    thead.appendChild(filaTitulos);
+    const tbody = document.createElement('tbody');
+    tbody.appendChild(filaNotas);
+    tabla.appendChild(thead); tabla.appendChild(tbody);
+    const envoltura = document.createElement('div');
+    envoltura.className = 'tabla-actividades-contenedor';
+    envoltura.appendChild(tabla);
+    const titulo = categoria.querySelector('.categoria-titulo');
+    if (titulo && titulo.nextSibling) categoria.insertBefore(envoltura, titulo.nextSibling);
+    else categoria.appendChild(envoltura);
+  });
+
+  document.querySelectorAll('#tablaDetalleAsistencia .tabla-asistencia').forEach(original => {
+    if (original.dataset.dosFilas === '1') return;
+    const registros = Array.from(original.querySelectorAll('tbody tr'));
+    if (!registros.length) return;
+    const tabla = document.createElement('table');
+    tabla.className = 'tabla-asistencia-horizontal';
+    const thead = document.createElement('thead');
+    const filaFechas = document.createElement('tr');
+    const tbody = document.createElement('tbody');
+    const filaIconos = document.createElement('tr');
+    registros.forEach(tr => {
+      const celdas = tr.querySelectorAll('td');
+      if (!celdas.length) return;
+      const th = document.createElement('th');
+      th.innerHTML = `<span class="encabezado-rotado encabezado-fecha-rotado">${celdas[0].innerHTML}</span>`;
+      filaFechas.appendChild(th);
+      const td = document.createElement('td');
+      if (celdas[1]) td.innerHTML = celdas[1].innerHTML;
+      filaIconos.appendChild(td);
+    });
+    thead.appendChild(filaFechas); tbody.appendChild(filaIconos);
+    tabla.appendChild(thead); tabla.appendChild(tbody);
+    original.replaceWith(tabla);
+  });
+}
 
 /* =================================================
    MOSTRAR RESULTADO
@@ -2475,7 +2638,7 @@ async function mostrarDetalles() {
 
                                     <div>
 
-                                        <span style="display:block;font-size:11px;color:#777;font-weight:normal;margin-bottom:2px;">Calificación</span>
+                                        <span style="font-size:12px;color:#555;font-weight:normal;">Nota:</span>
 
                                         ${valor}
 
@@ -2519,7 +2682,7 @@ async function mostrarDetalles() {
 
                             <span>
 
-                                Promedio de esta sección
+                                Promedio de la categoría
 
                             </span>
 
@@ -2604,7 +2767,7 @@ async function mostrarDetalles() {
         contenedor.innerHTML =
             html;
 
-
+        aplicarVistaDosFilas();
         await mostrarAsistenciaEnDetalle();
 
     }
@@ -2641,6 +2804,11 @@ async function mostrarDetalles() {
 /* =================================================
    MOSTRAR ASISTENCIA
 ================================================= */
+
+function mostrarMotivoAsistencia(motivo) {
+    const texto = String(motivo || "").trim() || "No se registró un motivo.";
+    alert(texto);
+}
 
 async function mostrarAsistenciaEnDetalle() {
     const contenedor = document.getElementById("detalle3T");
@@ -2758,16 +2926,9 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr>
                         <td>${formatearFecha(asistencia.fecha)}</td>
-                        <td>${asistencia.hora ? escapeHTML(String(asistencia.hora).substring(0, 5)) : "—"}</td>
                         <td>
-                            <span class="estado-asistencia ${informacion.clase}">
-                                ${informacion.icono} ${informacion.nombre}
-                            </span>
-                            ${registro.claseInformal
-                                ? `<div class="estado-clase-informal" style="margin-top:5px;">ℹ️ Clase informal</div>`
-                                : ""}
+                            <button type="button" class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}" onclick="mostrarMotivoAsistencia('${String([...observaciones, ...(registro.claseInformal ? [registro.claseInformal.motivo || 'Clase informal'] : []), ...(registro.noClases ? [registro.noClases.motivo || 'No se pasó clases'] : [])].join(' · ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${informacion.icono}</button>
                         </td>
-                        <td class="observacion">${textoObservacion}</td>
                     </tr>
                 `;
                 return;
@@ -2781,9 +2942,7 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr class="dia-clase-informal">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td>—</td>
-                        <td><span class="estado-clase-informal">ℹ️ Clase informal</span></td>
-                        <td class="observacion motivo-clase-informal-detalle">${motivo}</td>
+                        <td><button type="button" class="icono-dia-asistencia" aria-label="Clase informal" title="Clase informal" onclick="mostrarMotivoAsistencia('${String(registro.claseInformal.motivo || 'Clase informal registrada.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">ℹ️</button></td>
                     </tr>
                 `;
                 return;
@@ -2797,9 +2956,7 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr class="dia-no-clases">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td>—</td>
-                        <td><span class="estado-no-clases">🚫 No se pasó clases</span></td>
-                        <td class="observacion motivo-no-clases-detalle"><strong>Motivo:</strong> ${motivo}</td>
+                        <td><button type="button" class="icono-dia-asistencia" aria-label="No se pasó clases" title="No se pasó clases" onclick="mostrarMotivoAsistencia('${String(registro.noClases.motivo || 'No se registró el motivo.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">🚫</button></td>
                     </tr>
                 `;
                 return;
@@ -2808,9 +2965,7 @@ async function mostrarAsistenciaEnDetalle() {
             filas += `
                 <tr>
                     <td>${formatearFecha(registro.fecha)}</td>
-                    <td>—</td>
-                    <td>—</td>
-                    <td class="observacion">${registro.observaciones.map(escapeHTML).join("<br>") || "—"}</td>
+                    <td>${registro.observaciones.length ? `<button type="button" class="icono-dia-asistencia" title="Ver observación" onclick="mostrarMotivoAsistencia('${String(registro.observaciones.join(' · ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">📝</button>` : "—"}</td>
                 </tr>
             `;
         });
@@ -2822,9 +2977,7 @@ async function mostrarAsistenciaEnDetalle() {
                         <thead>
                             <tr>
                                 <th>📅 Fecha</th>
-                                <th>Hora</th>
-                                <th>Estado</th>
-                                <th>Observación</th>
+                                <th>Asistencia / día especial (pulsa el icono para ver el motivo)</th>
                             </tr>
                         </thead>
                         <tbody>${filas}</tbody>
@@ -2869,6 +3022,7 @@ async function mostrarAsistenciaEnDetalle() {
         `;
 
         contenedor.insertAdjacentHTML("beforeend", asistenciaHTML);
+        aplicarVistaDosFilas();
 
     } catch(error) {
         console.error(error);
