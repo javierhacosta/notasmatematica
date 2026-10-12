@@ -13656,12 +13656,6 @@ function crearActividadHTML(
         abrirConfigFotoActividad(actividad);
     });
 
-    const botonFotoActividadQR = document.createElement("button");
-    botonFotoActividadQR.type = "button";
-    botonFotoActividadQR.className = "boton-bloquear boton-foto-actividad-qr";
-    botonFotoActividadQR.textContent = "🔳";
-    botonFotoActividadQR.title = "Tomar fotografía e identificar al estudiante por QR";
-
     const botonSeleccionarFotosQR = document.createElement("button");
     botonSeleccionarFotosQR.type = "button";
     botonSeleccionarFotosQR.className = "boton-bloquear boton-foto-actividad-qr";
@@ -13679,20 +13673,10 @@ function crearActividadHTML(
         abrirSelectorFotosActividadQR(actividad);
     });
 
-    // La cámara de actividades solo se abre con una pulsación normal.
-    // Mantener pulsado este botón no ejecuta ninguna acción.
-    botonFotoActividadQR.addEventListener("click", function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (bloquearSiguienteClickCamaraFotoCalificacion) return;
-        abrirCapturaFotoActividad(actividad, "nueva");
-    });
-
-    // Por defecto, cámara y configuración permanecen ocultas.
-    botonFotoActividadQR.style.display = "none";
+    // Por defecto, la configuración permanece oculta.
     botonConfigFotoQR.style.display = "none";
 
-    // Mantener pulsado 🖼️ revela los dos iconos; un toque normal conserva
+    // Mantener pulsado 🖼️ revela sólo la configuración; un toque normal conserva
     // la selección de imágenes de la galería.
     let temporizadorMenuFotosActividad = null;
     let pulsacionLargaMenuFotosActividad = false;
@@ -13700,7 +13684,6 @@ function crearActividadHTML(
         pulsacionLargaMenuFotosActividad = false;
         temporizadorMenuFotosActividad = setTimeout(function() {
             pulsacionLargaMenuFotosActividad = true;
-            botonFotoActividadQR.style.display = "inline-flex";
             botonConfigFotoQR.style.display = "inline-flex";
         }, 650);
     });
@@ -13753,10 +13736,6 @@ function crearActividadHTML(
 
     derecha.appendChild(
         botonEscanearQR
-    );
-
-    derecha.appendChild(
-        botonFotoActividadQR
     );
 
     derecha.appendChild(
