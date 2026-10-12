@@ -1,2443 +1,2573 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Consulta de Nota - Matemática 2026</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Consulta de Nota</title>
+
 
 <style>
-*{
-    box-sizing:border-box;
+
+* {
+    box-sizing: border-box;
 }
 
-body{
-    margin:0;
-    font-family:Arial,Helvetica,sans-serif;
-    background:#f1f5f9;
-    color:#263238;
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f5f9;
+    color: #222;
 }
 
-.contenedor{
-    max-width:900px;
-    margin:auto;
-    padding:20px;
+.contenedor {
+    width: 92%;
+    max-width: 520px;
+    margin: 35px auto;
+    background: white;
+    padding: 28px;
+    border-radius: 18px;
+    box-shadow: 0 5px 20px rgba(0,0,0,.12);
 }
 
-.encabezado{
-    background:linear-gradient(135deg,#1565c0,#42a5f5);
-    color:white;
-    padding:25px 20px;
-    border-radius:18px;
-    text-align:center;
-    box-shadow:0 5px 15px rgba(0,0,0,.15);
-    margin-bottom:20px;
+.institucion {
+    text-align: center;
+    color: #1557a6;
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 8px;
 }
 
-.encabezado h1{
-    margin:0 0 8px;
-    font-size:25px;
+h1 {
+    text-align: center;
+    color: #1557a6;
+    margin: 5px 0;
 }
 
-.encabezado p{
-    margin:4px 0;
-    font-size:14px;
+.profesor {
+    text-align: center;
+    color: #555;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 25px;
 }
 
-.tarjeta{
-    background:white;
-    border-radius:18px;
-    padding:22px;
-    box-shadow:0 4px 15px rgba(0,0,0,.10);
-    margin-bottom:20px;
+.subtitulo {
+    text-align: center;
+    color: #666;
+    margin-bottom: 25px;
 }
 
-.tarjeta h2{
-    margin-top:0;
-    color:#1565c0;
-    text-align:center;
+label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 6px;
+    font-weight: bold;
 }
 
-label{
-    display:block;
-    margin:12px 0 6px;
-    font-weight:bold;
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
 }
 
-input{
-    width:100%;
-    padding:13px;
-    border:1px solid #cfd8dc;
-    border-radius:10px;
-    font-size:16px;
-    outline:none;
+button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 13px;
+    border: none;
+    border-radius: 9px;
+    background: #1557a6;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
 }
 
-input:focus{
-    border-color:#1565c0;
-    box-shadow:0 0 0 3px rgba(21,101,192,.10);
+button:hover {
+    background: #0d4282;
 }
 
-button{
-    width:100%;
-    border:0;
-    border-radius:12px;
-    padding:14px;
-    margin-top:15px;
-    background:#1565c0;
-    color:white;
-    font-size:16px;
-    font-weight:bold;
-    cursor:pointer;
+.boton-cerrar-sesion {
+    margin-top: 10px;
+    background: #c62828;
+    font-size: 15px;
 }
 
-button:hover{
-    background:#0d47a1;
+.boton-cerrar-sesion:hover {
+    background: #8e0000;
 }
 
-button:disabled{
-    opacity:.6;
-    cursor:not-allowed;
+#resultado {
+    margin-top: 30px;
 }
 
-.oculto{
-    display:none!important;
+.nota-box {
+    background: #f1f6ff;
+    padding: 24px;
+    border-radius: 18px;
+    text-align: center;
 }
 
-.mensaje{
-    margin-top:15px;
-    padding:12px;
-    border-radius:10px;
-    text-align:center;
-    display:none;
+.nombre {
+    color: #1557a6;
+    font-size: 21px;
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 
-.mensaje.error{
-    display:block;
-    background:#ffebee;
-    color:#c62828;
+.curso {
+    color: #666;
+    margin-bottom: 20px;
 }
 
-.mensaje.exito{
-    display:block;
-    background:#e8f5e9;
-    color:#2e7d32;
+.aviso-provisional {
+    background: #fff8e1;
+    border: 1px solid #ffca28;
+    color: #795548;
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.aviso-provisional strong {
+    display: block;
+    color: #e65100;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.titulo-3t {
+    color: #555;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.nota {
+    font-size: 90px;
+    font-weight: bold;
+    line-height: 1;
+    margin: 15px 0;
+    color: #1557a6;
+}
+
+.boton-detalles {
+    margin-top: 5px;
+    background: #455a64;
+    font-size: 16px;
+}
+
+.boton-detalles:hover {
+    background: #263238;
+}
+
+.trimestres {
+    margin-top: 25px;
+    display: grid;
+    grid-template-columns:
+    repeat(3, 1fr);
+    gap: 10px;
+}
+
+.trimestre-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 12px 5px;
+    text-align: center;
+}
+
+.trimestre-card .titulo {
+    color: #666;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.trimestre-card .numero {
+    font-size: 30px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.t1 {
+    color: #7b1fa2;
+}
+
+.t2 {
+    color: #1565c0;
+}
+
+.t3 {
+    color: #ef6c00;
+}
+
+.detalle {
+    margin-top: 20px;
+    background: white;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    padding: 18px;
+    text-align: left;
+}
+
+.detalle-titulo {
+    text-align: center;
+    font-size: 19px;
+    font-weight: bold;
+    color: #1557a6;
+    margin-bottom: 15px;
+}
+
+.categoria {
+    margin-top: 15px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.categoria-titulo {
+    color: white;
+    padding: 11px 12px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.ser {
+    background: #8e24aa;
+}
+
+.saber {
+    background: #1565c0;
+}
+
+.hacer {
+    background: #ef6c00;
+}
+
+.auto {
+    background: #00897b;
+}
+
+.actividad-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px;
+    border-top: 1px solid #eee;
+    background: #fff;
+    gap: 10px;
+}
+
+.actividad-nombre {
+    font-size: 14px;
+    flex: 1;
+}
+
+.actividad-fecha {
+    display: block;
+    margin-top: 4px;
+    color: #777;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.actividad-nota {
+    font-weight: bold;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.actividad-entrega {
+    margin-top: 4px;
+    color: #777;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.3;
+}
+
+.actividad-obs-entrega {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #e65100;
+    line-height: 1.35;
+}
+
+.actividad-estado-entrega {
+    display: block;
+    margin-top: 5px;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.35;
+}
+
+.actividad-estado-puntual {
+    color: #2e7d32;
+}
+
+.actividad-estado-atrasado {
+    color: #e65100;
+}
+
+.actividad-estado-no-presento {
+    color: #c62828;
+}
+
+.actividad-fecha-entrega {
+    display: block;
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.actividad-observacion {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: normal;
+    color: #666;
+    white-space: normal;
+    max-width: 180px;
+    text-align: right;
+    line-height: 1.3;
+}
+
+.resumen-categoria {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f7f7f7;
+    border-top: 1px solid #ddd;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.promedio-valor {
+    color: #1557a6;
+}
+
+.resultado-3t {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 14px;
+    background: #eef4fb;
+    text-align: center;
+}
+
+.resultado-3t-titulo {
+    color: #555;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.resultado-3t-numero {
+    font-size: 45px;
+    font-weight: bold;
+    color: #1557a6;
+    margin-top: 5px;
+}
+
+.asistencia-box {
+    margin-top: 25px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    overflow: hidden;
+    text-align: left;
+}
+
+.asistencia-titulo {
+    background: #1557a6;
+    color: white;
+    padding: 14px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.asistencia-descripcion {
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    padding: 12px 15px 8px;
+    line-height: 1.5;
+}
+
+.asistencia-resumen {
+    display: grid;
+    grid-template-columns:
+    repeat(4, 1fr);
+    gap: 6px;
+    padding: 12px;
+}
+
+.asistencia-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 9px 3px;
+    text-align: center;
+    background: #fafafa;
+}
+
+.asistencia-card .icono {
+    font-size: 19px;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.asistencia-card .cantidad {
+    font-size: 21px;
+    font-weight: bold;
+    display: block;
+}
+
+.asistencia-card .texto {
+    font-size: 9px;
+    color: #666;
+    display: block;
+    margin-top: 2px;
+}
+
+.asistencia-presente {
+    color: #2e7d32;
+}
+
+.asistencia-atraso {
+    color: #f57c00;
+}
+
+.asistencia-licencia {
+    color: #1565c0;
+}
+
+.asistencia-falta {
+    color: #c62828;
+}
+
+.boton-asistencia {
+    width: calc(100% - 24px);
+    margin: 5px 12px 12px;
+    padding: 11px;
+    background: #455a64;
+    color: white;
+    border: none;
+    border-radius: 9px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.boton-asistencia:hover {
+    background: #263238;
+}
+
+.detalle-asistencia {
+    display: block;
+    border-top: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+.tabla-asistencia-contenedor {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.tabla-asistencia {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.tabla-asistencia th {
+    background: #f1f4f8;
+    color: #555;
+    font-weight: bold;
+    padding: 10px 5px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+}
+
+.tabla-asistencia td {
+    padding: 10px 5px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.tabla-asistencia td.observacion {
+    text-align: left;
+    color: #666;
+    font-size: 12px;
+}
+
+.tabla-asistencia tr:last-child td {
+    border-bottom: none;
+}
+
+.estado-asistencia {
+    font-weight: bold;
+    padding: 5px 7px;
+    border-radius: 7px;
+    display: inline-block;
+    font-size: 12px;
+}
+
+.estado-presente {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.estado-atraso {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.estado-licencia {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.estado-falta {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.asistencia-vacia {
+    padding: 18px;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+}
+
+.final-box {
+    margin-top: 25px;
+    padding: 20px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.final-titulo {
+    font-size: 18px;
+    color: #555;
+    font-weight: bold;
+}
+
+.nota-final {
+    font-size: 58px;
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+.aprobado {
+    color: #1565c0;
+}
+
+.reprobado {
+    color: #c62828;
+}
+
+.estado {
+    font-size: 21px;
+    font-weight: bold;
+}
+
+.error {
+    color: #c62828;
+    text-align: center;
+    font-weight: bold;
+}
+
+.cargando {
+    text-align: center;
+    color: #1557a6;
+}
+
+.dia-clase-informal {
+    background: #eef7ff;
+}
+
+.dia-clase-informal .estado-clase-informal {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
+    font-weight: bold;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.motivo-clase-informal-detalle {
+    color: #455a64;
+    line-height: 1.4;
+}
+
+.motivo-clase-informal-detalle strong {
+    color: #1565c0;
+}
+
+/* Aviso de dÃ­a sin clases en asistencia */
+.dia-no-clases {
+    background: #fff8e1;
+}
+
+.dia-no-clases .estado-no-clases {
+    display: inline-block;
+    background: #fff3cd;
+    color: #8a5a00;
+    border: 1px solid #ffe08a;
+    font-weight: bold;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.motivo-no-clases-detalle {
+    color: #795548;
+    line-height: 1.4;
+}
+
+.motivo-no-clases-detalle strong {
+    color: #5d4037;
 }
 
 
-/* =========================================================
-   SELECTOR DE CUMPLEAÑOS
-   ========================================================= */
-
-.cumpleanos{
-    margin-top:8px;
-    border-radius:18px;
-    overflow:hidden;
-    background:linear-gradient(
-        145deg,
-        #e3f2fd,
-        #ffffff
-    );
-    border:2px solid #bbdefb;
-    box-shadow:
-        0 6px 18px rgba(21,101,192,.12);
+/* Reacciones del gatito al explorar la pÃ¡gina */
+#gatoInteractivo.gracioso #gatoCuerpo { animation: gatoBroma .75s ease-in-out; }
+#gatoInteractivo.saltando #gatoCuerpo { animation: gatoSalto .65s ease-in-out; }
+#gatoInteractivo.asustado #gatoCuerpo { animation: gatoTemblor .5s ease-in-out; }
+@keyframes gatoBroma {
+    0%,100% { transform: rotate(0) scale(1); }
+    25% { transform: rotate(-15deg) scale(1.12); }
+    50% { transform: rotate(15deg) scale(1.12); }
+    75% { transform: rotate(-8deg) scale(1.06); }
+}
+@keyframes gatoSalto {
+    0%,100% { transform: translateY(0) scale(1); }
+    45% { transform: translateY(-18px) scale(1.12); }
+    70% { transform: translateY(0) scale(.96); }
+}
+@keyframes gatoTemblor {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
 }
 
+@media(max-width:500px) {
 
-/* CABECERA */
-
-.cumpleanos-cabecera{
-    background:
-        linear-gradient(
-            135deg,
-            #1565c0,
-            #42a5f5
-        );
-    color:white;
-    text-align:center;
-    padding:17px 10px;
-}
-
-.cumpleanos-icono{
-    font-size:34px;
-    line-height:1;
-    margin-bottom:5px;
-}
-
-.cumpleanos-titulo{
-    font-size:18px;
-    font-weight:bold;
-}
-
-.cumpleanos-subtitulo{
-    font-size:12px;
-    opacity:.9;
-    margin-top:4px;
-}
-
-
-/* FECHA GRANDE */
-
-.fecha-grande{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:7px;
-    padding:16px 8px 12px;
-}
-
-.fecha-parte{
-    background:white;
-    border:2px solid #bbdefb;
-    border-radius:12px;
-    min-width:72px;
-    padding:9px 6px;
-    text-align:center;
-    box-shadow:0 3px 8px rgba(0,0,0,.08);
-}
-
-.fecha-parte .numero{
-    display:block;
-    font-size:24px;
-    font-weight:bold;
-    color:#1565c0;
-}
-
-.fecha-parte .nombre{
-    display:block;
-    font-size:9px;
-    color:#78909c;
-    font-weight:bold;
-    margin-top:2px;
-}
-
-.fecha-separador{
-    font-size:22px;
-    font-weight:bold;
-    color:#90a4ae;
-}
-
-
-/* BOTÓN ABRIR CALENDARIO */
-
-.btn-calendario{
-    display:block;
-    width:calc(100% - 30px);
-    margin:0 auto 15px;
-    padding:11px;
-    border-radius:11px;
-    background:#e3f2fd;
-    color:#1565c0;
-    border:1px solid #90caf9;
-    font-size:14px;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.btn-calendario:hover{
-    background:#bbdefb;
-}
-
-
-/* PANEL CALENDARIO */
-
-.calendario-panel{
-    padding:0 15px 15px;
-    animation:aparecerCalendario .25s ease;
-}
-
-@keyframes aparecerCalendario{
-    from{
-        opacity:0;
-        transform:translateY(-8px) scale(.98);
+    .contenedor {
+        width: 94%;
+        padding: 20px;
     }
-    to{
-        opacity:1;
-        transform:translateY(0) scale(1);
-    }
-}
 
-
-/* CAMBIO DE MES */
-
-.calendario-navegacion{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:10px;
-}
-
-.btn-mes{
-    width:42px;
-    height:42px;
-    padding:0;
-    margin:0;
-    border-radius:50%;
-    background:#e3f2fd;
-    color:#1565c0;
-    font-size:20px;
-}
-
-.btn-mes:hover{
-    background:#bbdefb;
-}
-
-.mes-anio{
-    text-align:center;
-    flex:1;
-}
-
-.mes-nombre{
-    font-size:18px;
-    font-weight:bold;
-    color:#1565c0;
-}
-
-.anio-calendario{
-    font-size:13px;
-    color:#78909c;
-    margin-top:2px;
-}
-
-
-/* SELECTOR DE AÑO */
-
-.selector-anio{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:12px;
-}
-
-.selector-anio select{
-    flex:1;
-    padding:9px;
-    border:1px solid #bbdefb;
-    border-radius:9px;
-    font-size:14px;
-    background:white;
-    color:#263238;
-}
-
-
-/* DÍAS */
-
-.dias-semana{
-    display:grid;
-    grid-template-columns:repeat(7,1fr);
-    gap:4px;
-    margin-bottom:5px;
-}
-
-.dia-semana{
-    text-align:center;
-    font-size:10px;
-    font-weight:bold;
-    color:#78909c;
-    padding:4px 0;
-}
-
-.calendario-dias{
-    display:grid;
-    grid-template-columns:repeat(7,1fr);
-    gap:5px;
-}
-
-.dia{
-    aspect-ratio:1/1;
-    border-radius:10px;
-    border:1px solid transparent;
-    background:white;
-    color:#37474f;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:14px;
-    font-weight:bold;
-    cursor:pointer;
-    transition:
-        transform .15s,
-        background .15s,
-        color .15s,
-        box-shadow .15s;
-}
-
-.dia:hover{
-    transform:scale(1.08);
-    background:#e3f2fd;
-    border-color:#90caf9;
-}
-
-.dia.vacio{
-    background:transparent;
-    cursor:default;
-}
-
-.dia.vacio:hover{
-    transform:none;
-    border-color:transparent;
-}
-
-.dia.seleccionado{
-    background:#1565c0;
-    color:white;
-    box-shadow:
-        0 4px 10px rgba(21,101,192,.35);
-    transform:scale(1.05);
-}
-
-.dia.hoy{
-    border-color:#42a5f5;
-}
-
-
-/* CONFIRMAR */
-
-.confirmar-fecha{
-    width:100%;
-    margin-top:15px;
-    background:#2e7d32;
-    padding:12px;
-}
-
-.confirmar-fecha:hover{
-    background:#1b5e20;
-}
-
-
-/* MENSAJE FINAL */
-
-.mensaje-cumpleanos{
-    text-align:center;
-    padding:8px 10px 15px;
-    font-size:13px;
-    color:#546e7a;
-}
-
-
-/* =========================================================
-   RESULTADOS
-   ========================================================= */
-
-.resultado-header{
-    text-align:center;
-    padding:15px;
-    border-radius:14px;
-    background:#e3f2fd;
-    margin-bottom:15px;
-}
-
-.resultado-header h2{
-    margin:5px 0;
-    color:#0d47a1;
-}
-
-.resultado-header p{
-    margin:5px 0;
-}
-
-.nota-principal{
-    text-align:center;
-    background:linear-gradient(135deg,#1565c0,#42a5f5);
-    color:white;
-    border-radius:18px;
-    padding:25px 15px;
-    margin-bottom:15px;
-}
-
-.nota-principal .numero{
-    font-size:55px;
-    font-weight:bold;
-    line-height:1;
-}
-
-.nota-principal .texto{
-    margin-top:8px;
-    font-size:14px;
-}
-
-.cards-notas{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:12px;
-    margin-bottom:15px;
-}
-
-.card-nota{
-    background:#fafafa;
-    border:1px solid #e0e0e0;
-    border-radius:14px;
-    padding:15px 8px;
-    text-align:center;
-}
-
-.card-nota h3{
-    margin:0 0 8px;
-    font-size:13px;
-}
-
-.card-nota .valor{
-    font-size:28px;
-    font-weight:bold;
-    color:#1565c0;
-}
-
-.tabla-responsive{
-    overflow-x:auto;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    min-width:500px;
-}
-
-th,
-td{
-    padding:9px 7px;
-    border-bottom:1px solid #e0e0e0;
-    text-align:center;
-    font-size:13px;
-}
-
-th{
-    background:#1565c0;
-    color:white;
-}
-
-tr:nth-child(even){
-    background:#fafafa;
-}
-
-.nota-actividad{
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.nota-actividad:hover{
-    background:#e3f2fd;
-}
-
-.asistencia-A{
-    color:#2e7d32;
-    font-weight:bold;
-}
-
-.asistencia-R{
-    color:#ef6c00;
-    font-weight:bold;
-}
-
-.asistencia-L{
-    color:#1565c0;
-    font-weight:bold;
-}
-
-.asistencia-F{
-    color:#c62828;
-    font-weight:bold;
-}
-
-.observacion{
-    font-size:11px;
-    color:#616161;
-    margin-top:3px;
-}
-
-.seccion-titulo{
-    background:#1565c0;
-    color:white;
-    border-radius:10px;
-    padding:10px;
-    margin:18px 0 10px;
-    font-weight:bold;
-}
-
-.info-box{
-    background:#f5f5f5;
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:10px;
-}
-
-.info-box strong{
-    color:#1565c0;
-}
-
-.centralizador{
-    overflow-x:auto;
-}
-
-.centralizador table{
-    min-width:700px;
-}
-
-.footer{
-    text-align:center;
-    color:#78909c;
-    font-size:11px;
-    padding:15px 0;
-}
-
-
-/* =========================================================
-   RESPONSIVE
-   ========================================================= */
-
-@media(max-width:600px){
-
-    .contenedor{
-        padding:10px;
+    .nota {
+        font-size: 75px;
     }
 
-    .encabezado{
-        padding:20px 12px;
-        border-radius:14px;
+    .trimestres {
+        gap: 6px;
     }
 
-    .encabezado h1{
-        font-size:21px;
+    .trimestre-card {
+        padding: 10px 3px;
     }
 
-    .tarjeta{
-        padding:15px;
-        border-radius:14px;
+    .asistencia-resumen {
+        grid-template-columns:
+        repeat(2, 1fr);
+        gap: 7px;
     }
 
-    .fecha-parte{
-        min-width:67px;
+    .tabla-asistencia {
+        font-size: 11px;
     }
 
-    .fecha-parte .numero{
-        font-size:22px;
+    .tabla-asistencia th,
+    .tabla-asistencia td {
+        padding: 8px 3px;
     }
 
-    .cards-notas{
-        grid-template-columns:1fr;
-    }
+}
 
-    .nota-principal .numero{
-        font-size:48px;
-    }
+/* =================================================
+   CENTRALIZADOR DE NOTAS - SOLO 5A
+================================================= */
+.boton-centralizador {
+    margin-top: 10px;
+    background: #00897b;
+    font-size: 16px;
+}
+.boton-centralizador:hover { background: #00695c; }
 
+.centralizador-box {
+    margin-top: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 16px;
+    text-align: left;
+}
+.centralizador-titulo {
+    text-align: center;
+    color: #1557a6;
+    font-size: 19px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+.centralizador-tabla-contenedor { width: 100%; overflow-x: auto; }
+.centralizador-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.centralizador-tabla th {
+    background: #f1f4f8;
+    color: #555;
+    font-weight: bold;
+    padding: 9px 5px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+}
+.centralizador-tabla td {
+    padding: 9px 5px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    vertical-align: middle;
+}
+.centralizador-tabla th:first-child,
+.centralizador-tabla td:first-child {
+    text-align: left;
+    min-width: 210px;
+}
+.nota-centralizador { font-weight: bold; }
+.sin-nota { color: #999; font-weight: normal; }
+
+@media(max-width:500px) {
+    .centralizador-tabla { font-size: 11px; }
+    .centralizador-tabla th,
+    .centralizador-tabla td { padding: 8px 4px; }
+    .centralizador-tabla th:first-child,
+    .centralizador-tabla td:first-child { min-width: 190px; }
+}
+
+
+
+.fotos-actividad-consulta { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.miniatura-foto-actividad { width:58px; height:58px; object-fit:cover; border-radius:8px; border:1px solid #d0d7de; cursor:pointer; display:block; }
+.miniatura-foto-actividad:hover { opacity:.88; }
+#visorFotoActividadConsulta { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.82); display:flex; align-items:center; justify-content:center; padding:20px; }
+#visorFotoActividadConsulta.oculto { display:none; }
+#visorFotoActividadConsulta img { max-width:95vw; max-height:90vh; object-fit:contain; border-radius:10px; }
+#visorFotoActividadConsulta .cerrar-visor-foto { position:absolute; top:12px; right:14px; width:42px; height:42px; margin:0; padding:0; border-radius:50%; font-size:28px; background:#fff; color:#222; }
+
+
+/* PresentaciÃ³n sencilla para familias: actividad, fecha y nota en filas claras */
+.actividad-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px 12px;
+}
+.actividad-nombre { grid-column: 1; grid-row: 1; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.actividad-fecha { margin-top: 5px; }
+.actividad-nota { grid-column: 1 / -1; grid-row: 2; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; text-align:left; padding-top:7px; border-top:1px dashed #e2e7ee; }
+.actividad-nota > div:first-child { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.actividad-observacion { max-width:none; text-align:left; width:100%; }
+.resumen-categoria { gap:12px; }
+.promedio-valor { white-space:nowrap; font-size:17px; }
+.tabla-asistencia-contenedor, .centralizador-tabla-contenedor { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x pan-y; }
+.tabla-asistencia { min-width:280px; }
+.centralizador-tabla { min-width:560px; }
+.icono-dia-asistencia { border:0; background:transparent; color:inherit; width:auto; margin:0; padding:7px 10px; font-size:21px; cursor:pointer; border-radius:8px; }
+.icono-dia-asistencia:focus-visible { outline:2px solid #1557a6; }
+@media(max-width:500px) {
+ .contenedor { padding:16px; }
+ .actividad-fila { padding:12px 9px; }
+ .actividad-nota { font-size:14px; }
 }
 
 </style>
+
 </head>
+
 
 <body>
 
+
 <div class="contenedor">
 
-    <div class="encabezado">
-        <h1>UNIDAD EDUCATIVA GERMAN BUSCH I</h1>
-        <p><strong>Consulta de Nota</strong></p>
-        <p>Matemática — Gestión 2026</p>
-        <p>Prof. Javier Delmo Hacosta Moralez</p>
-    </div>
 
+    <div class="institucion">
 
-    <!-- =====================================================
-         LOGIN
-         ===================================================== -->
-
-    <div class="tarjeta" id="tarjetaLogin">
-
-        <h2>🔐 Consulta tus calificaciones</h2>
-
-        <label for="ci">
-            Carnet de Identidad
-        </label>
-
-        <input
-            type="text"
-            id="ci"
-            placeholder="Ingrese su C.I."
-            inputmode="numeric"
-            autocomplete="off"
-        >
-
-
-        <label>
-            Fecha de nacimiento
-        </label>
-
-        <!--
-            Se mantiene oculto.
-            Aquí se almacena:
-            AAAA-MM-DD
-        -->
-        <input
-            type="hidden"
-            id="fecha_nacimiento"
-        >
-
-
-        <!-- =================================================
-             SELECTOR DE CUMPLEAÑOS
-             ================================================= -->
-
-        <div class="cumpleanos">
-
-            <div class="cumpleanos-cabecera">
-
-                <div class="cumpleanos-icono">
-                    🎂
-                </div>
-
-                <div class="cumpleanos-titulo">
-                    ¿CUÁNDO NACISTE?
-                </div>
-
-                <div class="cumpleanos-subtitulo">
-                    Selecciona tu fecha de nacimiento
-                </div>
-
-            </div>
-
-
-            <!-- FECHA GRANDE -->
-
-            <div class="fecha-grande">
-
-                <div class="fecha-parte">
-
-                    <span
-                        class="numero"
-                        id="fechaDia"
-                    >
-                        1
-                    </span>
-
-                    <span class="nombre">
-                        DÍA
-                    </span>
-
-                </div>
-
-
-                <div class="fecha-separador">
-                    /
-                </div>
-
-
-                <div class="fecha-parte">
-
-                    <span
-                        class="numero"
-                        id="fechaMes"
-                    >
-                        ENE
-                    </span>
-
-                    <span class="nombre">
-                        MES
-                    </span>
-
-                </div>
-
-
-                <div class="fecha-separador">
-                    /
-                </div>
-
-
-                <div class="fecha-parte">
-
-                    <span
-                        class="numero"
-                        id="fechaAnio"
-                    >
-                        2000
-                    </span>
-
-                    <span class="nombre">
-                        AÑO
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <button
-                type="button"
-                class="btn-calendario"
-                id="btnAbrirCalendario"
-                onclick="alternarCalendario()"
-            >
-                📅 ELEGIR FECHA
-            </button>
-
-
-            <!-- PANEL -->
-
-            <div
-                class="calendario-panel oculto"
-                id="calendarioPanel"
-            >
-
-                <!-- NAVEGACIÓN -->
-
-                <div class="calendario-navegacion">
-
-                    <button
-                        type="button"
-                        class="btn-mes"
-                        onclick="mesAnterior()"
-                    >
-                        ‹
-                    </button>
-
-
-                    <div class="mes-anio">
-
-                        <div
-                            class="mes-nombre"
-                            id="nombreMes"
-                        >
-                            Enero
-                        </div>
-
-                        <div
-                            class="anio-calendario"
-                            id="nombreAnio"
-                        >
-                            2000
-                        </div>
-
-                    </div>
-
-
-                    <button
-                        type="button"
-                        class="btn-mes"
-                        onclick="mesSiguiente()"
-                    >
-                        ›
-                    </button>
-
-                </div>
-
-
-                <!-- AÑO -->
-
-                <div class="selector-anio">
-
-                    <select
-                        id="selectorAnio"
-                        onchange="cambiarAnio()"
-                    ></select>
-
-                </div>
-
-
-                <!-- DÍAS DE LA SEMANA -->
-
-                <div class="dias-semana">
-
-                    <div class="dia-semana">L</div>
-                    <div class="dia-semana">M</div>
-                    <div class="dia-semana">M</div>
-                    <div class="dia-semana">J</div>
-                    <div class="dia-semana">V</div>
-                    <div class="dia-semana">S</div>
-                    <div class="dia-semana">D</div>
-
-                </div>
-
-
-                <!-- DÍAS -->
-
-                <div
-                    class="calendario-dias"
-                    id="calendarioDias"
-                ></div>
-
-
-                <button
-                    type="button"
-                    class="confirmar-fecha"
-                    onclick="confirmarFecha()"
-                >
-                    ✓ CONFIRMAR FECHA
-                </button>
-
-            </div>
-
-
-            <div
-                class="mensaje-cumpleanos"
-                id="mensajeCumpleanos"
-            >
-                👆 Toca <strong>“Elegir fecha”</strong> para seleccionar tu cumpleaños.
-            </div>
-
-        </div>
-
-
-        <button
-            id="btnConsultar"
-            onclick="consultarEstudiante()"
-        >
-            🔎 CONSULTAR MIS NOTAS
-        </button>
-
-
-        <div
-            id="mensaje"
-            class="mensaje"
-        ></div>
+        U.E. GERMAN BUSCH I
 
     </div>
 
 
-    <!-- =====================================================
-         RESULTADOS
-         ===================================================== -->
+    <h1>
 
-    <div
-        class="tarjeta oculto"
-        id="resultado"
+        MatemÃ¡tica 2026
+
+    </h1>
+
+
+    <div class="profesor">
+
+        Prof. Javier Delmo Hacosta Moralez
+
+    </div>
+
+
+    <div class="subtitulo">
+
+        Consulta tu calificaciÃ³n
+
+    </div>
+
+
+    <label for="ci">
+
+        CI
+
+    </label>
+
+
+    <input
+        type="text"
+        id="ci"
+        placeholder="Ejemplo: 1234567"
     >
 
-        <div
-            class="resultado-header"
-            id="datosEstudiante"
-        ></div>
+
+    <label for="fecha_nacimiento">
+
+        Fecha de nacimiento
+
+    </label>
 
 
-        <div class="nota-principal">
-
-            <div
-                class="numero"
-                id="nota3Mostrar"
-            >
-                -
-            </div>
-
-            <div class="texto">
-                NOTA DEL 3ER TRIMESTRE
-            </div>
-
-        </div>
+    <input
+        type="date"
+        id="fecha_nacimiento"
+    >
 
 
-        <div class="cards-notas">
+    <button onclick="consultarNota()">
 
-            <div class="card-nota">
+        Consultar mi nota
 
-                <h3>
-                    1er Trimestre
-                </h3>
+    </button>
 
-                <div
-                    class="valor"
-                    id="nota1Mostrar"
-                >
-                    -
-                </div>
-
-            </div>
+    <button
+        type="button"
+        class="boton-cerrar-sesion"
+        onclick="cerrarSesion()"
+    >
+        ðª Cerrar sesiÃ³n
+    </button>
 
 
-            <div class="card-nota">
+    <div id="resultado"></div>
 
-                <h3>
-                    2do Trimestre
-                </h3>
-
-                <div
-                    class="valor"
-                    id="nota2Mostrar"
-                >
-                    -
-                </div>
-
-            </div>
-
-
-            <div class="card-nota">
-
-                <h3>
-                    Nota Final
-                </h3>
-
-                <div
-                    class="valor"
-                    id="finalMostrar"
-                >
-                    -
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <div class="seccion-titulo">
-            📚 ACTIVIDADES
-        </div>
-
-        <div
-            class="tabla-responsive"
-            id="tablaActividades"
-        ></div>
-
-
-        <div class="seccion-titulo">
-            📅 ASISTENCIA
-        </div>
-
-        <div
-            class="tabla-responsive"
-            id="tablaAsistencia"
-        ></div>
-
-
-        <div
-            id="seccionCentralizador"
-            class="oculto"
-        >
-
-            <div class="seccion-titulo">
-                📊 CENTRALIZADOR DE CALIFICACIONES
-            </div>
-
-            <div
-                class="centralizador"
-                id="tablaCentralizador"
-            ></div>
-
-        </div>
-
-
-        <button
-            onclick="cerrarConsulta()"
-        >
-            🔒 CERRAR CONSULTA
-        </button>
-
-    </div>
-
-
-    <div class="footer">
-        Sistema de consulta académica — 2026
-    </div>
 
 </div>
 
 
 <script>
 
-/* =========================================================
+
+/* =================================================
    SUPABASE
-   ========================================================= */
+================================================= */
 
 const SUPABASE_URL =
-    "https://tecphbbkkmlgahjddcep.supabase.co";
+
+"https://tecphbbkkmlgahjddcep.supabase.co";
+
 
 const SUPABASE_KEY =
-    "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
+"sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
 
-/* =========================================================
-   FECHA
-   ========================================================= */
-
-const meses = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre"
-];
-
-const mesesCortos = [
-    "ENE",
-    "FEB",
-    "MAR",
-    "ABR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AGO",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DIC"
-];
+let alumnoActual = null;
 
 
-/*
- * Fecha que se muestra y selecciona
- * en el calendario.
- */
-let fechaSeleccionada = {
-    dia:1,
-    mes:0,
-    anio:2000
-};
+/* =================================================
+   FECHAS DEL 3ER TRIMESTRE
+================================================= */
+
+const INICIO_3T = "2026-08-01";
+
+const FIN_3T = "2026-12-31";
 
 
-/*
- * Fecha que está mostrando actualmente
- * el calendario.
- */
-let calendarioMes = 0;
-let calendarioAnio = 2000;
+/* =================================================
+   CONTROL DE CONSULTAS REPETIDAS
+================================================= */
+let temporizadorVisita = null;
 
+function iniciarCuentaRegresivaVisita(segundos) {
 
-/* =========================================================
-   CREAR AÑOS
-   ========================================================= */
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
+    }
 
-function crearSelectorAnios(){
+    const boton = document.querySelector('button[onclick="consultarNota()"]');
+    if (!boton || segundos <= 0) return;
 
-    const selector =
-        document.getElementById(
-            "selectorAnio"
-        );
+    const textoOriginal = "Consultar mi nota";
 
-    selector.innerHTML = "";
+    const actualizar = () => {
 
-    for(
-        let anio = 2026;
-        anio >= 1950;
-        anio--
-    ){
-
-        const opcion =
-            document.createElement(
-                "option"
-            );
-
-        opcion.value =
-            anio;
-
-        opcion.textContent =
-            anio;
-
-        if(anio === 2000){
-
-            opcion.selected =
-                true;
-
+        if (segundos <= 0) {
+            clearInterval(temporizadorVisita);
+            temporizadorVisita = null;
+            boton.disabled = false;
+            boton.style.opacity = "1";
+            boton.style.cursor = "pointer";
+            boton.textContent = textoOriginal;
+            return;
         }
 
-        selector.appendChild(
-            opcion
-        );
+        const horas = Math.floor(segundos / 3600);
+        const minutos = Math.floor((segundos % 3600) / 60);
+        const seg = segundos % 60;
 
-    }
+        let tiempo;
 
-}
-
-
-/* =========================================================
-   DÍAS DEL MES
-   ========================================================= */
-
-function obtenerDiasDelMes(
-    mes,
-    anio
-){
-
-    return new Date(
-        anio,
-        mes + 1,
-        0
-    ).getDate();
-
-}
-
-
-/* =========================================================
-   ACTUALIZAR FECHA GRANDE
-   ========================================================= */
-
-function actualizarFechaVisual(){
-
-    document.getElementById(
-        "fechaDia"
-    ).textContent =
-        String(
-            fechaSeleccionada.dia
-        ).padStart(2,"0");
-
-
-    document.getElementById(
-        "fechaMes"
-    ).textContent =
-        mesesCortos[
-            fechaSeleccionada.mes
-        ];
-
-
-    document.getElementById(
-        "fechaAnio"
-    ).textContent =
-        fechaSeleccionada.anio;
-
-
-    /*
-     * Fecha para Supabase:
-     * AAAA-MM-DD
-     */
-
-    const dia =
-        String(
-            fechaSeleccionada.dia
-        ).padStart(2,"0");
-
-    const mes =
-        String(
-            fechaSeleccionada.mes + 1
-        ).padStart(2,"0");
-
-
-    document.getElementById(
-        "fecha_nacimiento"
-    ).value =
-        `${fechaSeleccionada.anio}-${mes}-${dia}`;
-
-
-    document.getElementById(
-        "mensajeCumpleanos"
-    ).innerHTML =
-        `🎉 Tu fecha:
-        <strong>
-            ${dia}/${mes}/${fechaSeleccionada.anio}
-        </strong>`;
-
-}
-
-
-/* =========================================================
-   DIBUJAR CALENDARIO
-   ========================================================= */
-
-function dibujarCalendario(){
-
-    const contenedor =
-        document.getElementById(
-            "calendarioDias"
-        );
-
-
-    contenedor.innerHTML = "";
-
-
-    document.getElementById(
-        "nombreMes"
-    ).textContent =
-        meses[
-            calendarioMes
-        ];
-
-
-    document.getElementById(
-        "nombreAnio"
-    ).textContent =
-        calendarioAnio;
-
-
-    document.getElementById(
-        "selectorAnio"
-    ).value =
-        calendarioAnio;
-
-
-    /*
-     * En JavaScript:
-     * domingo = 0
-     *
-     * Lo convertimos para que:
-     * lunes = 0
-     * domingo = 6
-     */
-
-    let primerDia =
-        new Date(
-            calendarioAnio,
-            calendarioMes,
-            1
-        ).getDay();
-
-
-    primerDia =
-        primerDia === 0
-            ? 6
-            : primerDia - 1;
-
-
-    const totalDias =
-        obtenerDiasDelMes(
-            calendarioMes,
-            calendarioAnio
-        );
-
-
-    /*
-     * Espacios anteriores
-     */
-
-    for(
-        let i = 0;
-        i < primerDia;
-        i++
-    ){
-
-        const vacio =
-            document.createElement(
-                "div"
-            );
-
-        vacio.className =
-            "dia vacio";
-
-        contenedor.appendChild(
-            vacio
-        );
-
-    }
-
-
-    /*
-     * Días
-     */
-
-    for(
-        let dia = 1;
-        dia <= totalDias;
-        dia++
-    ){
-
-        const boton =
-            document.createElement(
-                "div"
-            );
-
-        boton.className =
-            "dia";
-
-        boton.textContent =
-            dia;
-
-
-        /*
-         * Día seleccionado
-         */
-
-        if(
-            dia ===
-            fechaSeleccionada.dia &&
-            calendarioMes ===
-            fechaSeleccionada.mes &&
-            calendarioAnio ===
-            fechaSeleccionada.anio
-        ){
-
-            boton.classList.add(
-                "seleccionado"
-            );
-
+        if (horas > 0) {
+            tiempo = `${horas} h ${minutos} min ${String(seg).padStart(2, "0")} s`;
+        } else {
+            tiempo = `${minutos} min ${String(seg).padStart(2, "0")} s`;
         }
 
+        boton.disabled = true;
+        boton.style.opacity = "0.65";
+        boton.style.cursor = "not-allowed";
+        boton.textContent = `PodrÃ¡s consultar nuevamente en ${tiempo}`;
+        segundos--;
 
-        /*
-         * Día actual
-         */
+    };
 
-        const hoy =
-            new Date();
+    actualizar();
+    temporizadorVisita = setInterval(actualizar, 1000);
+}
 
-        if(
-            dia === hoy.getDate() &&
-            calendarioMes === hoy.getMonth() &&
-            calendarioAnio === hoy.getFullYear()
-        ){
+/* =================================================
+   CERRAR SESIÃN
+================================================= */
 
-            boton.classList.add(
-                "hoy"
-            );
+function cerrarSesion() {
+    alumnoActual = null;
 
-        }
+    const ci = document.getElementById("ci");
+    const fecha = document.getElementById("fecha_nacimiento");
+    const resultado = document.getElementById("resultado");
 
+    // El CI se mantiene visible al cerrar sesiÃ³n.
+    if (fecha) fecha.value = "";
+    if (resultado) resultado.innerHTML = "";
 
-        boton.onclick =
-            function(){
-
-                seleccionarDia(
-                    dia
-                );
-
-            };
-
-
-        contenedor.appendChild(
-            boton
-        );
-
+    if (temporizadorVisita) {
+        clearInterval(temporizadorVisita);
+        temporizadorVisita = null;
     }
 
-}
-
-
-/* =========================================================
-   SELECCIONAR DÍA
-   ========================================================= */
-
-function seleccionarDia(
-    dia
-){
-
-    fechaSeleccionada.dia =
-        dia;
-
-    fechaSeleccionada.mes =
-        calendarioMes;
-
-    fechaSeleccionada.anio =
-        calendarioAnio;
-
-
-    actualizarFechaVisual();
-
-    dibujarCalendario();
-
-
-    /*
-     * Pequeño efecto visual
-     */
-
-    const mensaje =
-        document.getElementById(
-            "mensajeCumpleanos"
-        );
-
-    mensaje.innerHTML =
-        `🎂 ¡Elegiste el
-        <strong>
-            ${dia} de
-            ${meses[calendarioMes]}
-            de ${calendarioAnio}
-        </strong>!`;
-
-}
-
-
-/* =========================================================
-   MES ANTERIOR
-   ========================================================= */
-
-function mesAnterior(){
-
-    calendarioMes--;
-
-    if(calendarioMes < 0){
-
-        calendarioMes = 11;
-
-        calendarioAnio--;
-
+    const botonConsultar = document.querySelector('button[onclick="consultarNota()"]');
+    if (botonConsultar) {
+        botonConsultar.disabled = false;
+        botonConsultar.style.opacity = "1";
+        botonConsultar.style.cursor = "pointer";
+        botonConsultar.textContent = "Consultar mi nota";
     }
 
-
-    /*
-     * No permitir antes de 1950
-     */
-
-    if(
-        calendarioAnio < 1950
-    ){
-
-        calendarioAnio = 1950;
-
-        calendarioMes = 0;
-
-    }
-
-
-    ajustarDiaCalendario();
-
-    dibujarCalendario();
-
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-
-/* =========================================================
-   MES SIGUIENTE
-   ========================================================= */
-
-function mesSiguiente(){
-
-    calendarioMes++;
-
-    if(calendarioMes > 11){
-
-        calendarioMes = 0;
-
-        calendarioAnio++;
-
-    }
-
-
-    /*
-     * No permitir después de 2026
-     */
-
-    if(
-        calendarioAnio > 2026
-    ){
-
-        calendarioAnio = 2026;
-
-        calendarioMes = 11;
-
-    }
-
-
-    ajustarDiaCalendario();
-
-    dibujarCalendario();
-
-}
-
-
-/* =========================================================
-   CAMBIAR AÑO
-   ========================================================= */
-
-function cambiarAnio(){
-
-    calendarioAnio =
-        parseInt(
-            document.getElementById(
-                "selectorAnio"
-            ).value
-        );
-
-
-    ajustarDiaCalendario();
-
-    dibujarCalendario();
-
-}
-
-
-/* =========================================================
-   AJUSTAR DÍA
-   ========================================================= */
-
-function ajustarDiaCalendario(){
-
-    const maximo =
-        obtenerDiasDelMes(
-            calendarioMes,
-            calendarioAnio
-        );
-
-
-    if(
-        fechaSeleccionada.dia >
-        maximo
-    ){
-
-        fechaSeleccionada.dia =
-            maximo;
-
-    }
-
-}
-
-
-/* =========================================================
-   ABRIR / CERRAR CALENDARIO
-   ========================================================= */
-
-function alternarCalendario(){
-
-    const panel =
-        document.getElementById(
-            "calendarioPanel"
-        );
-
-
-    if(
-        panel.classList.contains(
-            "oculto"
-        )
-    ){
-
-        calendarioMes =
-            fechaSeleccionada.mes;
-
-        calendarioAnio =
-            fechaSeleccionada.anio;
-
-
-        panel.classList.remove(
-            "oculto"
-        );
-
-
-        document.getElementById(
-            "btnAbrirCalendario"
-        ).textContent =
-            "🔼 OCULTAR CALENDARIO";
-
-
-        dibujarCalendario();
-
-
-    }else{
-
-        panel.classList.add(
-            "oculto"
-        );
-
-
-        document.getElementById(
-            "btnAbrirCalendario"
-        ).textContent =
-            "📅 ELEGIR FECHA";
-
-    }
-
-}
-
-
-/* =========================================================
-   CONFIRMAR FECHA
-   ========================================================= */
-
-function confirmarFecha(){
-
-    actualizarFechaVisual();
-
-    const panel =
-        document.getElementById(
-            "calendarioPanel"
-        );
-
-    panel.classList.add(
-        "oculto"
-    );
-
-
-    document.getElementById(
-        "btnAbrirCalendario"
-    ).textContent =
-        "📅 CAMBIAR FECHA";
-
-
-    document.getElementById(
-        "mensajeCumpleanos"
-    ).innerHTML =
-        `🎉 Fecha lista:
-        <strong>
-            ${String(fechaSeleccionada.dia).padStart(2,"0")}/
-            ${String(fechaSeleccionada.mes + 1).padStart(2,"0")}/
-            ${fechaSeleccionada.anio}
-        </strong>`;
-
-}
-
-
-/* =========================================================
-   INICIALIZAR FECHA
-   ========================================================= */
-
-function inicializarFecha(){
-
-    crearSelectorAnios();
-
-    actualizarFechaVisual();
-
-}
-
-
-/* =========================================================
-   MENSAJES
-   ========================================================= */
-
-function mostrarMensaje(
-    texto,
-    tipo = "error"
-){
-
-    const mensaje =
-        document.getElementById(
-            "mensaje"
-        );
-
-
-    mensaje.textContent =
-        texto;
-
-
-    mensaje.className =
-        "mensaje " + tipo;
-
-}
-
-
-/* =========================================================
-   CONSULTAR ESTUDIANTE
-   ========================================================= */
-
-async function consultarEstudiante(){
+/* =================================================
+   CONSULTAR
+================================================= */
+
+async function consultarNota() {
 
     const ci =
-        document.getElementById(
-            "ci"
-        ).value.trim();
-
+        document.getElementById("ci")
+        .value
+        .trim();
 
     const fecha =
         document.getElementById(
             "fecha_nacimiento"
         ).value;
 
-
-    if(!ci){
-
-        mostrarMensaje(
-            "⚠️ Ingrese su Carnet de Identidad."
-        );
-
-        return;
-
-    }
-
-
-    if(!fecha){
-
-        mostrarMensaje(
-            "⚠️ Seleccione su fecha de nacimiento."
-        );
-
-        return;
-
-    }
-
-
-    const boton =
+    const resultado =
         document.getElementById(
-            "btnConsultar"
+            "resultado"
         );
 
+    if (!ci || !fecha) {
 
-    boton.disabled = true;
+        resultado.innerHTML =
+            '<p class="error">' +
+            'Ingresa tu CI y fecha de nacimiento.' +
+            '</p>';
 
-    boton.textContent =
-        "⏳ CONSULTANDO...";
+        return;
+    }
 
+    resultado.innerHTML =
+        '<p class="cargando">Buscando...</p>';
 
-    mostrarMensaje(
-        "",
-        "oculto"
-    );
+    try {
 
+        const urlConsulta = `${SUPABASE_URL}/rest/v1/matematica?` +
+            `ci=eq.${encodeURIComponent(ci)}` +
+            `&fecha_nacimiento=eq.${encodeURIComponent(fecha)}` +
+            `&select=id,nombre,curso,ci,fecha_nacimiento,nota_1t,nota_2t,estado`;
 
-    try{
+        let respuesta = null;
+        let ultimoError = null;
 
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-            .from("matematica")
-            .select("*")
-            .eq(
-                "ci",
-                ci
-            )
-            .eq(
-                "fecha_nacimiento",
-                fecha
-            )
-            .maybeSingle();
-
-
-        if(error){
-
-            throw error;
-
+        // Reintenta fallos temporales y evita quedar esperando indefinidamente.
+        for (let intento = 1; intento <= 3; intento++) {
+            const controlador = new AbortController();
+            const temporizador = setTimeout(() => controlador.abort(), 12000);
+            try {
+                respuesta = await fetch(urlConsulta, {
+                    method: "GET",
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`,
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store",
+                    signal: controlador.signal
+                });
+                clearTimeout(temporizador);
+                if (respuesta.ok || [400, 401, 403, 404].includes(respuesta.status)) break;
+                ultimoError = new Error(`HTTP ${respuesta.status}`);
+            } catch (error) {
+                clearTimeout(temporizador);
+                ultimoError = error;
+            }
+            if (intento < 3) await new Promise(resolve => setTimeout(resolve, 700 * intento));
         }
 
+        if (!respuesta) {
+            if (ultimoError?.name === "AbortError") throw new Error("Tiempo de espera agotado. Intenta nuevamente.");
+            throw new Error("No fue posible conectar con el servidor. Verifica tu conexiÃ³n a Internet.");
+        }
 
-        if(!data){
+        if (!respuesta.ok) {
+            let detalle = "";
+            try { detalle = await respuesta.text(); } catch (_) {}
+            console.error("Error consulta estudiante Supabase:", respuesta.status, detalle);
+            if (respuesta.status === 401 || respuesta.status === 403) throw new Error("No se pudo autorizar la consulta en el servidor.");
+            if (respuesta.status === 404) throw new Error("No se encontrÃ³ el recurso solicitado en el servidor.");
+            throw new Error(`El servidor respondiÃ³ con un error (${respuesta.status}). Intenta nuevamente.`);
+        }
 
-            mostrarMensaje(
-                "❌ No se encontró un estudiante con esos datos."
-            );
+        const datos =
+            await respuesta.json();
+
+
+        if (datos.length === 0) {
+
+            resultado.innerHTML =
+                '<p class="error">' +
+                'CI o fecha de nacimiento incorrectos.' +
+                '</p>';
 
             return;
+        }
+
+
+        alumnoActual =
+            datos[0];
+
+
+        /* =================================================
+           EVITAR CONSULTAS REPETIDAS DURANTE 60 MINUTOS
+        ================================================= */
+        const CLAVE_BLOQUEO_VISITA =
+            `ultima_consulta_nota_${alumnoActual.id}`;
+        const DURACION_BLOQUEO_VISITA = 60 * 60 * 1000;
+
+        // Respaldo temporal para navegadores que bloquean localStorage.
+        // Cuando localStorage funciona, se conserva exactamente el comportamiento actual.
+        window.__bloqueoVisitaTemporal = window.__bloqueoVisitaTemporal || {};
+
+        function obtenerUltimaConsulta(clave) {
+            try {
+                return localStorage.getItem(clave);
+            } catch (error) {
+                console.warn("localStorage no disponible; usando respaldo temporal:", error);
+                return window.__bloqueoVisitaTemporal[clave] || null;
+            }
+        }
+
+        function guardarUltimaConsulta(clave, valor) {
+            try {
+                localStorage.setItem(clave, valor);
+            } catch (error) {
+                console.warn("localStorage no disponible; usando respaldo temporal:", error);
+                window.__bloqueoVisitaTemporal[clave] = valor;
+            }
+        }
+
+        const ultimaConsulta =
+            Number(obtenerUltimaConsulta(CLAVE_BLOQUEO_VISITA) || 0);
+        const tiempoTranscurrido = Date.now() - ultimaConsulta;
+
+        if (ultimaConsulta && tiempoTranscurrido < DURACION_BLOQUEO_VISITA) {
+            iniciarCuentaRegresivaVisita(
+                Math.ceil((DURACION_BLOQUEO_VISITA - tiempoTranscurrido) / 1000)
+            );
+            mostrarResultado(alumnoActual);
+            return;
+        }
+
+        guardarUltimaConsulta(
+            CLAVE_BLOQUEO_VISITA,
+            String(Date.now())
+        );
+
+        iniciarCuentaRegresivaVisita(60 * 60);
+
+
+        /* =================================================
+           REGISTRAR VISITA DEL ESTUDIANTE
+        ================================================= */
+
+        try {
+
+            const respuestaVisita = await fetch(
+
+                `${SUPABASE_URL}/rest/v1/rpc/registrar_visita_estudiante`,
+
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "apikey":
+                            SUPABASE_KEY,
+
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`,
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        p_estudiante_id:
+                            alumnoActual.id
+
+                    })
+
+                }
+
+            );
+
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "No se pudo registrar la visita:",
+                error
+            );
 
         }
 
 
-        /*
-         * Registrar visita.
-         */
-
-        try{
-
-            await supabaseClient
-                .rpc(
-                    "registrar_visita_estudiante",
-                    {
-                        p_ci:ci
-                    }
-                );
-
-        }catch(errorVisita){
-
-            console.log(
-                "No se pudo registrar visita:",
-                errorVisita
-            );
-
-        }
-
-
-        mostrarDatosEstudiante(
-            data
+        mostrarResultado(
+            alumnoActual
         );
 
-
-        await cargarActividades(
-            data
-        );
+    }
 
 
-        await cargarAsistencia(
-            data
-        );
+    catch(error) {
 
-
-        /*
-         * Centralizador únicamente 5A.
-         */
-
-        if(
-            String(
-                data.curso
-            )
-            .trim()
-            .toUpperCase()
-            .includes("5A")
-        ){
-
-            document
-                .getElementById(
-                    "seccionCentralizador"
-                )
-                .classList.remove(
-                    "oculto"
-                );
-
-
-            await cargarCentralizador(
-                data
-            );
-
-        }else{
-
-            document
-                .getElementById(
-                    "seccionCentralizador"
-                )
-                .classList.add(
-                    "oculto"
-                );
-
-        }
-
-
-        document
-            .getElementById(
-                "resultado"
-            )
-            .classList.remove(
-                "oculto"
-            );
-
-
-        document
-            .getElementById(
-                "tarjetaLogin"
-            )
-            .classList.add(
-                "oculto"
-            );
-
-
-    }catch(error){
-
-        console.error(
-            error
-        );
-
-
-        mostrarMensaje(
-            "❌ Ocurrió un error al realizar la consulta."
-        );
-
-
-    }finally{
-
-        boton.disabled = false;
-
-        boton.textContent =
-            "🔎 CONSULTAR MIS NOTAS";
+        console.error("Error al consultar estudiante:", error);
+        const mensaje = error?.message || "No fue posible completar la consulta.";
+        resultado.innerHTML =
+            '<p class="error">' +
+            mensaje +
+            '</p>';
 
     }
 
 }
 
 
-/* =========================================================
-   MOSTRAR DATOS ESTUDIANTE
-   ========================================================= */
+/* =================================================
+   PRESENTACIÃN DE ACTIVIDADES
+================================================= */
 
-function mostrarDatosEstudiante(
-    estudiante
-){
+function formatearFechaHoraPresentacion(fechaHora) {
+    if (!fechaHora) return "";
+
+    const texto = String(fechaHora).trim();
+
+    // Si Supabase entrega un timestamp con zona horaria (por ejemplo UTC),
+    // convertirlo a la hora local de Bolivia antes de mostrarlo.
+    const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(texto);
+
+    if (tieneZonaHoraria) {
+        const fecha = new Date(texto);
+        if (isNaN(fecha.getTime())) return texto;
+
+        const partes = new Intl.DateTimeFormat("es-BO", {
+            timeZone: "America/La_Paz",
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).formatToParts(fecha);
+
+        const valores = {};
+        partes.forEach(parte => {
+            if (parte.type !== "literal") valores[parte.type] = parte.value;
+        });
+
+        const diaSemana = valores.weekday.charAt(0).toUpperCase() + valores.weekday.slice(1);
+        return `${diaSemana} ${valores.day}/${valores.month}/${valores.year} ${valores.hour}:${valores.minute}`;
+    }
+
+    // Si no trae zona horaria, conservar exactamente la hora registrada.
+    const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+    if (!match) return texto;
+
+    const fecha = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    const diasSemana = [
+        "Domingo", "Lunes", "Martes", "MiÃ©rcoles",
+        "Jueves", "Viernes", "SÃ¡bado"
+    ];
+    const diaSemana = diasSemana[fecha.getDay()];
+
+    return `${diaSemana} ${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}`;
+}
+
+function obtenerFechaHoraActividad(actividad) {
+    if (!actividad || !actividad.fecha) return null;
+    const hora = actividad.hora_fin || actividad.hora_inicio;
+    if (hora) return `${actividad.fecha}T${String(hora).slice(0, 5)}`;
+    return `${actividad.fecha}T23:59`;
+}
+
+function calcularObsEntrega(actividad, fechaEntrega) {
+    if (!fechaEntrega) return "";
+    const fechaLimite = obtenerFechaHoraActividad(actividad);
+    if (!fechaLimite) return "";
+    const limite = new Date(fechaLimite);
+    const entrega = new Date(String(fechaEntrega).replace(" ", "T"));
+    if (isNaN(limite.getTime()) || isNaN(entrega.getTime())) return "";
+    const diferencia = entrega.getTime() - limite.getTime();
+    if (diferencia <= 0) return "Puntual";
+    const minutos = Math.floor(diferencia / 60000);
+    const dias = Math.floor(minutos / 1440);
+    const horas = Math.floor((minutos % 1440) / 60);
+    const mins = minutos % 60;
+    if (dias > 0) return `Atrasado ${dias} dÃ­a${dias !== 1 ? "s" : ""}${horas ? ` ${horas}hr` : ""}${mins ? ` ${mins}min` : ""}`;
+    if (horas > 0) return `Atrasado ${horas}hr${mins ? ` ${mins}min` : ""}`;
+    return `Atrasado ${mins}min`;
+}
+
+/* =================================================
+   CALCULAR NOTA DEL 3ER TRIMESTRE Y ANUAL EN HTML
+================================================= */
+
+/*
+ * La BD solamente identifica al estudiante y entrega 1T y 2T.
+ * El 3T se obtiene de las actividades del 3er trimestre y sus
+ * calificaciones. Se conserva la lÃ³gica que ya usa el detalle:
+ * promedio de las notas registradas de cada categorÃ­a y suma de
+ * las cuatro categorÃ­as (SER + SABER + HACER + AUTOEVALUACIÃN).
+ */
+async function calcularNota3T(alumno) {
+
+    if (!alumno || !alumno.id || !alumno.curso) {
+        return null;
+    }
+
+    try {
+        const respuestaActividades = await fetch(
+            `${SUPABASE_URL}/rest/v1/actividades?` +
+            `curso=eq.${encodeURIComponent(alumno.curso)}` +
+            `&trimestre=eq.3` +
+            `&select=id,categoria,puntaje_maximo` +
+            `&order=orden`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuestaActividades.ok) {
+            throw new Error("No se pudieron cargar las actividades del 3er trimestre");
+        }
+
+        const actividades = await respuestaActividades.json();
+        if (!actividades.length) return null;
+
+        const ids = actividades.map(a => a.id);
+
+        const respuestaNotas = await fetch(
+            `${SUPABASE_URL}/rest/v1/calificaciones?` +
+            `estudiante_id=eq.${alumno.id}` +
+            `&actividad_id=in.(${ids.join(",")})` +
+            `&select=actividad_id,nota`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuestaNotas.ok) {
+            throw new Error("No se pudieron cargar las calificaciones del 3er trimestre");
+        }
+
+        const calificaciones = await respuestaNotas.json();
+        const mapa = {};
+        calificaciones.forEach(c => { mapa[c.actividad_id] = c.nota; });
+
+        const categorias = ["SER", "SABER", "HACER", "AUTOEVALUACION"];
+        let nota3 = 0;
+        let hayNotas = false;
+
+        categorias.forEach(codigo => {
+            const lista = actividades.filter(a => a.categoria === codigo);
+            let suma = 0;
+            let cantidad = 0;
+
+            lista.forEach(actividad => {
+                const nota = mapa[actividad.id];
+                if (nota !== null && nota !== undefined && nota !== "") {
+                    const numero = Number(nota);
+                    if (!isNaN(numero)) {
+                        suma += numero;
+                        cantidad++;
+                    }
+                }
+            });
+
+            if (cantidad > 0) {
+                nota3 += suma / cantidad;
+                hayNotas = true;
+            }
+        });
+
+        return hayNotas ? Math.round(nota3) : null;
+
+    } catch (error) {
+        console.error("No se pudo calcular la nota del 3er trimestre en HTML:", error);
+        return null;
+    }
+}
+
+function calcularNotaAnual(nota1, nota2, nota3) {
+    const notas = [nota1, nota2, nota3]
+        .filter(n => n !== null && n !== undefined && !isNaN(Number(n)))
+        .map(Number);
+
+    if (!notas.length) return null;
+
+    return Math.round(
+        notas.reduce((suma, nota) => suma + nota, 0) / notas.length
+    );
+}
+
+
+/* =================================================
+   MOSTRAR RESULTADO
+================================================= */
+
+async function mostrarResultado(alumno) {
+
+    const nota1 =
+        redondearNota(alumno.nota_1t);
+
+    const nota2 =
+        redondearNota(alumno.nota_2t);
+
+    /*
+     * ESTADO DEL ESTUDIANTE SEGÃN LA TABLA "matematica".
+     * Solo los estudiantes con estado EFECTIVO pueden ver
+     * actividades, asistencia, 3er trimestre y nota final.
+     * Para cualquier otro estado se muestran Ãºnicamente 1T y 2T
+     * y, si corresponde por curso, el centralizador.
+     */
+    const estadoAlumno = String(alumno.estado || "").trim().toUpperCase();
+
+    if (estadoAlumno !== "EFECTIVO") {
+
+        document.getElementById("resultado").innerHTML = `
+
+            <div class="nota-box">
+
+                <div class="nombre">
+                    ${escapeHTML(alumno.nombre)}
+                </div>
+
+                <div class="curso">
+                    Curso:
+                    ${escapeHTML(alumno.curso || "")}
+                </div>
+
+                <div class="trimestres" style="grid-template-columns:repeat(2, 1fr);">
+
+                    <div class="trimestre-card">
+                        <div class="titulo">
+                            1er Trimestre
+                        </div>
+                        <div class="numero t1">
+                            ${
+                                nota1 === null
+                                ? "â"
+                                : nota1
+                            }
+                        </div>
+                    </div>
+
+                    <div class="trimestre-card">
+                        <div class="titulo">
+                            2do Trimestre
+                        </div>
+                        <div class="numero t2">
+                            ${
+                                nota2 === null
+                                ? "â"
+                                : nota2
+                            }
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            ${
+                ["5A", "1B"].includes(String(alumno.curso || "").trim().toUpperCase())
+                ? `
+                    <button
+                        type="button"
+                        class="boton-centralizador"
+                        onclick="mostrarCentralizador()"
+                    >
+                        ð Ver mis notas de todas las materias
+                    </button>
+                    <div id="centralizador5A"></div>
+                  `
+                : ""
+            }
+
+        `;
+
+        return;
+    }
+
+    // Desde aquÃ­ se mantiene el comportamiento actual Ãºnicamente para EFECTIVO.
+
+
+    // El 3er trimestre y la nota anual se calculan directamente
+    // en este HTML a partir de las actividades y calificaciones.
+    const nota3 = await calcularNota3T(alumno);
+
+    // La nota final solo se muestra cuando existe nota del 3er trimestre.
+    const final =
+        nota3 === null
+        ? null
+        : calcularNotaAnual(nota1, nota2, nota3);
+
+    let claseFinal = "";
+
+    if (final !== null) {
+
+        claseFinal =
+            final <= 50
+            ? "reprobado"
+            : "aprobado";
+
+    }
+
 
     document.getElementById(
-        "datosEstudiante"
+        "resultado"
     ).innerHTML = `
 
-        <h2>
-            ${escaparHTML(
-                estudiante.nombre || ""
-            )}
-        </h2>
+        <div class="nota-box">
 
-        <p>
-            <strong>C.I.:</strong>
-            ${escaparHTML(
-                estudiante.ci || ""
-            )}
-        </p>
+            <div class="nombre">
 
-        <p>
-            <strong>Curso:</strong>
-            ${escaparHTML(
-                estudiante.curso || ""
-            )}
-        </p>
-
-    `;
-
-
-    document.getElementById(
-        "nota1Mostrar"
-    ).textContent =
-        mostrarNota(
-            estudiante.nota_1t
-        );
-
-
-    document.getElementById(
-        "nota2Mostrar"
-    ).textContent =
-        mostrarNota(
-            estudiante.nota_2t
-        );
-
-
-    document.getElementById(
-        "nota3Mostrar"
-    ).textContent =
-        mostrarNota(
-            estudiante.nota_3t
-        );
-
-
-    document.getElementById(
-        "finalMostrar"
-    ).textContent =
-        mostrarNota(
-            estudiante.final
-        );
-
-}
-
-
-/* =========================================================
-   MOSTRAR NOTA
-   ========================================================= */
-
-function mostrarNota(
-    valor
-){
-
-    if(
-        valor === null ||
-        valor === undefined ||
-        valor === ""
-    ){
-
-        return "-";
-
-    }
-
-    return valor;
-
-}
-
-
-/* =========================================================
-   ACTIVIDADES
-   ========================================================= */
-
-async function cargarActividades(
-    estudiante
-){
-
-    const contenedor =
-        document.getElementById(
-            "tablaActividades"
-        );
-
-
-    contenedor.innerHTML =
-        "⏳ Cargando actividades...";
-
-
-    try{
-
-        const {
-            data: actividades,
-            error: errorActividades
-        } =
-        await supabaseClient
-            .from("actividades")
-            .select("*")
-            .order(
-                "id",
-                {
-                    ascending:true
-                }
-            );
-
-
-        if(errorActividades){
-
-            throw errorActividades;
-
-        }
-
-
-        const {
-            data: calificaciones,
-            error: errorCalificaciones
-        } =
-        await supabaseClient
-            .from("calificaciones")
-            .select("*")
-            .eq(
-                "ci",
-                estudiante.ci
-            );
-
-
-        if(errorCalificaciones){
-
-            throw errorCalificaciones;
-
-        }
-
-
-        if(
-            !actividades ||
-            actividades.length === 0
-        ){
-
-            contenedor.innerHTML =
-                `<div class="info-box">
-                    No existen actividades registradas.
-                 </div>`;
-
-            return;
-
-        }
-
-
-        let html = `
-
-            <table>
-
-                <thead>
-
-                    <tr>
-
-                        <th>
-                            Actividad
-                        </th>
-
-                        <th>
-                            Categoría
-                        </th>
-
-                        <th>
-                            Nota
-                        </th>
-
-                        <th>
-                            Observación
-                        </th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-        `;
-
-
-        actividades.forEach(
-            actividad => {
-
-                const calificacion =
-                    (
-                        calificaciones ||
-                        []
-                    ).find(
-                        c =>
-                            String(
-                                c.actividad_id
-                            ) ===
-                            String(
-                                actividad.id
-                            )
-                    );
-
-
-                const nota =
-                    calificacion
-                        ? calificacion.nota
-                        : "";
-
-
-                const observacion =
-                    calificacion &&
-                    calificacion.observacion
-                        ? calificacion.observacion
-                        : "";
-
-
-                html += `
-
-                    <tr>
-
-                        <td>
-                            ${escaparHTML(
-                                actividad.nombre ||
-                                actividad.titulo ||
-                                ""
-                            )}
-                        </td>
-
-                        <td>
-                            ${escaparHTML(
-                                actividad.categoria ||
-                                ""
-                            )}
-                        </td>
-
-                        <td
-                            class="nota-actividad"
-                            onclick="mostrarObservacion(
-                                '${escaparHTML(
-                                    observacion
-                                )}'
-                            )"
-                        >
-                            ${mostrarNota(
-                                nota
-                            )}
-                        </td>
-
-                        <td>
-
-                            ${
-                                observacion
-                                    ? `
-                                    <span
-                                        class="observacion"
-                                    >
-                                        ${escaparHTML(
-                                            observacion
-                                        )}
-                                    </span>
-                                    `
-                                    : "-"
-                            }
-
-                        </td>
-
-                    </tr>
-
-                `;
-
-            }
-        );
-
-
-        html += `
-
-                </tbody>
-
-            </table>
-
-        `;
-
-
-        contenedor.innerHTML =
-            html;
-
-
-    }catch(error){
-
-        console.error(
-            error
-        );
-
-
-        contenedor.innerHTML =
-            `<div class="mensaje error">
-                No se pudieron cargar las actividades.
-             </div>`;
-
-    }
-
-}
-
-
-/* =========================================================
-   OBSERVACIÓN
-   ========================================================= */
-
-function mostrarObservacion(
-    texto
-){
-
-    if(
-        !texto ||
-        texto === "undefined"
-    ){
-
-        return;
-
-    }
-
-
-    alert(
-        "📝 Observación:\n\n" +
-        texto
-    );
-
-}
-
-
-/* =========================================================
-   ASISTENCIA
-   ========================================================= */
-
-async function cargarAsistencia(
-    estudiante
-){
-
-    const contenedor =
-        document.getElementById(
-            "tablaAsistencia"
-        );
-
-
-    contenedor.innerHTML =
-        "⏳ Cargando asistencia...";
-
-
-    try{
-
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-            .from("asistencia")
-            .select("*")
-            .eq(
-                "ci",
-                estudiante.ci
-            )
-            .order(
-                "fecha",
-                {
-                    ascending:true
-                }
-            );
-
-
-        if(error){
-
-            throw error;
-
-        }
-
-
-        if(
-            !data ||
-            data.length === 0
-        ){
-
-            contenedor.innerHTML =
-                `<div class="info-box">
-                    No existen registros de asistencia.
-                 </div>`;
-
-            return;
-
-        }
-
-
-        let totalA = 0;
-        let totalR = 0;
-        let totalL = 0;
-        let totalF = 0;
-
-
-        data.forEach(
-            registro => {
-
-                const estado =
-                    String(
-                        registro.estado ||
-                        ""
-                    ).toUpperCase();
-
-
-                if(estado === "A"){
-                    totalA++;
-                }
-
-                if(estado === "R"){
-                    totalR++;
-                }
-
-                if(estado === "L"){
-                    totalL++;
-                }
-
-                if(estado === "F"){
-                    totalF++;
-                }
-
-            }
-        );
-
-
-        let html = `
-
-            <div class="info-box">
-
-                <strong>
-                    Resumen:
-                </strong>
-                <br>
-
-                🟢 Asistencias:
-                ${totalA}
-
-                &nbsp;&nbsp;
-
-                🟠 Atrasos:
-                ${totalR}
-
-                &nbsp;&nbsp;
-
-                🔵 Licencias:
-                ${totalL}
-
-                &nbsp;&nbsp;
-
-                🔴 Faltas:
-                ${totalF}
+                ${escapeHTML(
+                    alumno.nombre
+                )}
 
             </div>
 
 
-            <table>
+            <div class="curso">
 
-                <thead>
+                Curso:
+                ${escapeHTML(
+                    alumno.curso || ""
+                )}
 
-                    <tr>
+            </div>
 
-                        <th>
-                            Fecha
-                        </th>
 
-                        <th>
-                            Estado
-                        </th>
+            <div class="aviso-provisional">
 
-                    </tr>
+                <strong>
+                    ð RESULTADOS PROVISIONALES
+                </strong>
 
-                </thead>
+                Las calificaciones pueden modificarse
+                con las prÃ³ximas actividades y evaluaciones.
 
-                <tbody>
+            </div>
+
+
+            <div class="titulo-3t">
+
+                Nota del 3er Trimestre
+
+            </div>
+
+
+            <div class="nota">
+
+                ${
+                    nota3 === null
+                    ? "â"
+                    : nota3
+                }
+
+            </div>
+
+
+            <button
+                class="boton-detalles"
+                onclick="mostrarDetalles()"
+            >
+
+                â Ocultar detalles del 3er trimestre
+
+            </button>
+
+
+            <div
+                id="detalle3T"
+                style="display:block"
+            ></div>
+
+
+            <div class="trimestres">
+
+
+                <div class="trimestre-card">
+
+                    <div class="titulo">
+
+                        1er Trimestre
+
+                    </div>
+
+
+                    <div class="numero t1">
+
+                        ${
+                            nota1 === null
+                            ? "â"
+                            : nota1
+                        }
+
+                    </div>
+
+                </div>
+
+
+                <div class="trimestre-card">
+
+                    <div class="titulo">
+
+                        2do Trimestre
+
+                    </div>
+
+
+                    <div class="numero t2">
+
+                        ${
+                            nota2 === null
+                            ? "â"
+                            : nota2
+                        }
+
+                    </div>
+
+                </div>
+
+
+                <div class="trimestre-card">
+
+                    <div class="titulo">
+
+                        3er Trimestre
+
+                    </div>
+
+
+                    <div class="numero t3">
+
+                        ${
+                            nota3 === null
+                            ? "â"
+                            : nota3
+                        }
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            <div class="final-box">
+
+                <div class="final-titulo">
+
+                    NOTA FINAL PROVISIONAL
+
+                </div>
+
+
+                <div class="nota-final ${claseFinal}">
+
+                    ${
+                        final === null
+                        ? "â"
+                        : final
+                    }
+
+                </div>
+
+
+                ${
+                    final !== null
+
+                    ? `
+
+                        <div class="estado ${claseFinal}">
+
+                            ${
+                                final <= 50
+                                ? "REPROBADO"
+                                : "APROBADO"
+                            }
+
+                        </div>
+
+                    `
+
+                    : ""
+
+                }
+
+
+            </div>
+
+
+        </div>
+
+        ${
+            ["5A", "1B"].includes(String(alumno.curso || "").trim().toUpperCase())
+            ? `
+                <button
+                    type="button"
+                    class="boton-centralizador"
+                    onclick="mostrarCentralizador()"
+                >
+                    ð Ver mis notas de todas las materias
+                </button>
+                <div id="centralizador5A"></div>
+              `
+            : ""
+        }
+
+    `;
+
+
+    mostrarDetalles();
+
+}
+
+
+
+/* =================================================
+   CENTRALIZADOR DE NOTAS - SOLO 5A
+================================================= */
+
+const MATERIAS_CENTRALIZADOR_5A = [
+    ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
+    ["LEX", "LENGUA EXTRANJERA"],
+    ["SOC", "CIENCIAS SOCIALES"],
+    ["EFD", "EDUCACIÃN FÃSICA Y DEPORTES"],
+    ["EMU", "EDUCACIÃN MUSICAL"],
+    ["APV", "ARTES PLÃSTICAS Y VISUALES"],
+    ["MAT", "MATEMÃTICA"],
+    ["BIO", "CIENCIAS NATURALES: BIOLOGÃA GEOGRAFÃA"],
+    ["FIS", "CIENCIAS NATURALES: FÃSICA"],
+    ["QMC", "CIENCIAS NATURALES: QUÃMICA"],
+    ["CFS", "COSMOVISIONES FILOSOFÃA Y PSICOLOGÃA"],
+    ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES"],
+    ["TTE", "TÃCNICA TECNOLÃGICA ESPECIALIZADA"]
+];
+
+const MATERIAS_CENTRALIZADOR_1B = [
+    ["LCO", "LENGUA CASTELLANA, ORIGINARIA Y EXTRANJERA"],
+    ["LEX", "LENGUA EXTRANJERA"],
+    ["SOC", "CIENCIAS SOCIALES"],
+    ["EFD", "EDUCACIÃN FISICA Y DEPORTES"],
+    ["EMU", "EDUCACIÃN MUSICAL"],
+    ["APV", "ARTES PLÃSTICAS Y VISUALES"],
+    ["MAT", "MATEMÃTICA"],
+    ["TTE", "TÃCNICA TECNOLÃGICA GENERAL"],
+    ["BIO", "CIENCIAS NATURALES: BIOLOGÃA GEOGRAFÃA"],
+    ["CFS", "COSMOVISIONES FILOSOFÃA Y PSICOLOGÃA"],
+    ["VER", "VALORES ESPIRITUALIDAD Y RELIGIONES."]
+];
+
+function mostrarValorCentralizador(valor) {
+    if (valor === null || valor === undefined || valor === "") {
+        return '<span class="sin-nota">â</span>';
+    }
+    const numero = Number(valor);
+    if (isNaN(numero)) {
+        return '<span class="sin-nota">' + escapeHTML(String(valor)) + '</span>';
+    }
+    return '<span class="nota-centralizador">' + Math.round(numero) + '</span>';
+}
+
+async function mostrarCentralizador() {
+
+    const contenedor = document.getElementById("centralizador5A");
+
+    if (!contenedor || !alumnoActual) return;
+
+    const cursoCentralizador = String(alumnoActual.curso || "").trim().toUpperCase();
+
+    if (cursoCentralizador !== "5A" && cursoCentralizador !== "1B") {
+        return;
+    }
+
+    if (contenedor.innerHTML.trim() !== "") {
+        contenedor.innerHTML = "";
+        return;
+    }
+
+    contenedor.innerHTML =
+        '<p class="cargando">Cargando notas de todas las materias...</p>';
+
+    try {
+
+        const respuesta = await fetch(
+            `${SUPABASE_URL}/rest/v1/centralizador?` +
+            `ci=eq.${encodeURIComponent(alumnoActual.ci || "")}` +
+            `&select=*`,
+            {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            }
+        );
+
+        if (!respuesta.ok) {
+            const detalleError = await respuesta.text();
+            console.error("Error centralizador Supabase:", detalleError);
+            throw new Error("Error al consultar centralizador: " + detalleError);
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.length) {
+            contenedor.innerHTML = `
+                <div class="centralizador-box">
+                    <div class="centralizador-titulo">
+                        ð NOTAS DE TODAS LAS MATERIAS
+                    </div>
+                    <p style="text-align:center;color:#666;line-height:1.5;">
+                        No se encontraron notas en el centralizador.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const centralizador = datos[0];
+
+        let filas = "";
+
+        // PostgreSQL convierte los nombres de columnas sin comillas a minÃºsculas.
+        // Por eso se prueban tanto MAYÃSCULAS como minÃºsculas para mostrar las notas.
+        const obtenerNotaCentralizador = (codigo, periodo) => {
+            const nombreColumna = codigo + periodo;
+            return centralizador[nombreColumna] ?? centralizador[nombreColumna.toLowerCase()];
+        };
+
+        const materiasCentralizador = cursoCentralizador === "1B"
+            ? MATERIAS_CENTRALIZADOR_1B
+            : MATERIAS_CENTRALIZADOR_5A;
+
+        materiasCentralizador.forEach(([codigo, nombre]) => {
+
+            filas += `
+                <tr>
+                    <td>${escapeHTML(nombre)}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "1"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "2"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "3"))}</td>
+                    <td>${mostrarValorCentralizador(obtenerNotaCentralizador(codigo, "A"))}</td>
+                </tr>
+            `;
+        });
+
+        contenedor.innerHTML = `
+            <div class="centralizador-box">
+
+                <div class="centralizador-titulo">
+                    ð NOTAS DE TODAS LAS MATERIAS
+                </div>
+
+                <div style="text-align:center;color:#666;font-size:13px;margin-bottom:12px;">
+                    Curso: ${escapeHTML(cursoCentralizador)}
+                </div>
+
+                <div class="centralizador-tabla-contenedor">
+                    <table class="centralizador-tabla">
+
+                        <thead>
+                            <tr>
+                                <th>Materia</th>
+                                <th>1er Trimestre</th>
+                                <th>2do Trimestre</th>
+                                <th>3er Trimestre</th>
+                                <th>Promedio Anual</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>${filas}</tbody>
+
+                    </table>
+                </div>
+
+            </div>
+        `;
+
+    } catch (error) {
+
+        console.error(error);
+
+        contenedor.innerHTML = `
+            <div class="centralizador-box">
+                <div class="centralizador-titulo">
+                    ð NOTAS DE TODAS LAS MATERIAS
+                </div>
+                <p class="error">
+                    No se pudo cargar el centralizador de notas.
+                </p>
+                <p style="font-size:12px;color:#777;text-align:center;line-height:1.4;">
+                    La consulta del centralizador debe utilizar la columna <b>ci</b>.
+                </p>
+            </div>
+        `;
+    }
+}
+
+/* =================================================
+   DETALLES DEL 3ER TRIMESTRE
+================================================= */
+
+async function mostrarDetalles() {
+
+    const contenedor =
+        document.getElementById(
+            "detalle3T"
+        );
+
+
+    if (!contenedor) {
+
+        return;
+
+    }
+
+
+    if (
+        contenedor.style.display ===
+        "block" &&
+        contenedor.innerHTML.trim() !== ""
+    ) {
+
+        contenedor.style.display =
+            "none";
+
+
+        const boton =
+            document.querySelector(
+                ".boton-detalles"
+            );
+
+
+        if (boton) {
+
+            boton.innerHTML =
+                "ð Ver detalles del 3er trimestre";
+
+        }
+
+
+        return;
+
+    }
+
+
+    contenedor.style.display =
+        "block";
+
+
+    const boton =
+        document.querySelector(
+            ".boton-detalles"
+        );
+
+
+    if (boton) {
+
+        boton.innerHTML =
+            "â Ocultar detalles del 3er trimestre";
+
+    }
+
+
+    contenedor.innerHTML =
+        '<div class="cargando">' +
+        'Cargando detalles...' +
+        '</div>';
+
+
+    try {
+
+        const respuesta =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/actividades?` +
+
+                `curso=eq.${encodeURIComponent(
+                    alumnoActual.curso
+                )}` +
+
+                `&trimestre=eq.3` +
+
+                `&select=id,categoria,nombre,orden,puntaje_maximo,fecha,hora_inicio,hora_fin` +
+
+                `&order=orden`,
+
+                {
+
+                    headers: {
+
+                        "apikey":
+                            SUPABASE_KEY,
+
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+
+                    }
+
+                }
+
+            );
+
+
+        if (!respuesta.ok) {
+
+            throw new Error(
+                "Error actividades"
+            );
+
+        }
+
+
+        const actividades =
+            await respuesta.json();
+
+
+        if (
+            actividades.length === 0
+        ) {
+
+            contenedor.innerHTML = `
+
+                <div class="detalle">
+
+                    <div class="detalle-titulo">
+
+                        ð Detalles del 3er trimestre
+
+                    </div>
+
+                    <p style="
+                        text-align:center;
+                        color:#666;
+                        line-height:1.5;
+                    ">
+
+                        TodavÃ­a no hay actividades
+                        registradas.
+
+                    </p>
+
+                </div>
+
+            `;
+
+
+            await mostrarAsistenciaEnDetalle();
+
+            return;
+
+        }
+
+
+        const ids =
+            actividades.map(
+                a => a.id
+            );
+
+
+        const respuestaNotas =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/calificaciones?` +
+
+                `estudiante_id=eq.${alumnoActual.id}` +
+
+                `&actividad_id=in.(${ids.join(",")})` +
+
+                `&select=actividad_id,nota,observacion,fecha_entrega`,
+
+                {
+
+                    headers: {
+
+                        "apikey":
+                            SUPABASE_KEY,
+
+                        "Authorization":
+                            `Bearer ${SUPABASE_KEY}`
+
+                    }
+
+                }
+
+            );
+
+
+        const calificaciones =
+            await respuestaNotas.json();
+
+        // FotografÃ­as de las actividades del estudiante.
+        // Si no se pueden cargar, la consulta de calificaciones continÃºa normalmente.
+        let fotosActividadesConsulta = {};
+        try {
+            const respuestaFotos = await fetch(
+                `${SUPABASE_URL}/rest/v1/fotos_actividades?` +
+                `estudiante_id=eq.${encodeURIComponent(alumnoActual.id)}` +
+                `&actividad_id=in.(${ids.join(",")})` +
+                `&select=id,actividad_id,ruta,nombre_archivo,created_at` +
+                `&order=created_at`,
+                {
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+            if (respuestaFotos.ok) {
+                const fotos = await respuestaFotos.json();
+                await Promise.all((fotos || []).map(async foto => {
+                    if (!foto.ruta) return;
+                    try {
+                        const respuestaUrl = await fetch(
+                            `${SUPABASE_URL}/storage/v1/object/sign/archivos_estudiantes/${foto.ruta.split("/").map(encodeURIComponent).join("/")}`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    "apikey": SUPABASE_KEY,
+                                    "Authorization": `Bearer ${SUPABASE_KEY}`,
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    expiresIn: 600
+                                })
+                            }
+                        );
+                        if (respuestaUrl.ok) {
+                            const datosUrl = await respuestaUrl.json();
+                            const firmada = datosUrl?.signedURL || datosUrl?.signedUrl;
+                            if (firmada) {
+                                foto.url = firmada.startsWith("http")
+                                    ? firmada
+                                    : `${SUPABASE_URL}/storage/v1${firmada}`;
+                            }
+                        }
+                    } catch (_) {}
+                    if (foto.url) {
+                        (fotosActividadesConsulta[foto.actividad_id] ||= []).push(foto);
+                    }
+                }));
+            }
+        } catch (_) {}
+
+
+        const mapa = {};
+
+
+        calificaciones.forEach(
+            c => {
+
+                mapa[c.actividad_id] = {
+
+                    nota: c.nota,
+
+                    observacion:
+                        c.observacion,
+
+                    fecha_entrega:
+                        c.fecha_entrega
+
+                };
+
+            }
+        );
+
+
+        const categorias = [
+
+            {
+                codigo: "SER",
+                titulo: "ð Actitud y Responsabilidad",
+                clase: "ser"
+            },
+
+            {
+                codigo: "SABER",
+                titulo: "ð Evaluaciones",
+                clase: "saber"
+            },
+
+            {
+                codigo: "HACER",
+                titulo: "ð Tareas y Trabajos",
+                clase: "hacer"
+            },
+
+            {
+                codigo: "AUTOEVALUACION",
+                titulo: "ð¯ AutoevaluaciÃ³n",
+                clase: "auto"
+            }
+
+        ];
+
+
+        let html = `
+
+            <div class="detalle">
+
+                <div class="detalle-titulo">
+
+                    ð Â¿CÃ³mo se calcula tu nota
+                    del 3er trimestre?
+
+                </div>
+
+
+                <p style="
+                    text-align:center;
+                    color:#666;
+                    font-size:14px;
+                    line-height:1.5;
+                ">
+
+                    AquÃ­ puedes revisar las
+                    calificaciones registradas.
+
+                </p>
 
         `;
 
 
-        data.forEach(
-            registro => {
+        categorias.forEach(
+            categoria => {
 
-                const estado =
-                    String(
-                        registro.estado ||
-                        ""
-                    ).toUpperCase();
+                const lista =
+                    actividades.filter(
+                        a =>
+                            a.categoria ===
+                            categoria.codigo
+                    );
+
+
+                if (
+                    lista.length === 0
+                ) {
+
+                    return;
+
+                }
+
+
+                const limite =
+
+                    categoria.codigo === "SER"
+
+                    ? 10
+
+                    : categoria.codigo === "SABER"
+
+                    ? 45
+
+                    : categoria.codigo === "HACER"
+
+                    ? 40
+
+                    : 5;
+
+
+                let suma = 0;
+
+                let cantidad = 0;
+
+
+                lista.forEach(
+                    actividad => {
+
+                        const registro =
+                            mapa[
+                                actividad.id
+                            ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
+
+                        if (
+                            nota !== null &&
+                            nota !== undefined &&
+                            nota !== ""
+                        ) {
+
+                            const numero =
+                                Number(nota);
+
+
+                            if (
+                                !isNaN(numero)
+                            ) {
+
+                                suma +=
+                                    numero;
+
+                                cantidad++;
+
+                            }
+
+                        }
+
+                    }
+                );
+
+
+                let promedio = 0;
+
+
+                if (
+                    cantidad > 0
+                ) {
+
+                    promedio =
+                        suma / cantidad;
+
+                }
+
+
+                const promedioMostrado =
+
+                    cantidad > 0
+
+                    ? Math.round(promedio)
+
+                    : null;
 
 
                 html += `
 
-                    <tr>
+                    <div class="categoria">
 
-                        <td>
-                            ${formatearFecha(
-                                registro.fecha
-                            )}
-                        </td>
+                        <div class="
+                            categoria-titulo
+                            ${categoria.clase}
+                        ">
 
-                        <td
-                            class="asistencia-${estado}"
-                        >
-                            ${textoAsistencia(
-                                estado
-                            )}
-                        </td>
+                            ${categoria.titulo}
 
-                    </tr>
+                        </div>
+
+                `;
+
+
+                lista.forEach(
+                    actividad => {
+
+                        const registro =
+                            mapa[
+                                actividad.id
+                            ];
+
+
+                        const nota =
+                            registro
+                            ? registro.nota
+                            : null;
+
+
+                        const observacion =
+
+                            registro &&
+                            registro.observacion
+
+                            ? escapeHTML(
+                                registro.observacion
+                            )
+
+                            : "";
+
+
+                        const fechaEntrega =
+                            registro
+                            ? registro.fecha_entrega
+                            : null;
+
+                        const presentacion =
+                            fechaEntrega
+                            ? formatearFechaHoraPresentacion(fechaEntrega)
+                            : "";
+
+                        const obsEntrega =
+                            fechaEntrega
+                            ? calcularObsEntrega(
+                                actividad,
+                                fechaEntrega
+                            )
+                            : "";
+
+
+                        const notaVacia =
+                            nota === null ||
+                            nota === undefined ||
+                            nota === "";
+
+                        const notaCero =
+                            !notaVacia &&
+                            Number(nota) === 0;
+
+                        const estadoNota =
+                            notaVacia
+                            ? "ð CalificaciÃ³n Pendiente"
+                            : notaCero
+                            ? (
+                                categoria.codigo === "SABER"
+                                ? "â No realizÃ³"
+                                : "â No presentÃ³"
+                            )
+                            : "";
+
+                        const valor =
+                            nota === null ||
+                            nota === undefined ||
+                            nota === ""
+
+                            ? "â"
+
+                            : Math.round(
+                                Number(nota)
+                            );
+
+                        const fotosActividad =
+                            fotosActividadesConsulta[actividad.id] || [];
+
+                        const fotosHTML = fotosActividad.length
+                            ? `<div class="fotos-actividad-consulta">${fotosActividad.map(f => `
+                                <img
+                                    src="${escapeHTML(f.url)}"
+                                    class="miniatura-foto-actividad"
+                                    alt="FotografÃ­a de la actividad"
+                                    title="Ver fotografÃ­a"
+                                    onclick="abrirFotoActividadConsulta('${String(f.url).replace(/'/g, "&#039;")}')"
+                                >
+                            `).join("")}</div>`
+                            : "";
+
+
+                        html += `
+
+                            <div class="actividad-fila">
+
+                                <div class="actividad-nombre">
+
+                                    ${escapeHTML(
+                                        actividad.nombre
+                                    )}
+
+                                    <span class="actividad-fecha">
+
+                                        ð ${
+                                            actividad.fecha
+                                            ? formatearFecha(
+                                                actividad.fecha
+                                            )
+                                            : "Sin fecha"
+                                        }
+
+                                    </span>
+
+                                    ${
+                                        estadoNota
+                                        ? `
+                                    <span class="actividad-estado-entrega actividad-estado-no-presento">
+                                        ${estadoNota}
+                                    </span>
+                                        `
+                                        : fechaEntrega
+                                        ? `
+                                    <span class="actividad-estado-entrega ${obsEntrega === 'Puntual' ? 'actividad-estado-puntual' : 'actividad-estado-atrasado'}">
+                                        ${obsEntrega === 'Puntual' ? 'â' : 'ð'} ${escapeHTML(obsEntrega)}
+                                    </span>
+                                    <span class="actividad-fecha-entrega">
+                                        ð ${escapeHTML(presentacion)}
+                                    </span>
+                                        `
+                                        : ""
+                                    }
+
+                                </div>
+
+
+                                <div class="actividad-nota">
+
+                                    <div>
+
+                                        <span style="font-size:12px;color:#555;font-weight:normal;">Nota:</span>
+
+                                        ${valor}
+
+                                        / ${actividad.puntaje_maximo}
+
+                                    </div>
+
+
+                                    ${fotosHTML}
+
+                                    ${
+                                        observacion
+
+                                        ? `
+
+                                            <div class="actividad-observacion">
+
+                                                ð ${observacion}
+
+                                            </div>
+
+                                        `
+
+                                        : ""
+
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        `;
+
+                    }
+                );
+
+
+                html += `
+
+                        <div class="resumen-categoria">
+
+                            <span>
+
+                                Promedio de la categorÃ­a
+
+                            </span>
+
+
+                            <span class="promedio-valor">
+
+                                ${
+                                    promedioMostrado === null
+
+                                    ? "â"
+
+                                    : promedioMostrado
+                                }
+
+                                pts
+
+                            </span>
+
+                        </div>
+
+
+                    </div>
 
                 `;
 
@@ -2445,11 +2575,54 @@ async function cargarAsistencia(
         );
 
 
+        const nota3 =
+            await calcularNota3T(alumnoActual);
+
+
         html += `
 
-                </tbody>
+                <div class="resultado-3t">
 
-            </table>
+                    <div class="resultado-3t-titulo">
+
+                        â­ Nota del 3er trimestre
+                        provisional
+
+                    </div>
+
+
+                    <div class="resultado-3t-numero">
+
+                        ${
+                            nota3 === null
+
+                            ? "â"
+
+                            : nota3
+                        }
+
+                    </div>
+
+
+                    <div style="
+                        color:#666;
+                        font-size:13px;
+                        line-height:1.5;
+                    ">
+
+                        Resultado provisional.
+
+                        <br>
+
+                        Las calificaciones pueden modificarse
+                        con las prÃ³ximas actividades y evaluaciones.
+
+                    </div>
+
+                </div>
+
+
+            </div>
 
         `;
 
@@ -2458,83 +2631,497 @@ async function cargarAsistencia(
             html;
 
 
-    }catch(error){
+        await mostrarAsistenciaEnDetalle();
 
-        console.error(
-            error
-        );
+    }
 
 
-        contenedor.innerHTML =
-            `<div class="mensaje error">
-                No se pudo cargar la asistencia.
-             </div>`;
+    catch(error) {
+
+        console.error(error);
+
+
+        contenedor.innerHTML = `
+
+            <div class="detalle">
+
+                <p class="error">
+
+                    No se pudo cargar el detalle
+                    del tercer trimestre.
+
+                </p>
+
+            </div>
+
+        `;
+
+
+        await mostrarAsistenciaEnDetalle();
 
     }
 
 }
 
 
-/* =========================================================
-   TEXTO ASISTENCIA
-   ========================================================= */
+/* =================================================
+   MOSTRAR ASISTENCIA
+================================================= */
 
-function textoAsistencia(
-    estado
-){
+function mostrarMotivoAsistencia(motivo) {
+    const texto = String(motivo || "").trim() || "No se registrÃ³ un motivo.";
+    alert(texto);
+}
 
-    const valores = {
+async function mostrarAsistenciaEnDetalle() {
+    const contenedor = document.getElementById("detalle3T");
+    if (!contenedor) return;
 
-        A:"A — ASISTIÓ",
+    try {
+        const respuesta = await fetch(
+            `${SUPABASE_URL}/rest/v1/asistencia?` +
+            `estudiante_id=eq.${alumnoActual.id}` +
+            `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
+            `&select=id,fecha,hora,estado,observacion&order=fecha.desc`,
+            { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        );
+        if (!respuesta.ok) throw new Error("Error asistencia");
+        const asistencias = await respuesta.json();
 
-        R:"R — ATRASO",
+        const respuestaTiposDia = await fetch(
+            `${SUPABASE_URL}/rest/v1/asistencia_tipos_dia?` +
+            `curso=eq.${encodeURIComponent(alumnoActual.curso || "")}` +
+            `&fecha=gte.${INICIO_3T}&fecha=lte.${FIN_3T}` +
+            `&tipo=in.(no_clases,clase_informal,observacion)` +
+            `&select=fecha,tipo,motivo&order=fecha.desc`,
+            { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
+        );
+        if (!respuestaTiposDia.ok) throw new Error("Error al consultar los dÃ­as especiales");
+        const diasNoClases = await respuestaTiposDia.json();
 
-        L:"L — LICENCIA",
+        let presentes = 0, atrasos = 0, licencias = 0, faltas = 0;
 
-        F:"F — FALTA"
+        asistencias.forEach(asistencia => {
+            const esClaseInformal = diasNoClases.some(
+                dia => String(dia.fecha) === String(asistencia.fecha) &&
+                       String(dia.tipo || "").toLowerCase() === "clase_informal"
+            );
+            if (esClaseInformal) return;
 
-    };
+            const estado = normalizarEstado(asistencia.estado);
+            if (estado === "asistio") presentes++;
+            else if (estado === "atraso") atrasos++;
+            else if (estado === "licencia") licencias++;
+            else if (estado === "falta") faltas++;
+        });
+
+        /*
+         * UN SOLO REGISTRO POR FECHA.
+         * La observaciÃ³n del dÃ­a se integra en la misma fila que la asistencia.
+         */
+        const fechas = new Map();
+
+        asistencias.forEach(asistencia => {
+            const fecha = String(asistencia.fecha || "");
+            if (!fechas.has(fecha)) {
+                fechas.set(fecha, {
+                    asistencia,
+                    observaciones: [],
+                    claseInformal: null,
+                    noClases: null
+                });
+            }
+        });
+
+        diasNoClases.forEach(dia => {
+            const fecha = String(dia.fecha || "");
+            if (!fechas.has(fecha)) {
+                fechas.set(fecha, {
+                    asistencia: null,
+                    observaciones: [],
+                    claseInformal: null,
+                    noClases: null
+                });
+            }
+
+            const registro = fechas.get(fecha);
+            const tipo = String(dia.tipo || "").toLowerCase();
+            const motivo = dia.motivo && String(dia.motivo).trim()
+                ? String(dia.motivo).trim()
+                : "";
+
+            if (tipo === "observacion") {
+                if (motivo && !registro.observaciones.includes(motivo)) {
+                    registro.observaciones.push(motivo);
+                }
+            } else if (tipo === "clase_informal") {
+                registro.claseInformal = dia;
+            } else if (tipo === "no_clases") {
+                registro.noClases = dia;
+            }
+        });
+
+        const registrosAsistencia = Array.from(fechas.entries())
+            .map(([fecha, datos]) => ({ fecha, ...datos }))
+            .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+
+        let filas = "";
+
+        registrosAsistencia.forEach(registro => {
+            const asistencia = registro.asistencia;
+
+            if (asistencia) {
+                const estado = normalizarEstado(asistencia.estado);
+                const informacion = obtenerEstadoAsistencia(estado);
+                const observaciones = [];
+
+                if (asistencia.observacion && String(asistencia.observacion).trim()) {
+                    observaciones.push(String(asistencia.observacion).trim());
+                }
+                registro.observaciones.forEach(obs => {
+                    if (!observaciones.includes(obs)) observaciones.push(obs);
+                });
+
+                const textoObservacion = observaciones.length
+                    ? observaciones.map(escapeHTML).join("<br>")
+                    : "â";
+
+                filas += `
+                    <tr>
+                        <td>${formatearFecha(asistencia.fecha)}</td>
+                        <td>
+                            <button type="button" class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}" onclick="mostrarMotivoAsistencia('${String([...observaciones, ...(registro.claseInformal ? [registro.claseInformal.motivo || 'Clase informal'] : []), ...(registro.noClases ? [registro.noClases.motivo || 'No se pasÃ³ clases'] : [])].join(' Â· ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${informacion.icono}</button>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            if (registro.claseInformal) {
+                const motivo = registro.claseInformal.motivo && String(registro.claseInformal.motivo).trim()
+                    ? escapeHTML(String(registro.claseInformal.motivo).trim())
+                    : "Clase informal registrada.";
+
+                filas += `
+                    <tr class="dia-clase-informal">
+                        <td>${formatearFecha(registro.fecha)}</td>
+                        <td><button type="button" class="icono-dia-asistencia" aria-label="Clase informal" title="Clase informal" onclick="mostrarMotivoAsistencia('${String(registro.claseInformal.motivo || 'Clase informal registrada.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">â¹ï¸</button></td>
+                    </tr>
+                `;
+                return;
+            }
+
+            if (registro.noClases) {
+                const motivo = registro.noClases.motivo && String(registro.noClases.motivo).trim()
+                    ? escapeHTML(String(registro.noClases.motivo).trim())
+                    : "No se registrÃ³ el motivo.";
+
+                filas += `
+                    <tr class="dia-no-clases">
+                        <td>${formatearFecha(registro.fecha)}</td>
+                        <td><button type="button" class="icono-dia-asistencia" aria-label="No se pasÃ³ clases" title="No se pasÃ³ clases" onclick="mostrarMotivoAsistencia('${String(registro.noClases.motivo || 'No se registrÃ³ el motivo.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">ð«</button></td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filas += `
+                <tr>
+                    <td>${formatearFecha(registro.fecha)}</td>
+                    <td>${registro.observaciones.length ? `<button type="button" class="icono-dia-asistencia" title="Ver observaciÃ³n" onclick="mostrarMotivoAsistencia('${String(registro.observaciones.join(' Â· ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">ð</button>` : "â"}</td>
+                </tr>
+            `;
+        });
+
+        const contenidoTabla = registrosAsistencia.length
+            ? `
+                <div class="tabla-asistencia-contenedor">
+                    <table class="tabla-asistencia">
+                        <thead>
+                            <tr>
+                                <th>ð Fecha</th>
+                                <th>Asistencia / dÃ­a especial (pulsa el icono para ver el motivo)</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filas}</tbody>
+                    </table>
+                </div>
+            `
+            : `<div class="asistencia-vacia">TodavÃ­a no hay registros de asistencia.</div>`;
+
+        const asistenciaHTML = `
+            <div class="asistencia-box">
+                <div class="asistencia-titulo">ðï¸ Asistencia del 3er Trimestre</div>
+                <div class="asistencia-descripcion">Resumen de tu asistencia durante el tercer trimestre.</div>
+                <div class="asistencia-resumen">
+                    <div class="asistencia-card">
+                        <span class="icono">ð¢</span>
+                        <span class="cantidad asistencia-presente">${presentes}</span>
+                        <span class="texto">ASISTENCIAS</span>
+                    </div>
+                    <div class="asistencia-card">
+                        <span class="icono">ð¡</span>
+                        <span class="cantidad asistencia-atraso">${atrasos}</span>
+                        <span class="texto">ATRASOS</span>
+                    </div>
+                    <div class="asistencia-card">
+                        <span class="icono">ðµ</span>
+                        <span class="cantidad asistencia-licencia">${licencias}</span>
+                        <span class="texto">CON LICENCIA</span>
+                    </div>
+                    <div class="asistencia-card">
+                        <span class="icono">ð´</span>
+                        <span class="cantidad asistencia-falta">${faltas}</span>
+                        <span class="texto">SIN LICENCIA</span>
+                    </div>
+                </div>
+                <button type="button" class="boton-asistencia" onclick="alternarDetalleAsistencia(this)">
+                    â Ocultar detalle de asistencia
+                </button>
+                <div class="detalle-asistencia" id="tablaDetalleAsistencia" style="display:block">
+                    ${contenidoTabla}
+                </div>
+            </div>
+        `;
+
+        contenedor.insertAdjacentHTML("beforeend", asistenciaHTML);
+
+    } catch(error) {
+        console.error(error);
+        contenedor.insertAdjacentHTML("beforeend", `
+            <div class="asistencia-box">
+                <div class="asistencia-titulo">ðï¸ Asistencia del 3er Trimestre</div>
+                <div class="asistencia-vacia">No se pudo cargar el detalle de asistencia.</div>
+            </div>
+        `);
+    }
+}
 
 
-    return valores[estado] ||
-        estado ||
-        "-";
+/* =================================================
+   MOSTRAR / OCULTAR TABLA ASISTENCIA
+================================================= */
+
+function alternarDetalleAsistencia(boton) {
+
+    const tabla =
+        document.getElementById(
+            "tablaDetalleAsistencia"
+        );
+
+
+    if (!tabla) {
+
+        return;
+
+    }
+
+
+    if (
+        tabla.style.display ===
+        "block"
+    ) {
+
+        tabla.style.display =
+            "none";
+
+
+        boton.innerHTML =
+            "ï¼ Ver detalle de asistencia";
+
+    }
+
+    else {
+
+        tabla.style.display =
+            "block";
+
+
+        boton.innerHTML =
+            "â Ocultar detalle de asistencia";
+
+    }
 
 }
 
 
-/* =========================================================
+/* =================================================
+   NORMALIZAR ESTADO
+================================================= */
+
+function normalizarEstado(estado) {
+
+    if (
+        estado === null ||
+        estado === undefined
+    ) {
+
+        return "";
+
+    }
+
+
+    return String(estado)
+
+        .trim()
+
+        .toLowerCase()
+
+        .normalize("NFD")
+
+        .replace(
+            /[\u0300-\u036f]/g,
+            ""
+        );
+
+}
+
+
+/* =================================================
+   ESTADOS DE ASISTENCIA
+================================================= */
+
+function obtenerEstadoAsistencia(estado) {
+
+    switch (estado) {
+
+        case "asistio":
+
+            return {
+
+                nombre: "Asistencia",
+
+                icono: "ð¢",
+
+                clase: "estado-presente"
+
+            };
+
+
+        case "atraso":
+
+            return {
+
+                nombre: "Atraso",
+
+                icono: "ð¡",
+
+                clase: "estado-atraso"
+
+            };
+
+
+        case "licencia":
+
+            return {
+
+                nombre: "Falta con licencia",
+
+                icono: "ðµ",
+
+                clase: "estado-licencia"
+
+            };
+
+
+        case "falta":
+
+            return {
+
+                nombre: "Falta sin licencia",
+
+                icono: "ð´",
+
+                clase: "estado-falta"
+
+            };
+
+
+        default:
+
+            return {
+
+                nombre:
+                    estado
+                    ? estado
+                    : "Sin registro",
+
+                icono: "âª",
+
+                clase: ""
+
+            };
+
+    }
+
+}
+
+
+/* =================================================
    FORMATEAR FECHA
-   ========================================================= */
+================================================= */
 
-function formatearFecha(
-    fecha
-){
+function formatearFecha(fecha) {
 
-    if(!fecha){
+    if (!fecha) {
 
-        return "-";
+        return "â";
 
     }
 
 
     const partes =
-        String(
-            fecha
-        ).split("-");
+        String(fecha)
+        .split("-");
 
 
-    if(
+    if (
         partes.length === 3
-    ){
+    ) {
 
-        return (
-            partes[2] +
-            "/" +
-            partes[1] +
-            "/" +
-            partes[0]
-        );
+        const anio =
+            Number(partes[0]);
+
+        const mes =
+            Number(partes[1]) - 1;
+
+        const dia =
+            Number(partes[2]);
+
+
+        /*
+         * Se crea la fecha usando los valores
+         * locales para evitar problemas de zona horaria.
+         */
+
+        const fechaLocal =
+            new Date(
+                anio,
+                mes,
+                dia
+            );
+
+
+        const diasSemana = [
+
+            "Domingo",
+            "Lunes",
+            "Martes",
+            "MiÃ©rcoles",
+            "Jueves",
+            "Viernes",
+            "SÃ¡bado"
+
+        ];
+
+
+        const nombreDia =
+            diasSemana[
+                fechaLocal.getDay()
+            ];
+
+
+        return `${nombreDia}, ${String(dia).padStart(2, "0")}/${String(mes + 1).padStart(2, "0")}/${anio}`;
 
     }
 
@@ -2544,226 +3131,74 @@ function formatearFecha(
 }
 
 
-/* =========================================================
-   CENTRALIZADOR
-   ========================================================= */
+/* =================================================
+   CONVERTIR NOTA
+================================================= */
 
-async function cargarCentralizador(
-    estudiante
-){
+function convertirNota(nota) {
 
-    const contenedor =
-        document.getElementById(
-            "tablaCentralizador"
-        );
+    if (
 
+        nota === null ||
 
-    contenedor.innerHTML =
-        "⏳ Cargando centralizador...";
+        nota === undefined ||
 
+        nota === ""
 
-    try{
+    ) {
 
-        const {
-            data,
-            error
-        } =
-        await supabaseClient
-            .from("centralizador")
-            .select("*")
-            .eq(
-                "ci",
-                estudiante.ci
-            );
-
-
-        if(error){
-
-            throw error;
-
-        }
-
-
-        if(
-            !data ||
-            data.length === 0
-        ){
-
-            contenedor.innerHTML =
-                `<div class="info-box">
-                    No existen datos del centralizador.
-                 </div>`;
-
-            return;
-
-        }
-
-
-        const columnas =
-            Object.keys(
-                data[0]
-            );
-
-
-        let html = `
-
-            <table>
-
-                <thead>
-
-                    <tr>
-
-        `;
-
-
-        columnas.forEach(
-            columna => {
-
-                html += `
-
-                    <th>
-                        ${escaparHTML(
-                            columna
-                        )}
-                    </th>
-
-                `;
-
-            }
-        );
-
-
-        html += `
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-        `;
-
-
-        data.forEach(
-            fila => {
-
-                html += `
-                    <tr>
-                `;
-
-
-                columnas.forEach(
-                    columna => {
-
-                        html += `
-
-                            <td>
-                                ${
-                                    fila[columna] ??
-                                    ""
-                                }
-                            </td>
-
-                        `;
-
-                    }
-                );
-
-
-                html += `
-                    </tr>
-                `;
-
-            }
-        );
-
-
-        html += `
-
-                </tbody>
-
-            </table>
-
-        `;
-
-
-        contenedor.innerHTML =
-            html;
-
-
-    }catch(error){
-
-        console.error(
-            error
-        );
-
-
-        contenedor.innerHTML =
-            `<div class="mensaje error">
-                No se pudo cargar el centralizador.
-             </div>`;
+        return null;
 
     }
 
-}
+
+    const numero =
+        Number(nota);
 
 
-/* =========================================================
-   CERRAR CONSULTA
-   ========================================================= */
+    if (
+        isNaN(numero)
+    ) {
 
-function cerrarConsulta(){
+        return null;
 
-    document
-        .getElementById(
-            "resultado"
-        )
-        .classList.add(
-            "oculto"
-        );
+    }
 
 
-    document
-        .getElementById(
-            "tarjetaLogin"
-        )
-        .classList.remove(
-            "oculto"
-        );
-
-
-    document
-        .getElementById(
-            "ci"
-        )
-        .value = "";
-
-
-    mostrarMensaje(
-        "",
-        "oculto"
-    );
+    return numero;
 
 }
 
 
-/* =========================================================
+/* =================================================
+   REDONDEAR NOTA
+================================================= */
+
+function redondearNota(nota) {
+
+    const numero =
+        convertirNota(nota);
+
+
+    if (
+        numero === null
+    ) {
+
+        return null;
+
+    }
+
+
+    return Math.round(numero);
+
+}
+
+
+/* =================================================
    ESCAPAR HTML
-   ========================================================= */
+================================================= */
 
-function escaparHTML(
-    texto
-){
-
-    if(
-        texto === null ||
-        texto === undefined
-    ){
-
-        return "";
-
-    }
-
+function escapeHTML(texto) {
 
     return String(texto)
 
@@ -2795,42 +3230,60 @@ function escaparHTML(
 }
 
 
-/* =========================================================
-   INICIAR
-   ========================================================= */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    function(){
-
-        inicializarFecha();
-
-
-        const campoCI =
-            document.getElementById(
-                "ci"
-            );
-
-
-        campoCI.addEventListener(
-            "keydown",
-            function(event){
-
-                if(
-                    event.key === "Enter"
-                ){
-
-                    consultarEstudiante();
-
-                }
-
-            }
-        );
-
+function abrirFotoActividadConsulta(url) {
+    if (!url) return;
+    let visor = document.getElementById("visorFotoActividadConsulta");
+    if (!visor) {
+        visor = document.createElement("div");
+        visor.id = "visorFotoActividadConsulta";
+        visor.className = "oculto";
+        visor.innerHTML = `<button type="button" class="cerrar-visor-foto" aria-label="Cerrar fotografÃ­a" onclick="cerrarFotoActividadConsulta()">Ã</button><img alt="FotografÃ­a de la actividad">`;
+        visor.addEventListener("click", e => { if (e.target === visor) cerrarFotoActividadConsulta(); });
+        document.body.appendChild(visor);
     }
-);
+    visor.querySelector("img").src = url;
+    visor.classList.remove("oculto");
+}
+function cerrarFotoActividadConsulta() {
+    const visor = document.getElementById("visorFotoActividadConsulta");
+    if (visor) visor.classList.add("oculto");
+}
 
+
+/* =================================================
+   OBTENER CI DESDE LA URL
+================================================= */
+
+const parametros =
+    new URLSearchParams(
+        window.location.search
+    );
+
+
+const ci =
+    parametros.get("ci");
+
+const fechaNacimiento =
+    parametros.get("fecha_nacimiento");
+
+if (ci) {
+
+    document.getElementById("ci").value =
+        ci;
+
+}
+
+if (fechaNacimiento) {
+
+    document.getElementById("fecha_nacimiento").value =
+        fechaNacimiento;
+
+}
 </script>
 
+
+
 </body>
+
 </html>
