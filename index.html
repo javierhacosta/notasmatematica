@@ -3630,13 +3630,28 @@ if (fechaNacimiento) {
 
     function programar() {
         if (temporizadorInicio) clearTimeout(temporizadorInicio);
-        temporizadorInicio = setTimeout(() => {
+        // Revisar continuamente la posición de las tablas: cuando una llega
+        // a la zona central y ya pasó la pausa de inactividad, empieza enseguida.
+        function comprobar() {
             temporizadorInicio = null;
+            if (document.hidden) {
+                temporizadorInicio = setTimeout(comprobar, 250);
+                return;
+            }
+            const faltaEspera = ESPERA_INACTIVIDAD - (Date.now() - ultimaInteraccion);
+            if (faltaEspera > 0) {
+                temporizadorInicio = setTimeout(comprobar, Math.min(150, faltaEspera));
+                return;
+            }
             document.querySelectorAll('.tabla-actividades-contenedor, .tabla-asistencia-contenedor').forEach(iniciarDeslizamiento);
             document.querySelectorAll('.tabla-asistencia-horizontal').forEach(tabla => {
                 iniciarDeslizamiento(tabla.closest('.tabla-asistencia-contenedor') || tabla.parentElement);
             });
-        }, ESPERA_INACTIVIDAD);
+            // Mantener la comprobación activa para detectar cuando otra tabla
+            // entra en el centro de la pantalla, sin esperar un nuevo evento.
+            temporizadorInicio = setTimeout(comprobar, 150);
+        }
+        temporizadorInicio = setTimeout(comprobar, 0);
     }
 
     ['pointerdown', 'touchstart', 'wheel', 'keydown', 'mousedown'].forEach(evento =>
