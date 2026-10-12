@@ -3527,6 +3527,140 @@ if (fechaNacimiento) {
         fechaNacimiento;
 
 }
+
+/* Desplazamiento automático suave de las tablas anchas cuando no hay interacción. */
+(function activarDesplazamientoSuaveTablas() {
+    const ESPERA_INACTIVIDAD = 2600;
+    const PASO = 1.15;
+    const INTERVALO = 35;
+    const DURACION_PAUSA_FINAL = 1800;
+    let temporizadorInicio = null;
+    let animacion = null;
+    let observador = null;
+    let ultimaInteraccion = Date.now();
+    const procesados = new WeakSet();
+
+    function detenerPorInteraccion() {
+        ultimaInteraccion = Date.now();
+        if (temporizadorInicio) clearTimeout(temporizadorInicio);
+        temporizadorInicio = null;
+        if (animacion) {
+            clearTimeout(animacion);
+            animacion = null;
+        }
+        programar();
+    }
+
+    function estaEnZonaCentral(elemento) {
+        const r = elemento.getBoundingClientRect();
+        const alto = window.innerHeight || document.documentElement.clientHeight;
+        const centro = alto / 2;
+        return r.bottom > centro - alto * 0.35 &&
+               r.top < centro + alto * 0.35 &&
+               r.width > 0 && r.height > 0;
+    }
+
+    function iniciarDeslizamiento(contenedor) {
+        if (!contenedor || !contenedor.isConnected) return;
+        const tabla = contenedor.querySelector('.tabla-actividades, .tabla-asistencia-horizontal');
+        if (!tabla || contenedor.scrollWidth <= contenedor.clientWidth + 8) return;
+        if (!estaEnZonaCentral(contenedor)) return;
+        if (document.hidden || Date.now() - ultimaInteraccion < ESPERA_INACTIVIDAD) return;
+        if (contenedor.dataset.deslizamientoAutomatico === 'activo') return;
+
+        const maximo = Math.max(0, contenedor.scrollWidth - contenedor.clientWidth);
+        if (maximo < 8) return;
+        contenedor.dataset.deslizamientoAutomatico = 'activo';
+        let direccion = 1;
+        let ultimo = performance.now();
+
+        function pasoAhora() {
+            if (!contenedor.isConnected || document.hidden ||
+                Date.now() - ultimaInteraccion < 1000) {
+                contenedor.dataset.deslizamientoAutomatico = '';
+                animacion = null;
+                return;
+            }
+            if (!estaEnZonaCentral(contenedor)) {
+                animacion = setTimeout(pasoAhora, 500);
+                return;
+            }
+            const ahora = performance.now();
+            const delta = Math.min(70, ahora - ultimo);
+            ultimo = ahora;
+            contenedor.scrollLeft += direccion * PASO * (delta / INTERVALO);
+
+            if (direccion === 1 && contenedor.scrollLeft >= maximo - 2) {
+                contenedor.scrollLeft = maximo;
+                direccion = 0;
+                animacion = setTimeout(() => {
+                    direccion = -1;
+                    ultimo = performance.now();
+                    pasoAhora();
+                }, DURACION_PAUSA_FINAL);
+                return;
+            }
+            if (direccion === -1 && contenedor.scrollLeft <= 1) {
+                contenedor.scrollLeft = 0;
+                contenedor.dataset.deslizamientoAutomatico = '';
+                animacion = null;
+                return;
+            }
+            animacion = setTimeout(pasoAhora, INTERVALO);
+        }
+        animacion = setTimeout(pasoAhora, INTERVALO);
+    }
+
+    function buscarTablas() {
+        document.querySelectorAll('.tabla-actividades-contenedor, .tabla-asistencia-contenedor').forEach(contenedor => {
+            if (procesados.has(contenedor)) return;
+            procesados.add(contenedor);
+            // Espera a que el navegador termine de medir las columnas.
+            setTimeout(() => iniciarDeslizamiento(contenedor), 400);
+        });
+        // La tabla horizontal de asistencia puede no conservar un contenedor propio.
+        document.querySelectorAll('.tabla-asistencia-horizontal').forEach(tabla => {
+            const contenedor = tabla.closest('.tabla-asistencia-contenedor') || tabla.parentElement;
+            if (!contenedor || procesados.has(contenedor)) return;
+            procesados.add(contenedor);
+            setTimeout(() => iniciarDeslizamiento(contenedor), 400);
+        });
+        programar();
+    }
+
+    function programar() {
+        if (temporizadorInicio) clearTimeout(temporizadorInicio);
+        temporizadorInicio = setTimeout(() => {
+            temporizadorInicio = null;
+            document.querySelectorAll('.tabla-actividades-contenedor, .tabla-asistencia-contenedor').forEach(iniciarDeslizamiento);
+            document.querySelectorAll('.tabla-asistencia-horizontal').forEach(tabla => {
+                iniciarDeslizamiento(tabla.closest('.tabla-asistencia-contenedor') || tabla.parentElement);
+            });
+        }, ESPERA_INACTIVIDAD);
+    }
+
+    ['pointerdown', 'touchstart', 'wheel', 'keydown', 'mousedown'].forEach(evento =>
+        document.addEventListener(evento, detenerPorInteraccion, { passive: true })
+    );
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            ultimaInteraccion = Date.now();
+            programar();
+        }
+    });
+
+    function iniciarObservador() {
+        buscarTablas();
+        observador = new MutationObserver(() => buscarTablas());
+        observador.observe(document.body, { childList: true, subtree: true });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciarObservador, { once: true });
+    } else {
+        iniciarObservador();
+    }
+})();
+
 </script>
 
 
