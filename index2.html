@@ -826,6 +826,53 @@ button:hover {
 .tabla-asistencia-horizontal th { white-space:nowrap; }
 .tabla-asistencia-horizontal td { font-size:20px; }
 
+
+/* Encabezados girados para reducir el ancho de las columnas, como en Excel. */
+.tabla-actividades th,
+.tabla-asistencia-horizontal th {
+  position: relative;
+  box-sizing: border-box;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 190px;
+  min-height: 190px;
+  padding: 4px !important;
+  vertical-align: bottom;
+  overflow: hidden;
+}
+.tabla-actividades th .encabezado-rotado,
+.tabla-asistencia-horizontal th .encabezado-rotado {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 172px;
+  max-width: none;
+  max-height: 172px;
+  box-sizing: border-box;
+  padding: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  text-align: left;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  transform-origin: center center;
+}
+.tabla-asistencia-horizontal th .encabezado-fecha-rotado {
+  width: 172px;
+  white-space: nowrap;
+  text-align: center;
+}
+.tabla-actividades td,
+.tabla-asistencia-horizontal td {
+  min-width: 52px;
+  width: 52px;
+  max-width: 90px;
+  padding: 8px 5px;
+}
+.tabla-actividades td { overflow-wrap: anywhere; }
+
 </style>
 
 </head>
@@ -1451,7 +1498,7 @@ function aplicarVistaDosFilas() {
       const nota = item.querySelector('.actividad-nota');
       const th = document.createElement('th');
       const td = document.createElement('td');
-      if (detalle) th.innerHTML = detalle.innerHTML;
+      if (detalle) th.innerHTML = `<span class="encabezado-rotado">${detalle.innerHTML}</span>`;
       if (nota) td.innerHTML = nota.innerHTML;
       filaTitulos.appendChild(th);
       filaNotas.appendChild(td);
@@ -1483,7 +1530,7 @@ function aplicarVistaDosFilas() {
       const celdas = tr.querySelectorAll('td');
       if (!celdas.length) return;
       const th = document.createElement('th');
-      th.innerHTML = celdas[0].innerHTML;
+      th.innerHTML = `<span class="encabezado-rotado encabezado-fecha-rotado">${celdas[0].innerHTML}</span>`;
       filaFechas.appendChild(th);
       const td = document.createElement('td');
       if (celdas[1]) td.innerHTML = celdas[1].innerHTML;
