@@ -1580,13 +1580,14 @@ function aplicarVistaDosFilas() {
       const th = document.createElement('th');
       const td = document.createElement('td');
       const tdEstado = document.createElement('td');
-      if (detalle) th.innerHTML = `<span class="encabezado-rotado">${detalle.innerHTML}</span>`;
-      if (nota) {
-        const contenidoNota = nota.cloneNode(true);
-        const estado = contenidoNota.querySelector('.actividad-estado-entrega');
-        const fechaPresentacion = contenidoNota.querySelector('.actividad-fecha-entrega');
-        const detallesEstado = document.createElement('div');
-        detallesEstado.className = 'actividad-estado-fila';
+      /* El estado y la fecha de presentación se generan dentro de .actividad-nombre,
+         no dentro de .actividad-nota. Se extraen de ahí para mostrarlos en la tercera fila. */
+      const contenidoDetalle = detalle ? detalle.cloneNode(true) : null;
+      const detallesEstado = document.createElement('div');
+      detallesEstado.className = 'actividad-estado-fila';
+      if (contenidoDetalle) {
+        const estado = contenidoDetalle.querySelector('.actividad-estado-entrega');
+        const fechaPresentacion = contenidoDetalle.querySelector('.actividad-fecha-entrega');
         if (estado) {
           detallesEstado.appendChild(estado.cloneNode(true));
           estado.remove();
@@ -1595,9 +1596,10 @@ function aplicarVistaDosFilas() {
           detallesEstado.appendChild(fechaPresentacion.cloneNode(true));
           fechaPresentacion.remove();
         }
-        td.innerHTML = contenidoNota.innerHTML;
-        tdEstado.appendChild(detallesEstado);
+        th.innerHTML = `<span class="encabezado-rotado">${contenidoDetalle.innerHTML}</span>`;
       }
+      if (nota) td.innerHTML = nota.innerHTML;
+      tdEstado.appendChild(detallesEstado);
       filaTitulos.appendChild(th);
       filaNotas.appendChild(td);
       filaEstado.appendChild(tdEstado);
