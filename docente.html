@@ -14462,21 +14462,25 @@ async function leerNombreEstudianteEnImagen(file, regionLectura=null){
 async function detectarCIEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
-        // Priorizar el mismo detector nativo que utiliza el escáner QR normal.
+        // Buscar QR y Data Matrix en la misma imagen, sin alterar el flujo de importación.
         if("BarcodeDetector" in window){
             try{
-                const detector=new BarcodeDetector({formats:["qr_code"]});
-                const encontrados=await detector.detect(bitmap);
-                if(encontrados?.length){
-                    const ci=extraerCIDesdeQR(encontrados[0].rawValue||"");
-                    if(ci)return ci;
+                const formatosDisponibles = await BarcodeDetector.getSupportedFormats();
+                const formatos = ["qr_code", "data_matrix"].filter(f => formatosDisponibles.includes(f));
+                if(formatos.length){
+                    const detector=new BarcodeDetector({formats:formatos});
+                    const encontrados=await detector.detect(bitmap);
+                    for(const codigo of encontrados || []){
+                        const ci=extraerCIDesdeQR(String(codigo.rawValue||"").trim());
+                        if(ci)return ci;
+                    }
                 }
-            }catch(e){console.warn("BarcodeDetector no pudo leer la foto; se probará jsQR.",e)}
+            }catch(e){console.warn("BarcodeDetector no pudo leer QR/Data Matrix; se probará jsQR para QR.",e)}
         }
+        // jsQR se conserva como alternativa compatible para códigos QR.
         if(typeof jsQR!=="function"){try{await cargarJSQR()}catch(_){}}
-        if(typeof jsQR!=="function")throw new Error("No está disponible el lector QR. Comprueba la conexión e inténtalo nuevamente.");
+        if(typeof jsQR!=="function")return null;
         const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
-        // Probar tamaño original y una versión reducida para QR pequeños o fotos grandes.
         const escalas=[1,Math.min(1,2600/Math.max(bitmap.width,bitmap.height)),Math.min(1,1600/Math.max(bitmap.width,bitmap.height))];
         for(const escala of [...new Set(escalas)]){
             const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
