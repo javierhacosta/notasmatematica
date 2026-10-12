@@ -873,6 +873,12 @@ button:hover {
 }
 .tabla-actividades td { overflow-wrap: anywhere; }
 
+
+/* Asistencia: fechas arriba, estado/detalle en la segunda fila y hora en la tercera. */
+.tabla-asistencia-horizontal tbody tr:nth-child(2) td { font-size:20px; min-height:42px; }
+.tabla-asistencia-horizontal tbody tr:nth-child(3) td { font-size:12px; color:#475569; height:auto; min-height:28px; padding:5px 3px; }
+.tabla-asistencia-horizontal .detalle-dia-especial { font-size:12px !important; line-height:1.35; white-space:normal; overflow-wrap:anywhere; }
+.tabla-asistencia-horizontal .hora-asistencia { font-size:12px !important; font-variant-numeric:tabular-nums; }
 </style>
 
 </head>
@@ -1526,6 +1532,7 @@ function aplicarVistaDosFilas() {
     const filaFechas = document.createElement('tr');
     const tbody = document.createElement('tbody');
     const filaIconos = document.createElement('tr');
+    const filaHoras = document.createElement('tr');
     registros.forEach(tr => {
       const celdas = tr.querySelectorAll('td');
       if (!celdas.length) return;
@@ -1535,8 +1542,11 @@ function aplicarVistaDosFilas() {
       const td = document.createElement('td');
       if (celdas[1]) td.innerHTML = celdas[1].innerHTML;
       filaIconos.appendChild(td);
+      const tdHora = document.createElement('td');
+      if (celdas[2]) tdHora.innerHTML = celdas[2].innerHTML;
+      filaHoras.appendChild(tdHora);
     });
-    thead.appendChild(filaFechas); tbody.appendChild(filaIconos);
+    thead.appendChild(filaFechas); tbody.appendChild(filaIconos); tbody.appendChild(filaHoras);
     tabla.appendChild(thead); tabla.appendChild(tbody);
     original.replaceWith(tabla);
   });
@@ -2927,8 +2937,9 @@ async function mostrarAsistenciaEnDetalle() {
                     <tr>
                         <td>${formatearFecha(asistencia.fecha)}</td>
                         <td>
-                            <button type="button" class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}" onclick="mostrarMotivoAsistencia('${String([...observaciones, ...(registro.claseInformal ? [registro.claseInformal.motivo || 'Clase informal'] : []), ...(registro.noClases ? [registro.noClases.motivo || 'No se pasó clases'] : [])].join(' · ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${informacion.icono}</button>
+                            <span class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}">${informacion.icono}</span>
                         </td>
+                        <td class="hora-asistencia">${(estado === "asistio" || estado === "atraso") && asistencia.hora ? escapeHTML(String(asistencia.hora).slice(0,5)) : "—"}</td>
                     </tr>
                 `;
                 return;
@@ -2942,7 +2953,8 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr class="dia-clase-informal">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td><button type="button" class="icono-dia-asistencia" aria-label="Clase informal" title="Clase informal" onclick="mostrarMotivoAsistencia('${String(registro.claseInformal.motivo || 'Clase informal registrada.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">ℹ️</button></td>
+                        <td class="detalle-dia-especial">${motivo}</td>
+                        <td class="hora-asistencia">—</td>
                     </tr>
                 `;
                 return;
@@ -2956,7 +2968,8 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr class="dia-no-clases">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td><button type="button" class="icono-dia-asistencia" aria-label="No se pasó clases" title="No se pasó clases" onclick="mostrarMotivoAsistencia('${String(registro.noClases.motivo || 'No se registró el motivo.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">🚫</button></td>
+                        <td class="detalle-dia-especial">${motivo}</td>
+                        <td class="hora-asistencia">—</td>
                     </tr>
                 `;
                 return;
