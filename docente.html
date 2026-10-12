@@ -14377,7 +14377,7 @@ function cancelarPulsacionFotoCalificacion(e){
 }
 
 function abrirCapturaFotoActividad(a,m="nueva",f=null){fotoActividadActual=a;fotoActividadModo=m;const i=document.getElementById("inputFotoActividad");if(!i)return;if(m==="nueva"){mantenerCamaraFotoActividad=true;const cb=document.getElementById("mantenerCamaraFotoActividad");if(cb)cb.checked=true}i.value="";i.dataset.fotoExistente=f?encodeURIComponent(JSON.stringify(f)):"";i.click()}
-async function leerNombreEstudianteEnImagen(file){
+async function leerNombreEstudianteEnImagen(file, regionLectura=null){
     // OCR optimizado únicamente para la zona superior, donde está impreso el nombre.
     if(typeof Tesseract === "undefined"){
         await new Promise((resolve,reject)=>{
@@ -14400,17 +14400,24 @@ async function leerNombreEstudianteEnImagen(file){
     const bitmap=await createImageBitmap(file);
     let textos=[];
     try{
-        // Recorta el 40 % superior para excluir operaciones y respuestas escritas más abajo.
-        const alto=Math.max(1,Math.round(bitmap.height*.40));
-        const escala=Math.min(3,Math.max(2,2600/Math.max(1,bitmap.width)));
+        // Lee únicamente el rectángulo elegido por el usuario. Si no se proporciona,
+        // conserva como respaldo la franja superior utilizada anteriormente.
+        const region=regionLectura&&Number.isFinite(regionLectura.x)&&Number.isFinite(regionLectura.y)
+            ? regionLectura : {x:0,y:0,w:1,h:.40};
+        const sx=Math.max(0,Math.min(bitmap.width-1,Math.round(bitmap.width*region.x)));
+        const sy=Math.max(0,Math.min(bitmap.height-1,Math.round(bitmap.height*region.y)));
+        const sw=Math.max(1,Math.min(bitmap.width-sx,Math.round(bitmap.width*region.w)));
+        const sh=Math.max(1,Math.min(bitmap.height-sy,Math.round(bitmap.height*region.h)));
+        // Amplía sólo el área seleccionada: menos píxeles y una lectura más rápida.
+        const escala=Math.min(2.2,Math.max(1.2,1800/Math.max(1,sw)));
         const base=document.createElement("canvas");
-        base.width=Math.max(1,Math.round(bitmap.width*escala));
-        base.height=Math.max(1,Math.round(alto*escala));
+        base.width=Math.max(1,Math.round(sw*escala));
+        base.height=Math.max(1,Math.round(sh*escala));
         const ctx=base.getContext("2d",{willReadFrequently:true});
         ctx.imageSmoothingEnabled=true;
         ctx.imageSmoothingQuality="high";
         ctx.fillStyle="#fff";ctx.fillRect(0,0,base.width,base.height);
-        ctx.drawImage(bitmap,0,0,bitmap.width,alto,0,0,base.width,base.height);
+        ctx.drawImage(bitmap,sx,sy,sw,sh,0,0,base.width,base.height);
 
         // Variante de alto contraste para nombres impresos con poca luz o fondo gris.
         const mejorada=document.createElement("canvas");
@@ -28211,6 +28218,51 @@ function preguntarContinuarLecturaNombres(cantidad) {
     });
 }
 
+function seleccionarAreaLecturaNombres(archivoEjemplo, cantidad) {
+    return new Promise(resolve => {
+        const fondo=document.createElement("div");
+        fondo.className="modal-fondo";
+        fondo.style.cssText="z-index:10050;display:flex;align-items:center;justify-content:center;padding:10px;overflow:auto";
+        const caja=document.createElement("div");
+        caja.className="modal-actividad";
+        caja.style.cssText="width:min(900px,96vw);max-width:900px;max-height:96vh;overflow:auto";
+        const cab=document.createElement("div");cab.className="modal-cabecera";
+        const titulo=document.createElement("h3");titulo.textContent="✂️ Seleccionar área del nombre";cab.appendChild(titulo);
+        const cuerpo=document.createElement("div");cuerpo.className="modal-cuerpo";
+        const ayuda=document.createElement("p");
+        ayuda.textContent="Arrastre sobre la imagen para marcar el rectángulo que contiene el nombre impreso. Se usará la misma zona en las "+cantidad+" fotografías sin QR.";
+        const marco=document.createElement("div");
+        marco.style.cssText="display:flex;justify-content:center;align-items:center;width:100%;max-height:62vh;overflow:hidden;background:#e5e7eb;border-radius:8px;padding:4px;box-sizing:border-box";
+        const envoltura=document.createElement("div");
+        envoltura.style.cssText="position:relative;display:inline-block;max-width:100%;max-height:60vh;touch-action:none;user-select:none;line-height:0";
+        const img=document.createElement("img");
+        img.alt="Vista previa de fotografía";
+        img.style.cssText="display:block;max-width:100%;max-height:60vh;width:auto;height:auto;object-fit:contain;pointer-events:none";
+        const capa=document.createElement("div");
+        capa.style.cssText="position:absolute;inset:0;cursor:crosshair;touch-action:none;line-height:normal";
+        const rect=document.createElement("div");
+        rect.style.cssText="position:absolute;display:none;border:2px solid #ef4444;background:rgba(239,68,68,.14);box-sizing:border-box;pointer-events:none";
+        capa.appendChild(rect);envoltura.append(img,capa);marco.appendChild(envoltura);
+        const estado=document.createElement("p");estado.style.cssText="font-size:13px;color:#475569;margin:8px 0";estado.textContent="Todavía no seleccionó un área.";
+        const acciones=document.createElement("div");acciones.className="modal-acciones";
+        const cancelar=document.createElement("button");cancelar.type="button";cancelar.className="boton-cancelar";cancelar.textContent="Cancelar lectura";
+        const aceptar=document.createElement("button");aceptar.type="button";aceptar.className="boton-crear-modal";aceptar.textContent="Leer todas con esta área";aceptar.disabled=true;
+        let inicio=null, seleccion=null, finalizado=false;
+        const url=URL.createObjectURL(archivoEjemplo);
+        const limpiar=valor=>{if(finalizado)return;finalizado=true;URL.revokeObjectURL(url);fondo.remove();resolve(valor)};
+        img.onload=()=>{capa.style.width=img.clientWidth+"px";capa.style.height=img.clientHeight+"px"};
+        img.src=url;
+        const punto=e=>{const r=capa.getBoundingClientRect();return{x:Math.max(0,Math.min(r.width,e.clientX-r.left)),y:Math.max(0,Math.min(r.height,e.clientY-r.top)),w:r.width,h:r.height}};
+        capa.addEventListener("pointerdown",e=>{if(!punto(e).w||!punto(e).h)return;e.preventDefault();capa.setPointerCapture?.(e.pointerId);inicio=punto(e);seleccion=null;rect.style.display="block";rect.style.left=inicio.x+"px";rect.style.top=inicio.y+"px";rect.style.width="0px";rect.style.height="0px";aceptar.disabled=true});
+        capa.addEventListener("pointermove",e=>{if(!inicio)return;const p=punto(e),x=Math.min(inicio.x,p.x),y=Math.min(inicio.y,p.y),w=Math.abs(p.x-inicio.x),h=Math.abs(p.y-inicio.y);rect.style.left=x+"px";rect.style.top=y+"px";rect.style.width=w+"px";rect.style.height=h+"px"});
+        const soltar=e=>{if(!inicio)return;const p=punto(e),x=Math.min(inicio.x,p.x),y=Math.min(inicio.y,p.y),w=Math.abs(p.x-inicio.x),h=Math.abs(p.y-inicio.y);inicio=null;if(w<12||h<8){rect.style.display="none";estado.textContent="Seleccione un rectángulo un poco más grande que incluya el nombre.";aceptar.disabled=true;return}seleccion={x:x/p.w,y:y/p.h,w:w/p.w,h:h/p.h};estado.textContent="Área seleccionada. Puede ajustar el rectángulo o comenzar la lectura.";aceptar.disabled=false};
+        capa.addEventListener("pointerup",soltar);capa.addEventListener("pointercancel",soltar);
+        cancelar.onclick=()=>limpiar(null);aceptar.onclick=()=>limpiar(seleccion);
+        acciones.append(cancelar,aceptar);cuerpo.append(ayuda,marco,estado,acciones);caja.append(cab,cuerpo);fondo.appendChild(caja);document.body.appendChild(fondo);
+        fondo.addEventListener("click",e=>{if(e.target===fondo)limpiar(null)});
+    });
+}
+
 document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("change", async function() {
     const archivos = Array.from(this.files || []);
     const actividad = actividadSeleccionadaGaleriaQR;
@@ -28267,12 +28319,15 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         await progreso.actualizar(archivos.length - 1, 2, "Búsqueda de QR terminada. Esperando su decisión sobre " + sinQR.length + " fotografías sin QR...", 65);
         const continuar = await preguntarContinuarLecturaNombres(sinQR.length);
         if (continuar) {
-            for (let j = 0; j < sinQR.length; j++) {
+            // Mostrar una vista previa para marcar una sola vez el área del nombre,
+            // que luego se aplicará a todas las fotografías sin QR.
+            const regionLectura = await seleccionarAreaLecturaNombres(sinQR[0].file, sinQR.length);
+            if (regionLectura) for (let j = 0; j < sinQR.length; j++) {
                 const { file, indice } = sinQR[j];
                 const base = 65 + (j / sinQR.length) * 35;
                 try {
                     await progreso.actualizar(indice, 2, "Leyendo el nombre impreso en " + file.name + "...", base + 3);
-                    const estudiante = await leerNombreEstudianteEnImagen(file);
+                    const estudiante = await leerNombreEstudianteEnImagen(file, regionLectura);
                     if (!estudiante) {
                         noDetectados.push(file.name + " (sin QR y nombre no identificado con seguridad)");
                         continue;
@@ -28296,6 +28351,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                 }
                 await progreso.actualizar(indice, 4, "Imagen procesada. Continuando con la siguiente fotografía...", 65 + ((j + 1) / sinQR.length) * 35);
             }
+            else sinQR.forEach(({file}) => noDetectados.push(file.name + " (lectura cancelada; no se seleccionó área)"));
         } else {
             sinQR.forEach(({file}) => noDetectados.push(file.name + " (sin QR; lectura del nombre no realizada)"));
         }
