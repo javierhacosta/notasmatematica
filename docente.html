@@ -5579,6 +5579,73 @@ table tbody tr:nth-child(10n+10) td {
  .estados-pendiente-iconos { gap:3px; }
  .estados-pendiente-iconos .boton-estado { width:27px; height:29px; font-size:15px; }
 }
+
+/* GALERÍA GLOBAL DE FOTOGRAFÍAS DESDE ESTADÍSTICAS */
+.modal-galeria-imagenes-estadistica {
+    width: 100%;
+    max-width: 1100px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 35px rgba(0,0,0,.3);
+}
+.galeria-imagenes-cuerpo {
+    padding: 14px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.galeria-imagenes-filtros {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(180px, 2fr);
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.galeria-imagenes-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+.galeria-imagen-item {
+    min-width: 0;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 9px;
+    background: #fafafa;
+}
+.galeria-imagen-item img {
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    background: #eee;
+    border-radius: 7px;
+    display: block;
+    cursor: pointer;
+}
+.galeria-imagen-detalles {
+    margin-top: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.galeria-imagen-detalles strong { color: #1557a6; }
+.galeria-imagen-vacio {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+}
+@media(max-width:600px) {
+    .modal-galeria-imagenes-estadistica { max-height: 95vh; }
+    .galeria-imagenes-filtros { grid-template-columns: 1fr; }
+    .galeria-imagenes-lista { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 8px; }
+    .galeria-imagen-item { padding: 6px; }
+    .galeria-imagen-item img { height: 135px; }
+}
+
 </style>
 
 <style>
@@ -7450,6 +7517,7 @@ Cancelar
         <button type="button" class="boton-estadistica" data-estadistica="rendimiento" onclick="mostrarEstadistica('rendimiento',this)">🎓 Rendimiento académico</button>
         <button type="button" class="boton-estadistica" data-estadistica="asistencia" onclick="mostrarEstadistica('asistencia',this)">🕒 Asistencia</button>
         <button type="button" class="boton-estadistica" data-estadistica="actividades" onclick="mostrarEstadistica('actividades',this)">📝 Actividades</button>
+        <button type="button" class="boton-estadistica" data-estadistica="imagenes" onclick="abrirModalGaleriaImagenesEstadistica()">🖼️ Fotografías e imágenes almacenadas</button>
         <button type="button" class="boton-estadistica boton-estadistica-ue" data-estadistica="ue-german" onclick="mostrarEstadisticaUE('U.E. German Busch I',this)">🏫 U.E. German Busch I</button>
         <button type="button" class="boton-estadistica boton-estadistica-ue" data-estadistica="ue-manuel" onclick="mostrarEstadisticaUE('U.E. Manuel Ascencio Padilla',this)">🏫 U.E. Manuel Ascencio Padilla</button>
       </div>
@@ -7460,6 +7528,33 @@ Cancelar
       <div id="estadisticaAsistencia" class="estadistica-panel"></div>
       <div id="estadisticaActividades" class="estadistica-panel"></div>
       <div id="estadisticaUE" class="estadistica-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     MODAL GALERÍA GLOBAL DE IMÁGENES DESDE ESTADÍSTICAS
+===================================================== -->
+<div id="modalGaleriaImagenesEstadistica" class="modal-fondo oculto"
+     onclick="cerrarModalGaleriaImagenesEstadistica(event)">
+  <div class="modal-galeria-imagenes-estadistica" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <h3>🖼️ Fotografías e imágenes almacenadas</h3>
+      <button type="button" class="boton-cerrar-modal" onclick="cerrarModalGaleriaImagenesEstadistica()">×</button>
+    </div>
+    <div class="galeria-imagenes-cuerpo">
+      <div class="galeria-imagenes-filtros">
+        <div>
+          <label for="filtroCursoGaleriaImagenes">Curso</label>
+          <select id="filtroCursoGaleriaImagenes"><option value="">Todos los cursos</option></select>
+        </div>
+        <div>
+          <label for="buscarGaleriaImagenes">Buscar estudiante, actividad o fecha</label>
+          <input id="buscarGaleriaImagenes" type="search" placeholder="Escriba para buscar...">
+        </div>
+      </div>
+      <div id="resumenGaleriaImagenes" class="galeria-imagen-vacio">Cargando imágenes almacenadas...</div>
+      <div id="listaGaleriaImagenes" class="galeria-imagenes-lista"></div>
     </div>
   </div>
 </div>
@@ -16910,6 +17005,123 @@ async function prepararEstadisticas() {
         estadisticasCacheTiempo = Date.now();
     } finally {
         estadisticasCargaEnCurso = null;
+    }
+}
+
+/* =====================================================
+   GALERÍA DE TODAS LAS IMÁGENES ALMACENADAS
+   Incluye fotografías de actividades y de asistencia.
+===================================================== */
+let registrosGaleriaImagenesEstadistica = [];
+async function obtenerTodosRegistrosGaleriaImagenes(tabla, columnas, ordenarPor) {
+    const salida = [];
+    const pagina = 1000;
+    for (let desde = 0; ; desde += pagina) {
+        let consulta = supabaseClient.from(tabla).select(columnas).order(ordenarPor, { ascending: true }).range(desde, desde + pagina - 1);
+        const { data, error } = await consulta;
+        if (error) throw error;
+        const bloque = data || [];
+        salida.push(...bloque);
+        if (bloque.length < pagina) break;
+    }
+    return salida;
+}
+function cerrarModalGaleriaImagenesEstadistica(event) {
+    const modal = document.getElementById("modalGaleriaImagenesEstadistica");
+    if (!modal || (event && event.target !== modal)) return;
+    modal.classList.add("oculto");
+}
+function renderizarGaleriaImagenesEstadistica() {
+    const lista = document.getElementById("listaGaleriaImagenes");
+    const resumen = document.getElementById("resumenGaleriaImagenes");
+    const filtroCurso = document.getElementById("filtroCursoGaleriaImagenes")?.value || "";
+    const buscar = (document.getElementById("buscarGaleriaImagenes")?.value || "").trim().toLocaleLowerCase();
+    if (!lista || !resumen) return;
+    const datos = registrosGaleriaImagenesEstadistica.filter(x =>
+        (!filtroCurso || String(x.curso || "") === filtroCurso) &&
+        (!buscar || [x.curso, x.actividad, x.fecha, x.estudiante, x.nombreArchivo, x.tipo]
+            .some(v => String(v || "").toLocaleLowerCase().includes(buscar)))
+    );
+    resumen.textContent = datos.length
+        ? `Imágenes mostradas: ${datos.length} de ${registrosGaleriaImagenesEstadistica.length}`
+        : "No se encontraron imágenes para los filtros seleccionados.";
+    resumen.classList.toggle("galeria-imagen-vacio", !datos.length);
+    lista.innerHTML = datos.map(x => `
+      <article class="galeria-imagen-item">
+        <img src="${escEstadistica(x.url)}" alt="Imagen de ${escEstadistica(x.estudiante)}"
+             loading="lazy" onclick="window.open(this.src,'_blank','noopener')" />
+        <div class="galeria-imagen-detalles">
+          <div><strong>Curso:</strong> ${escEstadistica(x.curso || "No disponible")}</div>
+          <div><strong>Estudiante:</strong> ${escEstadistica(x.estudiante || "No identificado")}</div>
+          <div><strong>${x.tipo === "Actividad" ? "Actividad" : "Fecha"}:</strong> ${escEstadistica(x.tipo === "Actividad" ? (x.actividad || "Sin actividad") : (x.fecha || "Sin fecha"))}</div>
+          ${x.tipo === "Actividad" && x.fecha ? `<div><strong>Fecha:</strong> ${escEstadistica(x.fecha)}</div>` : ""}
+          <div><strong>Tipo:</strong> ${escEstadistica(x.tipo)}</div>
+          <div><strong>Archivo:</strong> ${escEstadistica(x.nombreArchivo || "Imagen")}</div>
+        </div>
+      </article>`).join("");
+}
+async function abrirModalGaleriaImagenesEstadistica() {
+    const modal = document.getElementById("modalGaleriaImagenesEstadistica");
+    const resumen = document.getElementById("resumenGaleriaImagenes");
+    const lista = document.getElementById("listaGaleriaImagenes");
+    if (!modal || !resumen || !lista) return;
+    modal.classList.remove("oculto");
+    resumen.textContent = "⏳ Buscando fotografías e imágenes almacenadas...";
+    lista.innerHTML = "";
+    try {
+        if (!supabaseClient) throw new Error("No hay conexión con la base de datos.");
+        const [fotosActividad, fotosAsistencia, alumnos, actividadesTodas] = await Promise.all([
+            obtenerTodosRegistrosGaleriaImagenes("fotos_actividades", "id,actividad_id,estudiante_id,ruta,nombre_archivo,created_at", "id"),
+            obtenerTodosRegistrosGaleriaImagenes("fotos_asistencia", "id,curso_id,fecha,estudiante_id,ruta,nombre_archivo", "id"),
+            obtenerTodosRegistrosGaleriaImagenes("matematica", "id,nombre,num_lista,curso", "id"),
+            obtenerTodosRegistrosGaleriaImagenes("actividades", "id,curso,nombre,fecha", "id")
+        ]);
+        const mapaAlumnos = new Map(alumnos.map(e => [String(e.id), e]));
+        const mapaActividades = new Map(actividadesTodas.map(a => [String(a.id), a]));
+        const registros = [];
+        for (const f of fotosActividad) {
+            const e = mapaAlumnos.get(String(f.estudiante_id));
+            const a = mapaActividades.get(String(f.actividad_id));
+            if (!f.ruta) continue;
+            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 3600);
+            if (firmado.error || !firmado.data?.signedUrl) continue;
+            registros.push({
+                tipo: "Actividad", curso: a?.curso || e?.curso || "",
+                actividad: a?.nombre || `Actividad ${f.actividad_id}`,
+                fecha: a?.fecha || (f.created_at ? String(f.created_at).slice(0,10) : ""),
+                estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
+                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url: firmado.data.signedUrl
+            });
+        }
+        for (const f of fotosAsistencia) {
+            const e = mapaAlumnos.get(String(f.estudiante_id));
+            if (!f.ruta) continue;
+            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 3600);
+            if (firmado.error || !firmado.data?.signedUrl) continue;
+            registros.push({
+                tipo: "Asistencia", curso: String(f.curso_id || e?.curso || ""),
+                actividad: "", fecha: f.fecha || "",
+                estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
+                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url: firmado.data.signedUrl
+            });
+        }
+        registros.sort((a,b) => String(b.fecha).localeCompare(String(a.fecha)) || a.curso.localeCompare(b.curso));
+        registrosGaleriaImagenesEstadistica = registros;
+        const filtro = document.getElementById("filtroCursoGaleriaImagenes");
+        const cursoAnterior = filtro?.value || "";
+        if (filtro) {
+            const cursos = [...new Set(registros.map(x => x.curso).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+            filtro.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c => `<option value="${escEstadistica(c)}">${escEstadistica(c)}</option>`).join("");
+            if (cursos.includes(cursoAnterior)) filtro.value = cursoAnterior;
+            filtro.onchange = renderizarGaleriaImagenesEstadistica;
+        }
+        const buscador = document.getElementById("buscarGaleriaImagenes");
+        if (buscador) buscador.oninput = renderizarGaleriaImagenesEstadistica;
+        renderizarGaleriaImagenesEstadistica();
+        if (!registros.length) resumen.textContent = "No se encontraron imágenes accesibles. Compruebe que existan registros en fotos_actividades o fotos_asistencia y que el bucket permita generar enlaces.";
+    } catch (error) {
+        console.error("Error al cargar galería de imágenes:", error);
+        resumen.textContent = "No se pudieron cargar las imágenes: " + (error.message || error);
     }
 }
 
@@ -28204,7 +28416,6 @@ function abrirSelectorFotosActividadQR(actividad) {
     input.click();
 }
 function mostrarProgresoGaleriaActividadQR(actividad, total) {
-    let totalActual = Math.max(1, Number(total) || 1);
     const anterior = document.getElementById("progresoGaleriaActividadQR");
     if (anterior) anterior.remove();
     const fondo = document.createElement("div");
@@ -28243,25 +28454,14 @@ function mostrarProgresoGaleriaActividadQR(actividad, total) {
     cuerpo.append(actividadTxt, contador, barraFondo, porcentaje, detalle, pasos);
     caja.append(cab, cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
     return { actualizar(indice, etapa, mensaje, pct) {
-        const n = Math.min(totalActual, indice + 1);
-        contador.textContent = "Imagen " + n + " de " + totalActual;
+        const n = Math.min(total, indice + 1);
+        contador.textContent = "Imagen " + n + " de " + total;
         detalle.textContent = mensaje;
         barra.style.width = Math.max(0, Math.min(100, pct)) + "%";
-        porcentaje.textContent = Math.max(0, Math.min(100, Number(pct) || 0).toFixed(1)) + "%";
+        porcentaje.textContent = Math.round(Math.max(0, Math.min(100, pct))) + "%";
         Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
         return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-    }, iniciarAvanceEtapa(indice, etapa, mensaje, pctInicial, pctMaximo) {
-        // No simular avance por tiempo: mantener el porcentaje hasta que termine
-        // una operación real y el proceso principal informe el siguiente hito.
-        const pctActual = Math.max(0, Math.min(100, Number(pctInicial) || 0));
-        const n = Math.min(totalActual, indice + 1);
-        contador.textContent = "Imagen " + n + " de " + totalActual;
-        detalle.textContent = mensaje;
-        barra.style.width = pctActual + "%";
-        porcentaje.textContent = pctActual.toFixed(1) + "%";
-        Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
-        return () => {};
-    }, setTotal(n) { totalActual = Math.max(1, Number(n) || 1); contador.textContent = "Preparando " + totalActual + " imágenes..."; }, cerrar() { fondo.remove(); } };
+    }, cerrar() { fondo.remove(); } };
 }
 
 function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores, conteoCodigos) {
@@ -28449,16 +28649,11 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     if (!actividad || !seleccionados.length) return;
     const archivos = [];
     const errores = [];
-    // Mostrar la ventana inmediatamente, incluso mientras se convierten los PDF.
-    const progreso = mostrarProgresoGaleriaActividadQR(actividad, seleccionados.length);
-    for (let i = 0; i < seleccionados.length; i++) {
-        const archivo = seleccionados[i];
-        await progreso.actualizar(i, 0, "Preparando archivo " + (i + 1) + " de " + seleccionados.length + ": " + archivo.name, ((i + 1) / seleccionados.length) * 15);
+    for (const archivo of seleccionados) {
         if (archivo.type === "application/pdf" || /\.pdf$/i.test(archivo.name)) {
             try {
                 const paginas = await convertirPDFEnImagenesActividad(archivo);
                 archivos.push(...paginas);
-                await progreso.actualizar(i, 0, "PDF convertido: " + archivo.name + " (" + paginas.length + " páginas).", ((i + 1) / seleccionados.length) * 15);
             } catch (err) {
                 errores.push(archivo.name + ": " + (err?.message || String(err)));
             }
@@ -28469,12 +28664,11 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         }
     }
     if (!archivos.length) {
-        progreso.cerrar();
         alert("No se pudieron preparar imágenes para procesar." + (errores.length ? "\\n\\n" + errores.join("\\n") : ""));
         return;
     }
-    progreso.setTotal(archivos.length);
     const detectados = [], noDetectados = [];
+    const progreso = mostrarProgresoGaleriaActividadQR(actividad, archivos.length);
     const sinQR = [];
     const conteoCodigos = { qr: 0, dataMatrix: 0 };
 
@@ -28485,16 +28679,8 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         const base = (indice / archivos.length) * 65;
         try {
             await progreso.actualizar(indice, 0, "Preparando imagen: " + file.name, base + 2);
-            const detenerAvanceLectura = progreso.iniciarAvanceEtapa(
-                indice, 1, "Leyendo imagen y buscando QR o Data Matrix: " + file.name + "...",
-                base + 8, Math.min(base + 11.9, 64.9)
-            );
-            let codigoLeido;
-            try {
-                codigoLeido = await detectarCodigoEnImagen(file);
-            } finally {
-                detenerAvanceLectura();
-            }
+            await progreso.actualizar(indice, 1, "Buscando QR o Data Matrix en " + file.name + "...", base + 8);
+            const codigoLeido = await detectarCodigoEnImagen(file);
             if (!codigoLeido) {
                 sinQR.push({ file, indice });
                 await progreso.actualizar(indice, 1, "No se encontró QR ni Data Matrix válido en " + file.name + ". Se revisará después de terminar la búsqueda de códigos.", base + 12);
