@@ -28251,25 +28251,16 @@ function mostrarProgresoGaleriaActividadQR(actividad, total) {
         Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
         return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
     }, iniciarAvanceEtapa(indice, etapa, mensaje, pctInicial, pctMaximo) {
-        let pctActual = Math.max(0, Math.min(100, Number(pctInicial) || 0));
-        const limite = Math.max(pctActual, Math.min(100, Number(pctMaximo) || pctActual));
-        let activo = true;
-        const pintar = () => {
-            if (!activo) return;
-            const n = Math.min(totalActual, indice + 1);
-            contador.textContent = "Imagen " + n + " de " + totalActual;
-            detalle.textContent = mensaje;
-            barra.style.width = pctActual + "%";
-            porcentaje.textContent = pctActual.toFixed(1) + "%";
-            Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
-        };
-        pintar();
-        const temporizador = setInterval(() => {
-            if (!activo) return;
-            pctActual = Math.min(limite, pctActual + 0.1);
-            pintar();
-        }, 250);
-        return () => { activo = false; clearInterval(temporizador); };
+        // No simular avance por tiempo: mantener el porcentaje hasta que termine
+        // una operación real y el proceso principal informe el siguiente hito.
+        const pctActual = Math.max(0, Math.min(100, Number(pctInicial) || 0));
+        const n = Math.min(totalActual, indice + 1);
+        contador.textContent = "Imagen " + n + " de " + totalActual;
+        detalle.textContent = mensaje;
+        barra.style.width = pctActual + "%";
+        porcentaje.textContent = pctActual.toFixed(1) + "%";
+        Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
+        return () => {};
     }, setTotal(n) { totalActual = Math.max(1, Number(n) || 1); contador.textContent = "Preparando " + totalActual + " imágenes..."; }, cerrar() { fondo.remove(); } };
 }
 
