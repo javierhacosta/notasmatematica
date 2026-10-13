@@ -14459,10 +14459,48 @@ async function leerNombreEstudianteEnImagen(file, regionLectura=null){
     if(candidatos.length>1 && (candidatos[0].score-candidatos[1].score<.20 || candidatos[0].coincidencias===candidatos[1].coincidencias))return null;
     return candidatos[0].e;
 }
+async function cargarZXingDataMatrixActividad(){
+    if (window.ZXing) return window.ZXing;
+    if (window.__zxingDataMatrixActividadPromise) return window.__zxingDataMatrixActividadPromise;
+    window.__zxingDataMatrixActividadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
+        script.onload = () => window.ZXing ? resolve(window.ZXing) : reject(new Error("No se pudo iniciar el lector Data Matrix."));
+        script.onerror = () => reject(new Error("No se pudo cargar el lector Data Matrix. Verifique la conexión a Internet."));
+        document.head.appendChild(script);
+    });
+    return window.__zxingDataMatrixActividadPromise;
+}
+
+function extraerIdentificadorCursoListaActividad(texto){
+    const valor = String(texto || "").trim().toUpperCase();
+    // Ejemplos aceptados: 2A5, 2A-5, 2A_05 o 2A 5.
+    const m = valor.match(/^\s*([0-9]+\s*[A-Z]+)\s*[-_ ]?\s*0*(\d+)\s*$/);
+    if (!m) return null;
+    return { curso: m[1].replace(/\s+/g, ""), num_lista: Number(m[2]) };
+}
+
+async function decodificarCodigoZXingActividad(canvas){
+    const ZXing = await cargarZXingDataMatrixActividad();
+    const ctx = canvas.getContext("2d", {willReadFrequently:true});
+    const imagen = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const luminance = new ZXing.RGBLuminanceSource(imagen.data, imagen.width, imagen.height);
+    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
+    const lector = new ZXing.MultiFormatReader();
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.QR_CODE]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+    lector.setHints(hints);
+    try { return lector.decode(bitmap); }
+    finally { lector.reset?.(); }
+}
+
 async function detectarCodigoEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
-        // Identificar tanto el contenido como el tipo de código leído.
+        const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
+        const escalas=[1,Math.min(1,2600/Math.max(bitmap.width,bitmap.height)),Math.min(1,1600/Math.max(bitmap.width,bitmap.height))];
+        // Primero usar el detector nativo cuando admite ambos formatos.
         if("BarcodeDetector" in window){
             try{
                 const formatosDisponibles = await BarcodeDetector.getSupportedFormats();
@@ -14471,23 +14509,35 @@ async function detectarCodigoEnImagen(file){
                     const detector=new BarcodeDetector({formats:formatos});
                     const encontrados=await detector.detect(bitmap);
                     for(const codigo of encontrados || []){
-                        const ci=extraerCIDesdeQR(String(codigo.rawValue||"").trim());
-                        if(ci)return {ci, tipo: codigo.format === "data_matrix" ? "Data Matrix" : "QR"};
+                        const raw=String(codigo.rawValue||"").trim();
+                        const ci=extraerCIDesdeQR(raw);
+                        const identificador=extraerIdentificadorCursoListaActividad(raw);
+                        if(ci || identificador) return {ci, identificador, raw, tipo: codigo.format === "data_matrix" ? "Data Matrix" : "QR"};
                     }
                 }
-            }catch(e){console.warn("BarcodeDetector no pudo leer QR/Data Matrix; se probará jsQR para QR.",e)}
+            }catch(e){console.warn("BarcodeDetector no pudo leer el código; se probarán lectores alternativos.",e)}
         }
-        // jsQR se conserva como alternativa compatible para códigos QR.
+        // jsQR como alternativa especializada para QR.
         if(typeof jsQR!=="function"){try{await cargarJSQR()}catch(_){}}
-        if(typeof jsQR!=="function")return null;
-        const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
-        const escalas=[1,Math.min(1,2600/Math.max(bitmap.width,bitmap.height)),Math.min(1,1600/Math.max(bitmap.width,bitmap.height))];
-        for(const escala of [...new Set(escalas)]){
-            const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
-            c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
-            const im=ctx.getImageData(0,0,w,h),r=jsQR(im.data,im.width,im.height,{inversionAttempts:"attemptBoth"});
-            if(r?.data){const ci=extraerCIDesdeQR(String(r.data).trim());if(ci)return {ci,tipo:"QR"};}
+        if(typeof jsQR==="function"){
+            for(const escala of [...new Set(escalas)]){
+                const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
+                c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
+                const im=ctx.getImageData(0,0,w,h),r=jsQR(im.data,im.width,im.height,{inversionAttempts:"attemptBoth"});
+                if(r?.data){const raw=String(r.data).trim(),ci=extraerCIDesdeQR(raw),identificador=extraerIdentificadorCursoListaActividad(raw);if(ci||identificador)return {ci,identificador,raw,tipo:"QR"};}
+            }
         }
+        // ZXing añade lectura real de Data Matrix en navegadores sin BarcodeDetector compatible.
+        try{
+            for(const escala of [...new Set(escalas)]){
+                const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
+                c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
+                const resultado=await decodificarCodigoZXingActividad(c);
+                const raw=String(resultado?.getText?.()||"").trim();
+                const ci=extraerCIDesdeQR(raw),identificador=extraerIdentificadorCursoListaActividad(raw);
+                if(ci||identificador)return {ci,identificador,raw,tipo:resultado.getBarcodeFormat?.()===window.ZXing.BarcodeFormat.DATA_MATRIX?"Data Matrix":"QR"};
+            }
+        }catch(e){console.warn("No se pudo decodificar Data Matrix/QR con ZXing.",e)}
         return null;
     }finally{bitmap.close?.()}
 }
@@ -28343,19 +28393,36 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
             }
             const ci = codigoLeido.ci;
             const tipoCodigo = codigoLeido.tipo;
+            const identificador = codigoLeido.identificador || extraerIdentificadorCursoListaActividad(codigoLeido.raw);
             if (tipoCodigo === "Data Matrix") conteoCodigos.dataMatrix++;
             else conteoCodigos.qr++;
-            await progreso.actualizar(indice, 3, tipoCodigo + " leído (" + ci + "). Buscando al estudiante registrado...", base + 14);
-            let estudiante = buscarEstudianteQRLocal(ci);
-            if (!estudiante) {
+            await progreso.actualizar(indice, 3, tipoCodigo + " leído (" + (ci || codigoLeido.raw || (identificador ? identificador.curso + identificador.num_lista : "sin contenido reconocido")) + "). Buscando al estudiante registrado...", base + 14);
+            let estudiante = ci ? buscarEstudianteQRLocal(ci) : null;
+            if (!estudiante && ci) {
                 const r = await supabaseClient.from("matematica")
                     .select("id,ci,nombre,paterno,materno,nombres,num_lista,curso")
                     .eq("ci", ci).maybeSingle();
                 if (r.error) throw r.error;
                 estudiante = r.data;
             }
+            // También admite códigos cuyo contenido identifica curso + número de lista, por ejemplo 2A5.
+            if (!estudiante && identificador) {
+                const cursoCodigo = identificador.curso.replace(/\s+/g, "").toUpperCase();
+                const candidatos = (estudiantes || []).filter(e =>
+                    String(e.curso || "").replace(/\s+/g, "").toUpperCase() === cursoCodigo &&
+                    Number(e.num_lista) === identificador.num_lista
+                );
+                if (candidatos.length === 1) estudiante = candidatos[0];
+                else if (!candidatos.length) {
+                    const r = await supabaseClient.from("matematica")
+                        .select("id,ci,nombre,paterno,materno,nombres,num_lista,curso")
+                        .eq("curso", identificador.curso).eq("num_lista", identificador.num_lista).maybeSingle();
+                    if (r.error) throw r.error;
+                    estudiante = r.data;
+                }
+            }
             if (!estudiante || String(estudiante.curso) !== String(cursoSeleccionado)) {
-                noDetectados.push(file.name + (estudiante ? " (" + tipoCodigo + ": pertenece a otro curso)" : " (" + tipoCodigo + " sin estudiante registrado)"));
+                noDetectados.push(file.name + (estudiante ? " (" + tipoCodigo + ": pertenece a otro curso)" : " (" + tipoCodigo + " sin estudiante registrado para el contenido " + String(codigoLeido.raw || ci || "") + ")"));
                 continue;
             }
             await progreso.actualizar(indice, 4, tipoCodigo + " confirmado. Guardando la fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 18);
