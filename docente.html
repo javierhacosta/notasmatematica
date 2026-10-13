@@ -8064,6 +8064,30 @@ function buscarEstudianteQRLocal(ci) {
     return indiceEstudiantesQR.get(clave) || null;
 }
 
+// En actividades también se acepta el código CURSO + número de lista,
+// por ejemplo 4A7 = curso 4A, número de lista 7. La búsqueda se hace
+// sobre la lista ya cargada para evitar consultas innecesarias.
+function buscarEstudiantePorCodigoActividad(texto) {
+    const valor = String(texto || "").trim();
+    if (!valor) return null;
+
+    const porCI = buscarEstudianteQRLocal(extraerCIDesdeQR(valor));
+    if (porCI) return porCI;
+
+    // El curso puede contener números y letras (4A, 2B, 5A); el sufijo es la lista.
+    const coincidencia = valor.match(/^([0-9]+\s*[A-Za-zÁÉÍÓÚÑáéíóúñ]+)\s*[-_ ]?\s*(\d+)$/);
+    if (!coincidencia) return null;
+
+    const cursoCodigo = coincidencia[1].replace(/\s+/g, "").toUpperCase();
+    const numeroLista = String(parseInt(coincidencia[2], 10));
+    const lista = Array.isArray(estudiantes) ? estudiantes : [];
+
+    return lista.find(e =>
+        String(e.curso || "").replace(/\s+/g, "").toUpperCase() === cursoCodigo &&
+        String(parseInt(String(e.num_lista ?? "").trim(), 10)) === numeroLista
+    ) || null;
+}
+
 async function cargarEstudiantes(esSegundoPlano = false) {
 
     const {
@@ -14468,8 +14492,10 @@ async function detectarCIEnImagen(file){
                 const detector=new BarcodeDetector({formats:["qr_code"]});
                 const encontrados=await detector.detect(bitmap);
                 if(encontrados?.length){
-                    const ci=extraerCIDesdeQR(encontrados[0].rawValue||"");
+                    const textoLeido=String(encontrados[0].rawValue||"").trim();
+                    const ci=extraerCIDesdeQR(textoLeido);
                     if(ci)return ci;
+                    if(/^\d+\s*[A-Za-zÁÉÍÓÚÑáéíóúñ]+\s*[-_ ]?\s*\d+$/.test(textoLeido))return textoLeido;
                 }
             }catch(e){console.warn("BarcodeDetector no pudo leer la foto; se probará jsQR.",e)}
         }
@@ -14482,7 +14508,7 @@ async function detectarCIEnImagen(file){
             const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
             c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
             const im=ctx.getImageData(0,0,w,h),r=jsQR(im.data,im.width,im.height,{inversionAttempts:"attemptBoth"});
-            if(r?.data){const ci=extraerCIDesdeQR(String(r.data).trim());if(ci)return ci;}
+            if(r?.data){const textoLeido=String(r.data).trim();const ci=extraerCIDesdeQR(textoLeido);if(ci)return ci;if(/^\d+\s*[A-Za-zÁÉÍÓÚÑáéíóúñ]+\s*[-_ ]?\s*\d+$/.test(textoLeido))return textoLeido;}
         }
         return null;
     }finally{bitmap.close?.()}
@@ -14634,15 +14660,15 @@ async function procesarFotoActividadSeleccionada(file,a,m,f){
             existente=f;
         }else{
             mostrarMensaje("🔎 Buscando el QR del estudiante en la foto...");
-            const ci=await detectarCIEnImagen(file);
-            if(!ci)throw new Error("No se encontró un código QR de estudiante en la fotografía.");
-            e=buscarEstudianteQRLocal(ci);
-            if(!e){
-                const r=await supabaseClient.from("matematica").select("id,ci,nombre,paterno,materno,nombres,num_lista,curso").eq("ci",ci).maybeSingle();
+            const codigoLeido=await detectarCIEnImagen(file);
+            if(!codigoLeido)throw new Error("No se encontró un código QR de estudiante en la fotografía.");
+            e=buscarEstudiantePorCodigoActividad(codigoLeido);
+            if(!e && /^\d+$/.test(codigoLeido)){
+                const r=await supabaseClient.from("matematica").select("id,ci,nombre,paterno,materno,nombres,num_lista,curso").eq("ci",codigoLeido).maybeSingle();
                 if(r.error)throw r.error;
                 e=r.data;
             }
-            if(!e)throw new Error("No se encontró ningún estudiante con el QR detectado.");
+            if(!e)throw new Error("No se encontró ningún estudiante con el código QR detectado (CI o curso+número de lista).");
             if(e.curso!==cursoSeleccionado)throw new Error(`El estudiante pertenece al curso ${e.curso} y no al curso seleccionado ${cursoSeleccionado}.`);
             existente=obtenerFotoActividad(a.id,e.id)||f||null;
             const nombreEstudiante=obtenerNombreCompletoFotoActividad(e)||"el estudiante";
@@ -20580,10 +20606,12 @@ async function solicitarLecturaQR() {
             const textoQR =
             codigos[0].rawValue || "";
 
-            const ci =
-            extraerCIDesdeQR(
-                textoQR
-            );
+            const estudiantePorCodigoActividad = actividadQRSeleccionada
+                ? buscarEstudiantePorCodigoActividad(textoQR)
+                : null;
+            const ci = estudiantePorCodigoActividad
+                ? String(estudiantePorCodigoActividad.ci || textoQR).trim()
+                : extraerCIDesdeQR(textoQR);
 
             if (!ci) {
 
