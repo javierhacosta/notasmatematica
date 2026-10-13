@@ -5646,6 +5646,8 @@ table tbody tr:nth-child(10n+10) td {
     .galeria-imagen-item img { height: 135px; }
 }
 
+
+.boton-ir-galeria-imagen{display:block;width:100%;margin-top:10px;padding:10px 14px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:15px;font-weight:800;cursor:pointer}.boton-ir-galeria-imagen:active{transform:scale(.98)}
 </style>
 
 <style>
@@ -17057,6 +17059,7 @@ function renderizarGaleriaImagenesEstadistica() {
           ${x.tipo === "Actividad" && x.fecha ? `<div><strong>Fecha:</strong> ${escEstadistica(x.fecha)}</div>` : ""}
           <div><strong>Tipo:</strong> ${escEstadistica(x.tipo)}</div>
           <div><strong>Archivo:</strong> ${escEstadistica(x.nombreArchivo || "Imagen")}</div>
+          <button type="button" class="boton-ir-galeria-imagen" onclick="irDesdeGaleriaImagenEstadistica('${escEstadistica(x.tipo)}','${escEstadistica(x.actividadId || "")}','${escEstadistica(x.estudianteId || "")}','${escEstadistica(x.curso || "")}','${escEstadistica(x.fecha || "")}')">Ir</button>
         </div>
       </article>`).join("");
 }
@@ -17087,6 +17090,7 @@ async function abrirModalGaleriaImagenesEstadistica() {
             if (firmado.error || !firmado.data?.signedUrl) continue;
             registros.push({
                 tipo: "Actividad", curso: a?.curso || e?.curso || "",
+                actividadId: f.actividad_id, estudianteId: f.estudiante_id,
                 actividad: a?.nombre || `Actividad ${f.actividad_id}`,
                 fecha: a?.fecha || (f.created_at ? String(f.created_at).slice(0,10) : ""),
                 estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
@@ -17100,7 +17104,7 @@ async function abrirModalGaleriaImagenesEstadistica() {
             if (firmado.error || !firmado.data?.signedUrl) continue;
             registros.push({
                 tipo: "Asistencia", curso: String(f.curso_id || e?.curso || ""),
-                actividad: "", fecha: f.fecha || "",
+                actividadId: "", estudianteId: f.estudiante_id, fecha: f.fecha || "",
                 estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
                 nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url: firmado.data.signedUrl
             });
@@ -17123,6 +17127,77 @@ async function abrirModalGaleriaImagenesEstadistica() {
         console.error("Error al cargar galería de imágenes:", error);
         resumen.textContent = "No se pudieron cargar las imágenes: " + (error.message || error);
     }
+}
+
+/* Navegación directa desde la galería a la actividad/asistencia y estudiante. */
+function mostrarNombreDestinoGaleria(nombre) {
+    let aviso = document.getElementById("avisoNombreDestinoGaleria");
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "avisoNombreDestinoGaleria";
+        aviso.style.cssText = "position:fixed;z-index:100000;left:50%;top:50%;transform:translate(-50%,-50%);max-width:90vw;padding:18px 26px;background:#17365d;color:#fff;border:3px solid #fff;border-radius:14px;box-shadow:0 8px 35px #0008;text-align:center;font-size:22px;font-weight:800;pointer-events:none;";
+        document.body.appendChild(aviso);
+    }
+    aviso.textContent = nombre || "Estudiante";
+    aviso.style.display = "block";
+    clearTimeout(window._temporizadorAvisoNombreDestinoGaleria);
+    window._temporizadorAvisoNombreDestinoGaleria = setTimeout(() => { aviso.style.display = "none"; }, 3500);
+}
+async function irDesdeGaleriaImagenEstadistica(tipo, actividadId, estudianteId, curso, fecha) {
+    cerrarModalGaleriaImagenesEstadistica();
+    const nombre = registrosGaleriaImagenesEstadistica.find(x => String(x.estudianteId) === String(estudianteId) && String(x.actividadId || "") === String(actividadId || "") && x.tipo === tipo)?.estudiante || "Estudiante";
+    try {
+        if (tipo === "Actividad") {
+            // Mostrar el área de actividades y expandir exactamente la actividad asociada.
+            const boton = document.querySelector('[onclick*="mostrarActividades()"]');
+            if (boton) boton.click();
+            else if (typeof mostrarActividades === "function") mostrarActividades();
+            await new Promise(resolve => setTimeout(resolve, 250));
+            const bloque = document.querySelector(`.actividad[data-actividad-id="${CSS.escape(String(actividadId))}"]`);
+            if (bloque) {
+                const categoria = bloque.closest(".contenido-categoria");
+                const encabezado = categoria?.parentElement?.querySelector(".titulo-categoria");
+                const icono = encabezado?.querySelector(".icono-expandir-categoria");
+                if (categoria && !categoria.classList.contains("abierta")) {
+                    categoria.classList.add("abierta");
+                    if (icono) icono.textContent = "−";
+                }
+                bloque.style.display = "";
+                bloque.scrollIntoView({behavior:"smooth",block:"center"});
+                bloque.style.outline = "3px solid #1976d2";
+                setTimeout(() => bloque.style.outline = "", 3500);
+                await new Promise(resolve => setTimeout(resolve, 350));
+                const filas = [...bloque.querySelectorAll("tr")];
+                const fila = filas.find(r => r.textContent.toLocaleLowerCase().includes(nombre.toLocaleLowerCase()) || r.textContent.includes(String(estudianteId)));
+                if (fila) {
+                    fila.scrollIntoView({behavior:"smooth",block:"center"});
+                    fila.style.outline = "3px solid #ff9800";
+                    setTimeout(() => fila.style.outline = "", 4000);
+                }
+            }
+        } else {
+            if (typeof mostrarPanelAsistencia === "function") mostrarPanelAsistencia();
+            // Seleccionar curso si hay un selector visible que tenga ese curso como opción.
+            for (const sel of document.querySelectorAll("select")) {
+                const opt = [...sel.options].find(o => String(o.value) === String(curso) || o.textContent.trim() === String(curso));
+                if (opt && sel.id !== "filtroCursoGaleriaImagenes") {
+                    sel.value = opt.value;
+                    sel.dispatchEvent(new Event("change", {bubbles:true}));
+                }
+            }
+            const campoFecha = document.getElementById("fechaAsistencia");
+            if (campoFecha && fecha) campoFecha.value = String(fecha).slice(0,10);
+            await new Promise(resolve => setTimeout(resolve, 450));
+            const filas = [...document.querySelectorAll(".tabla-asistencia tr, #panelAsistencia tr, table tr")];
+            const fila = filas.find(r => r.textContent.toLocaleLowerCase().includes(nombre.toLocaleLowerCase()));
+            if (fila) {
+                fila.scrollIntoView({behavior:"smooth",block:"center"});
+                fila.style.outline = "3px solid #ff9800";
+                setTimeout(() => fila.style.outline = "", 4000);
+            }
+        }
+    } catch (e) { console.warn("No se pudo ubicar automáticamente el registro desde la galería:", e); }
+    mostrarNombreDestinoGaleria(nombre);
 }
 
 function mostrarEstadistica(tipo, boton) {
