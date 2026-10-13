@@ -24401,8 +24401,11 @@ function actualizarCalculoDetalleEstudianteQR() {
 function renderFotosAsistenciaDetalleQR(fecha, estudianteId) {
     const fotos = detalleEstudianteQRActual?.__fotosAsistenciaDetalleQR?.[String(fecha || "")] || [];
     const editando = !!detalleEdicionQRActiva;
-    if (!fotos.length) return editando ? `<button type="button" class="detalle-foto-agregar" title="Añadir foto de asistencia" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}')">+</button>` : '<span class="detalle-fotos-vacio">—</span>';
-    return `<div class="detalle-fotos-contenedor">${fotos.map(f => {
+    const claseEdicion = editando ? " detalle-edicion-fotos" : "";
+    if (!fotos.length) return editando
+        ? `<div class="detalle-fotos-contenedor${claseEdicion}"><button type="button" class="detalle-foto-agregar" title="Añadir foto de asistencia" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}')">+</button></div>`
+        : '<span class="detalle-fotos-vacio">—</span>';
+    return `<div class="detalle-fotos-contenedor${claseEdicion}">${fotos.map(f => {
         const c = encodeURIComponent(JSON.stringify(f));
         return `<div class="detalle-foto-item"><button type="button" class="detalle-foto-preview" title="Abrir foto" onclick="abrirFotoAsistenciaDetalleQR('${c}')"><img class="detalle-foto-preview-img" data-ruta-foto-asistencia="${escapeHTML(f.ruta || '')}" alt="Foto de asistencia"></button>
         ${editando ? `<div class="detalle-foto-acciones"><button type="button" class="detalle-foto-accion" title="Reemplazar foto" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}',${Number(f.id)})">📸</button><button type="button" class="detalle-foto-accion detalle-foto-borrar" title="Borrar foto" onclick="borrarFotoAsistenciaDetalleQR('${c}')">🗑️</button></div>` : ''}</div>`;
@@ -24659,6 +24662,18 @@ function activarEdicionDetalleEstudianteQR() {
     });
 
     detalleEdicionQRActiva = true;
+
+    // Actualiza también la columna Foto de la tabla de asistencia al entrar en edición.
+    document.querySelectorAll("#detalleEstudianteQR tr[data-fecha-asistencia-detalle]").forEach(fila => {
+        const celdaFotos = fila.querySelector(".detalle-celda-fotos-asistencia");
+        if (celdaFotos) {
+            celdaFotos.innerHTML = renderFotosAsistenciaDetalleQR(
+                fila.dataset.fechaAsistenciaDetalle,
+                estudiante.id
+            );
+        }
+    });
+    cargarPreviewsFotosAsistenciaDetalleQR();
 
     tabla.querySelectorAll("tr[data-actividad-detalle]").forEach(fila => {
         const actividadId = fila.dataset.actividadDetalle;
@@ -29132,4 +29147,4 @@ document.addEventListener("contextmenu", function(event) {
 </div>
 </body>
 
-      </html>
+</html>
