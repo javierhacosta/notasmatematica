@@ -24056,16 +24056,26 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     const detalleAsistencia = Array.from(mapaDetalleAsistencia.values())
         .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
+    const fotosAsistenciaDetalleQR = {};
+    try {
+        const respFotosAsistenciaDetalleQR = await supabaseClient.from("fotos_asistencia")
+            .select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo")
+            .eq("estudiante_id", estudianteId).order("fecha", { ascending: true });
+        if (respFotosAsistenciaDetalleQR.error) throw respFotosAsistenciaDetalleQR.error;
+        (respFotosAsistenciaDetalleQR.data || []).forEach(f => {
+            const clave = String(f.fecha || "");
+            (fotosAsistenciaDetalleQR[clave] || (fotosAsistenciaDetalleQR[clave] = [])).push(f);
+        });
+    } catch (error) { console.warn("No se pudieron cargar las fotos de asistencia del detalle:", error); }
+    detalleEstudianteQRActual.__fotosAsistenciaDetalleQR = fotosAsistenciaDetalleQR;
+
     const filasAsistencia = detalleAsistencia.map(r => `
-        <tr class="${r.tipo === "no_clases"
-            ? "detalle-fila-no-clases"
-            : r.tipo === "clase_informal"
-                ? "detalle-fila-clase-informal"
-                : ""}">
+        <tr class="${r.tipo === "no_clases" ? "detalle-fila-no-clases" : r.tipo === "clase_informal" ? "detalle-fila-clase-informal" : ""}" data-fecha-asistencia-detalle="${escapeHTML(String(r.fecha || ""))}">
             <td>${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
             <td>${escapeHTML(r.observacion || "—")}</td>
+            <td class="detalle-celda-fotos-asistencia">${renderFotosAsistenciaDetalleQR(r.fecha, estudianteId)}</td>
         </tr>
     `).join("");
 
@@ -24255,10 +24265,10 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             <h4>📅 Detalle de asistencia, atrasos, faltas y permisos</h4>
             <div class="detalle-tabla-contenedor">
                 <table class="detalle-tabla">
-                    <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Motivo / Observación</th></tr></thead>
+                    <thead><tr><th>Fecha</th><th>Estado</th><th>Hora</th><th>Motivo / Observación</th><th>Foto</th></tr></thead>
                     <tbody>
                         ${filasAsistencia ||
-                          '<tr><td colspan="4" class="detalle-vacio">No existen registros de asistencia ni días especiales registrados.</td></tr>'}
+                          '<tr><td colspan="5" class="detalle-vacio">No existen registros de asistencia ni días especiales registrados.</td></tr>'}
                     </tbody>
                 </table>
             </div>
@@ -24324,6 +24334,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
     `;
 
     cargarPreviewsFotosDetalleQR();
+    cargarPreviewsFotosAsistenciaDetalleQR();
 }
 
 function actualizarResumenEdicionDetalleQR() {
@@ -24385,6 +24396,85 @@ function actualizarCalculoDetalleEstudianteQR() {
             });
         }
     }
+}
+
+function renderFotosAsistenciaDetalleQR(fecha, estudianteId) {
+    const fotos = detalleEstudianteQRActual?.__fotosAsistenciaDetalleQR?.[String(fecha || "")] || [];
+    const editando = !!detalleEdicionQRActiva;
+    if (!fotos.length) return editando ? `<button type="button" class="detalle-foto-agregar" title="Añadir foto de asistencia" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}')">+</button>` : '<span class="detalle-fotos-vacio">—</span>';
+    return `<div class="detalle-fotos-contenedor">${fotos.map(f => {
+        const c = encodeURIComponent(JSON.stringify(f));
+        return `<div class="detalle-foto-item"><button type="button" class="detalle-foto-preview" title="Abrir foto" onclick="abrirFotoAsistenciaDetalleQR('${c}')"><img class="detalle-foto-preview-img" data-ruta-foto-asistencia="${escapeHTML(f.ruta || '')}" alt="Foto de asistencia"></button>
+        ${editando ? `<div class="detalle-foto-acciones"><button type="button" class="detalle-foto-accion" title="Reemplazar foto" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}',${Number(f.id)})">📸</button><button type="button" class="detalle-foto-accion detalle-foto-borrar" title="Borrar foto" onclick="borrarFotoAsistenciaDetalleQR('${c}')">🗑️</button></div>` : ''}</div>`;
+    }).join('')}${editando ? `<button type="button" class="detalle-foto-agregar" title="Añadir foto" onclick="seleccionarFotoAsistenciaDetalleQR('${escapeHTML(String(fecha || ""))}','${escapeHTML(String(estudianteId))}')">+</button>` : ''}</div>`;
+}
+async function cargarPreviewsFotosAsistenciaDetalleQR() {
+    const imgs = document.querySelectorAll("#detalleEstudianteQR img[data-ruta-foto-asistencia]");
+    await Promise.all(Array.from(imgs).map(async img => {
+        try {
+            const { data, error } = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(img.dataset.rutaFotoAsistencia, 600);
+            if (!error && data?.signedUrl) img.src = data.signedUrl;
+        } catch (e) { console.warn("No se pudo mostrar foto de asistencia en la ficha:", e); }
+    }));
+}
+async function abrirFotoAsistenciaDetalleQR(c) {
+    const f = datosFotoCodificados(c); if (!f?.ruta) return;
+    const { data, error } = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 600);
+    if (error || !data?.signedUrl) { alert("No se pudo abrir la fotografía."); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+}
+function seleccionarFotoAsistenciaDetalleQR(fecha, estudianteId, fotoId = null) {
+    if (!detalleEdicionQRActiva) { alert("Pulse Editar para modificar fotografías."); return; }
+    if (fotoId && !confirm("¿Desea reemplazar esta fotografía de asistencia?")) return;
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = "image/*"; input.capture = "environment";
+    input.onchange = async () => {
+        const file = input.files?.[0]; if (!file) return;
+        try {
+            if (!file.type?.startsWith("image/")) throw new Error("Seleccione un archivo de imagen.");
+            if (file.size > 25 * 1024 * 1024) throw new Error("La imagen supera el límite de 25 MB.");
+            const proc = await prepararFotoAsistencia(file);
+            if (fotoId) {
+                const q = await supabaseClient.from("fotos_asistencia").select("ruta").eq("id", fotoId).maybeSingle();
+                if (q.error || !q.data) throw new Error(q.error?.message || "La foto ya no existe.");
+                const up = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(q.data.ruta, proc, {upsert:true, contentType:proc.type || "image/jpeg"});
+                if (up.error) throw up.error;
+            } else {
+                const cursoId = cursoSeleccionado || detalleEstudianteQRActual?.curso_id;
+                if (!cursoId) throw new Error("No se pudo determinar el curso de la fotografía.");
+                const ext = (file.name.match(/\.(jpg|jpeg|png|webp|gif|heic)$/i) || [])[1] || "jpg";
+                const nombre = `asistencia_${fecha}_${estudianteId}_${Date.now()}.${ext}`;
+                const ruta = `asistencia/${cursoId}/${fecha}/${estudianteId}/${nombre}`;
+                const up = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta, proc, {upsert:false, contentType:proc.type || "image/jpeg"});
+                if (up.error) throw up.error;
+                const ins = await supabaseClient.from("fotos_asistencia").insert({curso_id:cursoId, fecha, estudiante_id:estudianteId, ruta, nombre_archivo:nombre});
+                if (ins.error) { await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]); throw ins.error; }
+            }
+            await actualizarFotosAsistenciaDetalleQR(estudianteId);
+        } catch (e) { alert("No se pudo guardar la foto de asistencia.\n\n" + (e.message || e)); }
+    };
+    input.click();
+}
+async function borrarFotoAsistenciaDetalleQR(c) {
+    const f = datosFotoCodificados(c); if (!f || !confirm("¿Eliminar esta fotografía de asistencia?")) return;
+    try {
+        const del = await supabaseClient.from("fotos_asistencia").delete().eq("id", f.id);
+        if (del.error) throw del.error;
+        const rm = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);
+        if (rm.error) console.warn("No se pudo borrar el archivo de Storage:", rm.error);
+        await actualizarFotosAsistenciaDetalleQR(f.estudiante_id);
+    } catch (e) { alert("No se pudo eliminar la foto.\n\n" + (e.message || e)); }
+}
+async function actualizarFotosAsistenciaDetalleQR(estudianteId) {
+    const resp = await supabaseClient.from("fotos_asistencia").select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo").eq("estudiante_id", estudianteId).order("fecha", {ascending:true});
+    if (resp.error) { alert("No se pudieron actualizar las fotos de asistencia: " + resp.error.message); return; }
+    const mapa = {};
+    (resp.data || []).forEach(f => (mapa[String(f.fecha || "")] || (mapa[String(f.fecha || "")] = [])).push(f));
+    detalleEstudianteQRActual.__fotosAsistenciaDetalleQR = mapa;
+    document.querySelectorAll("#detalleEstudianteQR tr[data-fecha-asistencia-detalle]").forEach(tr => {
+        tr.querySelector(".detalle-celda-fotos-asistencia").innerHTML = renderFotosAsistenciaDetalleQR(tr.dataset.fechaAsistenciaDetalle, estudianteId);
+    });
+    await cargarPreviewsFotosAsistenciaDetalleQR();
 }
 
 function renderFotosDetalleActividadQR(actividadId, estudianteId) {
@@ -24469,6 +24559,7 @@ async function actualizarFotosDetalleQR(actividadId, estudianteId) {
 
         celda.innerHTML = renderFotosDetalleActividadQR(actividadId, estudianteId);
         await cargarPreviewsFotosDetalleQR();
+    await cargarPreviewsFotosAsistenciaDetalleQR();
     } catch (error) {
         console.warn("No se pudo actualizar la columna Foto del detalle:", error);
     }
@@ -29041,4 +29132,4 @@ document.addEventListener("contextmenu", function(event) {
 </div>
 </body>
 
-</html>
+      </html>
