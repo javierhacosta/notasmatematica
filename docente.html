@@ -28204,6 +28204,7 @@ function abrirSelectorFotosActividadQR(actividad) {
     input.click();
 }
 function mostrarProgresoGaleriaActividadQR(actividad, total) {
+    let totalActual = Math.max(1, Number(total) || 1);
     const anterior = document.getElementById("progresoGaleriaActividadQR");
     if (anterior) anterior.remove();
     const fondo = document.createElement("div");
@@ -28242,14 +28243,14 @@ function mostrarProgresoGaleriaActividadQR(actividad, total) {
     cuerpo.append(actividadTxt, contador, barraFondo, porcentaje, detalle, pasos);
     caja.append(cab, cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
     return { actualizar(indice, etapa, mensaje, pct) {
-        const n = Math.min(total, indice + 1);
-        contador.textContent = "Imagen " + n + " de " + total;
+        const n = Math.min(totalActual, indice + 1);
+        contador.textContent = "Imagen " + n + " de " + totalActual;
         detalle.textContent = mensaje;
         barra.style.width = Math.max(0, Math.min(100, pct)) + "%";
         porcentaje.textContent = Math.max(0, Math.min(100, Number(pct) || 0).toFixed(1)) + "%";
         Array.from(pasos.children).forEach((li, i) => { li.style.color = i === etapa ? "#1d4ed8" : (i < etapa ? "#15803d" : "#6b7280"); li.style.fontWeight = i === etapa ? "700" : "400"; });
         return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-    }, cerrar() { fondo.remove(); } };
+    }, setTotal(n) { totalActual = Math.max(1, Number(n) || 1); contador.textContent = "Preparando " + totalActual + " imágenes..."; }, cerrar() { fondo.remove(); } };
 }
 
 function mostrarResumenGaleriaActividadQR(actividad, detectados, noDetectados, errores, conteoCodigos) {
@@ -28437,11 +28438,16 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     if (!actividad || !seleccionados.length) return;
     const archivos = [];
     const errores = [];
-    for (const archivo of seleccionados) {
+    // Mostrar la ventana inmediatamente, incluso mientras se convierten los PDF.
+    const progreso = mostrarProgresoGaleriaActividadQR(actividad, seleccionados.length);
+    for (let i = 0; i < seleccionados.length; i++) {
+        const archivo = seleccionados[i];
+        await progreso.actualizar(i, 0, "Preparando archivo " + (i + 1) + " de " + seleccionados.length + ": " + archivo.name, ((i + 1) / seleccionados.length) * 15);
         if (archivo.type === "application/pdf" || /\.pdf$/i.test(archivo.name)) {
             try {
                 const paginas = await convertirPDFEnImagenesActividad(archivo);
                 archivos.push(...paginas);
+                await progreso.actualizar(i, 0, "PDF convertido: " + archivo.name + " (" + paginas.length + " páginas).", ((i + 1) / seleccionados.length) * 15);
             } catch (err) {
                 errores.push(archivo.name + ": " + (err?.message || String(err)));
             }
@@ -28452,11 +28458,12 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         }
     }
     if (!archivos.length) {
+        progreso.cerrar();
         alert("No se pudieron preparar imágenes para procesar." + (errores.length ? "\\n\\n" + errores.join("\\n") : ""));
         return;
     }
+    progreso.setTotal(archivos.length);
     const detectados = [], noDetectados = [];
-    const progreso = mostrarProgresoGaleriaActividadQR(actividad, archivos.length);
     const sinQR = [];
     const conteoCodigos = { qr: 0, dataMatrix: 0 };
 
