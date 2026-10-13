@@ -14464,9 +14464,21 @@ async function cargarZXingDataMatrixActividad(){
     if (window.__zxingDataMatrixActividadPromise) return window.__zxingDataMatrixActividadPromise;
     window.__zxingDataMatrixActividadPromise = new Promise((resolve, reject) => {
         const script = document.createElement("script");
+        let terminado = false;
+        const finalizar = (error, valor) => {
+            if (terminado) return;
+            terminado = true;
+            clearTimeout(limite);
+            if (error) {
+                script.remove();
+                window.__zxingDataMatrixActividadPromise = null;
+                reject(error);
+            } else resolve(valor);
+        };
+        const limite = setTimeout(() => finalizar(new Error("La carga del lector Data Matrix tardó demasiado. Se continuará sin ese lector.")), 10000);
         script.src = "https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
-        script.onload = () => window.ZXing ? resolve(window.ZXing) : reject(new Error("No se pudo iniciar el lector Data Matrix."));
-        script.onerror = () => reject(new Error("No se pudo cargar el lector Data Matrix. Verifique la conexión a Internet."));
+        script.onload = () => window.ZXing ? finalizar(null, window.ZXing) : finalizar(new Error("No se pudo iniciar el lector Data Matrix."));
+        script.onerror = () => finalizar(new Error("No se pudo cargar el lector Data Matrix. Verifique su conexión a Internet."));
         document.head.appendChild(script);
     });
     return window.__zxingDataMatrixActividadPromise;
@@ -14499,7 +14511,10 @@ async function detectarCodigoEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
         const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
-        const escalas=[1,Math.min(1,2600/Math.max(bitmap.width,bitmap.height)),Math.min(1,1600/Math.max(bitmap.width,bitmap.height))];
+        // Probar primero tamaños reducidos para que fotografías grandes no congelen
+        // el avance durante mucho tiempo; recurrir al original al final si hace falta.
+        const maxLado=Math.max(bitmap.width,bitmap.height);
+        const escalas=[Math.min(1,1600/maxLado),Math.min(1,2600/maxLado),1];
         // Primero usar el detector nativo cuando admite ambos formatos.
         if("BarcodeDetector" in window){
             try{
@@ -14507,7 +14522,10 @@ async function detectarCodigoEnImagen(file){
                 const formatos = ["qr_code", "data_matrix"].filter(f => formatosDisponibles.includes(f));
                 if(formatos.length){
                     const detector=new BarcodeDetector({formats:formatos});
-                    const encontrados=await detector.detect(bitmap);
+                    const encontrados=await Promise.race([
+                        detector.detect(bitmap),
+                        new Promise((_,reject)=>setTimeout(()=>reject(new Error("El detector nativo tardó demasiado")),5000))
+                    ]);
                     for(const codigo of encontrados || []){
                         const raw=String(codigo.rawValue||"").trim();
                         const ci=extraerCIDesdeQR(raw);
