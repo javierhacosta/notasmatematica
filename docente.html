@@ -5794,7 +5794,7 @@ Selecciona un curso
         type="text"
         id="buscarGeneralEstudiante"
         autocomplete="off"
-        placeholder="Buscar por nombre, CI o N° de lista..."
+        placeholder="Buscar por CI, nombre, RUDE, celular o padre de familia..."
         aria-label="Búsqueda general de estudiante"
     >
 </div>
@@ -17814,20 +17814,25 @@ function mostrarResultadosBusquedaGeneral() {
     if (!campo || !contenedor) return;
 
     const texto = normalizarTextoBusquedaGeneral(campo.value);
-
     const lista = Array.isArray(estudiantes) ? estudiantes.filter(Boolean) : [];
 
-    const resultados = lista.filter(estudiante => {
-        if (!texto) return true;
+    const camposBusqueda = [
+        ["CI", e => e.ci],
+        ["Nombre", e => e.nombre],
+        ["RUDE", e => e.rude],
+        ["Celular 1", e => e.cel1 ?? e.celular1],
+        ["Celular 2", e => e.cel2 ?? e.celular2],
+        ["Padre de familia", e => e.ppff ?? e.padre_familia ?? e.padre],
+        ["N° de lista", e => e.num_lista]
+    ];
 
-        const nombre = normalizarTextoBusquedaGeneral(estudiante.nombre);
-        const ci = normalizarTextoBusquedaGeneral(estudiante.ci);
-        const numero = normalizarTextoBusquedaGeneral(estudiante.num_lista);
-
-        return nombre.includes(texto) ||
-               ci.includes(texto) ||
-               numero.includes(texto);
-    });
+    const resultados = lista.map(estudiante => {
+        const coincidencia = camposBusqueda.find(([tipo, obtener]) => {
+            const valor = normalizarTextoBusquedaGeneral(obtener(estudiante));
+            return texto && valor && valor.includes(texto);
+        });
+        return { estudiante, tipoEncontrado: coincidencia ? coincidencia[0] : "" };
+    }).filter(item => !texto || item.tipoEncontrado);
 
     if (!texto && resultados.length === 0) {
         contenedor.innerHTML =
@@ -17843,13 +17848,14 @@ function mostrarResultadosBusquedaGeneral() {
         return;
     }
 
-    const filas = resultados.map(estudiante => `
+    const filas = resultados.map(({ estudiante, tipoEncontrado }) => `
         <tr
             class="fila-estudiante-busqueda"
             data-estudiante-id="${escapeHTML(String(estudiante.id ?? ""))}"
             tabindex="0"
             role="button"
             title="Seleccionar a ${escapeHTML(estudiante.nombre || "estudiante")}">
+            <td>${escapeHTML(tipoEncontrado || "—")}</td>
             <td>${escapeHTML(String(estudiante.num_lista ?? ""))}</td>
             <td class="nombre-estudiante-busqueda">${escapeHTML(estudiante.nombre || "")}</td>
             <td>${escapeHTML(estudiante.curso || "")}</td>
@@ -17861,9 +17867,10 @@ function mostrarResultadosBusquedaGeneral() {
             <table class="tabla-busqueda-general">
                 <thead>
                     <tr>
-                        <th style="width:75px;">N°</th>
+                        <th>Encontrado por</th>
+                        <th style="width:55px;">N°</th>
                         <th>Nombre</th>
-                        <th style="width:150px;">Curso</th>
+                        <th style="width:110px;">Curso</th>
                     </tr>
                 </thead>
                 <tbody>${filas}</tbody>
