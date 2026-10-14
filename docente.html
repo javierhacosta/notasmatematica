@@ -252,6 +252,22 @@ input, select {
 .config-azar-voz-control {
     width: 100%;
 }
+.boton-restaurar-voz-azar {
+    display: block;
+    width: 30px;
+    height: 28px;
+    margin: 4px 0 0 8px;
+    padding: 0;
+    border: 1px solid #cfd8dc;
+    border-radius: 6px;
+    background: #eef3f7;
+    color: #1557a6;
+    font-size: 16px;
+    cursor: pointer;
+}
+.boton-restaurar-voz-azar:active {
+    transform: scale(.95);
+}
 
 .config-azar-voz-subtitulo {
     margin: 8px 0 4px;
@@ -7385,6 +7401,10 @@ Cancelar
                            onchange="mostrarControlesVozAzarAsistencia(this.checked)">
                     <span>Voz</span>
                 </label>
+                <button type="button" id="botonRestaurarVozAzarAsistencia"
+                        class="boton-restaurar-voz-azar"
+                        title="Restaurar voz" aria-label="Restaurar voz"
+                        onclick="restaurarVozAzarAsistencia()">🔄</button>
 
                 <div id="controlesVozAzarAsistencia" class="config-azar-voz-controles">
                     <div class="config-azar-voz-subtitulo">Velocidad de voz</div>
@@ -14707,6 +14727,42 @@ function obtenerNombreCompletoFotoActividad(e){
     if(!e)return "";
     return String(e.nombre||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||e.nombres||e.paterno||"").replace(/\s+/g," ").trim();
 }
+/* Recupera el motor de voz del navegador sin reiniciar el teléfono. */
+function restaurarVozAzarAsistencia() {
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+        alert('Este navegador no permite restaurar la voz desde la aplicación.');
+        return;
+    }
+    const sintesis = window.speechSynthesis;
+    try {
+        tokenVozRobusta++;
+        sintesis.cancel();
+        if (typeof sintesis.resume === 'function') sintesis.resume();
+        if (typeof sintesis.getVoices === 'function') sintesis.getVoices();
+        setTimeout(() => {
+            try {
+                if (typeof sintesis.resume === 'function') sintesis.resume();
+                const prueba = new SpeechSynthesisUtterance('Voz restaurada');
+                prueba.lang = 'es-BO';
+                prueba.rate = 0.95;
+                prueba.pitch = 1;
+                prueba.volume = 1;
+                const voces = sintesis.getVoices ? sintesis.getVoices() : [];
+                const voz = voces.find(v => /^es-BO$/i.test(v.lang))
+                    || voces.find(v => /^es([_-]|$)/i.test(v.lang));
+                if (voz) prueba.voice = voz;
+                sintesis.speak(prueba);
+            } catch (error) {
+                console.warn('No se pudo restaurar el motor de voz:', error);
+                alert('No se pudo restaurar la voz. Puede que sea necesario reiniciar el servicio de voz del teléfono.');
+            }
+        }, 250);
+    } catch (error) {
+        console.warn('Error al restaurar la voz:', error);
+        alert('No se pudo restaurar la voz. Puede que sea necesario reiniciar el servicio de voz del teléfono.');
+    }
+}
+
 /* Motor común de voz: reintenta si la síntesis móvil queda bloqueada. */
 let tokenVozRobusta = 0;
 function reproducirVozRobusta(texto, opciones = {}) {
