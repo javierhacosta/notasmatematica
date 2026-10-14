@@ -7412,17 +7412,11 @@ Cancelar
                 </label>
                 <small id="estadoVozOnlineGlobal" style="display:block;margin:4px 0 8px;color:#666">Desactivada: se usa la voz del celular.</small>
                 <div id="preferenciasVozOnlineGlobal" style="display:none;margin:6px 0 10px;padding:8px;border:1px solid #ddd;border-radius:8px;background:#fafafa">
-                    <label for="generoVozOnlineGlobal" style="display:block;font-size:13px;font-weight:600;margin-bottom:3px">Tipo de voz</label>
-                    <select id="generoVozOnlineGlobal" onchange="cambiarPreferenciaVozOnlineGlobal()" style="width:100%;padding:7px;margin-bottom:8px;border-radius:6px">
-                        <option value="female">Mujer</option>
-                        <option value="male">Varón</option>
+                    <label for="vozOnlineElegidaGlobal" style="display:block;font-size:13px;font-weight:600;margin-bottom:3px">Voces gratuitas disponibles en español</label>
+                    <select id="vozOnlineElegidaGlobal" onchange="cambiarPreferenciaVozOnlineGlobal()" style="width:100%;padding:7px;border-radius:6px">
+                        <option value="">Cargando voces disponibles…</option>
                     </select>
-                    <label for="acentoVozOnlineGlobal" style="display:block;font-size:13px;font-weight:600;margin-bottom:3px">Acento</label>
-                    <select id="acentoVozOnlineGlobal" onchange="cambiarPreferenciaVozOnlineGlobal()" style="width:100%;padding:7px;border-radius:6px">
-                        <option value="latino">Latinoamericano</option>
-                        <option value="espanol">Español de España</option>
-                    </select>
-                    <small style="display:block;color:#666;margin-top:5px">La voz y el acento disponibles dependen de las voces gratuitas del servicio.</small>
+                    <small id="ayudaVocesOnlineGlobal" style="display:block;color:#666;margin-top:5px">Se mostrarán los nombres y datos de las voces que informe el proveedor. El acento solo se indica cuando el servicio lo especifica.</small>
                 </div>
 
                 <div id="controlesVozAzarAsistencia" class="config-azar-voz-controles">
@@ -14789,10 +14783,14 @@ function restaurarVozAzarAsistencia() {
 /* Preferencia global: cuando se activa, ninguna función usa la voz del celular. */
 const CLAVE_VOZ_ONLINE_GLOBAL = 'vozOnlineGlobal';
 let vozOnlineGlobalActiva = localStorage.getItem(CLAVE_VOZ_ONLINE_GLOBAL) === 'true';
+const CLAVE_VOZ_ELEGIDA_ONLINE = 'vozOnlineElegidaGlobal';
 const CLAVE_GENERO_VOZ_ONLINE = 'generoVozOnlineGlobal';
 const CLAVE_ACENTO_VOZ_ONLINE = 'acentoVozOnlineGlobal';
+let vozOnlineElegidaGlobal = localStorage.getItem(CLAVE_VOZ_ELEGIDA_ONLINE) || '';
 let generoVozOnlineGlobal = localStorage.getItem(CLAVE_GENERO_VOZ_ONLINE) || 'female';
 let acentoVozOnlineGlobal = localStorage.getItem(CLAVE_ACENTO_VOZ_ONLINE) || 'latino';
+let vocesTtsAiCache = null;
+let vocesTtsAiPorId = {};
 let tokenVozOnlineGlobal = 0;
 let audioVozOnlineGlobal = null;
 
@@ -14807,7 +14805,11 @@ function cambiarModoVozOnlineGlobal(activo) {
     if (preferencias) preferencias.style.display = vozOnlineGlobalActiva ? 'block' : 'none';
     if (vozOnlineGlobalActiva) {
         try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (_) {}
-        reproducirVozOnlineGlobal('Voz online activada.');
+        cargarVocesTtsAiDisponibles().then(() => {
+            if (vozOnlineGlobalActiva) reproducirVozOnlineGlobal('Voz online activada.');
+        }).catch(error => {
+            if (estado) estado.textContent = 'No se pudieron cargar las voces: ' + (error.message || 'compruebe Internet.');
+        });
     } else {
         tokenVozOnlineGlobal++;
         if (audioVozOnlineGlobal) { audioVozOnlineGlobal.pause(); audioVozOnlineGlobal.src = ''; audioVozOnlineGlobal = null; }
@@ -14829,60 +14831,72 @@ function dividirTextoVozOnlineGlobal(texto, maximo = 180) {
     return partes;
 }
 
-let vocesTtsAiCache = null;
-
-function cambiarPreferenciaVozOnlineGlobal() {
-    const genero = document.getElementById('generoVozOnlineGlobal');
-    const acento = document.getElementById('acentoVozOnlineGlobal');
-    if (genero) generoVozOnlineGlobal = genero.value === 'male' ? 'male' : 'female';
-    if (acento) acentoVozOnlineGlobal = acento.value === 'espanol' ? 'espanol' : 'latino';
-    localStorage.setItem(CLAVE_GENERO_VOZ_ONLINE, generoVozOnlineGlobal);
-    localStorage.setItem(CLAVE_ACENTO_VOZ_ONLINE, acentoVozOnlineGlobal);
-    vocesTtsAiCache = null;
-    if (vozOnlineGlobalActiva) reproducirVozOnlineGlobal('Esta es la voz seleccionada.', {});
-}
-
-async function obtenerVozGratisTtsAi() {
+async function cargarVocesTtsAiDisponibles() {
+    const selector = document.getElementById('vozOnlineElegidaGlobal');
+    const ayuda = document.getElementById('ayudaVocesOnlineGlobal');
     if (!vocesTtsAiCache) {
-        const respuesta = await fetch('https://api.tts.ai/v1/voices/?language=es', {
-            method: 'GET', cache: 'no-store'
-        });
-        if (!respuesta.ok) throw new Error('El servicio gratuito de voz respondió HTTP ' + respuesta.status + ' al buscar voces.');
+        const respuesta = await fetch('https://api.tts.ai/v1/voices/?language=es', { method: 'GET', cache: 'no-store' });
+        if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status + ' al consultar el catálogo de voces.');
         const datos = await respuesta.json();
         const modelosGratis = ['piper', 'vits', 'melotts', 'kokoro'];
         vocesTtsAiCache = (Array.isArray(datos.voices) ? datos.voices : []).filter(v =>
             v && v.id && modelosGratis.includes(String(v.model || '').toLowerCase()) && /^es([_-]|$)/i.test(String(v.language || ''))
         );
+        vocesTtsAiPorId = {};
+        vocesTtsAiCache.forEach(v => { vocesTtsAiPorId[v.id] = v; });
     }
-    const voces = vocesTtsAiCache;
-    if (!voces.length) throw new Error('El servicio no encontró voces gratuitas en español disponibles.');
-    const generoDeseado = generoVozOnlineGlobal;
-    const vocesGenero = voces.filter(v => {
-        const g = String(v.gender || '').toLowerCase();
-        return generoDeseado === 'male' ? /^(male|man|masculino|varon|varón)$/.test(g) : /^(female|woman|femenino|mujer)$/.test(g);
-    });
-    if (!vocesGenero.length) throw new Error('No hay una voz gratuita de tipo ' + (generoDeseado === 'male' ? 'varón' : 'mujer') + ' disponible en español.');
-    const puntuar = v => {
-        const idioma = String(v.language || '').toLowerCase().replace('_', '-');
-        const nombre = String(v.name || '').toLowerCase();
-        if (acentoVozOnlineGlobal === 'espanol') {
-            if (/^es-es($|-)/.test(idioma)) return 100;
-            if (/españa|spain|castellano|peninsular/.test(nombre)) return 90;
-            if (idioma === 'es') return 40;
-            if (/^es-/.test(idioma)) return 10;
-        } else {
-            if (/^es-(mx|419|us|ar|bo|cl|co|cr|cu|do|ec|gt|hn|ni|pa|pe|pr|py|sv|uy|ve)($|-)/.test(idioma)) return 100;
-            if (/latino|latin american|mexic|argentin|colomb|chilean|peru/.test(nombre)) return 90;
-            if (idioma === 'es') return 40;
-            if (/^es-/.test(idioma) && !/^es-es/.test(idioma)) return 70;
-            if (/^es-es/.test(idioma)) return 5;
-        }
-        return 0;
-    };
-    vocesGenero.sort((a, b) => puntuar(b) - puntuar(a));
-    const elegida = vocesGenero[0];
-    if (puntuar(elegida) <= 5) throw new Error('No se encontró una voz gratuita con el acento seleccionado. Pruebe el otro acento.');
-    return elegida;
+    if (!vocesTtsAiCache.length) throw new Error('El proveedor no informó voces gratuitas en español.');
+    if (selector) {
+        const valorAnterior = vozOnlineElegidaGlobal || selector.value;
+        selector.innerHTML = '';
+        const ordenadas = [...vocesTtsAiCache].sort((a,b) => {
+            const idiomaA = String(a.language || '').toLowerCase();
+            const idiomaB = String(b.language || '').toLowerCase();
+            const nombreA = String(a.name || a.id || '');
+            const nombreB = String(b.name || b.id || '');
+            return idiomaA.localeCompare(idiomaB) || nombreA.localeCompare(nombreB);
+        });
+        ordenadas.forEach(v => {
+            const idioma = String(v.language || 'es').toLowerCase().replace('_','-');
+            const genero = String(v.gender || '').toLowerCase();
+            const generoTexto = /^(male|man|masculino|varon|varón)$/.test(genero) ? 'varón' : /^(female|woman|femenino|mujer)$/.test(genero) ? 'mujer' : 'género no indicado';
+            const nombre = String(v.name || v.id);
+            const etiquetaIdioma = /^es-es/.test(idioma) ? 'España' : /^es-(mx|419|ar|bo|cl|co|cr|cu|do|ec|gt|hn|ni|pa|pe|pr|py|sv|uy|ve)/.test(idioma) ? 'Latinoamérica (' + idioma.toUpperCase() + ')' : idioma === 'es' ? 'español, región no indicada' : idioma.toUpperCase();
+            const option = document.createElement('option');
+            option.value = v.id;
+            option.textContent = nombre + ' — ' + etiquetaIdioma + ' (' + generoTexto + '; ' + v.model + ')';
+            selector.appendChild(option);
+        });
+        const existeAnterior = ordenadas.some(v => v.id === valorAnterior);
+        vozOnlineElegidaGlobal = existeAnterior ? valorAnterior : ordenadas[0].id;
+        selector.value = vozOnlineElegidaGlobal;
+        if (ayuda) ayuda.textContent = ordenadas.length + ' voces gratuitas en español informadas por el proveedor. Si una voz solo indica “español”, el servicio no especifica su región.';
+    }
+    const voz = vocesTtsAiPorId[vozOnlineElegidaGlobal] || vocesTtsAiCache[0];
+    generoVozOnlineGlobal = String(voz.gender || 'female').toLowerCase();
+    acentoVozOnlineGlobal = String(voz.language || 'es').toLowerCase();
+    return voz;
+}
+
+function cambiarPreferenciaVozOnlineGlobal() {
+    const selector = document.getElementById('vozOnlineElegidaGlobal');
+    if (selector && selector.value) vozOnlineElegidaGlobal = selector.value;
+    const voz = vocesTtsAiPorId[vozOnlineElegidaGlobal];
+    if (voz) {
+        generoVozOnlineGlobal = String(voz.gender || 'female').toLowerCase();
+        acentoVozOnlineGlobal = String(voz.language || 'es').toLowerCase();
+    }
+    localStorage.setItem(CLAVE_VOZ_ELEGIDA_ONLINE, vozOnlineElegidaGlobal);
+    localStorage.setItem(CLAVE_GENERO_VOZ_ONLINE, generoVozOnlineGlobal);
+    localStorage.setItem(CLAVE_ACENTO_VOZ_ONLINE, acentoVozOnlineGlobal);
+    if (vozOnlineGlobalActiva) reproducirVozOnlineGlobal('Esta es la voz seleccionada.', {});
+}
+
+async function obtenerVozGratisTtsAi() {
+    if (!vocesTtsAiCache) await cargarVocesTtsAiDisponibles();
+    const voz = vocesTtsAiPorId[vozOnlineElegidaGlobal];
+    if (!voz) throw new Error('Seleccione una voz disponible en la lista.');
+    return voz;
 }
 
 async function generarAudioTtsAi(texto, velocidad) {
@@ -14974,6 +14988,16 @@ function detenerAudioVozOnlineGlobal(limpiar = true) {
     if (limpiar && 'speechSynthesis' in window) {
         try { window.speechSynthesis.cancel(); } catch (_) {}
     }
+}
+
+// Si la preferencia global ya estaba activa, cargar el catálogo al abrir la aplicación.
+if (vozOnlineGlobalActiva) {
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarVocesTtsAiDisponibles().catch(error => {
+            const estado = document.getElementById('estadoVozOnlineGlobal');
+            if (estado) estado.textContent = 'No se pudieron cargar las voces: ' + (error.message || 'compruebe Internet.');
+        });
+    });
 }
 
 /* Motor común de voz: todas las funciones pasan por aquí. */
@@ -26190,10 +26214,8 @@ function abrirConfigTamanoAzarAsistencia() {
     }
     const controlVozOnlineGlobal = document.getElementById("vozOnlineGlobal");
     if (controlVozOnlineGlobal) controlVozOnlineGlobal.checked = vozOnlineGlobalActiva;
-    const generoOnlineEl = document.getElementById("generoVozOnlineGlobal");
-    if (generoOnlineEl) generoOnlineEl.value = generoVozOnlineGlobal;
-    const acentoOnlineEl = document.getElementById("acentoVozOnlineGlobal");
-    if (acentoOnlineEl) acentoOnlineEl.value = acentoVozOnlineGlobal;
+    const vozOnlineElegidaEl = document.getElementById("vozOnlineElegidaGlobal");
+    if (vozOnlineElegidaEl) vozOnlineElegidaEl.value = vozOnlineElegidaGlobal;
     const preferenciasOnlineEl = document.getElementById("preferenciasVozOnlineGlobal");
     if (preferenciasOnlineEl) preferenciasOnlineEl.style.display = vozOnlineGlobalActiva ? "block" : "none";
     const estadoVozOnlineGlobalEl = document.getElementById("estadoVozOnlineGlobal");
