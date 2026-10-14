@@ -14784,7 +14784,7 @@ function cambiarModoVozOnlineGlobal(activo) {
     localStorage.setItem(CLAVE_VOZ_ONLINE_GLOBAL, String(vozOnlineGlobalActiva));
     const estado = document.getElementById('estadoVozOnlineGlobal');
     if (estado) estado.textContent = vozOnlineGlobalActiva
-        ? 'Activada: voz online gratuita directa; no se usará la voz del celular.'
+        ? 'Activada: voz online gratuita; no se usará la voz del celular.'
         : 'Desactivada: se usa la voz del celular.';
     if (vozOnlineGlobalActiva) {
         try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (_) {}
@@ -14810,20 +14810,71 @@ function dividirTextoVozOnlineGlobal(texto, maximo = 180) {
     return partes;
 }
 
+let vocesTtsAiCache = null;
+
+async function obtenerVozGratisTtsAi() {
+    if (vocesTtsAiCache) return vocesTtsAiCache;
+    const respuesta = await fetch('https://api.tts.ai/v1/voices/?language=es', {
+        method: 'GET', cache: 'no-store'
+    });
+    if (!respuesta.ok) throw new Error('El servicio gratuito de voz respondió HTTP ' + respuesta.status + ' al buscar voces.');
+    const datos = await respuesta.json();
+    const voces = Array.isArray(datos.voices) ? datos.voices : [];
+    const modelosGratis = ['piper', 'vits', 'melotts', 'kokoro'];
+    const voz = voces.find(v => v && v.id && modelosGratis.includes(String(v.model || '').toLowerCase()) && /^es([_-]|$)/i.test(String(v.language || '')));
+    if (!voz) throw new Error('El servicio no encontró una voz gratuita en español disponible.');
+    vocesTtsAiCache = voz;
+    return voz;
+}
+
+async function generarAudioTtsAi(texto, velocidad) {
+    const voz = await obtenerVozGratisTtsAi();
+    const solicitud = await fetch('https://api.tts.ai/v1/tts/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            text: texto,
+            voice: voz.id,
+            model: voz.model,
+            language: 'es',
+            format: 'mp3',
+            speed: Math.max(0.5, Math.min(2, Number(velocidad || 0.95)))
+        })
+    });
+    if (!solicitud.ok) {
+        let detalle = '';
+        try { detalle = (await solicitud.text()).slice(0, 180); } catch (_) {}
+        throw new Error('El servicio gratuito respondió HTTP ' + solicitud.status + (detalle ? ': ' + detalle : '.'));
+    }
+    const trabajo = await solicitud.json();
+    if (!trabajo.uuid) {
+        if (trabajo.result_url) return trabajo.result_url;
+        throw new Error('El servicio no devolvió el identificador del audio.');
+    }
+    for (let intento = 0; intento < 30; intento++) {
+        if (!vozOnlineGlobalActiva) throw new Error('La voz online fue desactivada.');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const consulta = await fetch('https://api.tts.ai/v1/speech/results/?uuid=' + encodeURIComponent(trabajo.uuid), { cache: 'no-store' });
+        if (!consulta.ok) throw new Error('No se pudo consultar el audio (HTTP ' + consulta.status + ').');
+        const resultado = await consulta.json();
+        if (resultado.status === 'completed' && resultado.result_url) return resultado.result_url;
+        if (resultado.status === 'failed') throw new Error(resultado.error || 'El proveedor no pudo generar el audio.');
+    }
+    throw new Error('El proveedor tardó demasiado en generar el audio. Inténtelo otra vez.');
+}
+
 async function reproducirVozOnlineGlobal(texto, opciones = {}) {
     const frase = String(texto || '').replace(/\s+/g, ' ').trim();
     if (!frase || !vozOnlineGlobalActiva) return;
     const token = ++tokenVozOnlineGlobal;
     detenerAudioVozOnlineGlobal(false);
-    // Google Translate TTS se reproduce directamente como audio; no requiere index.ts,
-    // claves privadas ni una función de Supabase. Es un endpoint público no oficial.
-    const partes = dividirTextoVozOnlineGlobal(frase, 180);
+    const partes = dividirTextoVozOnlineGlobal(frase, 450);
     for (const parte of partes) {
         if (token !== tokenVozOnlineGlobal || !vozOnlineGlobalActiva) return;
         try {
-            const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&ttsspeed=' +
-                encodeURIComponent(String(Math.max(0.5, Math.min(1.5, Number(opciones.rate ?? velocidadVozAzarAsistencia ?? 0.95))))) +
-                '&q=' + encodeURIComponent(parte);
+            // TTS.ai ofrece solicitudes anónimas limitadas; no necesita index.ts ni clave.
+            const url = await generarAudioTtsAi(parte, opciones.rate ?? velocidadVozAzarAsistencia ?? 0.95);
+            if (token !== tokenVozOnlineGlobal || !vozOnlineGlobalActiva) return;
             const audio = new Audio(url);
             audioVozOnlineGlobal = audio;
             await new Promise((resolve, reject) => {
@@ -14836,15 +14887,15 @@ async function reproducirVozOnlineGlobal(texto, opciones = {}) {
                     fn(valor);
                 };
                 audio.onended = () => terminar(resolve);
-                audio.onerror = () => terminar(reject, new Error('El servicio de voz online no respondió. Compruebe Internet o si Google limita el acceso.'));
+                audio.onerror = () => terminar(reject, new Error('El audio generado no se pudo reproducir. Compruebe la conexión a Internet.'));
                 const promesa = audio.play();
                 if (promesa && typeof promesa.catch === 'function') promesa.catch(err => terminar(reject, err));
             });
         } catch (error) {
             if (token === tokenVozOnlineGlobal) {
-                console.error('Falló la voz online directa:', error);
+                console.error('Falló la voz online gratuita:', error);
                 const estado = document.getElementById('estadoVozOnlineGlobal');
-                if (estado) estado.textContent = 'Error de voz online directa: ' + (error.message || 'compruebe Internet; el servicio gratuito puede limitar solicitudes.');
+                if (estado) estado.textContent = 'Error de voz online gratuita: ' + (error.message || 'revise Internet o el límite gratuito del servicio.');
             }
             return;
         }
@@ -26083,7 +26134,7 @@ function abrirConfigTamanoAzarAsistencia() {
     if (controlVozOnlineGlobal) controlVozOnlineGlobal.checked = vozOnlineGlobalActiva;
     const estadoVozOnlineGlobalEl = document.getElementById("estadoVozOnlineGlobal");
     if (estadoVozOnlineGlobalEl) estadoVozOnlineGlobalEl.textContent = vozOnlineGlobalActiva
-        ? 'Activada: voz online gratuita directa; no se usará la voz del celular.'
+        ? 'Activada: voz online gratuita; no se usará la voz del celular.'
         : 'Desactivada: se usa la voz del celular.';
     const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
     if (controlVelocidadVoz) {
