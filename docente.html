@@ -7403,8 +7403,14 @@ Cancelar
                 </label>
                 <button type="button" id="botonRestaurarVozAzarAsistencia"
                         class="boton-restaurar-voz-azar"
-                        title="Restaurar voz" aria-label="Restaurar voz"
+                        title="Restaurar o probar voz" aria-label="Restaurar o probar voz"
                         onclick="restaurarVozAzarAsistencia()">🔄</button>
+                <label class="config-azar-opcion" style="margin-top:6px;display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="vozOnlineGlobal"
+                           onchange="cambiarModoVozOnlineGlobal(this.checked)">
+                    <span>Voz online (toda la aplicación)</span>
+                </label>
+                <small id="estadoVozOnlineGlobal" style="display:block;margin:4px 0 8px;color:#666">Desactivada: se usa la voz del celular.</small>
 
                 <div id="controlesVozAzarAsistencia" class="config-azar-voz-controles">
                     <div class="config-azar-voz-subtitulo">Velocidad de voz</div>
@@ -14727,8 +14733,12 @@ function obtenerNombreCompletoFotoActividad(e){
     if(!e)return "";
     return String(e.nombre||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||e.nombres||e.paterno||"").replace(/\s+/g," ").trim();
 }
-/* Recupera el motor de voz del navegador sin reiniciar el teléfono. */
+/* Recupera la voz del celular o prueba la voz online seleccionada. */
 function restaurarVozAzarAsistencia() {
+    if (vozOnlineGlobalActiva) {
+        reproducirVozOnlineGlobal('Voz online activada. Prueba de sonido.');
+        return;
+    }
     if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
         alert('Este navegador no permite restaurar la voz desde la aplicación.');
         return;
@@ -14763,12 +14773,90 @@ function restaurarVozAzarAsistencia() {
     }
 }
 
-/* Motor común de voz: reintenta si la síntesis móvil queda bloqueada. */
+/* Preferencia global: cuando se activa, ninguna función usa la voz del celular. */
+const CLAVE_VOZ_ONLINE_GLOBAL = 'vozOnlineGlobal';
+let vozOnlineGlobalActiva = localStorage.getItem(CLAVE_VOZ_ONLINE_GLOBAL) === 'true';
+let tokenVozOnlineGlobal = 0;
+let audioVozOnlineGlobal = null;
+
+function cambiarModoVozOnlineGlobal(activo) {
+    vozOnlineGlobalActiva = !!activo;
+    localStorage.setItem(CLAVE_VOZ_ONLINE_GLOBAL, String(vozOnlineGlobalActiva));
+    const estado = document.getElementById('estadoVozOnlineGlobal');
+    if (estado) estado.textContent = vozOnlineGlobalActiva
+        ? 'Activada: todas las funciones de voz usarán Internet; no se usará la voz del celular.'
+        : 'Desactivada: se usa la voz del celular.';
+    if (vozOnlineGlobalActiva) {
+        try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (_) {}
+        reproducirVozOnlineGlobal('Voz online activada.');
+    } else {
+        tokenVozOnlineGlobal++;
+        if (audioVozOnlineGlobal) { audioVozOnlineGlobal.pause(); audioVozOnlineGlobal.src = ''; audioVozOnlineGlobal = null; }
+    }
+}
+
+function detenerVozOnlineGlobal() {
+    tokenVozOnlineGlobal++;
+    if (audioVozOnlineGlobal) {
+        try { audioVozOnlineGlobal.pause(); audioVozOnlineGlobal.currentTime = 0; audioVozOnlineGlobal.src = ''; } catch (_) {}
+        audioVozOnlineGlobal = null;
+    }
+}
+
+function dividirTextoVozOnlineGlobal(texto, maximo = 180) {
+    const palabras = String(texto || '').split(/\s+/).filter(Boolean);
+    const partes = []; let actual = '';
+    for (const palabra of palabras) {
+        if ((actual + ' ' + palabra).trim().length > maximo && actual) { partes.push(actual); actual = palabra; }
+        else actual = (actual + ' ' + palabra).trim();
+    }
+    if (actual) partes.push(actual);
+    return partes;
+}
+
+async function reproducirVozOnlineGlobal(texto, opciones = {}) {
+    const frase = String(texto || '').replace(/\s+/g, ' ').trim();
+    if (!frase || !vozOnlineGlobalActiva) return;
+    const token = ++tokenVozOnlineGlobal;
+    if (audioVozOnlineGlobal) { try { audioVozOnlineGlobal.pause(); } catch (_) {} audioVozOnlineGlobal = null; }
+    const partes = dividirTextoVozOnlineGlobal(frase);
+    for (const parte of partes) {
+        if (token !== tokenVozOnlineGlobal || !vozOnlineGlobalActiva) return;
+        const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=' + encodeURIComponent(parte);
+        const audio = new Audio(url);
+        audioVozOnlineGlobal = audio;
+        const velocidad = Number(opciones.rate ?? velocidadVozAzarAsistencia ?? 0.95);
+        audio.playbackRate = Math.max(0.5, Math.min(2, velocidad));
+        try {
+            await new Promise((resolve, reject) => {
+                audio.onended = resolve;
+                audio.onerror = () => reject(new Error('No se pudo cargar el audio online'));
+                const promesa = audio.play();
+                if (promesa && typeof promesa.catch === 'function') promesa.catch(reject);
+            });
+        } catch (error) {
+            if (token === tokenVozOnlineGlobal) {
+                console.warn('Falló la voz online:', error);
+                const estado = document.getElementById('estadoVozOnlineGlobal');
+                if (estado) estado.textContent = 'No se pudo reproducir la voz online. Compruebe Internet o pulse 🔄 para probar de nuevo.';
+            }
+            return;
+        }
+    }
+    if (token === tokenVozOnlineGlobal) audioVozOnlineGlobal = null;
+}
+
+/* Motor común de voz: todas las funciones pasan por aquí. */
 let tokenVozRobusta = 0;
 function reproducirVozRobusta(texto, opciones = {}) {
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
     const frase = String(texto || '').replace(/\s+/g, ' ').trim();
     if (!frase) return;
+    if (vozOnlineGlobalActiva) {
+        try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (_) {}
+        reproducirVozOnlineGlobal(frase, opciones);
+        return;
+    }
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
     const token = ++tokenVozRobusta;
     const sintesis = window.speechSynthesis;
     let intento = 0;
@@ -25970,6 +26058,12 @@ function abrirConfigTamanoAzarAsistencia() {
     if (controlVoz) {
         controlVoz.checked = vozAzarAsistenciaActiva;
     }
+    const controlVozOnlineGlobal = document.getElementById("vozOnlineGlobal");
+    if (controlVozOnlineGlobal) controlVozOnlineGlobal.checked = vozOnlineGlobalActiva;
+    const estadoVozOnlineGlobalEl = document.getElementById("estadoVozOnlineGlobal");
+    if (estadoVozOnlineGlobalEl) estadoVozOnlineGlobalEl.textContent = vozOnlineGlobalActiva
+        ? 'Activada: todas las funciones de voz usarán Internet; no se usará la voz del celular.'
+        : 'Desactivada: se usa la voz del celular.';
     const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
     if (controlVelocidadVoz) {
         controlVelocidadVoz.value = String(velocidadVozAzarAsistencia);
