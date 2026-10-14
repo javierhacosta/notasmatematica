@@ -14784,7 +14784,7 @@ function cambiarModoVozOnlineGlobal(activo) {
     localStorage.setItem(CLAVE_VOZ_ONLINE_GLOBAL, String(vozOnlineGlobalActiva));
     const estado = document.getElementById('estadoVozOnlineGlobal');
     if (estado) estado.textContent = vozOnlineGlobalActiva
-        ? 'Activada: todas las funciones de voz usarán Internet; no se usará la voz del celular.'
+        ? 'Activada: voz online gratuita directa; no se usará la voz del celular.'
         : 'Desactivada: se usa la voz del celular.';
     if (vozOnlineGlobalActiva) {
         try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (_) {}
@@ -14796,11 +14796,7 @@ function cambiarModoVozOnlineGlobal(activo) {
 }
 
 function detenerVozOnlineGlobal() {
-    tokenVozOnlineGlobal++;
-    if (audioVozOnlineGlobal) {
-        try { audioVozOnlineGlobal.pause(); audioVozOnlineGlobal.currentTime = 0; audioVozOnlineGlobal.src = ''; } catch (_) {}
-        audioVozOnlineGlobal = null;
-    }
+    detenerAudioVozOnlineGlobal_invalidar();
 }
 
 function dividirTextoVozOnlineGlobal(texto, maximo = 180) {
@@ -14818,32 +14814,57 @@ async function reproducirVozOnlineGlobal(texto, opciones = {}) {
     const frase = String(texto || '').replace(/\s+/g, ' ').trim();
     if (!frase || !vozOnlineGlobalActiva) return;
     const token = ++tokenVozOnlineGlobal;
-    if (audioVozOnlineGlobal) { try { audioVozOnlineGlobal.pause(); } catch (_) {} audioVozOnlineGlobal = null; }
-    const partes = dividirTextoVozOnlineGlobal(frase);
+    detenerAudioVozOnlineGlobal(false);
+    // Google Translate TTS se reproduce directamente como audio; no requiere index.ts,
+    // claves privadas ni una función de Supabase. Es un endpoint público no oficial.
+    const partes = dividirTextoVozOnlineGlobal(frase, 180);
     for (const parte of partes) {
         if (token !== tokenVozOnlineGlobal || !vozOnlineGlobalActiva) return;
-        const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&q=' + encodeURIComponent(parte);
-        const audio = new Audio(url);
-        audioVozOnlineGlobal = audio;
-        const velocidad = Number(opciones.rate ?? velocidadVozAzarAsistencia ?? 0.95);
-        audio.playbackRate = Math.max(0.5, Math.min(2, velocidad));
         try {
+            const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&ttsspeed=' +
+                encodeURIComponent(String(Math.max(0.5, Math.min(1.5, Number(opciones.rate ?? velocidadVozAzarAsistencia ?? 0.95))))) +
+                '&q=' + encodeURIComponent(parte);
+            const audio = new Audio(url);
+            audioVozOnlineGlobal = audio;
             await new Promise((resolve, reject) => {
-                audio.onended = resolve;
-                audio.onerror = () => reject(new Error('No se pudo cargar el audio online'));
+                let finalizado = false;
+                const terminar = (fn, valor) => {
+                    if (finalizado) return;
+                    finalizado = true;
+                    audio.onended = null;
+                    audio.onerror = null;
+                    fn(valor);
+                };
+                audio.onended = () => terminar(resolve);
+                audio.onerror = () => terminar(reject, new Error('El servicio de voz online no respondió. Compruebe Internet o si Google limita el acceso.'));
                 const promesa = audio.play();
-                if (promesa && typeof promesa.catch === 'function') promesa.catch(reject);
+                if (promesa && typeof promesa.catch === 'function') promesa.catch(err => terminar(reject, err));
             });
         } catch (error) {
             if (token === tokenVozOnlineGlobal) {
-                console.warn('Falló la voz online:', error);
+                console.error('Falló la voz online directa:', error);
                 const estado = document.getElementById('estadoVozOnlineGlobal');
-                if (estado) estado.textContent = 'No se pudo reproducir la voz online. Compruebe Internet o pulse 🔄 para probar de nuevo.';
+                if (estado) estado.textContent = 'Error de voz online directa: ' + (error.message || 'compruebe Internet; el servicio gratuito puede limitar solicitudes.');
             }
             return;
         }
     }
     if (token === tokenVozOnlineGlobal) audioVozOnlineGlobal = null;
+}
+function detenerAudioVozOnlineGlobal_invalidar() {
+    tokenVozOnlineGlobal++;
+    detenerAudioVozOnlineGlobal(true);
+}
+function detenerAudioVozOnlineGlobal(limpiar = true) {
+    if (audioVozOnlineGlobal) {
+        try { audioVozOnlineGlobal.pause(); audioVozOnlineGlobal.currentTime = 0; } catch (_) {}
+        try { if (audioVozOnlineGlobal.src && audioVozOnlineGlobal.src.startsWith('blob:')) URL.revokeObjectURL(audioVozOnlineGlobal.src); } catch (_) {}
+        audioVozOnlineGlobal.src = '';
+        audioVozOnlineGlobal = null;
+    }
+    if (limpiar && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
 }
 
 /* Motor común de voz: todas las funciones pasan por aquí. */
@@ -22642,7 +22663,7 @@ function numeroNotaParaVozQR(valor) {
 }
 
 function hablarCalificacionQR(nombre, nota, incluirNombre = false) {
-    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
+    if (!vozAzarAsistenciaActiva) return;
     const nombreVoz = prepararNombreParaVozAsistencia(nombre);
     const notaVoz = numeroNotaParaVozQR(nota);
     const textoVoz = incluirNombre
@@ -25968,7 +25989,7 @@ function prepararNombreParaVozAsistencia(nombre) {
 }
 
 function hablarConVozAzarAsistencia(texto) {
-    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
+    if (!vozAzarAsistenciaActiva) return;
     const textoOriginal = String(texto || '').trim();
     const esEstadoEspecial = /\sTIENE FALTA$/i.test(textoOriginal) || /\sESTA CON PERMISO$/i.test(textoOriginal);
     const textoVoz = esEstadoEspecial ? textoOriginal : prepararNombreParaVozAsistencia(textoOriginal);
@@ -25985,7 +26006,7 @@ function obtenerNombreVozAzarAsistencia(estudiante) {
 }
 
 function hablarNombreVozAzarAsistencia(estudiante, textoFinal = "") {
-    if (!vozAzarAsistenciaActiva || !('speechSynthesis' in window)) return;
+    if (!vozAzarAsistenciaActiva) return;
     const nombre = obtenerNombreVozAzarAsistencia(estudiante);
     const complemento = String(textoFinal || '').trim();
     const textoVoz = [nombre, complemento].filter(Boolean).join(' ')
@@ -26062,7 +26083,7 @@ function abrirConfigTamanoAzarAsistencia() {
     if (controlVozOnlineGlobal) controlVozOnlineGlobal.checked = vozOnlineGlobalActiva;
     const estadoVozOnlineGlobalEl = document.getElementById("estadoVozOnlineGlobal");
     if (estadoVozOnlineGlobalEl) estadoVozOnlineGlobalEl.textContent = vozOnlineGlobalActiva
-        ? 'Activada: todas las funciones de voz usarán Internet; no se usará la voz del celular.'
+        ? 'Activada: voz online gratuita directa; no se usará la voz del celular.'
         : 'Desactivada: se usa la voz del celular.';
     const controlVelocidadVoz = document.getElementById("velocidadVozAzarAsistencia");
     if (controlVelocidadVoz) {
