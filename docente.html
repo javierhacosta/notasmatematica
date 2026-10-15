@@ -7768,8 +7768,10 @@ function registrarContextoActividadPendiente(id) {
     const actividad = (typeof actividades !== "undefined" ? actividades : []).find(a => String(a?.id) === idTexto);
     const curso = String(cursoSeleccionado || document.getElementById("buscarCurso")?.value || "").trim();
     contextosActividadesPendientes.set(idTexto, {
-        curso: curso || "no identificado",
+        // Usar los datos propios de la actividad, no el curso que esté seleccionado después.
+        curso: String(actividad?.curso || curso || "no identificado").trim(),
         nombre: String(actividad?.nombre || ("Actividad " + idTexto)).trim(),
+        categoria: String(actividad?.categoria || "").trim().toUpperCase(),
         fecha: String(actividad?.fecha || "").trim()
     });
 }
@@ -28245,6 +28247,18 @@ async function recuperarCopiaBaseDatos(event) {
    actividades que todavía no fueron guardados.
 ===================================================== */
 
+function formatearFechaAvisoDatosPendientes(fechaTexto) {
+    const clave = String(fechaTexto || "").trim().slice(0, 10);
+    const partes = clave.split("-").map(Number);
+    if (partes.length !== 3 || partes.some(n => !Number.isFinite(n)) || !partes[0] || !partes[1] || !partes[2]) {
+        return clave;
+    }
+    const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
+    const dia = fecha.toLocaleDateString("es-BO", { weekday: "long" });
+    const diaMes = fecha.toLocaleDateString("es-BO", { day: "numeric", month: "long" });
+    return dia.charAt(0).toLocaleUpperCase("es-BO") + dia.slice(1) + " " + diaMes;
+}
+
 function obtenerDetallesDatosSinGuardar() {
     const detalles = [];
     if (guardadoAutomatico) return detalles;
@@ -28275,8 +28289,13 @@ function obtenerDetallesDatosSinGuardar() {
     ids.forEach(id => {
         if (!contextosActividadesPendientes.has(id)) registrarContextoActividadPendiente(id);
         const ctx = contextosActividadesPendientes.get(id) || {};
-        detalles.push("ACTIVIDAD — Curso: " + (ctx.curso || "no identificado") + " — Nombre completo: " +
-            (ctx.nombre || "Actividad " + id) + (ctx.fecha ? " — Fecha: " + ctx.fecha : ""));
+        const categoria = String(ctx.categoria || "ACTIVIDAD").trim().toUpperCase();
+        const fechaBonita = formatearFechaAvisoDatosPendientes(ctx.fecha);
+        detalles.push(
+            categoria + " - " + (ctx.curso || "no identificado") + "- " +
+            (ctx.nombre || "Actividad " + id) +
+            (fechaBonita ? " - " + fechaBonita : "")
+        );
     });
 
     return detalles;
