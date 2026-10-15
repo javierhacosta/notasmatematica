@@ -28302,6 +28302,39 @@ function actualizarAvisoDatosSinGuardar() {
     }
 }
 
+/* Detectar los cambios pendientes antes de salir. Esta función debe existir
+   porque beforeunload la consulta directamente. */
+function hayDatosSinGuardarAntesDeSalir() {
+    if (guardadoAutomatico) return false;
+
+    if (cambiosPendientesAsistencia === true ||
+        cambiosPendientesActividades === true ||
+        (actividadesPendientes && actividadesPendientes.size > 0)) {
+        return true;
+    }
+
+    if (typeof asistenciasQRPendientesGuardar !== "undefined" &&
+        asistenciasQRPendientesGuardar &&
+        asistenciasQRPendientesGuardar.size > 0) {
+        return true;
+    }
+
+    // Respaldo: detectar notas u observaciones editadas aunque todavía no
+    // se haya actualizado el indicador visual de guardado pendiente.
+    const entradasEditadas = document.querySelectorAll(
+        ".nota-input, .observacion-actividad"
+    );
+    for (const entrada of entradasEditadas) {
+        if (typeof entrada.dataset.valorInicial === "undefined") continue;
+        if (String(entrada.value ?? "").trim() !==
+            String(entrada.dataset.valorInicial ?? "").trim()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /*
  * Mostrar la advertencia del navegador SOLO al actualizar o cerrar
  * cuando realmente existen datos pendientes de guardar.
