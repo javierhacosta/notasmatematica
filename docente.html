@@ -5750,6 +5750,7 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 <div class="usuario">
 Usuario:
 <span id="usuario"></span>
+<div id="indicadorConsumoInternet" role="button" tabindex="0" aria-label="Mantén pulsado para ver el consumo de Internet" style="font-size:12px;color:#777;margin-top:4px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-y;">Internet consumido: 0 KB</div>
 </div>
 <!-- =====================================================
      FILTROS
@@ -29507,6 +29508,83 @@ document.addEventListener("contextmenu", function(event) {
     <div class="config-archivos-acciones"><button type="button" class="boton-cancelar-config-archivos" onclick="cerrarConfiguracionArchivosEstudiantes()">Cancelar</button><button type="button" class="boton-guardar-config-archivos" onclick="guardarConfiguracionArchivosEstudiantes()">Guardar</button></div>
   </div>
 </div>
+
+
+<!-- Medición aproximada del tráfico de red de esta página -->
+<style>
+#modalConsumoInternet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100500;display:flex;align-items:center;justify-content:center;padding:14px;}
+#modalConsumoInternet.oculto{display:none!important}
+#modalConsumoInternet .consumo-caja{background:#fff;color:#222;width:min(560px,100%);max-height:85vh;overflow:auto;border-radius:14px;padding:18px;box-shadow:0 8px 32px #0004}
+#modalConsumoInternet .consumo-cabecera{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#modalConsumoInternet .consumo-cabecera h3{margin:0}
+#modalConsumoInternet .consumo-cerrar{border:0;background:#eee;border-radius:8px;font-size:24px;padding:2px 10px;cursor:pointer}
+#modalConsumoInternet .consumo-resumen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+#modalConsumoInternet .consumo-tarjeta{background:#f4f7fb;border-radius:10px;padding:12px}
+#modalConsumoInternet .consumo-valor{font-size:20px;font-weight:700;color:#1557a6;overflow-wrap:anywhere}
+#modalConsumoInternet .consumo-nota{font-size:12px;color:#666;line-height:1.45}
+#modalConsumoInternet .consumo-acciones{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:16px}
+#modalConsumoInternet .consumo-acciones button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+#botonReiniciarConsumo{background:#b42318;color:#fff}#botonCerrarConsumo{background:#e8edf3;color:#222}
+</style>
+<div id="modalConsumoInternet" class="oculto" aria-hidden="true" onclick="if(event.target===this)cerrarModalConsumoInternet()">
+ <div class="consumo-caja" role="dialog" aria-modal="true" aria-labelledby="tituloConsumoInternet">
+  <div class="consumo-cabecera"><h3 id="tituloConsumoInternet">📶 Consumo de Internet</h3><button class="consumo-cerrar" type="button" onclick="cerrarModalConsumoInternet()" aria-label="Cerrar">×</button></div>
+  <p class="consumo-nota">Datos contabilizados por esta página desde el último reinicio. El navegador no permite medir con exactitud todo el tráfico; algunos datos se muestran como estimación.</p>
+  <div class="consumo-resumen">
+   <div class="consumo-tarjeta"><div>Recibidos</div><div id="consumoRecibido" class="consumo-valor">0 B</div></div>
+   <div class="consumo-tarjeta"><div>Enviados</div><div id="consumoEnviado" class="consumo-valor">0 B</div></div>
+   <div class="consumo-tarjeta"><div>Total contabilizado</div><div id="consumoTotal" class="consumo-valor">0 B</div></div>
+   <div class="consumo-tarjeta"><div>Solicitudes</div><div id="consumoSolicitudes" class="consumo-valor">0</div></div>
+  </div>
+  <div id="consumoFechaInicio" class="consumo-nota"></div>
+  <div class="consumo-acciones"><button id="botonReiniciarConsumo" type="button" onclick="reiniciarConsumoInternet()">Reiniciar contador</button><button id="botonCerrarConsumo" type="button" onclick="cerrarModalConsumoInternet()">Cerrar</button></div>
+ </div>
+</div>
+<script>
+(function(){
+ 'use strict';
+ const CLAVE='docente_consumo_internet_v1';
+ const el=id=>document.getElementById(id);
+ function nuevoEstado(){return {recibidos:0,enviados:0,solicitudes:0,inicio:Date.now()}}
+ function cargar(){try{const x=JSON.parse(localStorage.getItem(CLAVE)||'null');if(x&&Number.isFinite(x.recibidos)&&Number.isFinite(x.enviados)&&Number.isFinite(x.solicitudes))return x}catch(_){}return nuevoEstado()}
+ let estado=cargar();
+ function guardar(){try{localStorage.setItem(CLAVE,JSON.stringify(estado))}catch(_){}}
+ function formato(n){n=Math.max(0,Number(n)||0);if(n<1024)return Math.round(n)+' B';if(n<1024*1024)return (n/1024).toFixed(1)+' KB';if(n<1024**3)return (n/1024**2).toFixed(2)+' MB';return (n/1024**3).toFixed(2)+' GB'}
+ function pintar(){const total=estado.recibidos+estado.enviados;const indicador=el('indicadorConsumoInternet');if(indicador)indicador.textContent='Internet consumido: '+formato(total);if(el('consumoRecibido'))el('consumoRecibido').textContent=formato(estado.recibidos);if(el('consumoEnviado'))el('consumoEnviado').textContent=formato(estado.enviados);if(el('consumoTotal'))el('consumoTotal').textContent=formato(total);if(el('consumoSolicitudes'))el('consumoSolicitudes').textContent=String(estado.solicitudes);if(el('consumoFechaInicio'))el('consumoFechaInicio').textContent='Medición iniciada: '+new Date(estado.inicio).toLocaleString('es-BO')+' · Se conserva en este navegador.'}
+ window.abrirModalConsumoInternet=function(){el('modalConsumoInternet').classList.remove('oculto');el('modalConsumoInternet').setAttribute('aria-hidden','false');pintar()};
+ window.cerrarModalConsumoInternet=function(){el('modalConsumoInternet').classList.add('oculto');el('modalConsumoInternet').setAttribute('aria-hidden','true')};
+ window.reiniciarConsumoInternet=function(){if(!confirm('¿Reiniciar el contador de consumo de Internet de esta página?'))return;estado=nuevoEstado();guardar();pintar()};
+ // Mantener pulsado el texto abre los detalles; un toque breve no interfiere con el resto del panel.
+ let temporizador=null,activado=false;
+ const indicador=el('indicadorConsumoInternet');
+ if(indicador){
+  const iniciar=()=>{activado=false;clearTimeout(temporizador);temporizador=setTimeout(()=>{activado=true;window.abrirModalConsumoInternet()},650)};
+  const cancelar=()=>clearTimeout(temporizador);
+  indicador.addEventListener('touchstart',iniciar,{passive:true});indicador.addEventListener('touchend',cancelar);indicador.addEventListener('touchmove',cancelar);
+  indicador.addEventListener('mousedown',iniciar);indicador.addEventListener('mouseup',cancelar);indicador.addEventListener('mouseleave',cancelar);
+  indicador.addEventListener('click',e=>{if(activado){e.preventDefault();e.stopPropagation();activado=false}});
+  indicador.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.abrirModalConsumoInternet()}});
+ }
+ // Instrumenta solicitudes fetch futuras sin alterar sus respuestas ni su flujo normal.
+ if(typeof window.fetch==='function'&&!window.__docenteConsumoFetchInstrumentado){
+  const fetchOriginal=window.fetch.bind(window);window.__docenteConsumoFetchInstrumentado=true;
+  window.fetch=function(input,init){
+   let enviados=0;
+   try{const body=init&&init.body;if(typeof body==='string')enviados=new TextEncoder().encode(body).length;else if(body instanceof Blob)enviados=body.size;else if(body instanceof ArrayBuffer)enviados=body.byteLength;else if(ArrayBuffer.isView(body))enviados=body.byteLength;else if(typeof FormData!=='undefined'&&body instanceof FormData){for(const v of body.values())if(v instanceof Blob)enviados+=v.size;else enviados+=new TextEncoder().encode(String(v)).length}}catch(_){}
+   estado.solicitudes++;estado.enviados+=enviados;guardar();pintar();
+   let url='';try{url=typeof input==='string'?input:(input&&input.url)||''}catch(_){}
+   const marca=performance.now();
+   return fetchOriginal(input,init).then(resp=>{
+    let recibidos=0;try{const h=resp.headers.get('content-length');if(h&&Number.isFinite(Number(h)))recibidos=Number(h)}catch(_){}
+    if(!recibidos){try{const entradas=performance.getEntriesByName(resp.url||url,'resource');const r=entradas.filter(x=>x.startTime>=marca-5).sort((a,b)=>b.startTime-a.startTime)[0];if(r)recibidos=Number(r.transferSize||r.encodedBodySize||0)}catch(_){}}
+    estado.recibidos+=recibidos;guardar();pintar();return resp;
+   },err=>{guardar();throw err});
+  };
+ }
+ pintar();
+})();
+</script>
+
 </body>
 
-</html>
+      </html>
