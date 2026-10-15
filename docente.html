@@ -7751,6 +7751,28 @@ let guardadoManualEnCurso = false;
 let cambiosPendientesAsistencia = false;
 let cambiosPendientesActividades = false;
 let actividadesPendientes = new Set();
+// Contexto fijado en el momento de editar para que cambiar de curso no altere el aviso.
+const contextosAsistenciaPendiente = new Map();
+const contextosActividadesPendientes = new Map();
+function claveContextoAsistenciaPendiente(curso, fecha) {
+    return String(curso || "Curso no identificado") + "|" + String(fecha || "Fecha no identificada");
+}
+function registrarContextoAsistenciaPendiente() {
+    const curso = String(cursoSeleccionado || document.getElementById("buscarCurso")?.value || "").trim();
+    const fecha = String(document.getElementById("fechaAsistencia")?.value || fechaAsistenciaSeleccionada || "").trim();
+    contextosAsistenciaPendiente.set(claveContextoAsistenciaPendiente(curso, fecha), { curso: curso || "no identificado", fecha: fecha || "no identificada" });
+}
+function registrarContextoActividadPendiente(id) {
+    const idTexto = String(id || "");
+    if (!idTexto) return;
+    const actividad = (typeof actividades !== "undefined" ? actividades : []).find(a => String(a?.id) === idTexto);
+    const curso = String(cursoSeleccionado || document.getElementById("buscarCurso")?.value || "").trim();
+    contextosActividadesPendientes.set(idTexto, {
+        curso: curso || "no identificado",
+        nombre: String(actividad?.nombre || ("Actividad " + idTexto)).trim(),
+        fecha: String(actividad?.fecha || "").trim()
+    });
+}
 
 // Fecha usada para filtrar las actividades al pulsar un día del calendario.
 // Solo se activa desde el calendario; el resto del funcionamiento se mantiene igual.
@@ -12086,6 +12108,14 @@ function actualizarCambiosPendientesAsistencia() {
     });
 
     cambiosPendientesAsistencia = hayCambios;
+    const cursoContexto = String(cursoSeleccionado || "").trim();
+    const fechaContexto = String(document.getElementById("fechaAsistencia")?.value || fechaAsistenciaSeleccionada || "").trim();
+    const claveContexto = claveContextoAsistenciaPendiente(cursoContexto, fechaContexto);
+    if (hayCambios) {
+        registrarContextoAsistenciaPendiente();
+    } else {
+        contextosAsistenciaPendiente.delete(claveContexto);
+    }
     actualizarBotonGuardarAsistencia();
     actualizarEstadosGuardado();
 }
@@ -12298,6 +12328,7 @@ async function guardarAsistencia() {
         mostrarMensaje("✓ Asistencia guardada correctamente.");
 
         cambiosPendientesAsistencia = false;
+        contextosAsistenciaPendiente.delete(claveContextoAsistenciaPendiente(cursoSeleccionado, document.getElementById("fechaAsistencia")?.value || fechaAsistenciaSeleccionada || ""));
         actualizarBotonGuardarAsistencia();
         actualizarEstadosGuardado();
 
@@ -18235,8 +18266,10 @@ function programarGuardadoCambioActividad(input) {
     ) {
         actualizarBotonGuardarActividadManual(actividadId);
         actividadesPendientes.delete(actividadId);
+        contextosActividadesPendientes.delete(String(actividadId));
     } else {
         actividadesPendientes.add(actividadId);
+        registrarContextoActividadPendiente(actividadId);
         mostrarBotonGuardarActividadManual(actividadId);
     }
 
@@ -18392,6 +18425,7 @@ async function guardarActividadManual(actividadId) {
 
     if (!hayCambios) {
         actividadesPendientes.delete(String(id));
+        contextosActividadesPendientes.delete(String(id));
         actualizarBotonGuardarActividadManual(id);
         cambiosPendientesActividades =
             actividadesPendientes.size > 0;
@@ -22979,6 +23013,11 @@ function agregarAColaQRActividad(registro) {
     guardarColaQRActividades(cola);
 
     actividadesPendientes.add(String(registro.actividad_id));
+    const estudianteCola = (typeof estudiantes !== "undefined" ? estudiantes : []).find(e => String(e.id) === String(registro.estudiante_id));
+    registrarContextoActividadPendiente(registro.actividad_id);
+    if (estudianteCola?.curso && contextosActividadesPendientes.has(String(registro.actividad_id))) {
+        contextosActividadesPendientes.get(String(registro.actividad_id)).curso = String(estudianteCola.curso);
+    }
     cambiosPendientesActividades =
         actividadesPendientes.size > 0;
 
@@ -23076,6 +23115,7 @@ async function procesarColaQRActividades() {
                 !quedanCambiosManuales
             ) {
                 actividadesPendientes.delete(actividadIdTexto);
+                contextosActividadesPendientes.delete(String(actividadIdTexto));
             }
         });
 
@@ -28207,67 +28247,37 @@ async function recuperarCopiaBaseDatos(event) {
 
 function obtenerDetallesDatosSinGuardar() {
     const detalles = [];
-    const cursoActual = String(
-        (typeof cursoSeleccionado !== "undefined" && cursoSeleccionado) ||
-        document.getElementById("buscarCurso")?.value ||
-        ""
-    ).trim();
+    if (guardadoAutomatico) return detalles;
 
-    const colaQR =
-        (typeof asistenciasQRPendientesGuardar !== "undefined" &&
-         asistenciasQRPendientesGuardar)
-            ? asistenciasQRPendientesGuardar
-            : new Map();
-
-    const asistenciaPendiente =
-        !guardadoAutomatico &&
-        (cambiosPendientesAsistencia === true || colaQR.size > 0);
-
-    if (asistenciaPendiente) {
-        const fechaAsistencia = String(
-            document.getElementById("fechaAsistencia")?.value ||
-            (typeof fechaAsistenciaSeleccionada !== "undefined" ? fechaAsistenciaSeleccionada : "") ||
-            ""
-        ).trim();
-        detalles.push(
-            "ASISTENCIA — Curso: " + (cursoActual || "no identificado") +
-            " — Fecha: " + (fechaAsistencia || "no identificada")
-        );
+    // Mantener el contexto original de cada curso/fecha, aunque el usuario cambie de curso.
+    const colaQR = (typeof asistenciasQRPendientesGuardar !== "undefined" && asistenciasQRPendientesGuardar)
+        ? asistenciasQRPendientesGuardar : new Map();
+    if ((cambiosPendientesAsistencia || colaQR.size > 0) && contextosAsistenciaPendiente.size === 0) {
+        registrarContextoAsistenciaPendiente();
+    }
+    contextosAsistenciaPendiente.forEach((ctx) => {
+        detalles.push("ASISTENCIA — Curso: " + ctx.curso + " — Fecha: " + ctx.fecha);
+    });
+    if (colaQR.size > 0 && contextosAsistenciaPendiente.size === 0) {
+        const curso = String(cursoSeleccionado || "no identificado");
+        const fecha = String(document.getElementById("fechaAsistencia")?.value || fechaAsistenciaSeleccionada || "no identificada");
+        detalles.push("ASISTENCIA — Curso: " + curso + " — Fecha: " + fecha + " — registros QR pendientes");
     }
 
-    const idsActividadesPendientes = new Set();
-    if (!guardadoAutomatico && actividadesPendientes) {
-        actividadesPendientes.forEach(id => idsActividadesPendientes.add(String(id)));
-    }
-    if (!guardadoAutomatico && cambiosPendientesActividades) {
+    const ids = new Set();
+    if (actividadesPendientes) actividadesPendientes.forEach(id => ids.add(String(id)));
+    if (cambiosPendientesActividades) {
         document.querySelectorAll(".estado-guardado-actividad-nombre.visible").forEach(el => {
             const id = String(el.dataset.actividadId || "");
-            if (id) idsActividadesPendientes.add(id);
+            if (id) ids.add(id);
         });
     }
-
-    if (idsActividadesPendientes.size > 0) {
-        const nombres = [];
-        idsActividadesPendientes.forEach(id => {
-            const actividad = (typeof actividades !== "undefined" ? actividades : []).find(
-                a => String(a?.id) === id
-            );
-            if (actividad) {
-                const nombre = String(actividad.nombre || "Actividad").trim();
-                const fecha = String(actividad.fecha || "").trim();
-                nombres.push(nombre + (fecha ? " — fecha: " + fecha : ""));
-            } else {
-                nombres.push("Actividad " + id);
-            }
-        });
-        detalles.push(
-            "ACTIVIDADES — Curso: " + (cursoActual || "no identificado") +
-            " — " + nombres.join("; ")
-        );
-    } else if (!guardadoAutomatico && cambiosPendientesActividades) {
-        detalles.push("ACTIVIDADES — Curso: " + (cursoActual || "no identificado") +
-            " — hay cambios pendientes de guardar");
-    }
+    ids.forEach(id => {
+        if (!contextosActividadesPendientes.has(id)) registrarContextoActividadPendiente(id);
+        const ctx = contextosActividadesPendientes.get(id) || {};
+        detalles.push("ACTIVIDAD — Curso: " + (ctx.curso || "no identificado") + " — Nombre completo: " +
+            (ctx.nombre || "Actividad " + id) + (ctx.fecha ? " — Fecha: " + ctx.fecha : ""));
+    });
 
     return detalles;
 }
