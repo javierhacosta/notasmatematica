@@ -28207,6 +28207,11 @@ async function recuperarCopiaBaseDatos(event) {
 
 function obtenerDetallesDatosSinGuardar() {
     const detalles = [];
+    const cursoActual = String(
+        (typeof cursoSeleccionado !== "undefined" && cursoSeleccionado) ||
+        document.getElementById("buscarCurso")?.value ||
+        ""
+    ).trim();
 
     const colaQR =
         (typeof asistenciasQRPendientesGuardar !== "undefined" &&
@@ -28216,35 +28221,26 @@ function obtenerDetallesDatosSinGuardar() {
 
     const asistenciaPendiente =
         !guardadoAutomatico &&
-        (
-            cambiosPendientesAsistencia === true ||
-            colaQR.size > 0
-        );
+        (cambiosPendientesAsistencia === true || colaQR.size > 0);
 
     if (asistenciaPendiente) {
-        const fechaAsistencia =
-            document.getElementById("fechaAsistencia")?.value || "";
-
+        const fechaAsistencia = String(
+            document.getElementById("fechaAsistencia")?.value ||
+            (typeof fechaAsistenciaSeleccionada !== "undefined" ? fechaAsistenciaSeleccionada : "") ||
+            ""
+        ).trim();
         detalles.push(
-            "ASISTENCIA: " +
-            (fechaAsistencia
-                ? "fecha " + fechaAsistencia
-                : "fecha seleccionada")
+            "ASISTENCIA — Curso: " + (cursoActual || "no identificado") +
+            " — Fecha: " + (fechaAsistencia || "no identificada")
         );
     }
 
     const idsActividadesPendientes = new Set();
-
     if (!guardadoAutomatico && actividadesPendientes) {
-        actividadesPendientes.forEach(id => {
-            idsActividadesPendientes.add(String(id));
-        });
+        actividadesPendientes.forEach(id => idsActividadesPendientes.add(String(id)));
     }
-
     if (!guardadoAutomatico && cambiosPendientesActividades) {
-        document.querySelectorAll(
-            ".estado-guardado-actividad-nombre.visible"
-        ).forEach(el => {
+        document.querySelectorAll(".estado-guardado-actividad-nombre.visible").forEach(el => {
             const id = String(el.dataset.actividadId || "");
             if (id) idsActividadesPendientes.add(id);
         });
@@ -28252,73 +28248,58 @@ function obtenerDetallesDatosSinGuardar() {
 
     if (idsActividadesPendientes.size > 0) {
         const nombres = [];
-
         idsActividadesPendientes.forEach(id => {
-            const actividad = actividades.find(
+            const actividad = (typeof actividades !== "undefined" ? actividades : []).find(
                 a => String(a?.id) === id
             );
-
             if (actividad) {
-                const nombre = String(actividad.nombre || "Actividad");
+                const nombre = String(actividad.nombre || "Actividad").trim();
                 const fecha = String(actividad.fecha || "").trim();
-
-                nombres.push(
-                    fecha
-                        ? `${nombre} (${fecha})`
-                        : nombre
-                );
+                nombres.push(nombre + (fecha ? " — fecha: " + fecha : ""));
             } else {
                 nombres.push("Actividad " + id);
             }
         });
-
         detalles.push(
-            "ACTIVIDADES: " + nombres.join(", ")
+            "ACTIVIDADES — Curso: " + (cursoActual || "no identificado") +
+            " — " + nombres.join("; ")
         );
     } else if (!guardadoAutomatico && cambiosPendientesActividades) {
-        detalles.push("ACTIVIDADES: hay cambios pendientes de guardar");
+        detalles.push("ACTIVIDADES — Curso: " + (cursoActual || "no identificado") +
+            " — hay cambios pendientes de guardar");
     }
 
     return detalles;
 }
 
-function hayDatosSinGuardarAntesDeSalir() {
-    return obtenerDetallesDatosSinGuardar().length > 0;
-}
-
 function actualizarAvisoDatosSinGuardar() {
     let aviso = document.getElementById("avisoDatosSinGuardar");
-
     if (!aviso) {
         aviso = document.createElement("div");
         aviso.id = "avisoDatosSinGuardar";
         aviso.style.cssText = [
-            "position:fixed",
-            "left:10px",
-            "right:10px",
-            "bottom:10px",
-            "z-index:99999",
-            "padding:10px 14px",
-            "border-radius:8px",
-            "background:#fff3cd",
-            "border:1px solid #ffcc00",
-            "color:#664d03",
-            "font-weight:bold",
-            "font-size:14px",
-            "line-height:1.4",
-            "box-shadow:0 2px 8px rgba(0,0,0,.18)",
-            "display:none"
+            "position:fixed", "left:10px", "right:10px", "bottom:10px",
+            "z-index:99999", "padding:10px 14px", "border-radius:8px",
+            "background:#fff3cd", "border:1px solid #ffcc00", "color:#664d03",
+            "font-weight:bold", "font-size:14px", "line-height:1.4",
+            "white-space:pre-line", "max-height:35vh", "overflow:auto",
+            "box-shadow:0 2px 8px rgba(0,0,0,.18)", "display:none"
         ].join(";");
-
-        if (document.body) {
-            document.body.appendChild(aviso);
-        } else {
-            return;
-        }
+        if (document.body) document.body.appendChild(aviso);
+        else return;
     }
 
-    aviso.style.display = "none";
-    return;
+    const detalles = obtenerDetallesDatosSinGuardar();
+    if (detalles.length) {
+        aviso.textContent =
+            "⚠️ HAY DATOS QUE FALTA GUARDAR\n" + detalles.join("\n");
+        aviso.style.display = "block";
+        document.title = "⚠️ Falta guardar: " +
+            detalles.map(d => d.replace(/^(ASISTENCIA|ACTIVIDADES) — /, "")).join(" | ");
+    } else {
+        aviso.style.display = "none";
+        document.title = "Panel Docente";
+    }
 }
 
 /*
