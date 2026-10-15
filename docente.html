@@ -28270,12 +28270,12 @@ function obtenerDetallesDatosSinGuardar() {
         registrarContextoAsistenciaPendiente();
     }
     contextosAsistenciaPendiente.forEach((ctx) => {
-        detalles.push("ASISTENCIA — Curso: " + ctx.curso + " — Fecha: " + ctx.fecha);
+        detalles.push(String(ctx.curso || "no identificado") + " - ASISTENCIA-" + formatearFechaAvisoDatosPendientes(ctx.fecha));
     });
     if (colaQR.size > 0 && contextosAsistenciaPendiente.size === 0) {
         const curso = String(cursoSeleccionado || "no identificado");
         const fecha = String(document.getElementById("fechaAsistencia")?.value || fechaAsistenciaSeleccionada || "no identificada");
-        detalles.push("ASISTENCIA — Curso: " + curso + " — Fecha: " + fecha + " — registros QR pendientes");
+        detalles.push(curso + " - ASISTENCIA-" + formatearFechaAvisoDatosPendientes(fecha) + " — registros QR pendientes");
     }
 
     const ids = new Set();
@@ -28292,7 +28292,7 @@ function obtenerDetallesDatosSinGuardar() {
         const categoria = String(ctx.categoria || "ACTIVIDAD").trim().toUpperCase();
         const fechaBonita = formatearFechaAvisoDatosPendientes(ctx.fecha);
         detalles.push(
-            categoria + " - " + (ctx.curso || "no identificado") + "- " +
+            (ctx.curso || "no identificado") + "- " + categoria + "-" +
             (ctx.nombre || "Actividad " + id) +
             (fechaBonita ? " - " + fechaBonita : "")
         );
