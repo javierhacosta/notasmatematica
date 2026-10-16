@@ -14625,19 +14625,6 @@ async function leerNombreEstudianteEnImagen(file, regionLectura=null){
     if(candidatos.length>1 && (candidatos[0].score-candidatos[1].score<.20 || candidatos[0].coincidencias===candidatos[1].coincidencias))return null;
     return candidatos[0].e;
 }
-async function cargarZXingDataMatrixActividad(){
-    if (window.ZXing) return window.ZXing;
-    if (window.__zxingDataMatrixActividadPromise) return window.__zxingDataMatrixActividadPromise;
-    window.__zxingDataMatrixActividadPromise = new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js";
-        script.onload = () => window.ZXing ? resolve(window.ZXing) : reject(new Error("No se pudo iniciar el lector Data Matrix."));
-        script.onerror = () => reject(new Error("No se pudo cargar el lector Data Matrix. Verifique la conexión a Internet."));
-        document.head.appendChild(script);
-    });
-    return window.__zxingDataMatrixActividadPromise;
-}
-
 function extraerIdentificadorCursoListaActividad(texto){
     const valor = String(texto || "").trim().toUpperCase();
     // Ejemplos aceptados: 2A5, 2A-5, 2A_05 o 2A 5.
@@ -14646,46 +14633,28 @@ function extraerIdentificadorCursoListaActividad(texto){
     return { curso: m[1].replace(/\s+/g, ""), num_lista: Number(m[2]) };
 }
 
-async function decodificarCodigoZXingActividad(canvas){
-    const ZXing = await cargarZXingDataMatrixActividad();
-    const ctx = canvas.getContext("2d", {willReadFrequently:true});
-    const imagen = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const luminance = new ZXing.RGBLuminanceSource(imagen.data, imagen.width, imagen.height);
-    const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-    const lector = new ZXing.MultiFormatReader();
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.DATA_MATRIX, ZXing.BarcodeFormat.QR_CODE]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-    lector.setHints(hints);
-    try { return lector.decode(bitmap); }
-    finally { lector.reset?.(); }
-}
-
-async function detectarCodigoEnImagen(file, soloQR = false){
+async function detectarCodigoEnImagen(file){
     const bitmap=await createImageBitmap(file);
     try{
-        const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
         const escalas=[1,Math.min(1,2600/Math.max(bitmap.width,bitmap.height)),Math.min(1,1600/Math.max(bitmap.width,bitmap.height))];
-        // En la importación de fotografías se limita la lectura exclusivamente a QR.
         if("BarcodeDetector" in window){
             try{
                 const formatosDisponibles = await BarcodeDetector.getSupportedFormats();
-                const formatos = (soloQR ? ["qr_code"] : ["qr_code", "data_matrix"]).filter(f => formatosDisponibles.includes(f));
-                if(formatos.length){
-                    const detector=new BarcodeDetector({formats:formatos});
+                if(formatosDisponibles.includes("qr_code")){
+                    const detector=new BarcodeDetector({formats:["qr_code"]});
                     const encontrados=await detector.detect(bitmap);
                     for(const codigo of encontrados || []){
                         const raw=String(codigo.rawValue||"").trim();
                         const ci=extraerCIDesdeQR(raw);
                         const identificador=extraerIdentificadorCursoListaActividad(raw);
-                        if(ci || identificador) return {ci, identificador, raw, tipo: codigo.format === "data_matrix" ? "Data Matrix" : "QR"};
+                        if(ci || identificador) return {ci, identificador, raw, tipo:"QR"};
                     }
                 }
-            }catch(e){console.warn("BarcodeDetector no pudo leer el código; se probarán lectores alternativos.",e)}
+            }catch(e){console.warn("BarcodeDetector no pudo leer el QR; se probará el lector alternativo.",e)}
         }
-        // jsQR como alternativa especializada para QR.
         if(typeof jsQR!=="function"){try{await cargarJSQR()}catch(_){}}
         if(typeof jsQR==="function"){
+            const c=document.createElement("canvas"),ctx=c.getContext("2d",{willReadFrequently:true});
             for(const escala of [...new Set(escalas)]){
                 const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
                 c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
@@ -14693,17 +14662,6 @@ async function detectarCodigoEnImagen(file, soloQR = false){
                 if(r?.data){const raw=String(r.data).trim(),ci=extraerCIDesdeQR(raw),identificador=extraerIdentificadorCursoListaActividad(raw);if(ci||identificador)return {ci,identificador,raw,tipo:"QR"};}
             }
         }
-        // ZXing se reserva para los flujos que admiten Data Matrix; la importación usa solo jsQR.
-        if (!soloQR) try{
-            for(const escala of [...new Set(escalas)]){
-                const w=Math.max(1,Math.round(bitmap.width*escala)),h=Math.max(1,Math.round(bitmap.height*escala));
-                c.width=w;c.height=h;ctx.clearRect(0,0,w,h);ctx.drawImage(bitmap,0,0,w,h);
-                const resultado=await decodificarCodigoZXingActividad(c);
-                const raw=String(resultado?.getText?.()||"").trim();
-                const ci=extraerCIDesdeQR(raw),identificador=extraerIdentificadorCursoListaActividad(raw);
-                if(ci||identificador)return {ci,identificador,raw,tipo:resultado.getBarcodeFormat?.()===window.ZXing.BarcodeFormat.DATA_MATRIX?"Data Matrix":"QR"};
-            }
-        }catch(e){console.warn("No se pudo decodificar Data Matrix/QR con ZXing.",e)}
         return null;
     }finally{bitmap.close?.()}
 }
@@ -21004,81 +20962,21 @@ let contextoCanvasQR = null;
 
 async function crearDetectorQR() {
     if ("BarcodeDetector" in window) {
-        // La cámara de actividades acepta QR y Data Matrix.
-        // Los demás modos conservan únicamente QR.
-        const formatos = actividadQRSeleccionada
-            ? ["qr_code", "data_matrix"]
-            : ["qr_code"];
         try {
             const disponibles = await BarcodeDetector.getSupportedFormats();
-            const compatibles = formatos.filter(formato => disponibles.includes(formato));
-            if (!actividadQRSeleccionada && compatibles.includes("qr_code")) {
-                return new BarcodeDetector({ formats: ["qr_code"] });
-            }
-            if (actividadQRSeleccionada && compatibles.includes("qr_code") && compatibles.includes("data_matrix")) {
-                return new BarcodeDetector({ formats: compatibles });
-            }
-            if (actividadQRSeleccionada) {
-                // Respaldo para navegadores que no ofrecen Data Matrix en BarcodeDetector.
-                return {
-                    async detect(video) {
-                        if (!video.videoWidth || !video.videoHeight) return [];
-                        if (!canvasQR) {
-                            canvasQR = document.createElement("canvas");
-                            contextoCanvasQR = canvasQR.getContext("2d", { willReadFrequently: true });
-                        }
-                        canvasQR.width = video.videoWidth;
-                        canvasQR.height = video.videoHeight;
-                        contextoCanvasQR.drawImage(video, 0, 0, canvasQR.width, canvasQR.height);
-                        try {
-                            const resultado = await decodificarCodigoZXingActividad(canvasQR);
-                            return resultado ? [{
-                                rawValue: resultado.getText(),
-                                format: resultado.getBarcodeFormat() === window.ZXing.BarcodeFormat.DATA_MATRIX ? "data_matrix" : "qr_code"
-                            }] : [];
-                        } catch (_) { return []; }
-                    }
-                };
-            }
-            if (compatibles.includes("qr_code")) return new BarcodeDetector({ formats: ["qr_code"] });
+            if (disponibles.includes("qr_code")) return new BarcodeDetector({ formats: ["qr_code"] });
         } catch (error) {
-            try { return new BarcodeDetector({ formats: formatos }); } catch (_) {}
+            try { return new BarcodeDetector({ formats: ["qr_code"] }); } catch (_) {}
         }
     }
-
-    if (actividadQRSeleccionada) {
-        // En navegadores sin BarcodeDetector, usar ZXing para QR y Data Matrix.
-        return {
-            async detect(video) {
-                if (!video.videoWidth || !video.videoHeight) return [];
-                if (!canvasQR) {
-                    canvasQR = document.createElement("canvas");
-                    contextoCanvasQR = canvasQR.getContext("2d", { willReadFrequently: true });
-                }
-                canvasQR.width = video.videoWidth;
-                canvasQR.height = video.videoHeight;
-                contextoCanvasQR.drawImage(video, 0, 0, canvasQR.width, canvasQR.height);
-                try {
-                    const resultado = await decodificarCodigoZXingActividad(canvasQR);
-                    return resultado ? [{
-                        rawValue: resultado.getText(),
-                        format: resultado.getBarcodeFormat() === window.ZXing.BarcodeFormat.DATA_MATRIX ? "data_matrix" : "qr_code"
-                    }] : [];
-                } catch (_) { return []; }
-            }
-        };
-    }
-
     if (typeof jsQR !== "function") {
         try { await cargarJSQR(); } catch(e) { return null; }
     }
-
     if (typeof jsQR === "function") {
         if (!canvasQR) {
             canvasQR = document.createElement("canvas");
             contextoCanvasQR = canvasQR.getContext("2d", { willReadFrequently: true });
         }
-
         return {
             async detect(video) {
                 if (!video.videoWidth || !video.videoHeight) return [];
@@ -21086,17 +20984,13 @@ async function crearDetectorQR() {
                 canvasQR.height = video.videoHeight;
                 contextoCanvasQR.drawImage(video, 0, 0, canvasQR.width, canvasQR.height);
                 const imagen = contextoCanvasQR.getImageData(0, 0, canvasQR.width, canvasQR.height);
-                const resultado = jsQR(imagen.data, imagen.width, imagen.height, {
-                    inversionAttempts: "attemptBoth"
-                });
-                return resultado ? [{ rawValue: resultado.data }] : [];
+                const resultado = jsQR(imagen.data, imagen.width, imagen.height, { inversionAttempts: "attemptBoth" });
+                return resultado ? [{ rawValue: resultado.data, format: "qr_code" }] : [];
             }
         };
     }
-
     return null;
 }
-
 
 function obtenerFechaHoyClaveQR() {
     const hoy = new Date();
@@ -21258,7 +21152,6 @@ async function solicitarLecturaQR() {
 
             const codigoDetectado = codigos[0];
             const textoQR = String(codigoDetectado.rawValue || "").trim();
-            const esDataMatrix = codigoDetectado.format === "data_matrix";
             let ci = extraerCIDesdeQR(textoQR);
 
             // En la cámara de actividades, códigos como "5A2" identifican
@@ -21288,9 +21181,7 @@ async function solicitarLecturaQR() {
                 document.getElementById(
                     "mensajeQR"
                 ).textContent =
-                actividadQRSeleccionada && esDataMatrix
-                    ? "⚠️ El Data Matrix no contiene un CI ni un código válido de curso y número de lista (ejemplo: 5A2)."
-                    : "⚠️ El QR no contiene un CI válido.";
+                "⚠️ El QR no contiene un CI ni un código válido de curso y número de lista (ejemplo: 5A2).";
 
                 requestAnimationFrame(
                     solicitarLecturaQR
@@ -28997,12 +28888,12 @@ function preguntarContinuarLecturaNombres(cantidad) {
         const cab = document.createElement("div");
         cab.className = "modal-cabecera";
         const titulo = document.createElement("h3");
-        titulo.textContent = "📷 Fotografías sin QR ni Data Matrix";
+        titulo.textContent = "📷 Fotografías sin QR";
         cab.appendChild(titulo);
         const cuerpo = document.createElement("div");
         cuerpo.className = "modal-cuerpo";
         const mensaje = document.createElement("p");
-        mensaje.textContent = "No se encontraron QR ni Data Matrix en " + cantidad + " fotografías. ¿Desea continuar leyendo los nombres impresos?";
+        mensaje.textContent = "No se encontraron QR en " + cantidad + " fotografías. ¿Desea continuar leyendo los nombres impresos?";
         const acciones = document.createElement("div");
         acciones.className = "modal-acciones";
         const terminar = document.createElement("button");
@@ -29147,7 +29038,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         try {
             await progreso.actualizar(indice, 0, "Preparando imagen: " + file.name, base + 2);
             await progreso.actualizar(indice, 1, "Buscando QR en " + file.name + "...", base + 8);
-            const codigoLeido = await detectarCodigoEnImagen(file, true);
+            const codigoLeido = await detectarCodigoEnImagen(file);
             if (!codigoLeido) {
                 sinQR.push({ file, indice });
                 await progreso.actualizar(indice, 1, "No se encontró un QR válido en " + file.name + ". Se revisará después de terminar la búsqueda de QR.", base + 12);
@@ -29216,7 +29107,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                     await progreso.actualizar(indice, 2, "Leyendo el nombre impreso en " + file.name + "...", base + 3);
                     const estudiante = await leerNombreEstudianteEnImagen(file, regionLectura);
                     if (!estudiante) {
-                        noDetectados.push(file.name + " (sin QR ni Data Matrix; nombre no identificado con seguridad)");
+                        noDetectados.push(file.name + " (sin QR; nombre no identificado con seguridad)");
                         continue;
                     }
                     await progreso.actualizar(indice, 3, "Nombre leído: " + (obtenerNombreCompletoFotoActividad(estudiante) || "estudiante") + ". Verificando que pertenezca al curso...", base + 8);
@@ -29240,7 +29131,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
             }
             else sinQR.forEach(({file}) => noDetectados.push(file.name + " (lectura cancelada; no se seleccionó área)"));
         } else {
-            sinQR.forEach(({file}) => noDetectados.push(file.name + " (sin QR ni Data Matrix; lectura del nombre no realizada)"));
+            sinQR.forEach(({file}) => noDetectados.push(file.name + " (sin QR; lectura del nombre no realizada)"));
         }
     }
 
