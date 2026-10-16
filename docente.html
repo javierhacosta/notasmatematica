@@ -14443,7 +14443,39 @@ function crearActividadHTML(
    FOTOGRAFÍAS DE ACTIVIDADES
 ===================================================== */
 function renderFotoActividadCelda(a,e){const fotos=obtenerFotosActividad(a,e);const botonAgregar=`<button type="button" class="boton-foto-agregar" title="Añadir fotografía" aria-label="Añadir fotografía" onclick="anadirFotoActividadDesdeCelda(${a},${e})">+</button>`;if(!fotos.length)return botonAgregar;const botonesFotos=fotos.map(f=>{const c=encodeURIComponent(JSON.stringify(f));const ruta=escapeHTML(f.ruta||"");return`<div class="foto-actividad-item"><button type="button" class="boton-foto-icono boton-foto-miniatura" title="Ver fotografía" data-foto-codificada="${c}" onclick="abrirFotoActividadDesdeCelda('${c}')"><img class="boton-foto-miniatura-img" data-ruta-foto="${ruta}" alt="Foto"></button><div class="foto-actividad-controles"><button type="button" title="Cambiar foto" aria-label="Cambiar foto" onclick="cambiarFotoActividad('${c}')">📸</button><button type="button" title="Editar texto" aria-label="Editar texto" onclick="editarFotoActividad('${c}')">✏️</button><button type="button" class="opcion-borrar-foto" title="Eliminar" aria-label="Eliminar" onclick="borrarFotoActividad('${c}')">🗑️</button></div></div>`}).join('');return botonesFotos+botonAgregar}
-function anadirFotoActividadDesdeCelda(a,e){const actividad=actividades.find(x=>String(x.id)===String(a));const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'directa');}}
+function anadirFotoActividadDesdeCelda(a,e){
+    const actividad=actividades.find(x=>String(x.id)===String(a));
+    const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));
+    if(!actividad||!estudiante)return;
+    estudianteQRSeleccionado=estudiante;
+    if(confirm("¿Deseas añadir archivos de imagen desde tu dispositivo?\\n\\nAceptar: seleccionar archivos\\nCancelar: tomar una fotografía")){
+        const input=document.getElementById("inputArchivosFotoActividadEstudiante");
+        if(!input){alert("No está disponible la selección de archivos.");return}
+        input.dataset.actividadId=String(actividad.id);
+        input.dataset.estudianteId=String(estudiante.id);
+        input.value="";
+        input.click();
+    }else{
+        abrirCapturaFotoActividad(actividad,"directa");
+    }
+}
+async function procesarArchivosFotoActividadEstudiante(input){
+    const archivos=Array.from(input.files||[]);
+    const actividad=actividades.find(x=>String(x.id)===String(input.dataset.actividadId));
+    const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(input.dataset.estudianteId));
+    input.value="";
+    if(!actividad||!estudiante||!archivos.length)return;
+    estudianteQRSeleccionado=estudiante;
+    for(let i=0;i<archivos.length;i++){
+        const archivo=archivos[i];
+        if(!archivo.type.startsWith("image/")){
+            alert(`"${archivo.name}" no es una imagen y se omitió.`);
+            continue;
+        }
+        mostrarMensaje(`📎 Añadiendo archivo ${i+1} de ${archivos.length} para ${obtenerNombreCompletoFotoActividad(estudiante)||"el estudiante"}...`);
+        await procesarFotoActividadSeleccionada(archivo,actividad,"directa");
+    }
+}
 function datosFotoCodificados(c){try{return JSON.parse(decodeURIComponent(c))}catch(_){return null}}
 function abrirFotoActividadDesdeCelda(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
 async function cargarMiniaturasFotosActividad(contenedor=document){const imagenes=contenedor.querySelectorAll(".boton-foto-miniatura-img[data-ruta-foto]");await Promise.all(Array.from(imagenes).map(async img=>{const ruta=img.dataset.rutaFoto;if(!ruta||img.dataset.cargada==="1")return;try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,600);if(!error&&data?.signedUrl){img.src=data.signedUrl;img.dataset.cargada="1"}}catch(error){console.warn("No se pudo mostrar la miniatura de una fotografía:",error)}}))}
@@ -28749,6 +28781,7 @@ if (document.readyState === "loading") {
 <div id="modalConfigFotoActividad" class="modal-fondo oculto" onclick="cerrarConfigFotoActividad(event)"><div class="modal-foto-config" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>⚙️ Configuración de fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfigFotoActividad()">×</button></div><div class="foto-config-cuerpo"><label for="calidadFotoActividad">Calidad de la imagen</label><select id="calidadFotoActividad"><option value="alta">Alta</option><option value="media" selected>Media</option><option value="baja">Baja</option><option value="original">Original</option></select><br><br><label for="nombreFotoActividad">Nombre común del archivo</label><input type="text" id="nombreFotoActividad" placeholder="Nombre de la foto" oninput="actualizarEjemploNombreFotoActividad()"><div class="foto-config-campo-nombre"><label>Agregar al nombre</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input id="nombreFotoActividadFecha" type="checkbox" onchange="actualizarEjemploNombreFotoActividad()"><span>Fecha</span></label><label class="config-archivos-opcion"><input id="nombreFotoActividadLista" type="checkbox" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Número de lista</span></label></div></div><div class="foto-config-campo-nombre"><label>Posición del número de lista</label><div class="config-archivos-opciones-nombre"><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="inicio" onchange="actualizarEjemploNombreFotoActividad()"><span>Al inicio</span></label><label class="config-archivos-opcion"><input type="radio" name="posicionNumeroListaFotoActividad" value="final" checked onchange="actualizarEjemploNombreFotoActividad()"><span>Al final</span></label></div><div class="foto-config-ayuda">Los números de un dígito llevan 0 delante: 01, 02, 03...</div></div><div class="foto-config-ejemplo">Ejemplo: <strong id="ejemploNombreFotoActividad">foto_01.jpg</strong></div></div><div class="foto-config-acciones"><button type="button" class="boton-foto-cancelar" onclick="cerrarConfigFotoActividad()">Cancelar</button><button type="button" class="boton-foto-guardar" onclick="guardarConfigFotoActividad()">Guardar</button></div></div></div>
 <div id="modalConfirmacionFotoActividad" class="modal-fondo oculto" onclick="cerrarConfirmacionFotoActividad(event)"><div class="modal-foto-confirmacion" onclick="event.stopPropagation()"><div class="modal-cabecera"><h3>📷 Confirmar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="cerrarConfirmacionFotoActividad()">×</button></div><div class="foto-confirmacion-cuerpo"><img id="previewFotoActividad" class="foto-confirmacion-preview" alt="Vista previa"><div>La foto corresponde a:</div><div id="nombreEstudianteFotoActividad" class="foto-confirmacion-nombre">—</div><div id="nombreArchivoFotoActividad" class="foto-config-ayuda"></div><label class="foto-camara-continua"><input type="checkbox" id="mantenerCamaraFotoActividad" checked><span>Mantener la cámara abierta para seguir fotografiando</span></label></div><div class="foto-confirmacion-acciones"><button type="button" class="boton-foto-rechazar" onclick="rechazarFotoActividad()">Cancelar</button><button type="button" class="boton-foto-confirmar" onclick="guardarFotoActividadConfirmada()">Guardar</button></div></div></div>
 <input type="file" id="inputFotoActividad" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="inputArchivosFotoActividadEstudiante" accept="image/*" multiple style="display:none" onchange="procesarArchivosFotoActividadEstudiante(this)">
 <input type="file" id="inputFotosGaleriaActividadQR" accept="image/*,application/pdf,.pdf" multiple style="display:none">
 <script>
 document.getElementById("inputFotoActividad")?.addEventListener("change",async function(){
