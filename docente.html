@@ -7035,6 +7035,10 @@ Cancelar
                         onclick="abrirCapturaFotoActividadDesdeCalificacion()">
                         📷
                     </button>
+                    <label class="conservar-original-foto-calificacion" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:13px;">
+                        <input type="checkbox" id="conservarFotoOriginalCelularQR" checked>
+                        <span>Guardar foto original en el celular</span>
+                    </label>
                 </div>
             </div>
 
@@ -14678,7 +14682,7 @@ async function procesarFotoActividadParaCalificacion(file,a){
         n=obtenerNombreFotoActividadUnico(a.id,e.id,n);
         // En "Registrar calificación" una foto tomada desde la cámara siempre
         // se guarda como NUEVA. Nunca se ofrece reemplazar en este flujo.
-        fotoActividadArchivoPendiente={file,actividad:a,modo:"nueva",fotoExistente:null,estudiante:e,nombre:n,origen:"calificacion_nueva",conservarOriginalEnCelular:!!file._fotoTomadaDesdeCamara};
+        fotoActividadArchivoPendiente={file,actividad:a,modo:"nueva",fotoExistente:null,estudiante:e,nombre:n,origen:"calificacion_nueva",conservarOriginalEnCelular:!!file._fotoTomadaDesdeCamara&&!!document.getElementById("conservarFotoOriginalCelularQR")?.checked};
         // En Registrar calificación se guarda inmediatamente como foto nueva.
         // No mostrar la ventana «Confirmar fotografía».
         await guardarFotoActividadConfirmada();
@@ -15294,17 +15298,14 @@ async function guardarFotoActividadConfirmada(){
         }
         mostrarMensaje(`✓ Fotografía guardada para ${nombreEstudiante}.`);
         if(p.conservarOriginalEnCelular){
-            const conservar=confirm("¿Desea conservar la foto original?\\n\\nSi elige «Sí», se descargará en el celular sin compresión, además de la copia guardada en el programa.");
-            if(conservar){
-                const urlOriginal=URL.createObjectURL(p.file);
-                const enlace=document.createElement("a");
-                enlace.href=urlOriginal;
-                enlace.download=p.file.name||p.nombre||"foto_original.jpg";
-                document.body.appendChild(enlace);
-                enlace.click();
-                enlace.remove();
-                setTimeout(()=>URL.revokeObjectURL(urlOriginal),60000);
-            }
+            const urlOriginal=URL.createObjectURL(p.file);
+            const enlace=document.createElement("a");
+            enlace.href=urlOriginal;
+            enlace.download=p.nombre||p.file.name||"foto_original.jpg";
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            setTimeout(()=>URL.revokeObjectURL(urlOriginal),60000);
         }
         return true;
     }catch(e){
