@@ -14502,6 +14502,14 @@ function abrirCapturaFotoActividadDesdeCalificacion(){
     if(!a||!e){alert("No hay un estudiante y una actividad seleccionados.");return}
     fotoActividadActual=a;
     fotoActividadModo="calificacion";
+    // Conservar el contexto por si Android suspende o recarga la página
+    // mientras la aplicación de cámara está abierta.
+    try{
+        sessionStorage.setItem("contextoFotoCalificacionCamara_v1",JSON.stringify({
+            actividad:{id:a.id,nombre:a.nombre||"",curso:a.curso||"",categoria:a.categoria||"",fecha:a.fecha||""},
+            estudiante:{id:e.id,nombre:e.nombre||"",nombres:e.nombres||"",paterno:e.paterno||"",materno:e.materno||"",num_lista:e.num_lista??"",ci:e.ci||""}
+        }));
+    }catch(err){console.warn("No se pudo conservar el contexto de la cámara:",err)}
     if("speechSynthesis" in window)window.speechSynthesis.cancel();
     const i=document.getElementById("inputFotoActividadCamara");
     if(!i){alert("No se pudo abrir la cámara del celular.");return}
@@ -28780,13 +28788,32 @@ document.getElementById("inputFotoActividad")?.addEventListener("change",async f
 });
 document.getElementById("inputFotoActividadCamara")?.addEventListener("change", async function(){
     const file=this.files?.[0];
-    const a=actividadQRSeleccionada;
     this.value="";
-    if(!file||!a||!estudianteQRSeleccionado)return;
+    if(!file)return;
+    let a=actividadQRSeleccionada;
+    let e=estudianteQRSeleccionado;
+    // Si Android recargó la página al volver desde la cámara, recuperar
+    // la actividad y el estudiante que estaban seleccionados antes de abrirla.
+    if(!a||!e){
+        try{
+            const guardado=JSON.parse(sessionStorage.getItem("contextoFotoCalificacionCamara_v1")||"null");
+            if(guardado?.actividad?.id&&guardado?.estudiante?.id){
+                a=a||guardado.actividad;
+                e=e||guardado.estudiante;
+                actividadQRSeleccionada=a;
+                estudianteQRSeleccionado=e;
+            }
+        }catch(err){console.warn("No se pudo recuperar el contexto de la cámara:",err)}
+    }
+    if(!a||!e){
+        alert("No se pudo recuperar el estudiante y la actividad seleccionados. Vuelve a seleccionarlos e intenta nuevamente.");
+        return;
+    }
     file._fotoTomadaDesdeCamara=true;
     fotoActividadActual=a;
     fotoActividadModo="calificacion";
-    await procesarFotoActividadParaCalificacion(file,a);
+    try{await procesarFotoActividadParaCalificacion(file,a)}
+    finally{try{sessionStorage.removeItem("contextoFotoCalificacionCamara_v1")}catch(_){}}
 });
 </script>
 
