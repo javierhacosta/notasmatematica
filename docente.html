@@ -4369,6 +4369,19 @@ table tbody tr:nth-child(10n+10) td {
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
 
+/* Controles compactos exclusivos de cada asiento en distribución del aula */
+.controles-estado-asiento-aula{display:flex;justify-content:center;align-items:center;gap:3px;margin-top:4px;flex-wrap:nowrap}
+.boton-estado-asiento-aula{width:23px;height:23px;min-width:23px;padding:0;border:1px solid #cbd2d8;border-radius:5px;background:#f3f5f7;font-size:12px;line-height:1;cursor:pointer;touch-action:manipulation}
+.boton-estado-asiento-aula:active{transform:scale(.94)}
+.boton-estado-asiento-aula.seleccionado{outline:2px solid #1565c0;background:#dcecff}
+.asiento-aula{height:auto;min-height:72px}
+.asistencia-aula-observacion-foto{display:flex;align-items:center;gap:7px;margin:8px 0}
+.asistencia-aula-observacion-foto textarea{flex:1;min-width:0}
+.boton-foto-observacion-aula{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:8px;background:#1565c0;color:white;font-size:21px;cursor:pointer}
+.fotos-asistencia-aula-modal{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.foto-asistencia-aula-modal-item{display:flex;flex-direction:column;align-items:center;gap:3px}
+.foto-asistencia-aula-modal-item img{width:70px;height:70px;object-fit:cover;border-radius:7px;border:1px solid #ccc}
+.foto-asistencia-aula-modal-item button{border:0;border-radius:5px;background:#c62828;color:white;padding:4px 8px;cursor:pointer}
 .nombre-asiento-aula.genero-mujer { color: var(--color-mujer-aula, #e91e63); }
 .nombre-asiento-aula.genero-varon { color: var(--color-varon-aula, #1976d2); }
 .configuracion-aula-colores-genero { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
@@ -7287,8 +7300,14 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
-            <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
-                      maxlength="500" placeholder="Observación de la asistencia..."></textarea>
+            <label for="observacionAsistenciaAulaIndividual">Observación del estudiante</label>
+            <div class="asistencia-aula-observacion-foto">
+                <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
+                      maxlength="500" placeholder="Anotar observación del estudiante..."></textarea>
+                <button type="button" class="boton-foto-observacion-aula" title="Tomar o añadir foto de asistencia"
+                        onclick="seleccionarFotoAsistencia(document.getElementById('modalAsistenciaEstudianteAula').dataset.estudianteId)">📷</button>
+            </div>
+            <div id="galeriaFotosAsistenciaAulaModal" class="fotos-asistencia-aula-modal"></div>
             <div class="asistencia-estudiante-aula-acciones">
                 <button type="button" class="boton-cancelar-asistencia-aula" onclick="cerrarModalAsistenciaEstudianteAula()">Cancelar</button>
                 <button type="button" class="boton-guardar-asistencia-aula" onclick="guardarAsistenciaEstudianteDesdeAula()">💾 Guardar</button>
@@ -27296,11 +27315,41 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
             nombreEl.addEventListener("click", function(event) {
                 event.stopPropagation();
                 abrirAsistenciaEstudianteDesdeAula(estudiante.id);
+                setTimeout(() => document.getElementById("observacionAsistenciaAulaIndividual")?.focus(), 80);
             });
         }
     }
 
     asiento.appendChild(nombreEl);
+
+    // Iconos pequeños de asistencia directamente debajo del nombre.
+    if (estudiante && estudianteEsEfectivo(estudiante)) {
+        const estadosAsiento = [
+            {valor:"asistio", icono:"✓", titulo:"Asistencia"},
+            {valor:"atraso", icono:"⏰", titulo:"Atraso"},
+            {valor:"licencia", icono:"📄", titulo:"Licencia"},
+            {valor:"permiso", icono:"🟡", titulo:"Permiso"},
+            {valor:"falta", icono:"✕", titulo:"Falta"}
+        ];
+        const controles = document.createElement("div");
+        controles.className = "controles-estado-asiento-aula";
+        estadosAsiento.forEach(op => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "boton-estado-asiento-aula" + (String(registro.estado||"")===op.valor ? " seleccionado" : "");
+            b.textContent = op.icono;
+            b.title = op.titulo;
+            b.setAttribute("aria-label", op.titulo);
+            b.addEventListener("click", ev => {
+                ev.stopPropagation();
+                abrirAsistenciaEstudianteDesdeAula(estudiante.id);
+                const radio = document.querySelector('input[name="estadoAsistenciaAulaIndividual"][value="'+op.valor+'"]');
+                if (radio) radio.checked = true;
+            });
+            controles.appendChild(b);
+        });
+        asiento.appendChild(controles);
+    }
 
     // Mostrar un icono cuando el estudiante tiene una observación en la asistencia del día seleccionado.
     if (estudiante && String(registro.observacion || '').trim()) {
@@ -27553,6 +27602,42 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     if (observacion) observacion.value = registro.observacion || "";
 
     modal.classList.remove("oculto");
+    cargarGaleriaFotosAsistenciaAulaModal(estudiante.id);
+}
+
+async function cargarGaleriaFotosAsistenciaAulaModal(estudianteId) {
+    const cont = document.getElementById("galeriaFotosAsistenciaAulaModal");
+    if (!cont) return;
+    cont.innerHTML = "";
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    if (!fecha || !cursoSeleccionado) return;
+    try {
+        const {data, error} = await supabaseClient.from("fotos_asistencia")
+            .select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo")
+            .eq("curso_id", cursoSeleccionado).eq("fecha", fecha)
+            .eq("estudiante_id", estudianteId).order("id");
+        if (error) throw error;
+        if (!data?.length) { cont.textContent = "No hay fotos guardadas para esta fecha."; return; }
+        for (const foto of data) {
+            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta, 600);
+            if (firmado.error) continue;
+            const item = document.createElement("div"); item.className = "foto-asistencia-aula-modal-item";
+            const img = document.createElement("img"); img.src = firmado.data.signedUrl; img.alt = "Foto de asistencia";
+            img.title = foto.nombre_archivo || "Foto de asistencia";
+            img.onclick = () => window.open(firmado.data.signedUrl, "_blank", "noopener");
+            item.appendChild(img);
+            const borrar = document.createElement("button"); borrar.type = "button"; borrar.textContent = "🗑️"; borrar.title = "Borrar fotografía";
+            borrar.onclick = async () => {
+                if (!confirm("¿Desea borrar esta fotografía de asistencia?")) return;
+                await eliminarFotoAsistencia(foto);
+                await cargarGaleriaFotosAsistenciaAulaModal(estudianteId);
+            };
+            item.appendChild(borrar); cont.appendChild(item);
+        }
+    } catch (e) {
+        console.error("No se pudieron cargar las fotos de asistencia del asiento:", e);
+        cont.textContent = "No se pudieron cargar las fotografías.";
+    }
 }
 
 function cerrarModalAsistenciaEstudianteAula(event) {
