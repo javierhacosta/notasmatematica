@@ -11515,6 +11515,42 @@ function actualizarBotonOrdenAsientoAsistencia() {
     boton.setAttribute("aria-pressed", ordenarAsistenciaPorAsiento ? "true" : "false");
 }
 
+// Sincroniza la distribución compartida desde la base de datos cuando este
+// dispositivo aún no tiene una copia local. No depende de "Mostrar número de asiento".
+let cursoSincronizandoDistribucionOrdenAsientos = null;
+async function sincronizarDistribucionAsientosParaOrdenAsistencia() {
+    const curso = String(cursoSeleccionado || "").trim();
+    if (!curso || !supabaseClient) return;
+    const local = obtenerDistribucionGuardadaParaOrdenAsientos();
+    if (local) return;
+    if (cursoSincronizandoDistribucionOrdenAsientos === curso) return;
+    cursoSincronizandoDistribucionOrdenAsientos = curso;
+    try {
+        const { data, error } = await supabaseClient
+            .from(TABLA_DISTRIBUCION_AULA_BD)
+            .select("curso,distribucion")
+            .eq("curso", curso)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data || !data.distribucion || typeof data.distribucion !== "object") return;
+        const distribucion = { ...data.distribucion };
+        ["__filasPorColumna", "__mostrarNombreCompleto", "__mostrarNumeroLista", "__mostrarNumeroAsiento", "__colorMujer", "__colorVaron"].forEach(k => delete distribucion[k]);
+        const asignaciones = Object.entries(distribucion).filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
+        if (!asignaciones.length) return;
+        const todas = cargarDistribucionesAulaGuardadas();
+        todas[claveDistribucionAula(curso)] = distribucion;
+        localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
+        if (String(cursoSeleccionado || "").trim() === curso) {
+            actualizarBotonOrdenAsientoAsistencia();
+            if (ordenarAsistenciaPorAsiento) mostrarTablaAsistencia();
+        }
+    } catch (e) {
+        console.warn("No se pudo sincronizar la distribución de asientos para ordenar la asistencia:", e);
+    } finally {
+        if (cursoSincronizandoDistribucionOrdenAsientos === curso) cursoSincronizandoDistribucionOrdenAsientos = null;
+    }
+}
+
 function alternarOrdenAsientoAsistencia() {
     if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
         actualizarBotonOrdenAsientoAsistencia();
@@ -11572,6 +11608,8 @@ function mostrarTablaAsistencia() {
     obtenerEstudiantesCursoActual();
 
     actualizarBotonOrdenAsientoAsistencia();
+    // En un dispositivo nuevo, traer la distribución guardada en la nube.
+    sincronizarDistribucionAsientosParaOrdenAsistencia();
     if (ordenarAsistenciaPorAsiento) {
         const distribucionAsientos = obtenerDistribucionGuardadaParaOrdenAsientos() || {};
         const asientoPorEstudiante = new Map();
