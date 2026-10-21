@@ -11552,15 +11552,34 @@ async function sincronizarDistribucionAsientosParaOrdenAsistencia() {
 }
 
 function alternarOrdenAsientoAsistencia() {
-    const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
-    if (!distribucion) {
+    if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
         actualizarBotonOrdenAsientoAsistencia();
-        alert('No se puede ordenar todavía porque este curso no tiene una distribución de asientos con estudiantes asignados. Abra «Distribución de asientos», compruebe los lugares asignados y vuelva a intentarlo.');
         return;
     }
 
-    // El orden por asiento es independiente de si los números se muestran
-    // visualmente en el plano del aula.
+    // Al activar el orden, comprobar si está habilitada la numeración visible
+    // de los asientos para el curso actual. Si ya estaba ordenando, permitir desactivarlo.
+    if (!ordenarAsistenciaPorAsiento) {
+        let mostrarNumeroAsiento = false;
+        try {
+            const entrada = document.getElementById("mostrarNumeroAsientoAula");
+            const configuraciones = typeof cargarConfiguracionesAulaGuardadas === "function"
+                ? cargarConfiguracionesAulaGuardadas() : {};
+            const configCurso = configuraciones && cursoSeleccionado
+                ? configuraciones[claveDistribucionAula(cursoSeleccionado)] : null;
+            mostrarNumeroAsiento = !!(
+                (entrada && entrada.checked) ||
+                (typeof configuracionAulaActual !== "undefined" && configuracionAulaActual && configuracionAulaActual.mostrarNumeroAsiento === true) ||
+                (configCurso && (configCurso.mostrarNumeroAsiento === true || configCurso.mostrar_numero_asiento === true))
+            );
+        } catch (_) {}
+
+        if (!mostrarNumeroAsiento) {
+            alert('Para ordenar la asistencia por número de asiento, primero active «Mostrar número de asiento» en la configuración de distribución de asientos del curso.');
+            return;
+        }
+    }
+
     ordenarAsistenciaPorAsiento = !ordenarAsistenciaPorAsiento;
     actualizarBotonOrdenAsientoAsistencia();
     mostrarTablaAsistencia();
