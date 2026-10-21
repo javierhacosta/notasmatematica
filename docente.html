@@ -2376,6 +2376,27 @@ td:first-child {
     opacity: 1;
 }
 
+/* Ordenar asistencia por número de asiento: solo aparece si el curso tiene distribución guardada. */
+.boton-orden-asiento-asistencia {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 7px;
+    background: #546e7a;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: .55;
+}
+.boton-orden-asiento-asistencia.activo {
+    background: #16803c;
+    opacity: 1;
+}
+
 /* PARPADEO: existen comentarios de horario en estudiantes del curso */
 @keyframes parpadearComentarioHorarioAsistencia {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -4369,25 +4390,6 @@ table tbody tr:nth-child(10n+10) td {
 .icono-estado-asiento.falta { background: #c62828; color: white; }
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
 
-/* Controles compactos exclusivos de cada asiento en distribución del aula */
-.controles-estado-asiento-aula{display:flex;justify-content:center;align-items:center;gap:3px;margin:2px auto 0;flex:0 0 auto;flex-wrap:nowrap;transform:rotate(180deg);max-width:100%}
-.boton-estado-asiento-aula{width:17px;height:17px;min-width:17px;min-height:17px;padding:0;border:0;border-radius:0;background:transparent;color:#555;opacity:.38;font-size:11px;line-height:1;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;filter:grayscale(1)}
-.boton-estado-asiento-aula:active{transform:scale(.94)}
-.boton-estado-asiento-aula.seleccionado{opacity:1;filter:none;font-weight:bold;transform:scale(1.12)}
-.boton-estado-asiento-aula.seleccionado.asistio{color:#2e7d32}
-.boton-estado-asiento-aula.seleccionado.atraso{color:#d99000}
-.boton-estado-asiento-aula.seleccionado.licencia{color:#1565c0}
-.boton-estado-asiento-aula.seleccionado.permiso{color:#1565c0}
-.boton-estado-asiento-aula.seleccionado.falta{color:#c62828}
-.asiento-aula{height:auto;min-height:72px;flex-direction:column}
-.nombre-asiento-aula{display:block;position:relative;z-index:1;max-width:100%;width:100%;margin:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
-.asistencia-aula-observacion-foto{display:flex;align-items:center;gap:7px;margin:8px 0}
-.asistencia-aula-observacion-foto textarea{flex:1;min-width:0}
-.boton-foto-observacion-aula{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:8px;background:#1565c0;color:white;font-size:21px;cursor:pointer}
-.fotos-asistencia-aula-modal{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.foto-asistencia-aula-modal-item{display:flex;flex-direction:column;align-items:center;gap:3px}
-.foto-asistencia-aula-modal-item img{width:70px;height:70px;object-fit:cover;border-radius:7px;border:1px solid #ccc}
-.foto-asistencia-aula-modal-item button{border:0;border-radius:5px;background:#c62828;color:white;padding:4px 8px;cursor:pointer}
 .nombre-asiento-aula.genero-mujer { color: var(--color-mujer-aula, #e91e63); }
 .nombre-asiento-aula.genero-varon { color: var(--color-varon-aula, #1976d2); }
 .configuracion-aula-colores-genero { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; }
@@ -6106,6 +6108,16 @@ Selecciona un curso
 
 <button
     type="button"
+    id="botonOrdenAsientoAsistencia"
+    class="boton-orden-asiento-asistencia"
+    onclick="alternarOrdenAsientoAsistencia()"
+    aria-pressed="false"
+    title="Ordenar asistencia por número de asiento">
+    ☷
+</button>
+
+<button
+    type="button"
     id="botonHoraAsistencia"
     class="boton-hora-asistencia"
     onclick="alternarMostrarHoraAsistencia()"
@@ -7233,10 +7245,6 @@ Cancelar
                         <input id="mostrarNumeroAsientoAula" type="checkbox">
                         <span>Mostrar número de asiento</span>
                     </label>
-                    <label class="configuracion-aula-nombre-completo">
-                        <input id="mostrarBotonesAsistenciaAula" type="checkbox">
-                        <span>Mostrar botones de asistencia</span>
-                    </label>
                     <div class="configuracion-aula-colores-genero">
                         <div class="configuracion-aula-color">
                             <label for="colorMujerAula">Color de letras de mujeres</label>
@@ -7308,17 +7316,10 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAsistio" value="asistio"><label for="estadoAulaAsistio">✓<br>Asistió</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAtraso" value="atraso"><label for="estadoAulaAtraso">⏰<br>Atraso</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
-                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaPermiso" value="permiso"><label for="estadoAulaPermiso">🟡<br>Permiso</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
-            <label for="observacionAsistenciaAulaIndividual">Observación del estudiante</label>
-            <div class="asistencia-aula-observacion-foto">
-                <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
-                      maxlength="500" placeholder="Anotar observación del estudiante..."></textarea>
-                <button type="button" class="boton-foto-observacion-aula" title="Tomar o añadir foto de asistencia"
-                        onclick="seleccionarFotoAsistencia(document.getElementById('modalAsistenciaEstudianteAula').dataset.estudianteId)">📷</button>
-            </div>
-            <div id="galeriaFotosAsistenciaAulaModal" class="fotos-asistencia-aula-modal"></div>
+            <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
+                      maxlength="500" placeholder="Observación de la asistencia..."></textarea>
             <div class="asistencia-estudiante-aula-acciones">
                 <button type="button" class="boton-cancelar-asistencia-aula" onclick="cerrarModalAsistenciaEstudianteAula()">Cancelar</button>
                 <button type="button" class="boton-guardar-asistencia-aula" onclick="guardarAsistenciaEstudianteDesdeAula()">💾 Guardar</button>
@@ -11441,35 +11442,58 @@ async function guardarFotoAsistenciaSeleccionada(ev){
    const ins=await supabaseClient.from("fotos_asistencia").insert({curso_id:cursoSeleccionado,fecha,estudiante_id:p.estudianteId,ruta,nombre_archivo:nombre});
    if(ins.error){await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);throw new Error("La imagen se subió, pero no se pudo registrar en fotos_asistencia. Revise las columnas y políticas RLS. Detalle: "+ins.error.message);}
   }
-  // Actualizar ambas vistas para que la foto aparezca sin cerrar la ventana.
-  await Promise.all([
-   cargarFotosAsistenciaEstudiante(p.estudianteId),
-   cargarFotosPendientesAsistencia(p.estudianteId)
-  ]);
+  await cargarFotosAsistenciaEstudiante(p.estudianteId);
+  await cargarFotosPendientesAsistencia(p.estudianteId);
   mostrarMensaje("✓ Foto de asistencia guardada.");
  }catch(e){console.error("Error al guardar foto de asistencia:",e);alert("No se pudo guardar la foto de asistencia.\n\n"+(e.message||e));}
  finally{archivoFotoAsistenciaPendiente=null;input.value="";}
 }
 async function eliminarFotoAsistencia(f){
- const modalPendientesAbierto=!document.getElementById("modalPendientesAsistencia")?.classList.contains("oculto");
- if((!asistenciaDesbloqueada&&!modalPendientesAbierto)||!confirm("¿Eliminar esta fotografía?"))return;
+ if(!asistenciaDesbloqueada||!confirm("¿Eliminar esta fotografía?"))return;
  try{
-  if(!supabaseClient)throw new Error("No hay conexión con Supabase.");
-  // Solicitar el registro eliminado permite detectar cuando la política RLS
-  // impide borrarlo aunque Supabase no devuelva un error explícito.
-  const q=await supabaseClient.from("fotos_asistencia").delete().eq("id",f.id).select("id");
-  if(q.error)throw q.error;
-  if(!q.data||q.data.length===0)throw new Error("La base de datos no permitió eliminar el registro. Verifique los permisos DELETE/RLS de la tabla fotos_asistencia.");
-  const rm=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);
-  if(rm.error)throw new Error("Se eliminó el registro, pero no el archivo de imagen: "+rm.error.message);
-  await Promise.all([
-   cargarFotosAsistenciaEstudiante(f.estudiante_id),
-   cargarFotosPendientesAsistencia(f.estudiante_id)
-  ]);
- }catch(e){
-  console.error("Error al eliminar foto de asistencia:",e);
-  alert("No se pudo eliminar la fotografía.\n\n"+(e.message||e));
- }
+  const q=await supabaseClient.from("fotos_asistencia").delete().eq("id",f.id);if(q.error)throw q.error;
+  const rm=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(rm.error)console.warn(rm.error);
+  await cargarFotosAsistenciaEstudiante(f.estudiante_id);
+  await cargarFotosPendientesAsistencia(f.estudiante_id);
+ }catch(e){alert("No se pudo eliminar la fotografía.\n\n"+(e.message||e));}
+}
+
+/* Orden por asiento: desactivado por defecto y disponible solo si el curso
+   tiene una distribución de asientos guardada con estudiantes asignados. */
+let ordenarAsistenciaPorAsiento = false;
+
+function obtenerDistribucionGuardadaParaOrdenAsientos() {
+    if (!cursoSeleccionado) return null;
+    try {
+        const todas = JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
+        const distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
+        if (!distribucion || typeof distribucion !== "object") return null;
+        const asignaciones = Object.entries(distribucion)
+            .filter(([asiento, id]) => /^\\d+$/.test(asiento) && id != null && String(id) !== "");
+        return asignaciones.length ? Object.fromEntries(asignaciones) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function actualizarBotonOrdenAsientoAsistencia() {
+    const boton = document.getElementById("botonOrdenAsientoAsistencia");
+    if (!boton) return;
+    const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
+    boton.style.display = distribucion ? "flex" : "none";
+    if (!distribucion) ordenarAsistenciaPorAsiento = false;
+    boton.classList.toggle("activo", ordenarAsistenciaPorAsiento);
+    boton.setAttribute("aria-pressed", ordenarAsistenciaPorAsiento ? "true" : "false");
+}
+
+function alternarOrdenAsientoAsistencia() {
+    if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
+        actualizarBotonOrdenAsientoAsistencia();
+        return;
+    }
+    ordenarAsistenciaPorAsiento = !ordenarAsistenciaPorAsiento;
+    actualizarBotonOrdenAsientoAsistencia();
+    mostrarTablaAsistencia();
 }
 
 function mostrarTablaAsistencia() {
@@ -11513,9 +11537,29 @@ function mostrarTablaAsistencia() {
         return;
     }
 
-    const estudiantesCurso =
+    let estudiantesCurso =
     obtenerEstudiantesCursoActual();
 
+    actualizarBotonOrdenAsientoAsistencia();
+    if (ordenarAsistenciaPorAsiento) {
+        const distribucionAsientos = obtenerDistribucionGuardadaParaOrdenAsientos() || {};
+        const asientoPorEstudiante = new Map();
+        Object.entries(distribucionAsientos).forEach(([asiento, estudianteId]) => {
+            const id = String(estudianteId);
+            const numeroAsiento = Number(asiento);
+            if (!asientoPorEstudiante.has(id) || numeroAsiento < asientoPorEstudiante.get(id)) {
+                asientoPorEstudiante.set(id, numeroAsiento);
+            }
+        });
+        estudiantesCurso = estudiantesCurso.slice().sort((a, b) => {
+            const asientoA = asientoPorEstudiante.get(String(a.id));
+            const asientoB = asientoPorEstudiante.get(String(b.id));
+            if (asientoA == null && asientoB == null) return Number(a.num_lista ?? 9999) - Number(b.num_lista ?? 9999);
+            if (asientoA == null) return 1;
+            if (asientoB == null) return -1;
+            return asientoA - asientoB;
+        });
+    }
 
     estudiantesCurso.forEach(
     estudiante => {
@@ -26962,9 +27006,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, mostrarBotonesAsistencia: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, mostrarBotonesAsistencia: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -27001,10 +27045,9 @@ function normalizarConfiguracionAula(datos = {}) {
     const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
     const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
     const mostrarNumeroAsiento = datos.mostrarNumeroAsiento === true;
-    const mostrarBotonesAsistencia = datos.mostrarBotonesAsistencia === true;
     const colorMujer = /^#[0-9A-F]{6}$/i.test(String(datos.colorMujer || "")) ? String(datos.colorMujer) : "#e91e63";
     const colorVaron = /^#[0-9A-F]{6}$/i.test(String(datos.colorVaron || "")) ? String(datos.colorVaron) : "#1976d2";
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, mostrarBotonesAsistencia, colorMujer, colorVaron };
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -27032,7 +27075,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2", mostrarBotonesAsistencia = false) {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2") {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -27049,7 +27092,6 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         mostrarNombreCompleto: mostrarNombreCompleto === true,
         mostrarNumeroLista: mostrarNumeroLista !== false,
         mostrarNumeroAsiento: mostrarNumeroAsiento === true,
-        mostrarBotonesAsistencia: mostrarBotonesAsistencia === true,
         colorMujer: /^#[0-9A-F]{6}$/i.test(String(colorMujer || "")) ? String(colorMujer) : "#e91e63",
         colorVaron: /^#[0-9A-F]{6}$/i.test(String(colorVaron || "")) ? String(colorVaron) : "#1976d2"
     };
@@ -27084,7 +27126,6 @@ async function cargarConfiguracionDistribucionAulaBD() {
             mostrarNombreCompleto: metadataMostrarNombreCompleto,
             mostrarNumeroLista: metadataMostrarNumeroLista,
             mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true,
-            mostrarBotonesAsistencia: data.distribucion && data.distribucion.__mostrarBotonesAsistencia === true,
             colorMujer: metadataColorMujer,
             colorVaron: metadataColorVaron
         });
@@ -27096,7 +27137,6 @@ async function cargarConfiguracionDistribucionAulaBD() {
             delete distribucion.__mostrarNombreCompleto;
             delete distribucion.__mostrarNumeroLista;
             delete distribucion.__mostrarNumeroAsiento;
-            delete distribucion.__mostrarBotonesAsistencia;
             delete distribucion.__colorMujer;
             delete distribucion.__colorVaron;
         }
@@ -27120,7 +27160,6 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
     distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
     distribucionParaGuardar.__mostrarNumeroAsiento = config.mostrarNumeroAsiento === true;
-    distribucionParaGuardar.__mostrarBotonesAsistencia = config.mostrarBotonesAsistencia === true;
     distribucionParaGuardar.__colorMujer = config.colorMujer;
     distribucionParaGuardar.__colorVaron = config.colorVaron;
 
@@ -27149,8 +27188,7 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.mostrarNumeroLista,
         config.mostrarNumeroAsiento,
         config.colorMujer,
-        config.colorVaron,
-        config.mostrarBotonesAsistencia
+        config.colorVaron
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -27347,45 +27385,11 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
             nombreEl.addEventListener("click", function(event) {
                 event.stopPropagation();
                 abrirAsistenciaEstudianteDesdeAula(estudiante.id);
-                setTimeout(() => document.getElementById("observacionAsistenciaAulaIndividual")?.focus(), 80);
             });
         }
     }
 
     asiento.appendChild(nombreEl);
-
-    // Iconos pequeños de asistencia directamente debajo del nombre.
-    if (configuracionAulaActual.mostrarBotonesAsistencia === true && estudiante && estudianteEsEfectivo(estudiante)) {
-        const estadosAsiento = [
-            {valor:"asistio", icono:"✓", titulo:"Asistencia"},
-            {valor:"atraso", icono:"⏰", titulo:"Atraso"},
-            {valor:"licencia", icono:"📄", titulo:"Licencia"},
-            {valor:"permiso", icono:"🟡", titulo:"Permiso"},
-            {valor:"falta", icono:"✕", titulo:"Falta"}
-        ];
-        const controles = document.createElement("div");
-        controles.className = "controles-estado-asiento-aula";
-        estadosAsiento.forEach(op => {
-            const b = document.createElement("button");
-            b.type = "button";
-            b.className = "boton-estado-asiento-aula " + op.valor + (String(registro.estado||"")===op.valor ? " seleccionado" : "");
-            b.textContent = op.icono;
-            b.title = op.titulo;
-            b.setAttribute("aria-label", op.titulo);
-            b.addEventListener("click", async ev => {
-                ev.stopPropagation();
-                // Preparar el registro sin abrir la ventana de asistencia.
-                const modal = document.getElementById("modalAsistenciaEstudianteAula");
-                if (modal) modal.dataset.estudianteId = String(estudiante.id);
-                const radio = document.querySelector('input[name="estadoAsistenciaAulaIndividual"][value="'+op.valor+'"]');
-                if (radio) radio.checked = true;
-                // Aplicar el estado inmediatamente, como en la tabla de asistencia.
-                await guardarAsistenciaEstudianteDesdeAula();
-            });
-            controles.appendChild(b);
-        });
-        asiento.appendChild(controles);
-    }
 
     // Mostrar un icono cuando el estudiante tiene una observación en la asistencia del día seleccionado.
     if (estudiante && String(registro.observacion || '').trim()) {
@@ -27638,42 +27642,6 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     if (observacion) observacion.value = registro.observacion || "";
 
     modal.classList.remove("oculto");
-    cargarGaleriaFotosAsistenciaAulaModal(estudiante.id);
-}
-
-async function cargarGaleriaFotosAsistenciaAulaModal(estudianteId) {
-    const cont = document.getElementById("galeriaFotosAsistenciaAulaModal");
-    if (!cont) return;
-    cont.innerHTML = "";
-    const fecha = document.getElementById("fechaAsistencia")?.value || "";
-    if (!fecha || !cursoSeleccionado) return;
-    try {
-        const {data, error} = await supabaseClient.from("fotos_asistencia")
-            .select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo")
-            .eq("curso_id", cursoSeleccionado).eq("fecha", fecha)
-            .eq("estudiante_id", estudianteId).order("id");
-        if (error) throw error;
-        if (!data?.length) { cont.textContent = "No hay fotos guardadas para esta fecha."; return; }
-        for (const foto of data) {
-            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta, 600);
-            if (firmado.error) continue;
-            const item = document.createElement("div"); item.className = "foto-asistencia-aula-modal-item";
-            const img = document.createElement("img"); img.src = firmado.data.signedUrl; img.alt = "Foto de asistencia";
-            img.title = foto.nombre_archivo || "Foto de asistencia";
-            img.onclick = () => window.open(firmado.data.signedUrl, "_blank", "noopener");
-            item.appendChild(img);
-            const borrar = document.createElement("button"); borrar.type = "button"; borrar.textContent = "🗑️"; borrar.title = "Borrar fotografía";
-            borrar.onclick = async () => {
-                if (!confirm("¿Desea borrar esta fotografía de asistencia?")) return;
-                await eliminarFotoAsistencia(foto);
-                await cargarGaleriaFotosAsistenciaAulaModal(estudianteId);
-            };
-            item.appendChild(borrar); cont.appendChild(item);
-        }
-    } catch (e) {
-        console.error("No se pudieron cargar las fotos de asistencia del asiento:", e);
-        cont.textContent = "No se pudieron cargar las fotografías.";
-    }
 }
 
 function cerrarModalAsistenciaEstudianteAula(event) {
@@ -27864,7 +27832,6 @@ function mostrarConfiguracionAula() {
     const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
     const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
     const inputMostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
-    const inputMostrarBotonesAsistencia = document.getElementById("mostrarBotonesAsistenciaAula");
     const inputColorMujer = document.getElementById("colorMujerAula");
     const inputColorVaron = document.getElementById("colorVaronAula");
 
@@ -27874,13 +27841,12 @@ function mostrarConfiguracionAula() {
     if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
     if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
     if (inputMostrarNumeroAsiento) inputMostrarNumeroAsiento.checked = configuracionAulaActual.mostrarNumeroAsiento === true;
-    if (inputMostrarBotonesAsistencia) inputMostrarBotonesAsistencia.checked = configuracionAulaActual.mostrarBotonesAsistencia === true;
     if (inputColorMujer) inputColorMujer.value = configuracionAulaActual.colorMujer || "#e91e63";
     if (inputColorVaron) inputColorVaron.value = configuracionAulaActual.colorVaron || "#1976d2";
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputMostrarBotonesAsistencia, inputColorMujer, inputColorVaron].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputColorMujer, inputColorVaron].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
@@ -27970,20 +27936,19 @@ function aplicarConfiguracionAula() {
     const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
     const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
     const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula")?.checked === true;
-    const mostrarBotonesAsistencia = document.getElementById("mostrarBotonesAsistenciaAula")?.checked === true;
     const colorMujer = document.getElementById("colorMujerAula")?.value || "#e91e63";
     const colorVaron = document.getElementById("colorVaronAula")?.value || "#1976d2";
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, mostrarBotonesAsistencia, colorMujer, colorVaron };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron, mostrarBotonesAsistencia);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -28020,7 +27985,6 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
            (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
            (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false) &&
            (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true) &&
-           (a.mostrarBotonesAsistencia === true) === (b.mostrarBotonesAsistencia === true) &&
            String(a.colorMujer || "#e91e63").toLowerCase() === String(b.colorMujer || "#e91e63").toLowerCase() &&
            String(a.colorVaron || "#1976d2").toLowerCase() === String(b.colorVaron || "#1976d2").toLowerCase();
 }
@@ -28037,8 +28001,7 @@ function actualizarBotonAplicarConfiguracionAula() {
         largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72)),
         mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true,
         mostrarNumeroLista: document.getElementById("mostrarNumeroListaAula")?.checked !== false,
-        mostrarNumeroAsiento: document.getElementById("mostrarNumeroAsientoAula")?.checked === true,
-        mostrarBotonesAsistencia: document.getElementById("mostrarBotonesAsistenciaAula")?.checked === true
+        mostrarNumeroAsiento: document.getElementById("mostrarNumeroAsientoAula")?.checked === true
     };
     boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
 }
