@@ -11552,10 +11552,15 @@ async function sincronizarDistribucionAsientosParaOrdenAsistencia() {
 }
 
 function alternarOrdenAsientoAsistencia() {
-    if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
+    const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
+    if (!distribucion) {
         actualizarBotonOrdenAsientoAsistencia();
+        alert('No se puede ordenar todavía porque este curso no tiene una distribución de asientos con estudiantes asignados. Abra «Distribución de asientos», compruebe los lugares asignados y vuelva a intentarlo.');
         return;
     }
+
+    // El orden por asiento es independiente de si los números se muestran
+    // visualmente en el plano del aula.
     ordenarAsistenciaPorAsiento = !ordenarAsistenciaPorAsiento;
     actualizarBotonOrdenAsientoAsistencia();
     mostrarTablaAsistencia();
