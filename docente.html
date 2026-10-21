@@ -11490,16 +11490,29 @@ function obtenerDistribucionGuardadaParaOrdenAsientos() {
     try {
         const todas = JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
         let distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
-        // Usar también la distribución efectiva del módulo de asientos cuando
-        // todavía no exista una copia guardada en localStorage.
-        if ((!distribucion || typeof distribucion !== "object") &&
-            typeof obtenerDistribucionAulaCurso === "function") {
+
+        // Si el curso no tiene asignaciones guardadas (por ejemplo, si existe
+        // una entrada vacía en localStorage), usar la distribución efectiva
+        // del módulo de asientos o generar la distribución inicial del curso.
+        const extraerAsignaciones = (datos) => {
+            if (datos && typeof datos === "object" && datos.distribucion && typeof datos.distribucion === "object") {
+                datos = datos.distribucion;
+            }
+            if (!datos || typeof datos !== "object") return {};
+            return Object.fromEntries(Object.entries(datos).filter(([asiento, id]) =>
+                /^\d+$/.test(asiento) && id != null && String(id).trim() !== ""
+            ));
+        };
+
+        let asignaciones = extraerAsignaciones(distribucion);
+        if (!Object.keys(asignaciones).length && typeof obtenerDistribucionAulaCurso === "function") {
             distribucion = obtenerDistribucionAulaCurso();
+            asignaciones = extraerAsignaciones(distribucion);
         }
-        if (!distribucion || typeof distribucion !== "object") return null;
-        const asignaciones = Object.entries(distribucion)
-            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
-        return asignaciones.length ? Object.fromEntries(asignaciones) : null;
+        if (!Object.keys(asignaciones).length && typeof crearDistribucionAulaInicial === "function") {
+            asignaciones = extraerAsignaciones(crearDistribucionAulaInicial());
+        }
+        return Object.keys(asignaciones).length ? asignaciones : null;
     } catch (_) {
         return null;
     }
