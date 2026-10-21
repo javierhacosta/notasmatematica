@@ -11492,16 +11492,13 @@ function obtenerDistribucionGuardadaParaOrdenAsientos() {
     if (!cursoSeleccionado) return null;
     try {
         const todas = JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
-        let distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
-        // Usar también la distribución efectiva del módulo de asientos cuando
-        // todavía no exista una copia guardada en localStorage.
-        if ((!distribucion || typeof distribucion !== "object") &&
-            typeof obtenerDistribucionAulaCurso === "function") {
-            distribucion = obtenerDistribucionAulaCurso();
-        }
-        if (!distribucion || typeof distribucion !== "object") return null;
+        // Solo considerar asientos asignados explícitamente y guardados para
+        // este curso. No usar la distribución inicial generada automáticamente,
+        // porque haría aparecer el botón aunque nadie haya designado asientos.
+        const distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
+        if (!distribucion || typeof distribucion !== "object" || Array.isArray(distribucion)) return null;
         const asignaciones = Object.entries(distribucion)
-            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
+            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id).trim() !== "");
         return asignaciones.length ? Object.fromEntries(asignaciones) : null;
     } catch (_) {
         return null;
