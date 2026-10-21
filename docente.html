@@ -4370,10 +4370,15 @@ table tbody tr:nth-child(10n+10) td {
 .icono-observacion-asiento { background: #fff3cd; color: #8a6200; }
 
 /* Controles compactos exclusivos de cada asiento en distribución del aula */
-.controles-estado-asiento-aula{display:flex;justify-content:center;align-items:center;gap:1px;margin:2px auto 0;flex:0 0 auto;flex-wrap:nowrap;transform:rotate(180deg);max-width:100%}
-.boton-estado-asiento-aula{width:12px;height:12px;min-width:12px;padding:0;border:1px solid #cbd2d8;border-radius:3px;background:#f3f5f7;font-size:8px;line-height:1;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center}
+.controles-estado-asiento-aula{display:flex;justify-content:center;align-items:center;gap:3px;margin:2px auto 0;flex:0 0 auto;flex-wrap:nowrap;transform:rotate(180deg);max-width:100%}
+.boton-estado-asiento-aula{width:17px;height:17px;min-width:17px;min-height:17px;padding:0;border:0;border-radius:0;background:transparent;color:#555;opacity:.38;font-size:11px;line-height:1;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;filter:grayscale(1)}
 .boton-estado-asiento-aula:active{transform:scale(.94)}
-.boton-estado-asiento-aula.seleccionado{outline:2px solid #1565c0;background:#dcecff}
+.boton-estado-asiento-aula.seleccionado{opacity:1;filter:none;font-weight:bold;transform:scale(1.12)}
+.boton-estado-asiento-aula.seleccionado.asistio{color:#2e7d32}
+.boton-estado-asiento-aula.seleccionado.atraso{color:#d99000}
+.boton-estado-asiento-aula.seleccionado.licencia{color:#1565c0}
+.boton-estado-asiento-aula.seleccionado.permiso{color:#1565c0}
+.boton-estado-asiento-aula.seleccionado.falta{color:#c62828}
 .asiento-aula{height:auto;min-height:72px;flex-direction:column}
 .nombre-asiento-aula{display:block;position:relative;z-index:1;max-width:100%;width:100%;margin:0;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
 .asistencia-aula-observacion-foto{display:flex;align-items:center;gap:7px;margin:8px 0}
@@ -7303,6 +7308,7 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAsistio" value="asistio"><label for="estadoAulaAsistio">✓<br>Asistió</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaAtraso" value="atraso"><label for="estadoAulaAtraso">⏰<br>Atraso</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
+                <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaPermiso" value="permiso"><label for="estadoAulaPermiso">🟡<br>Permiso</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
             <label for="observacionAsistenciaAulaIndividual">Observación del estudiante</label>
@@ -27347,15 +27353,17 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
         estadosAsiento.forEach(op => {
             const b = document.createElement("button");
             b.type = "button";
-            b.className = "boton-estado-asiento-aula" + (String(registro.estado||"")===op.valor ? " seleccionado" : "");
+            b.className = "boton-estado-asiento-aula " + op.valor + (String(registro.estado||"")===op.valor ? " seleccionado" : "");
             b.textContent = op.icono;
             b.title = op.titulo;
             b.setAttribute("aria-label", op.titulo);
-            b.addEventListener("click", ev => {
+            b.addEventListener("click", async ev => {
                 ev.stopPropagation();
                 abrirAsistenciaEstudianteDesdeAula(estudiante.id);
                 const radio = document.querySelector('input[name="estadoAsistenciaAulaIndividual"][value="'+op.valor+'"]');
                 if (radio) radio.checked = true;
+                // Aplicar el estado inmediatamente, como en la tabla de asistencia.
+                await guardarAsistenciaEstudianteDesdeAula();
             });
             controles.appendChild(b);
         });
