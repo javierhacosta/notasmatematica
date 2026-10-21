@@ -5683,6 +5683,20 @@ table tbody tr:nth-child(10n+10) td {
     .galeria-imagen-item img { height: 135px; }
 }
 
+
+/* Mejora localizada: fotos del día en la ventana de asistencia desde asientos */
+.observacion-asiento-fila-foto{display:flex;align-items:stretch;gap:8px;margin-top:14px}
+.observacion-asiento-fila-foto .asistencia-estudiante-aula-observacion{margin-top:0;flex:1;min-width:0}
+.boton-foto-asiento-aula{flex:0 0 48px;width:48px;border:0;border-radius:8px;background:#00838f;color:white;font-size:23px;cursor:pointer}
+.boton-foto-asiento-aula:active{transform:scale(.96)}
+.galeria-fotos-asiento-aula{margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:9px;background:#fafafa}
+.galeria-fotos-asiento-aula>strong{display:block;font-size:13px;color:#444;margin-bottom:8px}
+.galeria-fotos-asistencia-aula-lista{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-start}
+.foto-asiento-aula-item{display:flex;flex-direction:column;align-items:center;gap:5px;width:76px}
+.foto-asiento-aula-miniatura{width:72px;height:72px;object-fit:cover;border:1px solid #ccc;border-radius:7px;background:white;cursor:pointer}
+.foto-asiento-aula-borrar{width:32px;height:30px;border:0;border-radius:6px;background:#c62828;color:white;font-size:16px;cursor:pointer}
+.foto-asiento-aula-vacio{color:#777;font-size:12px;padding:4px 0}
+@media(max-width:600px){.observacion-asiento-fila-foto{gap:6px}.boton-foto-asiento-aula{flex-basis:44px;width:44px}.galeria-fotos-asiento-aula-lista{gap:7px}}
 </style>
 
 <style>
@@ -7318,8 +7332,15 @@ Cancelar
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaLicencia" value="licencia"><label for="estadoAulaLicencia">📄<br>Licencia</label></div>
                 <div class="asistencia-estudiante-aula-estado"><input type="radio" name="estadoAsistenciaAulaIndividual" id="estadoAulaFalta" value="falta"><label for="estadoAulaFalta">✕<br>Falta</label></div>
             </div>
-            <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
-                      maxlength="500" placeholder="Observación de la asistencia..."></textarea>
+            <div class="observacion-asiento-fila-foto">
+                <textarea id="observacionAsistenciaAulaIndividual" class="asistencia-estudiante-aula-observacion"
+                          maxlength="500" placeholder="Observación de la asistencia..."></textarea>
+                <button type="button" class="boton-foto-asiento-aula" onclick="seleccionarFotoAsistenciaDesdeAula()" title="Sacar o añadir foto de asistencia" aria-label="Sacar o añadir foto">📷</button>
+            </div>
+            <div class="galeria-fotos-asiento-aula">
+                <strong>📸 Fotos de asistencia de este día</strong>
+                <div id="galeriaFotosAsistenciaAula" class="galeria-fotos-asistencia-aula-lista"></div>
+            </div>
             <div class="asistencia-estudiante-aula-acciones">
                 <button type="button" class="boton-cancelar-asistencia-aula" onclick="cerrarModalAsistenciaEstudianteAula()">Cancelar</button>
                 <button type="button" class="boton-guardar-asistencia-aula" onclick="guardarAsistenciaEstudianteDesdeAula()">💾 Guardar</button>
@@ -11444,6 +11465,9 @@ async function guardarFotoAsistenciaSeleccionada(ev){
   }
   await cargarFotosAsistenciaEstudiante(p.estudianteId);
   await cargarFotosPendientesAsistencia(p.estudianteId);
+  if (document.getElementById("modalAsistenciaEstudianteAula")?.dataset.estudianteId === String(p.estudianteId)) {
+   await cargarGaleriaFotosAsistenciaAula(p.estudianteId);
+  }
   mostrarMensaje("✓ Foto de asistencia guardada.");
  }catch(e){console.error("Error al guardar foto de asistencia:",e);alert("No se pudo guardar la foto de asistencia.\n\n"+(e.message||e));}
  finally{archivoFotoAsistenciaPendiente=null;input.value="";}
@@ -27650,6 +27674,62 @@ function abrirAsistenciaEstudianteDesdeAula(estudianteId) {
     if (observacion) observacion.value = registro.observacion || "";
 
     modal.classList.remove("oculto");
+    cargarGaleriaFotosAsistenciaAula(estudiante.id);
+}
+
+function seleccionarFotoAsistenciaDesdeAula() {
+    const modal = document.getElementById("modalAsistenciaEstudianteAula");
+    const estudianteId = modal?.dataset.estudianteId;
+    if (!estudianteId) return;
+    seleccionarFotoAsistencia(estudianteId);
+}
+
+async function cargarGaleriaFotosAsistenciaAula(estudianteId) {
+    const cont = document.getElementById("galeriaFotosAsistenciaAula");
+    if (!cont) return;
+    const fecha = document.getElementById("fechaAsistencia")?.value || "";
+    cont.innerHTML = "";
+    if (!fecha || !cursoSeleccionado || !supabaseClient) {
+        cont.innerHTML = '<span class="foto-asiento-aula-vacio">Seleccione una fecha de asistencia.</span>';
+        return;
+    }
+    try {
+        const {data, error} = await supabaseClient.from("fotos_asistencia")
+            .select("id,curso_id,fecha,estudiante_id,ruta,nombre_archivo")
+            .eq("curso_id", cursoSeleccionado).eq("fecha", fecha)
+            .eq("estudiante_id", estudianteId).order("id");
+        if (error) throw error;
+        if (!data?.length) {
+            cont.innerHTML = '<span class="foto-asiento-aula-vacio">No hay fotos almacenadas para este estudiante en esta fecha.</span>';
+            return;
+        }
+        for (const f of data) {
+            const signed = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 600);
+            if (signed.error) continue;
+            const item = document.createElement("div");
+            item.className = "foto-asiento-aula-item";
+            const img = document.createElement("img");
+            img.className = "foto-asiento-aula-miniatura";
+            img.src = signed.data.signedUrl;
+            img.alt = "Foto de asistencia";
+            img.onclick = () => window.open(signed.data.signedUrl, "_blank", "noopener");
+            item.appendChild(img);
+            const borrar = document.createElement("button");
+            borrar.type = "button";
+            borrar.className = "foto-asiento-aula-borrar";
+            borrar.textContent = "🗑️";
+            borrar.title = "Borrar foto";
+            borrar.onclick = async () => {
+                await eliminarFotoAsistencia({...f, estudiante_id: String(estudianteId)});
+                await cargarGaleriaFotosAsistenciaAula(estudianteId);
+            };
+            item.appendChild(borrar);
+            cont.appendChild(item);
+        }
+    } catch (e) {
+        console.error("Error al cargar fotos de asistencia del asiento:", e);
+        cont.innerHTML = '<span class="foto-asiento-aula-vacio">No se pudieron cargar las fotos.</span>';
+    }
 }
 
 function cerrarModalAsistenciaEstudianteAula(event) {
