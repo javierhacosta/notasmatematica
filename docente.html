@@ -11488,19 +11488,17 @@ let ordenarAsistenciaPorAsiento = false;
 function obtenerDistribucionGuardadaParaOrdenAsientos() {
     if (!cursoSeleccionado) return null;
     try {
-        // Usar la misma distribución efectiva que utiliza la distribución del aula,
-        // incluyendo la configuración cargada desde la base de datos o generada inicialmente.
-        let distribucion = null;
-        if (typeof obtenerDistribucionAulaCurso === "function") {
+        const todas = JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
+        let distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
+        // Usar también la distribución efectiva del módulo de asientos cuando
+        // todavía no exista una copia guardada en localStorage.
+        if ((!distribucion || typeof distribucion !== "object") &&
+            typeof obtenerDistribucionAulaCurso === "function") {
             distribucion = obtenerDistribucionAulaCurso();
-        }
-        if ((!distribucion || typeof distribucion !== "object" || !Object.keys(distribucion).some(k => /^\\d+$/.test(k))) &&
-            typeof distribucionAulaActual === "object" && distribucionAulaActual) {
-            distribucion = distribucionAulaActual;
         }
         if (!distribucion || typeof distribucion !== "object") return null;
         const asignaciones = Object.entries(distribucion)
-            .filter(([asiento, id]) => /^\\d+$/.test(asiento) && id != null && String(id) !== "");
+            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
         return asignaciones.length ? Object.fromEntries(asignaciones) : null;
     } catch (_) {
         return null;
@@ -11511,17 +11509,14 @@ function actualizarBotonOrdenAsientoAsistencia() {
     const boton = document.getElementById("botonOrdenAsientoAsistencia");
     if (!boton) return;
     const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
-    boton.style.display = distribucion ? "flex" : "none";
-    if (!distribucion) ordenarAsistenciaPorAsiento = false;
+    // El icono debe permanecer visible en asistencia, aunque aún no se detecte
+    // una distribución guardada para el curso.
+    boton.style.display = "flex";
     boton.classList.toggle("activo", ordenarAsistenciaPorAsiento);
     boton.setAttribute("aria-pressed", ordenarAsistenciaPorAsiento ? "true" : "false");
 }
 
 function alternarOrdenAsientoAsistencia() {
-    if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
-        actualizarBotonOrdenAsientoAsistencia();
-        return;
-    }
     ordenarAsistenciaPorAsiento = !ordenarAsistenciaPorAsiento;
     actualizarBotonOrdenAsientoAsistencia();
     mostrarTablaAsistencia();
