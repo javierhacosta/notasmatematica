@@ -7228,6 +7228,10 @@ Cancelar
                         <input id="mostrarNumeroAsientoAula" type="checkbox">
                         <span>Mostrar número de asiento</span>
                     </label>
+                    <label class="configuracion-aula-nombre-completo">
+                        <input id="mostrarBotonesAsistenciaAula" type="checkbox">
+                        <span>Mostrar botones de asistencia</span>
+                    </label>
                     <div class="configuracion-aula-colores-genero">
                         <div class="configuracion-aula-color">
                             <label for="colorMujerAula">Color de letras de mujeres</label>
@@ -26937,9 +26941,9 @@ const DISTRIBUCION_1B_PDF = {
 };
 
 let distribucionAulaActual = {};
-let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let configuracionAulaActual = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, mostrarBotonesAsistencia: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGuardada = {};
-let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
+let configuracionAulaGuardada = { filas: 6, columnas: 3, filasPorColumna: [6, 6, 6], anchoMesa: 130, largoMesa: 72, mostrarNombreCompleto: false, mostrarNumeroLista: true, mostrarNumeroAsiento: false, mostrarBotonesAsistencia: false, colorMujer: "#e91e63", colorVaron: "#1976d2" };
 let distribucionAulaGirado = true; // Por defecto, la vista inicia girada 180°.
 
 function claveDistribucionAula(curso) {
@@ -26976,9 +26980,10 @@ function normalizarConfiguracionAula(datos = {}) {
     const mostrarNombreCompleto = datos.mostrarNombreCompleto === true;
     const mostrarNumeroLista = datos.mostrarNumeroLista !== false;
     const mostrarNumeroAsiento = datos.mostrarNumeroAsiento === true;
+    const mostrarBotonesAsistencia = datos.mostrarBotonesAsistencia === true;
     const colorMujer = /^#[0-9A-F]{6}$/i.test(String(datos.colorMujer || "")) ? String(datos.colorMujer) : "#e91e63";
     const colorVaron = /^#[0-9A-F]{6}$/i.test(String(datos.colorVaron || "")) ? String(datos.colorVaron) : "#1976d2";
-    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
+    return { filas: filasBase, columnas, filasPorColumna, anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, mostrarBotonesAsistencia, colorMujer, colorVaron };
 }
 
 function obtenerFilasPorColumnaAula(config = configuracionAulaActual) {
@@ -27006,7 +27011,7 @@ function obtenerConfiguracionAulaCurso() {
     return normalizarConfiguracionAula(guardada || {});
 }
 
-function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2") {
+function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMesa = 72, filasPorColumna = null, mostrarNombreCompleto = false, mostrarNumeroLista = true, mostrarNumeroAsiento = false, colorMujer = "#e91e63", colorVaron = "#1976d2", mostrarBotonesAsistencia = false) {
     const todas = cargarConfiguracionesAulaGuardadas();
     const filasNormalizadas = Math.max(1, Math.min(20, Number(filas) || 1));
     const columnasNormalizadas = Math.max(1, Math.min(10, Number(columnas) || 1));
@@ -27023,6 +27028,7 @@ function guardarConfiguracionAulaCurso(filas, columnas, anchoMesa = 130, largoMe
         mostrarNombreCompleto: mostrarNombreCompleto === true,
         mostrarNumeroLista: mostrarNumeroLista !== false,
         mostrarNumeroAsiento: mostrarNumeroAsiento === true,
+        mostrarBotonesAsistencia: mostrarBotonesAsistencia === true,
         colorMujer: /^#[0-9A-F]{6}$/i.test(String(colorMujer || "")) ? String(colorMujer) : "#e91e63",
         colorVaron: /^#[0-9A-F]{6}$/i.test(String(colorVaron || "")) ? String(colorVaron) : "#1976d2"
     };
@@ -27057,6 +27063,7 @@ async function cargarConfiguracionDistribucionAulaBD() {
             mostrarNombreCompleto: metadataMostrarNombreCompleto,
             mostrarNumeroLista: metadataMostrarNumeroLista,
             mostrarNumeroAsiento: data.distribucion && data.distribucion.__mostrarNumeroAsiento === true,
+            mostrarBotonesAsistencia: data.distribucion && data.distribucion.__mostrarBotonesAsistencia === true,
             colorMujer: metadataColorMujer,
             colorVaron: metadataColorVaron
         });
@@ -27068,6 +27075,7 @@ async function cargarConfiguracionDistribucionAulaBD() {
             delete distribucion.__mostrarNombreCompleto;
             delete distribucion.__mostrarNumeroLista;
             delete distribucion.__mostrarNumeroAsiento;
+            delete distribucion.__mostrarBotonesAsistencia;
             delete distribucion.__colorMujer;
             delete distribucion.__colorVaron;
         }
@@ -27091,6 +27099,7 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
     distribucionParaGuardar.__mostrarNombreCompleto = config.mostrarNombreCompleto === true;
     distribucionParaGuardar.__mostrarNumeroLista = config.mostrarNumeroLista !== false;
     distribucionParaGuardar.__mostrarNumeroAsiento = config.mostrarNumeroAsiento === true;
+    distribucionParaGuardar.__mostrarBotonesAsistencia = config.mostrarBotonesAsistencia === true;
     distribucionParaGuardar.__colorMujer = config.colorMujer;
     distribucionParaGuardar.__colorVaron = config.colorVaron;
 
@@ -27119,7 +27128,8 @@ async function guardarDistribucionAulaBD(distribucion = distribucionAulaActual) 
         config.mostrarNumeroLista,
         config.mostrarNumeroAsiento,
         config.colorMujer,
-        config.colorVaron
+        config.colorVaron,
+        config.mostrarBotonesAsistencia
     );
     const todas = cargarDistribucionesAulaGuardadas();
     todas[claveDistribucionAula(cursoSeleccionado)] = { ...(distribucion || {}) };
@@ -27324,7 +27334,7 @@ function crearAsientoVisualAula(numero, mapaEstudiantes = null) {
     asiento.appendChild(nombreEl);
 
     // Iconos pequeños de asistencia directamente debajo del nombre.
-    if (estudiante && estudianteEsEfectivo(estudiante)) {
+    if (configuracionAulaActual.mostrarBotonesAsistencia === true && estudiante && estudianteEsEfectivo(estudiante)) {
         const estadosAsiento = [
             {valor:"asistio", icono:"✓", titulo:"Asistencia"},
             {valor:"atraso", icono:"⏰", titulo:"Atraso"},
@@ -27829,6 +27839,7 @@ function mostrarConfiguracionAula() {
     const inputMostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula");
     const inputMostrarNumeroLista = document.getElementById("mostrarNumeroListaAula");
     const inputMostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    const inputMostrarBotonesAsistencia = document.getElementById("mostrarBotonesAsistenciaAula");
     const inputColorMujer = document.getElementById("colorMujerAula");
     const inputColorVaron = document.getElementById("colorVaronAula");
 
@@ -27838,12 +27849,13 @@ function mostrarConfiguracionAula() {
     if (inputMostrarNombreCompleto) inputMostrarNombreCompleto.checked = configuracionAulaActual.mostrarNombreCompleto === true;
     if (inputMostrarNumeroLista) inputMostrarNumeroLista.checked = configuracionAulaActual.mostrarNumeroLista !== false;
     if (inputMostrarNumeroAsiento) inputMostrarNumeroAsiento.checked = configuracionAulaActual.mostrarNumeroAsiento === true;
+    if (inputMostrarBotonesAsistencia) inputMostrarBotonesAsistencia.checked = configuracionAulaActual.mostrarBotonesAsistencia === true;
     if (inputColorMujer) inputColorMujer.value = configuracionAulaActual.colorMujer || "#e91e63";
     if (inputColorVaron) inputColorVaron.value = configuracionAulaActual.colorVaron || "#1976d2";
 
     renderizarFilasPorColumnaAula();
 
-    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputColorMujer, inputColorVaron].forEach(input => {
+    [inputColumnas, inputAnchoMesa, inputLargoMesa, inputMostrarNombreCompleto, inputMostrarNumeroLista, inputMostrarNumeroAsiento, inputMostrarBotonesAsistencia, inputColorMujer, inputColorVaron].forEach(input => {
         if (input) input.oninput = function() {
             if (input === inputColumnas) renderizarFilasPorColumnaAula();
             actualizarResumenConfiguracionAula();
@@ -27933,19 +27945,20 @@ function aplicarConfiguracionAula() {
     const mostrarNombreCompleto = document.getElementById("mostrarNombreCompletoAula")?.checked === true;
     const mostrarNumeroLista = document.getElementById("mostrarNumeroListaAula")?.checked !== false;
     const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula")?.checked === true;
+    const mostrarBotonesAsistencia = document.getElementById("mostrarBotonesAsistenciaAula")?.checked === true;
     const colorMujer = document.getElementById("colorMujerAula")?.value || "#e91e63";
     const colorVaron = document.getElementById("colorVaronAula")?.value || "#1976d2";
     const totalNuevo = filasPorColumna.reduce((total, cantidad) => total + cantidad, 0) * 2;
     const totalAnterior = obtenerCantidadAsientosAula();
 
-    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron };
+    configuracionAulaActual = { filas, columnas, filasPorColumna: [...filasPorColumna], anchoMesa, largoMesa, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, mostrarBotonesAsistencia, colorMujer, colorVaron };
     configuracionAulaGuardada = { ...configuracionAulaActual, filasPorColumna: [...filasPorColumna] };
 
     Object.keys(distribucionAulaActual).forEach(numero => {
         if (Number(numero) > totalNuevo) delete distribucionAulaActual[numero];
     });
 
-    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron);
+    guardarConfiguracionAulaCurso(filas, columnas, anchoMesa, largoMesa, filasPorColumna, mostrarNombreCompleto, mostrarNumeroLista, mostrarNumeroAsiento, colorMujer, colorVaron, mostrarBotonesAsistencia);
     guardarDistribucionAulaBD().catch(error => console.error("No se pudo guardar la configuración del aula en la BD:", error));
 
     if (totalNuevo > totalAnterior && Object.keys(distribucionAulaActual).length === 0) {
@@ -27982,6 +27995,7 @@ function configuracionesAulaSonIguales(a = {}, b = {}) {
            (a.mostrarNombreCompleto === true) === (b.mostrarNombreCompleto === true) &&
            (a.mostrarNumeroLista !== false) === (b.mostrarNumeroLista !== false) &&
            (a.mostrarNumeroAsiento === true) === (b.mostrarNumeroAsiento === true) &&
+           (a.mostrarBotonesAsistencia === true) === (b.mostrarBotonesAsistencia === true) &&
            String(a.colorMujer || "#e91e63").toLowerCase() === String(b.colorMujer || "#e91e63").toLowerCase() &&
            String(a.colorVaron || "#1976d2").toLowerCase() === String(b.colorVaron || "#1976d2").toLowerCase();
 }
@@ -27998,7 +28012,8 @@ function actualizarBotonAplicarConfiguracionAula() {
         largoMesa: Math.max(40, Math.min(300, Number(document.getElementById("largoMesasAula")?.value) || 72)),
         mostrarNombreCompleto: document.getElementById("mostrarNombreCompletoAula")?.checked === true,
         mostrarNumeroLista: document.getElementById("mostrarNumeroListaAula")?.checked !== false,
-        mostrarNumeroAsiento: document.getElementById("mostrarNumeroAsientoAula")?.checked === true
+        mostrarNumeroAsiento: document.getElementById("mostrarNumeroAsientoAula")?.checked === true,
+        mostrarBotonesAsistencia: document.getElementById("mostrarBotonesAsistenciaAula")?.checked === true
     };
     boton.style.display = configuracionesAulaSonIguales(actual, configuracionAulaGuardada) ? "none" : "inline-flex";
 }
