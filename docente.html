@@ -2396,6 +2396,9 @@ td:first-child {
     background: #16803c;
     opacity: 1;
 }
+.boton-orden-asiento-asistencia[hidden] {
+    display: none !important;
+}
 
 /* PARPADEO: existen comentarios de horario en estudiantes del curso */
 @keyframes parpadearComentarioHorarioAsistencia {
@@ -11509,8 +11512,10 @@ function actualizarBotonOrdenAsientoAsistencia() {
     const boton = document.getElementById("botonOrdenAsientoAsistencia");
     if (!boton) return;
     const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
-    boton.style.display = distribucion ? "flex" : "none";
-    if (!distribucion) ordenarAsistenciaPorAsiento = false;
+    const mostrar = !!(distribucion && Object.keys(distribucion).length > 0);
+    boton.hidden = !mostrar;
+    boton.style.display = mostrar ? "flex" : "none";
+    if (!mostrar) ordenarAsistenciaPorAsiento = false;
     boton.classList.toggle("activo", ordenarAsistenciaPorAsiento);
     boton.setAttribute("aria-pressed", ordenarAsistenciaPorAsiento ? "true" : "false");
 }
