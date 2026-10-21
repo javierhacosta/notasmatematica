@@ -11386,9 +11386,7 @@ async function prepararFotoAsistencia(file){
 /* Fotos de asistencia vinculadas al estudiante y a la fecha seleccionada. */
 let archivoFotoAsistenciaPendiente=null;
 function seleccionarFotoAsistencia(estudianteId,fotoId=null){
- if(!asistenciaDesbloqueada && !document.getElementById("modalPendientesAsistencia")?.classList.contains("oculto")) {
-  // La ventana de pendientes permite gestionar fotos del estudiante y fecha seleccionados.
- } else if(!asistenciaDesbloqueada){alert("Desbloquee la tabla de asistencia para modificar fotografías.");return;}
+ // La gestión de fotografías es independiente del bloqueo de la tabla de asistencia.
  if(!cursoSeleccionado){alert("Primero seleccione un curso.");return;}
  const fecha=document.getElementById("fechaAsistencia")?.value;
  if(!fecha){alert("Seleccione la fecha de asistencia.");return;}
@@ -11473,7 +11471,8 @@ async function guardarFotoAsistenciaSeleccionada(ev){
  finally{archivoFotoAsistenciaPendiente=null;input.value="";}
 }
 async function eliminarFotoAsistencia(f){
- if(!asistenciaDesbloqueada||!confirm("¿Eliminar esta fotografía?"))return;
+ // Permitir borrar fotografías aunque la tabla de asistencia esté bloqueada.
+ if(!confirm("¿Eliminar esta fotografía?"))return;
  try{
   const q=await supabaseClient.from("fotos_asistencia").delete().eq("id",f.id);if(q.error)throw q.error;
   const rm=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([f.ruta]);if(rm.error)console.warn(rm.error);
