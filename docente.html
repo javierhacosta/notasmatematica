@@ -11466,10 +11466,16 @@ function obtenerDistribucionGuardadaParaOrdenAsientos() {
     if (!cursoSeleccionado) return null;
     try {
         const todas = JSON.parse(localStorage.getItem(CLAVE_DISTRIBUCION_AULA) || "{}");
-        const distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
+        let distribucion = todas[claveDistribucionAula(cursoSeleccionado)];
+        // Usar también la distribución efectiva del módulo de asientos cuando
+        // todavía no exista una copia guardada en localStorage.
+        if ((!distribucion || typeof distribucion !== "object") &&
+            typeof obtenerDistribucionAulaCurso === "function") {
+            distribucion = obtenerDistribucionAulaCurso();
+        }
         if (!distribucion || typeof distribucion !== "object") return null;
         const asignaciones = Object.entries(distribucion)
-            .filter(([asiento, id]) => /^\\d+$/.test(asiento) && id != null && String(id) !== "");
+            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
         return asignaciones.length ? Object.fromEntries(asignaciones) : null;
     } catch (_) {
         return null;
@@ -11495,6 +11501,8 @@ function alternarOrdenAsientoAsistencia() {
     actualizarBotonOrdenAsientoAsistencia();
     mostrarTablaAsistencia();
 }
+
+document.addEventListener("DOMContentLoaded", actualizarBotonOrdenAsientoAsistencia);
 
 function mostrarTablaAsistencia() {
 
