@@ -11516,38 +11516,48 @@ function actualizarBotonOrdenAsientoAsistencia() {
 }
 
 function alternarOrdenAsientoAsistencia() {
-    const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
-    if (!distribucion) {
+    const distribucionAsientos = obtenerDistribucionGuardadaParaOrdenAsientos();
+
+    // No ordenar si todavía no hay estudiantes asignados a números de asiento.
+    if (!distribucionAsientos || Object.keys(distribucionAsientos).length === 0) {
+        alert("⚠️ No hay estudiantes con asientos designados. Primero asigna los estudiantes a los asientos.");
         actualizarBotonOrdenAsientoAsistencia();
-        alert("Este curso todavía no tiene estudiantes asignados a los asientos. Primero distribuya los asientos y vuelva a intentarlo.");
         return;
     }
 
-    // Antes de ordenar, activar internamente «Mostrar número de asiento».
-    const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
-    if (mostrarNumeroAsiento && !mostrarNumeroAsiento.checked) {
-        mostrarNumeroAsiento.checked = true;
+    // Antes de ordenar, activar y guardar automáticamente «Mostrar número de asiento».
+    const inputMostrarAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    if (inputMostrarAsiento && !inputMostrarAsiento.checked) {
+        inputMostrarAsiento.checked = true;
+    }
 
-        if (typeof configuracionAulaActual === "object" && configuracionAulaActual) {
-            configuracionAulaActual.mostrarNumeroAsiento = true;
-            if (typeof guardarConfiguracionAulaCurso === "function") {
-                guardarConfiguracionAulaCurso(
-                    configuracionAulaActual.filas,
-                    configuracionAulaActual.columnas,
-                    configuracionAulaActual.anchoMesa,
-                    configuracionAulaActual.largoMesa,
-                    configuracionAulaActual.filasPorColumna,
-                    configuracionAulaActual.mostrarNombreCompleto,
-                    configuracionAulaActual.mostrarNumeroLista,
-                    true,
-                    configuracionAulaActual.colorMujer,
-                    configuracionAulaActual.colorVaron
-                );
-            }
-            if (typeof mostrarVistaDistribucionAula === "function") {
-                mostrarVistaDistribucionAula();
-            }
-        }
+    const configActual = normalizarConfiguracionAula(configuracionAulaActual || {});
+    if (configActual.mostrarNumeroAsiento !== true) {
+        configActual.mostrarNumeroAsiento = true;
+        configuracionAulaActual = { ...configActual };
+        configuracionAulaGuardada = {
+            ...configActual,
+            filasPorColumna: [...configActual.filasPorColumna]
+        };
+
+        guardarConfiguracionAulaCurso(
+            configActual.filas,
+            configActual.columnas,
+            configActual.anchoMesa,
+            configActual.largoMesa,
+            configActual.filasPorColumna,
+            configActual.mostrarNombreCompleto,
+            configActual.mostrarNumeroLista,
+            true,
+            configActual.colorMujer,
+            configActual.colorVaron
+        );
+
+        // Guardar también en la base de datos, sin cambiar de vista ni la distribución.
+        guardarDistribucionAulaBD().catch(error => {
+            console.error("No se pudo guardar «Mostrar número de asiento» en la base de datos:", error);
+            alert("⚠️ Se activó «Mostrar número de asiento», pero no se pudo guardar en la base de datos. Verifica la conexión e inténtalo de nuevo.");
+        });
     }
 
     ordenarAsistenciaPorAsiento = !ordenarAsistenciaPorAsiento;
