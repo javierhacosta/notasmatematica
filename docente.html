@@ -11515,68 +11515,38 @@ function actualizarBotonOrdenAsientoAsistencia() {
     boton.setAttribute("aria-pressed", ordenarAsistenciaPorAsiento ? "true" : "false");
 }
 
-// Sincroniza la distribución compartida desde la base de datos cuando este
-// dispositivo aún no tiene una copia local. No depende de "Mostrar número de asiento".
-let cursoSincronizandoDistribucionOrdenAsientos = null;
-async function sincronizarDistribucionAsientosParaOrdenAsistencia() {
-    const curso = String(cursoSeleccionado || "").trim();
-    if (!curso || !supabaseClient) return;
-    const local = obtenerDistribucionGuardadaParaOrdenAsientos();
-    if (local) return;
-    if (cursoSincronizandoDistribucionOrdenAsientos === curso) return;
-    cursoSincronizandoDistribucionOrdenAsientos = curso;
-    try {
-        const { data, error } = await supabaseClient
-            .from(TABLA_DISTRIBUCION_AULA_BD)
-            .select("curso,distribucion")
-            .eq("curso", curso)
-            .maybeSingle();
-        if (error) throw error;
-        if (!data || !data.distribucion || typeof data.distribucion !== "object") return;
-        const distribucion = { ...data.distribucion };
-        ["__filasPorColumna", "__mostrarNombreCompleto", "__mostrarNumeroLista", "__mostrarNumeroAsiento", "__colorMujer", "__colorVaron"].forEach(k => delete distribucion[k]);
-        const asignaciones = Object.entries(distribucion).filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
-        if (!asignaciones.length) return;
-        const todas = cargarDistribucionesAulaGuardadas();
-        todas[claveDistribucionAula(curso)] = distribucion;
-        localStorage.setItem(CLAVE_DISTRIBUCION_AULA, JSON.stringify(todas));
-        if (String(cursoSeleccionado || "").trim() === curso) {
-            actualizarBotonOrdenAsientoAsistencia();
-            if (ordenarAsistenciaPorAsiento) mostrarTablaAsistencia();
-        }
-    } catch (e) {
-        console.warn("No se pudo sincronizar la distribución de asientos para ordenar la asistencia:", e);
-    } finally {
-        if (cursoSincronizandoDistribucionOrdenAsientos === curso) cursoSincronizandoDistribucionOrdenAsientos = null;
-    }
-}
-
 function alternarOrdenAsientoAsistencia() {
-    if (!obtenerDistribucionGuardadaParaOrdenAsientos()) {
+    const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
+    if (!distribucion) {
         actualizarBotonOrdenAsientoAsistencia();
+        alert("Este curso todavía no tiene estudiantes asignados a los asientos. Primero distribuya los asientos y vuelva a intentarlo.");
         return;
     }
 
-    // Al activar el orden, comprobar si está habilitada la numeración visible
-    // de los asientos para el curso actual. Si ya estaba ordenando, permitir desactivarlo.
-    if (!ordenarAsistenciaPorAsiento) {
-        let mostrarNumeroAsiento = false;
-        try {
-            const entrada = document.getElementById("mostrarNumeroAsientoAula");
-            const configuraciones = typeof cargarConfiguracionesAulaGuardadas === "function"
-                ? cargarConfiguracionesAulaGuardadas() : {};
-            const configCurso = configuraciones && cursoSeleccionado
-                ? configuraciones[claveDistribucionAula(cursoSeleccionado)] : null;
-            mostrarNumeroAsiento = !!(
-                (entrada && entrada.checked) ||
-                (typeof configuracionAulaActual !== "undefined" && configuracionAulaActual && configuracionAulaActual.mostrarNumeroAsiento === true) ||
-                (configCurso && (configCurso.mostrarNumeroAsiento === true || configCurso.mostrar_numero_asiento === true))
-            );
-        } catch (_) {}
+    // Antes de ordenar, activar internamente «Mostrar número de asiento».
+    const mostrarNumeroAsiento = document.getElementById("mostrarNumeroAsientoAula");
+    if (mostrarNumeroAsiento && !mostrarNumeroAsiento.checked) {
+        mostrarNumeroAsiento.checked = true;
 
-        if (!mostrarNumeroAsiento) {
-            alert('Para ordenar la asistencia por número de asiento, primero active «Mostrar número de asiento» en la configuración de distribución de asientos del curso.');
-            return;
+        if (typeof configuracionAulaActual === "object" && configuracionAulaActual) {
+            configuracionAulaActual.mostrarNumeroAsiento = true;
+            if (typeof guardarConfiguracionAulaCurso === "function") {
+                guardarConfiguracionAulaCurso(
+                    configuracionAulaActual.filas,
+                    configuracionAulaActual.columnas,
+                    configuracionAulaActual.anchoMesa,
+                    configuracionAulaActual.largoMesa,
+                    configuracionAulaActual.filasPorColumna,
+                    configuracionAulaActual.mostrarNombreCompleto,
+                    configuracionAulaActual.mostrarNumeroLista,
+                    true,
+                    configuracionAulaActual.colorMujer,
+                    configuracionAulaActual.colorVaron
+                );
+            }
+            if (typeof mostrarVistaDistribucionAula === "function") {
+                mostrarVistaDistribucionAula();
+            }
         }
     }
 
@@ -11632,8 +11602,6 @@ function mostrarTablaAsistencia() {
     obtenerEstudiantesCursoActual();
 
     actualizarBotonOrdenAsientoAsistencia();
-    // En un dispositivo nuevo, traer la distribución guardada en la nube.
-    sincronizarDistribucionAsientosParaOrdenAsistencia();
     if (ordenarAsistenciaPorAsiento) {
         const distribucionAsientos = obtenerDistribucionGuardadaParaOrdenAsientos() || {};
         const asientoPorEstudiante = new Map();
