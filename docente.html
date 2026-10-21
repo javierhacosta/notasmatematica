@@ -13912,6 +13912,27 @@ function crearActividadHTML(
         "false"
     );
 
+    // Mantener pulsado 📦 abre las opciones para aplicar o borrar
+    // la fecha y hora de entrega de los estudiantes que tienen nota.
+    let temporizadorMenuEntrega = null;
+    let pulsacionLargaEntrega = false;
+    botonMostrarEntrega.addEventListener("pointerdown", function() {
+        pulsacionLargaEntrega = false;
+        temporizadorMenuEntrega = setTimeout(function() {
+            pulsacionLargaEntrega = true;
+            mostrarMenuFechaHoraEntrega(actividad, botonMostrarEntrega);
+        }, 650);
+    });
+    function cancelarTemporizadorEntrega() {
+        if (temporizadorMenuEntrega) {
+            clearTimeout(temporizadorMenuEntrega);
+            temporizadorMenuEntrega = null;
+        }
+    }
+    botonMostrarEntrega.addEventListener("pointerup", cancelarTemporizadorEntrega);
+    botonMostrarEntrega.addEventListener("pointercancel", cancelarTemporizadorEntrega);
+    botonMostrarEntrega.addEventListener("pointerleave", cancelarTemporizadorEntrega);
+
 
     const botonEscanearQR =
     document.createElement(
@@ -14439,6 +14460,11 @@ function crearActividadHTML(
     function(event) {
 
         event.stopPropagation();
+
+        if (pulsacionLargaEntrega) {
+            pulsacionLargaEntrega = false;
+            return;
+        }
 
         if (actividadesEntregaVisibles.has(actividad.id)) {
             actividadesEntregaVisibles.delete(actividad.id);
@@ -15538,6 +15564,152 @@ async function editarFotoActividad(c){
     }catch(e){alert("No se pudo editar la fotografía.\n\n"+(e.message||e))}
 }
 /* El listener de inputFotoActividad se registra después de que el elemento exista en el DOM. */
+
+/* =====================================================
+   MENÚ DE FECHA Y HORA DE ENTREGA POR ACTIVIDAD
+===================================================== */
+function mostrarMenuFechaHoraEntrega(actividad, botonOrigen) {
+    document.getElementById("menuFechaHoraEntregaActividad")?.remove();
+
+    const menu = document.createElement("div");
+    menu.id = "menuFechaHoraEntregaActividad";
+    menu.style.cssText = "position:fixed;z-index:10050;left:50%;top:50%;transform:translate(-50%,-50%);width:min(320px,calc(100vw - 30px));padding:16px;background:#fff;border:1px solid #ccc;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:10px;";
+    const titulo = document.createElement("strong");
+    titulo.textContent = "Fecha y hora de entrega";
+    titulo.style.cssText = "font-size:16px;margin-bottom:4px;";
+    menu.appendChild(titulo);
+
+    const asignar = document.createElement("button");
+    asignar.type = "button";
+    asignar.textContent = "📅 Asignar fecha y hora";
+    asignar.style.cssText = "padding:12px;border:0;border-radius:8px;background:#1565c0;color:white;font-weight:bold;font-size:15px;";
+    asignar.onclick = () => {
+        menu.remove();
+        abrirFormularioFechaHoraEntrega(actividad);
+    };
+    menu.appendChild(asignar);
+
+    const borrar = document.createElement("button");
+    borrar.type = "button";
+    borrar.textContent = "🗑️ Borrar fecha y hora";
+    borrar.style.cssText = "padding:12px;border:0;border-radius:8px;background:#c62828;color:white;font-weight:bold;font-size:15px;";
+    borrar.onclick = async () => {
+        menu.remove();
+        await aplicarFechaHoraEntregaActividad(actividad, null);
+    };
+    menu.appendChild(borrar);
+
+    const cancelar = document.createElement("button");
+    cancelar.type = "button";
+    cancelar.textContent = "Cancelar";
+    cancelar.style.cssText = "padding:10px;border:1px solid #ccc;border-radius:8px;background:#f3f3f3;color:#333;";
+    cancelar.onclick = () => menu.remove();
+    menu.appendChild(cancelar);
+
+    document.body.appendChild(menu);
+}
+
+function abrirFormularioFechaHoraEntrega(actividad) {
+    document.getElementById("modalFechaHoraEntregaActividad")?.remove();
+
+    const fondo = document.createElement("div");
+    fondo.id = "modalFechaHoraEntregaActividad";
+    fondo.style.cssText = "position:fixed;inset:0;z-index:10051;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:15px;";
+    const caja = document.createElement("div");
+    caja.style.cssText = "width:min(380px,100%);background:white;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.3);";
+    caja.innerHTML = '<h3 style="margin:0 0 14px">Asignar fecha y hora</h3><label for="fechaEntregaActividadMasiva">Fecha de entrega</label><input id="fechaEntregaActividadMasiva" type="date" style="width:100%;margin:0 0 12px;padding:10px;border:1px solid #ccc;border-radius:7px"><label for="horaEntregaActividadMasiva">Hora de entrega</label><input id="horaEntregaActividadMasiva" type="time" style="width:100%;margin:0 0 16px;padding:10px;border:1px solid #ccc;border-radius:7px"><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="cancelarFechaEntregaMasiva" style="padding:10px;border:0;border-radius:7px;background:#777;color:white">Cancelar</button><button type="button" id="guardarFechaEntregaMasiva" style="padding:10px;border:0;border-radius:7px;background:#16803c;color:white;font-weight:bold">Aplicar</button></div>';
+    fondo.appendChild(caja);
+    document.body.appendChild(fondo);
+
+    caja.querySelector("#cancelarFechaEntregaMasiva").onclick = () => fondo.remove();
+    caja.querySelector("#guardarFechaEntregaMasiva").onclick = async () => {
+        const fecha = caja.querySelector("#fechaEntregaActividadMasiva").value;
+        const hora = caja.querySelector("#horaEntregaActividadMasiva").value;
+        if (!fecha || !hora) {
+            alert("Selecciona la fecha y la hora de entrega.");
+            return;
+        }
+        fondo.remove();
+        await aplicarFechaHoraEntregaActividad(actividad, `${fecha}T${hora}`);
+    };
+    fondo.addEventListener("click", event => {
+        if (event.target === fondo) fondo.remove();
+    });
+}
+
+async function aplicarFechaHoraEntregaActividad(actividad, fechaHoraLocal) {
+    if (!actividad || !cursoSeleccionado) return;
+
+    const filas = Array.from(document.querySelectorAll(
+        `.nota-input[data-actividad="${String(actividad.id)}"]`
+    ));
+    const conNota = filas.filter(input => String(input.value ?? "").trim() !== "");
+    if (conNota.length === 0) {
+        mostrarMensaje("No hay estudiantes con nota en esta actividad.", true);
+        return;
+    }
+
+    const fechaISO = fechaHoraLocal
+        ? obtenerEntregaISO(fechaHoraLocal)
+        : null;
+    if (fechaHoraLocal && !fechaISO) {
+        mostrarMensaje("La fecha y hora seleccionadas no son válidas.", true);
+        return;
+    }
+
+    const textoAccion = fechaISO ? "asignar la misma fecha y hora" : "borrar la fecha y hora";
+    if (!confirm(`¿Deseas ${textoAccion} para los ${conNota.length} estudiantes que tienen nota en esta actividad?`)) return;
+
+    const registros = conNota.map(input => {
+        const estudianteId = Number(input.dataset.estudiante);
+        const registro = calificaciones?.[estudianteId]?.[actividad.id];
+        return {
+            actividad_id: Number(actividad.id),
+            estudiante_id: estudianteId,
+            nota: Number(input.value),
+            fecha_entrega: fechaISO,
+            observacion: registro && typeof registro === "object" ? (registro.observacion || null) : null
+        };
+    });
+
+    try {
+        const { error } = await supabaseClient
+            .from("calificaciones")
+            .upsert(registros, { onConflict: "actividad_id,estudiante_id" });
+        if (error) throw error;
+
+        registros.forEach(registro => {
+            const estudianteId = registro.estudiante_id;
+            if (!calificaciones[estudianteId]) calificaciones[estudianteId] = {};
+            const anterior = calificaciones[estudianteId][actividad.id] || {};
+            calificaciones[estudianteId][actividad.id] = {
+                ...anterior,
+                nota: registro.nota,
+                fecha_entrega: fechaISO || "",
+                observacion: anterior.observacion || ""
+            };
+            const inputEntrega = document.querySelector(
+                `.entrega-actividad[data-estudiante="${estudianteId}"][data-actividad="${actividad.id}"]`
+            );
+            if (inputEntrega) {
+                inputEntrega.value = fechaISO ? formatearEntregaParaInput(fechaISO) : "";
+                inputEntrega.dataset.valorInicial = inputEntrega.value;
+            }
+        });
+
+        actividadesPendientes.delete(String(actividad.id));
+        contextosActividadesPendientes.delete(String(actividad.id));
+        cambiosPendientesActividades = actividadesPendientes.size > 0;
+        actualizarBotonGuardarActividadManual(actividad.id);
+        actualizarEstadosGuardado();
+        mostrarMensaje(fechaISO
+            ? `✓ Fecha y hora asignadas a ${registros.length} estudiantes.`
+            : `✓ Fecha y hora borradas para ${registros.length} estudiantes.`);
+    } catch (error) {
+        console.error("Error al actualizar fecha y hora de entrega:", error);
+        mostrarMensaje("✕ No se pudo actualizar la fecha y hora: " + (error.message || error), true);
+    }
+}
 
 /* =====================================================
    ENTREGA: FECHA Y HORA
