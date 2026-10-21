@@ -11498,7 +11498,11 @@ function obtenerDistribucionGuardadaParaOrdenAsientos() {
         }
         if (!distribucion || typeof distribucion !== "object") return null;
         const asignaciones = Object.entries(distribucion)
-            .filter(([asiento, id]) => /^\d+$/.test(asiento) && id != null && String(id) !== "");
+            .filter(([asiento, id]) =>
+                /^\\d+$/.test(asiento) &&
+                id != null &&
+                String(typeof id === "object" ? (id.id ?? id.estudiante_id ?? id.num_lista ?? "") : id).trim() !== ""
+            );
         return asignaciones.length ? Object.fromEntries(asignaciones) : null;
     } catch (_) {
         return null;
@@ -11575,11 +11579,24 @@ function mostrarTablaAsistencia() {
     if (ordenarAsistenciaPorAsiento) {
         const distribucionAsientos = obtenerDistribucionGuardadaParaOrdenAsientos() || {};
         const asientoPorEstudiante = new Map();
-        Object.entries(distribucionAsientos).forEach(([asiento, estudianteId]) => {
-            const id = String(estudianteId);
+        Object.entries(distribucionAsientos).forEach(([asiento, asignacion]) => {
             const numeroAsiento = Number(asiento);
-            if (!asientoPorEstudiante.has(id) || numeroAsiento < asientoPorEstudiante.get(id)) {
-                asientoPorEstudiante.set(id, numeroAsiento);
+            const valor = asignacion && typeof asignacion === "object"
+                ? (asignacion.id ?? asignacion.estudiante_id ?? asignacion.num_lista)
+                : asignacion;
+            if (valor == null || String(valor).trim() === "" || !Number.isFinite(numeroAsiento)) return;
+
+            // La distribución puede guardar el ID interno o el número de lista.
+            const estudiantePorId = estudiantesCurso.find(e => String(e.id) === String(valor));
+            const estudiantePorLista = estudiantePorId ? null :
+                estudiantesCurso.find(e => String(e.num_lista) === String(valor));
+            const estudianteAsignado = estudiantePorId || estudiantePorLista;
+            if (!estudianteAsignado) return;
+
+            const claveEstudiante = String(estudianteAsignado.id);
+            if (!asientoPorEstudiante.has(claveEstudiante) ||
+                numeroAsiento < asientoPorEstudiante.get(claveEstudiante)) {
+                asientoPorEstudiante.set(claveEstudiante, numeroAsiento);
             }
         });
         estudiantesCurso = estudiantesCurso.slice().sort((a, b) => {
