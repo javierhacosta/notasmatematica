@@ -11364,9 +11364,7 @@ async function prepararFotoAsistencia(file){
 /* Fotos de asistencia vinculadas al estudiante y a la fecha seleccionada. */
 let archivoFotoAsistenciaPendiente=null;
 function seleccionarFotoAsistencia(estudianteId,fotoId=null){
- if(!asistenciaDesbloqueada && !document.getElementById("modalPendientesAsistencia")?.classList.contains("oculto")) {
-  // La ventana de pendientes permite gestionar fotos del estudiante y fecha seleccionados.
- } else if(!asistenciaDesbloqueada){alert("Desbloquee la tabla de asistencia para modificar fotografías.");return;}
+ // Añadir una fotografía está permitido aunque la tabla de asistencia esté bloqueada.
  if(!cursoSeleccionado){alert("Primero seleccione un curso.");return;}
  const fecha=document.getElementById("fechaAsistencia")?.value;
  if(!fecha){alert("Seleccione la fecha de asistencia.");return;}
@@ -11389,7 +11387,7 @@ async function cargarFotosAsistenciaEstudiante(estudianteId){
  const cont=document.getElementById("fotosAsistencia-"+estudianteId);if(!cont)return;
  const fila=cont.closest("tr");
  const add=fila?.querySelector('.acciones-foto-asistencia[data-estudiante="'+estudianteId+'"]');
- if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
+ if(add)add.style.display="flex";
  const fecha=document.getElementById("fechaAsistencia")?.value;
  if(!fecha||!cursoSeleccionado){cont.textContent="";return;}
  try{
@@ -11411,8 +11409,8 @@ async function cargarFotosAsistenciaEstudiante(estudianteId){
    }
    cont.appendChild(item);
   }
-  if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";
- }catch(e){console.error("Error al consultar fotos de asistencia:",e);cont.textContent="No se pudieron cargar";if(add)add.style.display=asistenciaDesbloqueada?"flex":"none";}
+  if(add)add.style.display="flex";
+ }catch(e){console.error("Error al consultar fotos de asistencia:",e);cont.textContent="No se pudieron cargar";if(add)add.style.display="flex";}
 }
 async function guardarFotoAsistenciaSeleccionada(ev){
  const input=ev.target,file=input.files?.[0],p=archivoFotoAsistenciaPendiente;
