@@ -29169,67 +29169,7 @@ document.getElementById("inputFotoActividadCamara")?.addEventListener("change", 
 let actividadSeleccionadaGaleriaQR = null;
 function abrirSelectorFotosActividadQR(actividad) {
     actividadSeleccionadaGaleriaQR = actividad;
-    const input = 
-async function seleccionarManualmenteEstudiantesFotosActividadQR(archivosSinIdentificar, actividad) {
-    if (!archivosSinIdentificar.length) return [];
-    return new Promise(resolve => {
-        const fondo = document.createElement("div");
-        fondo.className = "modal-fondo";
-        fondo.style.cssText = "z-index:10080;align-items:flex-start;overflow-y:auto;padding:8px";
-        const caja = document.createElement("div");
-        caja.style.cssText = "width:100%;max-width:1100px;min-height:95vh;background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden";
-        const cab = document.createElement("div");
-        cab.className = "modal-cabecera";
-        const titulo = document.createElement("h3");
-        titulo.textContent = "⚠️ Seleccionar manualmente al estudiante";
-        cab.appendChild(titulo);
-        const cuerpo = document.createElement("div");
-        cuerpo.style.cssText = "padding:12px;overflow:auto;flex:1";
-        const aviso = document.createElement("p");
-        aviso.textContent = "No se pudo identificar automáticamente estas fotografías. Seleccione a quién pertenece cada una y presione Guardar. Las que deje sin seleccionar no se guardarán.";
-        cuerpo.appendChild(aviso);
-        const selectores = [];
-        const urls = [];
-        archivosSinIdentificar.forEach(({file}) => {
-            const tarjeta = document.createElement("section");
-            tarjeta.style.cssText = "border:1px solid #ddd;border-radius:10px;padding:10px;margin:12px 0;background:#fafafa";
-            const nombre = document.createElement("div");
-            nombre.textContent = file.name;
-            nombre.style.cssText = "font-weight:bold;overflow-wrap:anywhere;margin-bottom:8px";
-            const img = document.createElement("img");
-            const url = URL.createObjectURL(file); urls.push(url);
-            img.src = url; img.alt = file.name;
-            img.style.cssText = "display:block;width:100%;height:calc(100vh - 230px);min-height:280px;max-height:75vh;object-fit:contain;background:#e5e7eb;border-radius:6px;margin-bottom:10px";
-            const label = document.createElement("label");
-            label.textContent = "Esta fotografía pertenece a:";
-            const select = document.createElement("select");
-            select.style.cssText = "width:100%;padding:12px;font-size:16px";
-            select.appendChild(new Option("-- Seleccionar estudiante --", ""));
-            (estudiantes || []).filter(e => String(e.curso || "") === String(cursoSeleccionado))
-                .slice().sort((a,b) => Number(a.num_lista||0)-Number(b.num_lista||0))
-                .forEach(e => select.appendChild(new Option(
-                    `${e.num_lista != null ? String(e.num_lista).padStart(2,"0") + " - " : ""}${obtenerNombreCompletoFotoActividad(e) || e.nombre || ("Estudiante " + e.id)}`,
-                    String(e.id)
-                )));
-            selectores.push({file, select});
-            tarjeta.append(nombre, img, label, select);
-            cuerpo.appendChild(tarjeta);
-        });
-        const acciones = document.createElement("div");
-        acciones.style.cssText = "display:flex;justify-content:flex-end;gap:10px;padding:12px;border-top:1px solid #ddd;background:#fff;position:sticky;bottom:0";
-        const cancelar = document.createElement("button");
-        cancelar.className = "boton-cancelar"; cancelar.textContent = "Cancelar";
-        const guardar = document.createElement("button");
-        guardar.className = "boton-crear-modal"; guardar.textContent = "Guardar";
-        const cerrar = resultado => { urls.forEach(u => URL.revokeObjectURL(u)); fondo.remove(); resolve(resultado); };
-        cancelar.onclick = () => cerrar(null);
-        guardar.onclick = () => cerrar(selectores.filter(x => x.select.value).map(x => ({file:x.file, estudianteId:x.select.value})));
-        acciones.append(cancelar, guardar);
-        caja.append(cab, cuerpo, acciones); fondo.appendChild(caja); document.body.appendChild(fondo);
-    });
-}
-
-document.getElementById("inputFotosGaleriaActividadQR");
+    const input = document.getElementById("inputFotosGaleriaActividadQR");
     if (!input) { alert("No se pudo abrir la selección de fotografías."); return; }
     input.value = "";
     input.click();
@@ -29459,6 +29399,44 @@ async function convertirPDFEnImagenesActividad(archivoPDF) {
     return imagenes;
 }
 
+function seleccionarEstudianteManualFotoActividad(file, alumnosCurso) {
+    return new Promise(resolve => {
+        const fondo = document.createElement("div");
+        fondo.className = "modal-fondo";
+        fondo.style.cssText = "z-index:10060;overflow:auto";
+        const caja = document.createElement("div");
+        caja.className = "modal-actividad";
+        caja.style.cssText = "width:min(850px,96vw);max-height:96vh;overflow:auto";
+        const cab = document.createElement("div"); cab.className = "modal-cabecera";
+        const titulo = document.createElement("h3"); titulo.textContent = "🖼️ Asignar estudiante manualmente";
+        cab.appendChild(titulo);
+        const cuerpo = document.createElement("div"); cuerpo.className = "modal-cuerpo";
+        const ayuda = document.createElement("p"); ayuda.textContent = "No se pudo identificar esta imagen automáticamente. Revísela y elija el estudiante al que pertenece.";
+        const imagen = document.createElement("img");
+        const url = URL.createObjectURL(file);
+        imagen.src = url; imagen.alt = "Imagen sin estudiante identificado";
+        imagen.style.cssText = "display:block;width:100%;max-height:62vh;object-fit:contain;background:#eee;border-radius:8px;margin-bottom:14px";
+        const etiqueta = document.createElement("label"); etiqueta.textContent = "Seleccionar estudiante";
+        const select = document.createElement("select"); select.style.width = "100%";
+        const inicial = document.createElement("option"); inicial.value = ""; inicial.textContent = "— Elegir estudiante —"; select.appendChild(inicial);
+        alumnosCurso.slice().sort((a,b) => Number(a.num_lista||0)-Number(b.num_lista||0)).forEach(e => {
+            const op = document.createElement("option"); op.value = String(e.id);
+            op.textContent = (e.num_lista != null ? String(e.num_lista).padStart(2,"0") + " - " : "") + (obtenerNombreCompletoFotoActividad(e) || e.nombre || ("Estudiante " + e.id));
+            select.appendChild(op);
+        });
+        const acciones = document.createElement("div"); acciones.className = "modal-acciones";
+        const omitir = document.createElement("button"); omitir.type = "button"; omitir.className = "boton-cancelar"; omitir.textContent = "Omitir";
+        const guardar = document.createElement("button"); guardar.type = "button"; guardar.className = "boton-crear-modal"; guardar.textContent = "Asignar y guardar"; guardar.disabled = true;
+        select.onchange = () => guardar.disabled = !select.value;
+        const cerrar = valor => { URL.revokeObjectURL(url); fondo.remove(); resolve(valor); };
+        omitir.onclick = () => cerrar(null);
+        guardar.onclick = () => cerrar(alumnosCurso.find(e => String(e.id) === select.value) || null);
+        acciones.append(omitir, guardar);
+        cuerpo.append(ayuda, imagen, etiqueta, select, acciones);
+        caja.append(cab, cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
+    });
+}
+
 document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("change", async function() {
     const seleccionados = Array.from(this.files || []);
     const actividad = actividadSeleccionadaGaleriaQR;
@@ -29484,7 +29462,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
         alert("No se pudieron preparar imágenes para procesar." + (errores.length ? "\\n\\n" + errores.join("\\n") : ""));
         return;
     }
-    const detectados = [], noDetectados = [], archivosParaSeleccionManual = [];
+    const detectados = [], noDetectados = [], pendientesAsignacionManual = [];
     const progreso = mostrarProgresoGaleriaActividadQR(actividad, archivos.length);
     const sinQR = [];
     const conteoCodigos = { qr: 0 };
@@ -29533,8 +29511,7 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                 }
             }
             if (!estudiante || String(estudiante.curso) !== String(cursoSeleccionado)) {
-                noDetectados.push(file.name + (estudiante ? " (" + tipoCodigo + ": pertenece a otro curso)" : " (" + tipoCodigo + " sin estudiante registrado para el contenido " + String(codigoLeido.raw || ci || "") + ")"));
-                archivosParaSeleccionManual.push({file});
+                noDetectados.push(file.name + (estudiante ? " (" + tipoCodigo + ": pertenece a otro curso)" : " (" + tipoCodigo + " sin estudiante registrado para el contenido " + String(codigoLeido.raw || ci || "") + ")")); pendientesAsignacionManual.push({file, motivo: noDetectados[noDetectados.length - 1]});
                 continue;
             }
             await progreso.actualizar(indice, 4, tipoCodigo + " confirmado. Guardando la fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 18);
@@ -29567,14 +29544,12 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                     await progreso.actualizar(indice, 2, "Leyendo el nombre impreso en " + file.name + "...", base + 3);
                     const estudiante = await leerNombreEstudianteEnImagen(file, regionLectura);
                     if (!estudiante) {
-                        noDetectados.push(file.name + " (sin QR; nombre no identificado con seguridad)");
-                        archivosParaSeleccionManual.push({file});
+                        noDetectados.push(file.name + " (sin QR; nombre no identificado con seguridad)"); pendientesAsignacionManual.push({file, motivo: noDetectados[noDetectados.length - 1]});
                         continue;
                     }
                     await progreso.actualizar(indice, 3, "Nombre leído: " + (obtenerNombreCompletoFotoActividad(estudiante) || "estudiante") + ". Verificando que pertenezca al curso...", base + 8);
                     if (String(estudiante.curso) !== String(cursoSeleccionado)) {
-                        noDetectados.push(file.name + " (pertenece a otro curso)");
-                        archivosParaSeleccionManual.push({file});
+                        noDetectados.push(file.name + " (pertenece a otro curso)"); pendientesAsignacionManual.push({file, motivo: noDetectados[noDetectados.length - 1]});
                         continue;
                     }
                     await progreso.actualizar(indice, 4, "Guardando la fotografía para " + (obtenerNombreCompletoFotoActividad(estudiante) || "el estudiante") + "...", base + 14);
@@ -29591,36 +29566,31 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
                 }
                 await progreso.actualizar(indice, 4, "Imagen procesada. Continuando con la siguiente fotografía...", 65 + ((j + 1) / sinQR.length) * 35);
             }
-            else sinQR.forEach(({file}) => { noDetectados.push(file.name + " (lectura cancelada; no se seleccionó área)"); archivosParaSeleccionManual.push({file}); });
+            else sinQR.forEach(({file}) => { noDetectados.push(file.name + " (lectura cancelada; no se seleccionó área)"); pendientesAsignacionManual.push({file, motivo: noDetectados[noDetectados.length - 1]}); });
         } else {
-            sinQR.forEach(({file}) => { noDetectados.push(file.name + " (sin QR; lectura del nombre no realizada)"); archivosParaSeleccionManual.push({file}); });
+            sinQR.forEach(({file}) => { noDetectados.push(file.name + " (sin QR; lectura del nombre no realizada)"); pendientesAsignacionManual.push({file, motivo: noDetectados[noDetectados.length - 1]}); });
         }
     }
 
-    if (archivosParaSeleccionManual.length) {
-        await progreso.actualizar(archivos.length - 1, 3, "Puede identificar manualmente las fotografías que no se reconocieron...", 98);
-        const seleccionesManuales = await seleccionarManualmenteEstudiantesFotosActividadQR(archivosParaSeleccionManual, actividad);
-        if (seleccionesManuales) {
-            for (const seleccionManual of seleccionesManuales) {
-                const estudiante = (estudiantes || []).find(e => String(e.id) === String(seleccionManual.estudianteId));
-                if (!estudiante) continue;
-                try {
-                    const cfg = obtenerConfigFotoActividad(actividad.id);
-                    let nombre = construirNombreFotoActividad(actividad, estudiante, cfg.nombre || nombreFotoActividadPorDefecto(actividad));
-                    nombre = obtenerNombreFotoActividadUnico(actividad.id, estudiante.id, nombre);
-                    fotoActividadArchivoPendiente = { file: seleccionManual.file, actividad, modo: "nueva", fotoExistente: null, estudiante, nombre, origen: "galeria_qr_manual" };
-                    fotoActividadModo = "galeria_qr";
-                    const guardada = await guardarFotoActividadConfirmada();
-                    if (guardada) {
-                        detectados.push("Manual: " + (obtenerNombreCompletoFotoActividad(estudiante) || ("Estudiante " + estudiante.id)));
-                        for (let i = noDetectados.length - 1; i >= 0; i--) {
-                            if (noDetectados[i].startsWith(seleccionManual.file.name + " ")) noDetectados.splice(i, 1);
-                        }
-                    } else errores.push(seleccionManual.file.name + ": no se confirmó el guardado.");
-                } catch (err) {
-                    errores.push(seleccionManual.file.name + ": " + (err?.message || String(err)));
-                }
-            }
+    // Tercera opción: asignar manualmente las imágenes que no se pudieron identificar.
+    if (pendientesAsignacionManual.length) {
+        const alumnosCurso = (estudiantes || []).filter(e => String(e.curso) === String(cursoSeleccionado));
+        for (const pendiente of pendientesAsignacionManual) {
+            const asignacion = await seleccionarEstudianteManualFotoActividad(pendiente.file, alumnosCurso);
+            if (!asignacion) continue;
+            try {
+                const cfg = obtenerConfigFotoActividad(actividad.id);
+                let nombre = construirNombreFotoActividad(actividad, asignacion, cfg.nombre || nombreFotoActividadPorDefecto(actividad));
+                nombre = obtenerNombreFotoActividadUnico(actividad.id, asignacion.id, nombre);
+                fotoActividadArchivoPendiente = { file: pendiente.file, actividad, modo: "nueva", fotoExistente: null, estudiante: asignacion, nombre, origen: "galeria_qr" };
+                fotoActividadModo = "galeria_qr";
+                const guardada = await guardarFotoActividadConfirmada();
+                if (guardada) {
+                    detectados.push("Asignación manual: " + (obtenerNombreCompletoFotoActividad(asignacion) || ("Estudiante " + asignacion.id)));
+                    const idx = noDetectados.indexOf(pendiente.motivo);
+                    if (idx >= 0) noDetectados.splice(idx, 1);
+                } else errores.push(pendiente.file.name + ": no se confirmó el guardado manual.");
+            } catch (err) { errores.push(pendiente.file.name + ": " + (err?.message || String(err))); }
         }
     }
 
