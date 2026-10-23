@@ -8635,8 +8635,9 @@ function formatearHoraPendienteInicio(horaInicio, horaFin) {
     return inicio || fin || "";
 }
 
-function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false) {
+function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false, estudianteId = "") {
     destinoPendienteInicio = {
+        estudianteId: estudianteId != null ? String(estudianteId) : "",
         tipo: String(tipo || ""),
         id: id != null ? String(id) : "",
         curso: String(curso || ""),
@@ -8647,8 +8648,18 @@ function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false) {
     const select = document.getElementById("buscarCurso");
     if (!select || !destinoPendienteInicio.curso) return;
 
-    select.value = destinoPendienteInicio.curso;
-    select.dispatchEvent(new Event("change"));
+    const opcionCurso = Array.from(select.options).find(op =>
+        String(op.value || "").trim() === destinoPendienteInicio.curso.trim()
+    );
+    if (!opcionCurso) {
+        console.warn("No se encontró el curso para el acceso directo:", destinoPendienteInicio.curso);
+        alert("No se pudo abrir el acceso directo porque no se encontró el curso " + destinoPendienteInicio.curso + ".");
+        destinoPendienteInicio = null;
+        return;
+    }
+    select.value = opcionCurso.value;
+    // Dispatch change even if the same course is already selected.
+    select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function aplicarDestinoPendienteInicio() {
@@ -8684,6 +8695,9 @@ function aplicarDestinoPendienteInicio() {
             });
 
             bloque.classList.add("destacada-desde-pendientes");
+            const filaEstudianteDestino = destino.estudianteId
+                ? bloque.querySelector(`tr[data-estudiante="${CSS.escape(destino.estudianteId)}"]`)
+                : null;
 
             const detenerParpadeo = () => {
                 bloque.classList.remove("destacada-desde-pendientes");
@@ -8708,12 +8722,16 @@ function aplicarDestinoPendienteInicio() {
             bloque.addEventListener("click", bloque.__detenerParpadeoPendiente);
 
             setTimeout(() => {
-                bloque.scrollIntoView({
+                (filaEstudianteDestino || bloque).scrollIntoView({
                     behavior: "smooth",
                     block: "center",
                     inline: "nearest"
                 });
-            }, 60);
+                if (filaEstudianteDestino) {
+                    filaEstudianteDestino.classList.add("destacada-desde-pendientes");
+                    setTimeout(() => filaEstudianteDestino.classList.remove("destacada-desde-pendientes"), 3500);
+                }
+            }, 120);
 
             const actividad = (typeof actividades !== "undefined")
                 ? actividades.find(a => String(a.id) === destino.id)
@@ -8751,6 +8769,16 @@ function aplicarDestinoPendienteInicio() {
             const panel = document.getElementById("panelAsistencia");
             if (panel) {
                 panel.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            if (destino.estudianteId) {
+                setTimeout(() => {
+                    const fila = document.querySelector(`#panelAsistencia tr[data-estudiante="${CSS.escape(destino.estudianteId)}"]`);
+                    if (fila) {
+                        fila.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+                        fila.classList.add("destacada-desde-pendientes");
+                        setTimeout(() => fila.classList.remove("destacada-desde-pendientes"), 3500);
+                    }
+                }, 500);
             }
 
             const abrirQR = abrirQRPendienteInicio;
@@ -24634,7 +24662,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     const filasAsistencia = detalleAsistencia.map(r => `
         <tr class="${r.tipo === "no_clases" ? "detalle-fila-no-clases" : r.tipo === "clase_informal" ? "detalle-fila-clase-informal" : ""}" data-fecha-asistencia-detalle="${escapeHTML(String(r.fecha || ""))}">
-            <td><span class="detalle-fecha-asistencia-acceso" data-fecha-acceso="${escapeHTML(String(r.fecha || ""))}">${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</span></td>
+            <td><span class="detalle-fecha-asistencia-acceso" data-fecha-acceso="${escapeHTML(String(r.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</span></td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
             <td>${escapeHTML(r.observacion || "—")}</td>
@@ -24684,13 +24712,13 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${Number(a.id)}">
-                <td class="detalle-celda-nombre detalle-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}">${escapeHTML(a.nombre || "")}</td>
-                <td class="detalle-fecha-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}">
+                <td class="detalle-celda-nombre detalle-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">${escapeHTML(a.nombre || "")}</td>
+                <td class="detalle-fecha-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
                     ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
                     ${textoPresentacion ? `<small class="detalle-presentacion-actividad">${escapeHTML(textoPresentacion)}</small>` : ""}
                 </td>
-                <td class="detalle-celda-nota detalle-nota-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}">
+                <td class="detalle-celda-nota detalle-nota-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
                 </td>
                 <td class="detalle-celda-observacion">
@@ -24921,37 +24949,23 @@ function ejecutarAccesoDirectoDetalleQR(elemento) {
     if (!accesosDirectosDetalleQREstado || !elemento) return;
     const estudiante = detalleEstudianteQRActual;
     if (!estudiante) return;
-    const curso = String(estudiante.curso || "");
-    if (elemento.dataset.fechaAsistenciaAcceso !== undefined) {
-        irAPendienteInicio("asistencia", estudiante.id, curso, elemento.dataset.fechaAsistenciaAcceso);
+    const curso = String(estudiante.curso || "").trim();
+    if (!curso) {
+        alert("No se pudo abrir el acceso directo porque el estudiante no tiene un curso identificado.");
+        return;
+    }
+    if (elemento.classList.contains("detalle-fecha-asistencia-acceso")) {
+        irAPendienteInicio("asistencia", estudiante.id, curso, elemento.dataset.fechaAcceso || "", false, estudiante.id);
         cerrarConsultaEstudianteQR();
         return;
     }
     const actividadId = String(elemento.dataset.actividadAcceso || "");
     if (actividadId) {
         const actividad = (estudiante.__detalleActividadesListaQR || []).find(a => String(a.id) === actividadId);
-        irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "");
+        irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "", false, estudiante.id);
         cerrarConsultaEstudianteQR();
     }
 }
-
-document.addEventListener("click", function(event) {
-    const el = event.target.closest("#detalleEstudianteQR .detalle-fecha-asistencia-acceso, #detalleEstudianteQR .detalle-actividad-acceso, #detalleEstudianteQR .detalle-fecha-actividad-acceso, #detalleEstudianteQR .detalle-nota-acceso");
-    if (!el || !accesosDirectosDetalleQREstado) return;
-    event.preventDefault();
-    if (el.dataset.fechaAcceso !== undefined && el.classList.contains("detalle-fecha-asistencia-acceso")) {
-        el.dataset.fechaAsistenciaAcceso = el.dataset.fechaAcceso;
-    }
-    ejecutarAccesoDirectoDetalleQR(el);
-});
-document.addEventListener("keydown", function(event) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const el = event.target.closest("#detalleEstudianteQR .detalle-fecha-asistencia-acceso, #detalleEstudianteQR .detalle-actividad-acceso, #detalleEstudianteQR .detalle-fecha-actividad-acceso, #detalleEstudianteQR .detalle-nota-acceso");
-    if (!el || !accesosDirectosDetalleQREstado) return;
-    event.preventDefault();
-    if (el.classList.contains("detalle-fecha-asistencia-acceso")) el.dataset.fechaAsistenciaAcceso = el.dataset.fechaAcceso;
-    ejecutarAccesoDirectoDetalleQR(el);
-});
 
 function actualizarResumenEdicionDetalleQR() {
     const aviso = document.getElementById("detalleAvisoCambiosQR");
