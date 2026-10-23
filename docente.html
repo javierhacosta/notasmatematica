@@ -8635,14 +8635,13 @@ function formatearHoraPendienteInicio(horaInicio, horaFin) {
     return inicio || fin || "";
 }
 
-function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false, estudianteId = "", desbloquearNota = false) {
+function irAPendienteInicio(tipo, id, curso, fecha, abrirQR = false, estudianteId = "") {
     destinoPendienteInicio = {
         estudianteId: estudianteId != null ? String(estudianteId) : "",
         tipo: String(tipo || ""),
         id: id != null ? String(id) : "",
         curso: String(curso || ""),
-        fecha: String(fecha || "").slice(0, 10),
-        desbloquearNota: !!desbloquearNota
+        fecha: String(fecha || "").slice(0, 10)
     };
     abrirQRPendienteInicio = !!abrirQR;
 
@@ -8737,13 +8736,7 @@ function aplicarDestinoPendienteInicio() {
                 });
                 if (filaEstudianteDestino) {
                     filaEstudianteDestino.classList.add("destacada-desde-pendientes");
-                    filaEstudianteDestino.setAttribute("aria-current", "true");
-                    // Centrar la fila del estudiante dentro de la actividad y dejarla resaltada.
-                    filaEstudianteDestino.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-                    setTimeout(() => {
-                        filaEstudianteDestino.classList.remove("destacada-desde-pendientes");
-                        filaEstudianteDestino.removeAttribute("aria-current");
-                    }, 5000);
+                    setTimeout(() => filaEstudianteDestino.classList.remove("destacada-desde-pendientes"), 3500);
                 }
             }, 120);
 
@@ -24676,7 +24669,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
     const filasAsistencia = detalleAsistencia.map(r => `
         <tr class="${r.tipo === "no_clases" ? "detalle-fila-no-clases" : r.tipo === "clase_informal" ? "detalle-fila-clase-informal" : ""}" data-fecha-asistencia-detalle="${escapeHTML(String(r.fecha || ""))}">
-            <td><span class="detalle-fecha-asistencia-acceso" data-fecha-acceso="${escapeHTML(String(r.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(event, this)">${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</span></td>
+            <td><span class="detalle-fecha-asistencia-acceso" data-fecha-acceso="${escapeHTML(String(r.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">${escapeHTML(formatearFechaTablaDetalleQR(r.fecha))}</span></td>
             <td><span class="detalle-badge">${escapeHTML(r.estado)}</span></td>
             <td>${escapeHTML(r.hora || "—")}</td>
             <td>${escapeHTML(r.observacion || "—")}</td>
@@ -24726,13 +24719,13 @@ async function mostrarDetalleEstudianteQR(estudiante) {
 
         return `
             <tr class="${claseCategoria}" title="${escapeHTML(a.categoria || "")}" data-actividad-detalle="${Number(a.id)}">
-                <td class="detalle-celda-nombre detalle-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(event, this)">${escapeHTML(a.nombre || "")}</td>
-                <td class="detalle-fecha-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(event, this)">
+                <td class="detalle-celda-nombre detalle-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">${escapeHTML(a.nombre || "")}</td>
+                <td class="detalle-fecha-actividad-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">
                     ${escapeHTML(formatearFechaTablaDetalleQR(a.fecha))}
                     ${obtenerIconoAsistenciaActividadDetalleQR(asistencia, a.fecha)}
                     ${textoPresentacion ? `<small class="detalle-presentacion-actividad">${escapeHTML(textoPresentacion)}</small>` : ""}
                 </td>
-                <td class="detalle-celda-nota detalle-nota-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(event, this)">
+                <td class="detalle-celda-nota detalle-nota-acceso" data-actividad-acceso="${Number(a.id)}" data-fecha-acceso="${escapeHTML(String(a.fecha || ""))}" onclick="ejecutarAccesoDirectoDetalleQR(this)">
                     <span class="detalle-valor-nota">${escapeHTML(nota === "" ? "" : String(nota))}</span>
                 </td>
                 <td class="detalle-celda-observacion">
@@ -24959,14 +24952,8 @@ function alternarAccesosDirectosDetalleQR() {
     });
 }
 
-function ejecutarAccesoDirectoDetalleQR(evento, elemento) {
-    if (!elemento) return;
-    // El toque en la nota debe navegar a la edición manual y nunca activar el escáner QR.
-    if (evento && typeof evento.preventDefault === "function") evento.preventDefault();
-    if (evento && typeof evento.stopPropagation === "function") evento.stopPropagation();
-    if (evento && typeof evento.stopImmediatePropagation === "function") evento.stopImmediatePropagation();
-    if (!accesosDirectosDetalleQREstado) return;
-    abrirQRPendienteInicio = false;
+function ejecutarAccesoDirectoDetalleQR(elemento) {
+    if (!accesosDirectosDetalleQREstado || !elemento) return;
     const estudiante = detalleEstudianteQRActual;
     if (!estudiante) return;
     const curso = String(estudiante.curso || "").trim();
@@ -24982,10 +24969,10 @@ function ejecutarAccesoDirectoDetalleQR(evento, elemento) {
     const actividadId = String(elemento.dataset.actividadAcceso || "");
     if (actividadId) {
         const actividad = (estudiante.__detalleActividadesListaQR || []).find(a => String(a.id) === actividadId);
-        const esAccesoNota = elemento.classList.contains("detalle-nota-acceso");
-        // La nota solo navega a la actividad; nunca debe solicitar ni abrir el QR.
-        abrirQRPendienteInicio = false;
-        irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "", false, estudiante.id, esAccesoNota);
+        irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "", false, estudiante.id);
+        if (destinoPendienteInicio) {
+            destinoPendienteInicio.desbloquearNota = elemento.classList.contains("detalle-nota-acceso");
+        }
         cerrarConsultaEstudianteQR();
     }
 }
