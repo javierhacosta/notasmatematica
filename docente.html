@@ -8699,6 +8699,12 @@ function aplicarDestinoPendienteInicio() {
                 ? bloque.querySelector(`tr[data-estudiante="${CSS.escape(destino.estudianteId)}"]`)
                 : null;
 
+            // Al abrir desde una nota, desbloquear la tabla igual que el candado.
+            if (destino.desbloquearNota && !actividadesDesbloqueadas.has(Number(destino.id)) && !actividadesDesbloqueadas.has(destino.id)) {
+                const botonBloqueo = bloque.querySelector(".boton-bloquear");
+                if (botonBloqueo) botonBloqueo.click();
+            }
+
             const detenerParpadeo = () => {
                 bloque.classList.remove("destacada-desde-pendientes");
                 bloque.removeEventListener("click", detenerParpadeo);
@@ -8722,7 +8728,8 @@ function aplicarDestinoPendienteInicio() {
             bloque.addEventListener("click", bloque.__detenerParpadeoPendiente);
 
             setTimeout(() => {
-                (filaEstudianteDestino || bloque).scrollIntoView({
+                // Centrar la actividad completa en la pantalla del celular.
+                bloque.scrollIntoView({
                     behavior: "smooth",
                     block: "center",
                     inline: "nearest"
@@ -24963,6 +24970,9 @@ function ejecutarAccesoDirectoDetalleQR(elemento) {
     if (actividadId) {
         const actividad = (estudiante.__detalleActividadesListaQR || []).find(a => String(a.id) === actividadId);
         irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "", false, estudiante.id);
+        if (destinoPendienteInicio) {
+            destinoPendienteInicio.desbloquearNota = elemento.classList.contains("detalle-nota-acceso");
+        }
         cerrarConsultaEstudianteQR();
     }
 }
