@@ -735,6 +735,32 @@ input, select {
     }
 }
 
+/* Selector manual de estudiante, exclusivo del escáner QR de actividades */
+.boton-seleccionar-estudiante-qr {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,.18);
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.boton-seleccionar-estudiante-qr:hover { background: rgba(255,255,255,.30); }
+.selector-estudiante-manual-qr {
+    display: none;
+    padding: 10px 12px;
+    background: #f7f9fb;
+    border-bottom: 1px solid #ddd;
+}
+.selector-estudiante-manual-qr.visible { display: block; }
+.selector-estudiante-manual-qr select { width: 100%; padding: 9px; border-radius: 7px; }
+
 .modal-qr {
     width: 100%;
     max-width: 480px;
@@ -6853,6 +6879,14 @@ Cancelar
 
             <button
                 type="button"
+                id="botonSeleccionarEstudianteQR"
+                class="boton-seleccionar-estudiante-qr"
+                onclick="alternarSelectorEstudianteQR()"
+                aria-label="Elegir estudiante manualmente"
+                title="Elegir estudiante sin escanear QR">☷</button>
+
+            <button
+                type="button"
                 class="boton-cerrar-modal boton-cerrar-escaner-qr"
                 onclick="cerrarEscanerQR()">
 
@@ -6873,6 +6907,12 @@ Cancelar
 
             <div class="qr-marco"></div>
 
+        </div>
+
+        <div id="selectorEstudianteManualQR" class="selector-estudiante-manual-qr">
+            <select id="listaEstudiantesManualQR" aria-label="Elegir estudiante">
+                <option value="">Seleccionar estudiante...</option>
+            </select>
         </div>
 
         <div
@@ -21357,11 +21397,73 @@ function compararFechaConHoy(fecha) {
     return String(fecha) !== obtenerFechaHoyClaveQR();
 }
 
+function alternarSelectorEstudianteQR() {
+    if (!actividadQRSeleccionada || modoQRAsistencia || modoQRConsultaEstudiante) return;
+    const panel = document.getElementById("selectorEstudianteManualQR");
+    const select = document.getElementById("listaEstudiantesManualQR");
+    if (!panel || !select) return;
+
+    const abierto = panel.classList.toggle("visible");
+    if (abierto) {
+        const lista = [...(estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])]
+            .sort((a, b) => (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999));
+        select.innerHTML = '<option value="">Seleccionar estudiante...</option>' +
+            lista.map(e => `<option value="${escapeHTML(String(e.id))}">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</option>`).join("");
+        select.value = "";
+        select.focus();
+    }
+}
+
+async function seleccionarEstudianteManualQR(id) {
+    if (!id || !actividadQRSeleccionada || modoQRAsistencia || modoQRConsultaEstudiante) return;
+    const estudiante = (estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])
+        .find(e => String(e.id) === String(id));
+    if (!estudiante) {
+        alert("No se encontró al estudiante seleccionado en el curso actual.");
+        return;
+    }
+    if (!estudiante.ci) {
+        alert("El estudiante seleccionado no tiene CI registrado; no se puede abrir su calificación.");
+        return;
+    }
+    if (qrFechaFueraDeHoy && !qrFechaFueraDeHoyConfirmada) {
+        if (!window.confirm("Hoy no es la fecha de revisión. ¿Está seguro de continuar?")) {
+            const select = document.getElementById("listaEstudiantesManualQR");
+            if (select) select.value = "";
+            return;
+        }
+        qrFechaFueraDeHoyConfirmada = true;
+        const modalQR = document.getElementById("modalEscanerQR")?.querySelector(".modal-qr");
+        if (modalQR) modalQR.classList.remove("qr-fecha-diferente");
+    }
+    const panel = document.getElementById("selectorEstudianteManualQR");
+    if (panel) panel.classList.remove("visible");
+    const select = document.getElementById("listaEstudiantesManualQR");
+    if (select) select.value = "";
+    escaneandoQR = false;
+    procesandoQR = true;
+    if (!mantenerCamaraQR) {
+        document.getElementById("modalEscanerQR")?.classList.add("oculto");
+        detenerCamaraQR();
+    }
+    await prepararCalificacionQR(String(estudiante.ci));
+}
+
+document.addEventListener("change", function(event) {
+    if (event.target && event.target.id === "listaEstudiantesManualQR") {
+        seleccionarEstudianteManualQR(event.target.value);
+    }
+});
+
 async function abrirEscanerQR(actividad) {
 
     modoQRAsistencia = false;
     modoQRConsultaEstudiante = false;
     actividadQRSeleccionada = actividad;
+    const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
+    const panelManualQR = document.getElementById("selectorEstudianteManualQR");
+    if (botonManualQR) botonManualQR.style.display = actividad && !modoQRAsistencia && !modoQRConsultaEstudiante ? "flex" : "none";
+    if (panelManualQR) panelManualQR.classList.remove("visible");
     qrFechaFueraDeHoy = compararFechaConHoy(actividad && actividad.fecha);
     qrFechaFueraDeHoyConfirmada = false;
 
@@ -21997,6 +22099,9 @@ async function abrirEscanerAsistenciaQR(modoBloqueado = false) {
     }
 
     modoQRAsistencia = true;
+    const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
+    if (botonManualQR) botonManualQR.style.display = "none";
+    document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
     if (modoBloqueado) {
         activarModoPresidenteAsistenciaQR();
     }
@@ -23826,6 +23931,9 @@ async function guardarCalificacionQR() {
 async function abrirEscanerConsultaEstudianteQR() {
     modoQRAsistencia = false;
     modoQRConsultaEstudiante = true;
+    const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
+    if (botonManualQR) botonManualQR.style.display = "none";
+    document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
     actividadQRSeleccionada = null;
     estudianteQRAsistencia = null;
     estudianteQRSeleccionado = null;
