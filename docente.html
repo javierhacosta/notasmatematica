@@ -8736,7 +8736,13 @@ function aplicarDestinoPendienteInicio() {
                 });
                 if (filaEstudianteDestino) {
                     filaEstudianteDestino.classList.add("destacada-desde-pendientes");
-                    setTimeout(() => filaEstudianteDestino.classList.remove("destacada-desde-pendientes"), 3500);
+                    filaEstudianteDestino.setAttribute("aria-current", "true");
+                    // Centrar la fila del estudiante dentro de la actividad y dejarla resaltada.
+                    filaEstudianteDestino.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+                    setTimeout(() => {
+                        filaEstudianteDestino.classList.remove("destacada-desde-pendientes");
+                        filaEstudianteDestino.removeAttribute("aria-current");
+                    }, 5000);
                 }
             }, 120);
 
@@ -24954,6 +24960,9 @@ function alternarAccesosDirectosDetalleQR() {
 
 function ejecutarAccesoDirectoDetalleQR(elemento) {
     if (!accesosDirectosDetalleQREstado || !elemento) return;
+    // Evitar que el toque se propague a otros controles que puedan abrir el escáner QR.
+    if (typeof event !== "undefined" && event && typeof event.stopPropagation === "function") event.stopPropagation();
+    abrirQRPendienteInicio = false;
     const estudiante = detalleEstudianteQRActual;
     if (!estudiante) return;
     const curso = String(estudiante.curso || "").trim();
@@ -24969,9 +24978,12 @@ function ejecutarAccesoDirectoDetalleQR(elemento) {
     const actividadId = String(elemento.dataset.actividadAcceso || "");
     if (actividadId) {
         const actividad = (estudiante.__detalleActividadesListaQR || []).find(a => String(a.id) === actividadId);
+        const esAccesoNota = elemento.classList.contains("detalle-nota-acceso");
+        // La nota solo navega a la actividad; nunca debe solicitar ni abrir el QR.
+        abrirQRPendienteInicio = false;
         irAPendienteInicio("actividad", actividadId, curso, elemento.dataset.fechaAcceso || actividad?.fecha || "", false, estudiante.id);
         if (destinoPendienteInicio) {
-            destinoPendienteInicio.desbloquearNota = elemento.classList.contains("detalle-nota-acceso");
+            destinoPendienteInicio.desbloquearNota = esAccesoNota;
         }
         cerrarConsultaEstudianteQR();
     }
