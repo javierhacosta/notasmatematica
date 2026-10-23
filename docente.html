@@ -21398,7 +21398,7 @@ function compararFechaConHoy(fecha) {
 }
 
 function alternarSelectorEstudianteQR() {
-    if (!actividadQRSeleccionada || modoQRAsistencia || modoQRConsultaEstudiante) return;
+    if ((!actividadQRSeleccionada && !modoQRAsistencia) || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR) return;
     const panel = document.getElementById("selectorEstudianteManualQR");
     const select = document.getElementById("listaEstudiantesManualQR");
     if (!panel || !select) return;
@@ -21415,7 +21415,8 @@ function alternarSelectorEstudianteQR() {
 }
 
 async function seleccionarEstudianteManualQR(id) {
-    if (!id || !actividadQRSeleccionada || modoQRAsistencia || modoQRConsultaEstudiante) return;
+    const esAsistenciaManual = modoQRAsistencia;
+    if (!id || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR || (!esAsistenciaManual && !actividadQRSeleccionada)) return;
     const estudiante = (estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])
         .find(e => String(e.id) === String(id));
     if (!estudiante) {
@@ -21423,11 +21424,16 @@ async function seleccionarEstudianteManualQR(id) {
         return;
     }
     if (!estudiante.ci) {
-        alert("El estudiante seleccionado no tiene CI registrado; no se puede abrir su calificación.");
+        alert(esAsistenciaManual
+            ? "El estudiante seleccionado no tiene CI registrado; no se puede procesar su asistencia QR."
+            : "El estudiante seleccionado no tiene CI registrado; no se puede abrir su calificación.");
         return;
     }
     if (qrFechaFueraDeHoy && !qrFechaFueraDeHoyConfirmada) {
-        if (!window.confirm("Hoy no es la fecha de revisión. ¿Está seguro de continuar?")) {
+        const mensajeFecha = esAsistenciaManual
+            ? "¿Está seguro de usar asistencia en fecha distinta al de hoy?"
+            : "Hoy no es la fecha de revisión. ¿Está seguro de continuar?";
+        if (!window.confirm(mensajeFecha)) {
             const select = document.getElementById("listaEstudiantesManualQR");
             if (select) select.value = "";
             return;
@@ -21442,6 +21448,13 @@ async function seleccionarEstudianteManualQR(id) {
     if (select) select.value = "";
     escaneandoQR = false;
     procesandoQR = true;
+
+    if (esAsistenciaManual) {
+        // Reutilizar exactamente el flujo normal del QR de asistencia.
+        await prepararAsistenciaQR(String(estudiante.ci));
+        return;
+    }
+
     if (!mantenerCamaraQR) {
         document.getElementById("modalEscanerQR")?.classList.add("oculto");
         detenerCamaraQR();
@@ -22100,8 +22113,10 @@ async function abrirEscanerAsistenciaQR(modoBloqueado = false) {
 
     modoQRAsistencia = true;
     const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
-    if (botonManualQR) botonManualQR.style.display = "none";
+    if (botonManualQR) botonManualQR.style.display = modoBloqueado ? "none" : "flex";
     document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
+    const listaManualQR = document.getElementById("listaEstudiantesManualQR");
+    if (listaManualQR) listaManualQR.value = "";
     if (modoBloqueado) {
         activarModoPresidenteAsistenciaQR();
     }
@@ -25687,6 +25702,9 @@ async function cerrarEscanerQR(
     detenerCamaraQR();
     modoQRAsistencia = false;
     modoQRConsultaEstudiante = false;
+    const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
+    if (botonManualQR) botonManualQR.style.display = "none";
+    document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
     estudianteQRAsistencia = null;
     actividadQRSeleccionada = null;
     qrFechaFueraDeHoy = false;
