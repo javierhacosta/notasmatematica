@@ -29400,7 +29400,7 @@ function mostrarProgresoGaleriaActividadQR(actividad, total) {
     const cab = document.createElement("div");
     cab.className = "modal-cabecera";
     const titulo = document.createElement("h3");
-    titulo.textContent = "📷 Procesando fotografías";
+    titulo.textContent = "📄 Cargando y procesando archivos";
     cab.appendChild(titulo);
     const cuerpo = document.createElement("div");
     cuerpo.className = "modal-cuerpo";
@@ -29569,7 +29569,7 @@ function seleccionarAreaLecturaNombres(archivoEjemplo, cantidad) {
     });
 }
 
-async function convertirPDFEnImagenesActividad(archivoPDF) {
+async function convertirPDFEnImagenesActividad(archivoPDF, informarProgreso = null) {
     // PDF.js se carga sólo cuando se selecciona un PDF; cada página se convierte
     // en JPEG y continúa por el mismo proceso QR/nombre que las fotografías.
     if (!window.pdfjsLib) {
@@ -29592,6 +29592,7 @@ async function convertirPDFEnImagenesActividad(archivoPDF) {
     const imagenes = [];
     for (let paginaNum = 1; paginaNum <= documento.numPages; paginaNum++) {
         const pagina = await documento.getPage(paginaNum);
+        if (typeof informarProgreso === "function") await informarProgreso(paginaNum, documento.numPages);
         const escala = Math.min(2, 1800 / Math.max(pagina.getViewport({scale: 1}).width, pagina.getViewport({scale: 1}).height));
         const viewport = pagina.getViewport({scale: Math.max(1, escala)});
         const canvas = document.createElement("canvas");
@@ -29654,20 +29655,30 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     if (!actividad || !seleccionados.length) return;
     const archivos = [];
     const errores = [];
-    for (const archivo of seleccionados) {
+    // Mostrar progreso durante la preparación y conversión de páginas PDF.
+    const progresoCarga = mostrarProgresoGaleriaActividadQR(actividad, seleccionados.length);
+    for (let indiceArchivo = 0; indiceArchivo < seleccionados.length; indiceArchivo++) {
+        const archivo = seleccionados[indiceArchivo];
         if (archivo.type === "application/pdf" || /\.pdf$/i.test(archivo.name)) {
             try {
-                const paginas = await convertirPDFEnImagenesActividad(archivo);
+                const paginas = await convertirPDFEnImagenesActividad(archivo, async (pagina, totalPaginas) => {
+                    const pct = ((indiceArchivo + pagina / totalPaginas) / seleccionados.length) * 28;
+                    await progresoCarga.actualizar(indiceArchivo, 0,
+                        "Cargando PDF " + archivo.name + ": convirtiendo página " + pagina + " de " + totalPaginas + "...", pct);
+                });
                 archivos.push(...paginas);
             } catch (err) {
                 errores.push(archivo.name + ": " + (err?.message || String(err)));
             }
         } else if (archivo.type.startsWith("image/") || /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(archivo.name)) {
             archivos.push(archivo);
+            await progresoCarga.actualizar(indiceArchivo, 0, "Preparando archivo: " + archivo.name,
+                ((indiceArchivo + 1) / seleccionados.length) * 28);
         } else {
             errores.push(archivo.name + ": formato no compatible.");
         }
     }
+    progresoCarga.cerrar();
     if (!archivos.length) {
         alert("No se pudieron preparar imágenes para procesar." + (errores.length ? "\\n\\n" + errores.join("\\n") : ""));
         return;
