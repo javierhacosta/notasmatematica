@@ -1582,6 +1582,19 @@ td:first-child {
     background: #e8eef3;
 }
 
+.calendario-dia-asistencia .contador-asistencia-dia {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    min-width: 10px;
+    font-size: 8px;
+    line-height: 9px;
+    font-weight: bold;
+    color: inherit;
+    opacity: .9;
+    pointer-events: none;
+}
+
 .calendario-dia-asistencia.vacio {
     visibility: hidden;
     pointer-events: none;
@@ -10182,6 +10195,7 @@ async function guardarTipoDiaAsistencia() {
 ===================================================== */
 
 let fechasAsistenciaGuardadas = [];
+let conteoAsistenciaPorFecha = {};
 let tiposDiasAsistenciaGuardados = {};
 let observacionesDiasAsistenciaGuardadas = {};
 let fechasAzarAsistenciaGuardadas = new Set();
@@ -10257,6 +10271,14 @@ function renderizarCalendarioFechasAsistencia() {
         boton.type = "button";
         boton.className = "calendario-dia-asistencia";
         boton.textContent = dia;
+        const cantidadAsistenciaDia = Number(conteoAsistenciaPorFecha[clave] || 0);
+        if (cantidadAsistenciaDia > 0) {
+            const contadorAsistencia = document.createElement("span");
+            contadorAsistencia.className = "contador-asistencia-dia";
+            contadorAsistencia.textContent = cantidadAsistenciaDia;
+            contadorAsistencia.title = cantidadAsistenciaDia + " estudiantes con asistencia o atraso";
+            boton.appendChild(contadorAsistencia);
+        }
         const tipoDia = String(tiposDias[clave] || "");
         const observacionDia = String(observacionesDiasAsistenciaGuardadas[clave] || "").trim();
         // La marca de anotación se añade tras consultar la tabla.
@@ -10417,6 +10439,7 @@ function cambiarMesCalendarioAsistencia(direccion) {
 async function cargarFechasAsistencia() {
 
     fechasAsistenciaGuardadas = [];
+    conteoAsistenciaPorFecha = {};
     tiposDiasAsistenciaGuardados = {};
     observacionesDiasAsistenciaGuardadas = {};
     fechasAzarAsistenciaGuardadas = new Set();
@@ -10443,7 +10466,7 @@ async function cargarFechasAsistencia() {
     const [resultadoAsistencia, resultadoTipos, resultadoAzar, resultadoActividades, resultadoHorarios, resultadoAnotaciones] = await Promise.all([
         supabaseClient
             .from("asistencia")
-            .select("fecha")
+            .select("fecha,estado")
             .in("estudiante_id", ids)
             .order("fecha", { ascending: false }),
         supabaseClient
@@ -10538,6 +10561,17 @@ async function cargarFechasAsistencia() {
             const claveFecha = String(r.fecha);
             tiposDiasAsistenciaGuardados[claveFecha] = String(r.tipo);
             observacionesDiasAsistenciaGuardadas[claveFecha] = String(r.motivo || "");
+        }
+    });
+
+    // Contar por fecha únicamente los estados de asistencia y atraso.
+    // Licencias, permisos y faltas no se incluyen en el total del calendario.
+    conteoAsistenciaPorFecha = {};
+    (dataAsistencia || []).forEach(registro => {
+        const fecha = String(registro?.fecha || "");
+        const estado = String(registro?.estado || "").trim().toLowerCase();
+        if (fecha && (estado === "asistio" || estado === "atraso")) {
+            conteoAsistenciaPorFecha[fecha] = (conteoAsistenciaPorFecha[fecha] || 0) + 1;
         }
     });
 
