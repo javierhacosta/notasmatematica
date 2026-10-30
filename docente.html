@@ -1585,14 +1585,24 @@ td:first-child {
 .calendario-dia-asistencia .contador-asistencia-dia {
     position: absolute;
     top: 1px;
-    left: 2px;
-    min-width: 10px;
+    right: 2px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 13px;
+    height: 12px;
+    padding: 0 2px;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #1565c0;
+    border: 1px solid #1565c0;
     font-size: 8px;
-    line-height: 9px;
-    font-weight: bold;
-    color: inherit;
-    opacity: .9;
+    line-height: 10px;
+    font-weight: 800;
+    opacity: 1;
     pointer-events: none;
+    box-sizing: border-box;
 }
 
 .calendario-dia-asistencia.vacio {
@@ -10568,9 +10578,10 @@ async function cargarFechasAsistencia() {
     // Licencias, permisos y faltas no se incluyen en el total del calendario.
     conteoAsistenciaPorFecha = {};
     (dataAsistencia || []).forEach(registro => {
-        const fecha = String(registro?.fecha || "");
+        // Normalizar la fecha por si Supabase devuelve también la hora.
+        const fecha = String(registro?.fecha || "").trim().slice(0, 10);
         const estado = String(registro?.estado || "").trim().toLowerCase();
-        if (fecha && (estado === "asistio" || estado === "atraso")) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(fecha) && (estado === "asistio" || estado === "atraso")) {
             conteoAsistenciaPorFecha[fecha] = (conteoAsistenciaPorFecha[fecha] || 0) + 1;
         }
     });
