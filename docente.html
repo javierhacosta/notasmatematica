@@ -759,7 +759,13 @@ input, select {
     border-bottom: 1px solid #ddd;
 }
 .selector-estudiante-manual-qr.visible { display: block; }
-.selector-estudiante-manual-qr select { width: 100%; padding: 9px; border-radius: 7px; }
+.selector-estudiante-manual-qr input,
+.selector-estudiante-manual-qr select {
+    width: 100%;
+    padding: 9px;
+    border-radius: 7px;
+}
+.selector-estudiante-manual-qr input { margin-bottom: 7px; }
 
 .modal-qr {
     width: 100%;
@@ -6929,6 +6935,12 @@ Cancelar
         </div>
 
         <div id="selectorEstudianteManualQR" class="selector-estudiante-manual-qr">
+            <input
+                type="search"
+                id="buscarEstudianteManualQR"
+                placeholder="Buscar por nombre o número de lista..."
+                aria-label="Buscar estudiante por nombre o número de lista"
+                autocomplete="off">
             <select id="listaEstudiantesManualQR" aria-label="Elegir estudiante">
                 <option value="">Seleccionar estudiante...</option>
             </select>
@@ -21442,16 +21454,19 @@ function alternarSelectorEstudianteQR() {
     if ((!actividadQRSeleccionada && !modoQRAsistencia) || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR) return;
     const panel = document.getElementById("selectorEstudianteManualQR");
     const select = document.getElementById("listaEstudiantesManualQR");
-    if (!panel || !select) return;
+    const buscar = document.getElementById("buscarEstudianteManualQR");
+    if (!panel || !select || !buscar) return;
 
     const abierto = panel.classList.toggle("visible");
     if (abierto) {
         const lista = [...(estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])]
             .sort((a, b) => (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999));
+        window.estudiantesSelectorManualQR = lista;
+        buscar.value = "";
         select.innerHTML = '<option value="">Seleccionar estudiante...</option>' +
             lista.map(e => `<option value="${escapeHTML(String(e.id))}">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</option>`).join("");
         select.value = "";
-        select.focus();
+        buscar.focus();
     }
 }
 
@@ -21502,6 +21517,29 @@ async function seleccionarEstudianteManualQR(id) {
     }
     await prepararCalificacionQR(String(estudiante.ci));
 }
+
+document.addEventListener("input", function(event) {
+    if (!event.target || event.target.id !== "buscarEstudianteManualQR") return;
+
+    const select = document.getElementById("listaEstudiantesManualQR");
+    const consulta = String(event.target.value || "").trim().toLocaleLowerCase("es");
+    const normalizar = texto => String(texto ?? "")
+        .normalize("NFD")
+        .replace(/[\\u0300-\\u036f]/g, "")
+        .toLocaleLowerCase("es");
+    const termino = normalizar(consulta);
+    const lista = window.estudiantesSelectorManualQR || [];
+    const filtrados = termino
+        ? lista.filter(e =>
+            normalizar(e.nombre).includes(termino) ||
+            normalizar(e.num_lista).includes(termino))
+        : lista;
+
+    if (!select) return;
+    select.innerHTML = '<option value="">Seleccionar estudiante...</option>' +
+        filtrados.map(e => `<option value="${escapeHTML(String(e.id))}">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</option>`).join("");
+    select.value = "";
+});
 
 document.addEventListener("change", function(event) {
     if (event.target && event.target.id === "listaEstudiantesManualQR") {
