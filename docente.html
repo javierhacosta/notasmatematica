@@ -21535,38 +21535,30 @@ async function seleccionarEstudianteManualQR(id) {
     const esAsistenciaManual = modoQRAsistencia;
     if (!id || procesandoQR || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR || (!esAsistenciaManual && !actividadQRSeleccionada)) return;
 
-    // Recuperar el registro exacto que se mostró en los resultados.
-    // Se revisa la lista general y todas las listas por curso para no depender
-    // de que la clave del caché tenga exactamente el mismo formato.
-    const listasEstudiantes = [
-        ...(Array.isArray(estudiantes) ? [estudiantes] : []),
-        ...Array.from(estudiantesPorCursoCache.values()).filter(Array.isArray)
-    ];
-    let estudiante = null;
-    for (const lista of listasEstudiantes) {
-        estudiante = lista.find(e => String(e?.id) === String(id));
-        if (estudiante) break;
-    }
+    // Recuperar al estudiante desde la misma fuente que alimenta los resultados.
+    // Esto permite que la selección manual use exactamente los datos del QR.
+    const cacheCurso = estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [];
+    const listaCurso = Array.isArray(estudiantes)
+        ? estudiantes.filter(e => String(e.curso || '').trim().toLowerCase() === String(cursoSeleccionado || '').trim().toLowerCase())
+        : [];
+    const estudiante = cacheCurso.find(e => String(e.id) === String(id)) ||
+        listaCurso.find(e => String(e.id) === String(id));
 
     if (!estudiante) {
-        alert("No se encontró al estudiante seleccionado. Actualiza la lista de estudiantes e inténtalo nuevamente.");
+        alert("No se encontró al estudiante seleccionado en el curso actual. Actualiza la lista de estudiantes e inténtalo nuevamente.");
+        return;
+    }
+    const ci = String(estudiante.ci || "").trim();
+    if (esAsistenciaManual && !ci) {
+        alert("El estudiante seleccionado no tiene CI registrado; no se puede procesar su asistencia QR.");
         return;
     }
 
-    const cursoActual = String(cursoSeleccionado || "").trim().replace(/\s+/g, "").toLowerCase();
-    const cursoEstudiante = String(estudiante.curso || "").trim().replace(/\s+/g, "").toLowerCase();
-    if (cursoActual && cursoEstudiante && cursoActual !== cursoEstudiante) {
-        alert("El estudiante pertenece al curso " + estudiante.curso + " y no al curso seleccionado " + cursoSeleccionado + ".");
-        return;
-    }
-
-    // El CI puede estar vacío: al elegir manualmente ya tenemos el registro
-    // completo del estudiante y no necesitamos volver a localizarlo por CI.
-    const ci = String(estudiante.ci ?? "").trim();
-    const claveAntiDuplicado = ci || `EST-${estudiante.id}`;
+    // Mantener las mismas protecciones y validaciones de una lectura real del QR.
     const ahoraQR = Date.now();
-    if (ultimoCIPRProcesado === claveAntiDuplicado &&
-        ahoraQR - tiempoUltimoQRProcesado < TIEMPO_ANTI_DUPLICADO_QR) return;
+    if (ultimoCIPRProcesado === ci && ahoraQR - tiempoUltimoQRProcesado < TIEMPO_ANTI_DUPLICADO_QR) return;
+    ultimoCIPRProcesado = ci;
+    tiempoUltimoQRProcesado = ahoraQR;
 
     if (qrFechaFueraDeHoy && !qrFechaFueraDeHoyConfirmada) {
         const mensajeFecha = esAsistenciaManual
@@ -21578,9 +21570,6 @@ async function seleccionarEstudianteManualQR(id) {
         if (modalQR) modalQR.classList.remove("qr-fecha-diferente");
     }
 
-    ultimoCIPRProcesado = claveAntiDuplicado;
-    tiempoUltimoQRProcesado = ahoraQR;
-
     const panel = document.getElementById("selectorEstudianteManualQR");
     if (panel) panel.classList.remove("visible");
     const campo = document.getElementById("buscarEstudianteManualQR");
@@ -21591,13 +21580,12 @@ async function seleccionarEstudianteManualQR(id) {
         resultados.classList.remove("visible");
     }
 
-    // Ejecutar directamente el mismo preparador que utiliza la lectura real
-    // del QR, entregándole el registro elegido para evitar una segunda búsqueda.
+    // A partir de aquí se ejecuta el mismo procesamiento que al detectar el CI del QR.
     escaneandoQR = false;
     procesandoQR = true;
 
     if (esAsistenciaManual) {
-        await prepararAsistenciaQR(ci, estudiante);
+        await prepararAsistenciaQR(ci);
         return;
     }
 
@@ -21605,6 +21593,8 @@ async function seleccionarEstudianteManualQR(id) {
         document.getElementById("modalEscanerQR")?.classList.add("oculto");
         detenerCamaraQR();
     }
+    // Pasar el registro seleccionado directamente evita que la búsqueda por CI
+    // descarte al estudiante cuando su CI no está cargado o tiene otro formato.
     await prepararCalificacionQR(ci, estudiante);
 }
 
@@ -22363,11 +22353,10 @@ async function iniciarCamaraQR() {
 }
 
 
-async function prepararAsistenciaQR(ci, estudianteManual = null) {
+async function prepararAsistenciaQR(ci) {
 
-    // Si viene de la selección manual, usar directamente el registro elegido.
-    // En la lectura por cámara se conserva la búsqueda habitual mediante CI.
-    let data = estudianteManual || buscarEstudianteQRLocal(ci);
+    // Búsqueda local primero: el QR no espera a Internet.
+    let data = buscarEstudianteQRLocal(ci);
 
     // Solo consulta online como respaldo si el CI no está en la lista local.
     if (!data) {
@@ -22797,8 +22786,8 @@ async function prepararCalificacionQR(
 
     if (!actividadQRSeleccionada) return;
 
-    // Si viene de la selección manual, usar directamente el registro elegido.
-    // En la lectura por cámara se conserva la búsqueda habitual mediante CI.
+    // Si se eligió desde la lista, usar el mismo registro del estudiante
+    // como si el lector QR hubiera identificado su CI.
     let data = estudianteManual || buscarEstudianteQRLocal(ci);
 
     // Solo consulta online como respaldo si el CI no está en la lista local.
