@@ -6929,10 +6929,9 @@ Cancelar
         </div>
 
         <div id="selectorEstudianteManualQR" class="selector-estudiante-manual-qr">
-            <input type="text" id="busquedaEstudianteManualQR" autocomplete="off"
-                   placeholder="Buscar por nombre o número de lista..."
-                   aria-label="Buscar estudiante por nombre o número de lista">
-            <div id="resultadosEstudianteManualQR" class="selector-estudiante-resultados-qr" role="listbox"></div>
+            <select id="listaEstudiantesManualQR" aria-label="Elegir estudiante">
+                <option value="">Seleccionar estudiante...</option>
+            </select>
         </div>
 
         <div
@@ -21442,20 +21441,17 @@ function compararFechaConHoy(fecha) {
 function alternarSelectorEstudianteQR() {
     if ((!actividadQRSeleccionada && !modoQRAsistencia) || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR) return;
     const panel = document.getElementById("selectorEstudianteManualQR");
-    const busqueda = document.getElementById("busquedaEstudianteManualQR");
-    const resultados = document.getElementById("resultadosEstudianteManualQR");
-    if (!panel || !busqueda || !resultados) return;
+    const select = document.getElementById("listaEstudiantesManualQR");
+    if (!panel || !select) return;
 
     const abierto = panel.classList.toggle("visible");
     if (abierto) {
-        busqueda.value = "";
-        resultados.innerHTML = '<div class="selector-estudiante-sin-resultados-qr">Escribe un nombre o número de lista para buscar.</div>';
-        resultados.classList.add("visible");
-        busqueda.focus();
-    } else {
-        busqueda.value = "";
-        resultados.innerHTML = "";
-        resultados.classList.remove("visible");
+        const lista = [...(estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])]
+            .sort((a, b) => (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999));
+        select.innerHTML = '<option value="">Seleccionar estudiante...</option>' +
+            lista.map(e => `<option value="${escapeHTML(String(e.id))}">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</option>`).join("");
+        select.value = "";
+        select.focus();
     }
 }
 
@@ -21479,8 +21475,8 @@ async function seleccionarEstudianteManualQR(id) {
             ? "¿Está seguro de usar asistencia en fecha distinta al de hoy?"
             : "Hoy no es la fecha de revisión. ¿Está seguro de continuar?";
         if (!window.confirm(mensajeFecha)) {
-            const busqueda = document.getElementById("busquedaEstudianteManualQR");
-            if (busqueda) busqueda.value = "";
+            const select = document.getElementById("listaEstudiantesManualQR");
+            if (select) select.value = "";
             return;
         }
         qrFechaFueraDeHoyConfirmada = true;
@@ -21489,10 +21485,8 @@ async function seleccionarEstudianteManualQR(id) {
     }
     const panel = document.getElementById("selectorEstudianteManualQR");
     if (panel) panel.classList.remove("visible");
-    const busqueda = document.getElementById("busquedaEstudianteManualQR");
-    const resultados = document.getElementById("resultadosEstudianteManualQR");
-    if (busqueda) busqueda.value = "";
-    if (resultados) { resultados.innerHTML = ""; resultados.classList.remove("visible"); }
+    const select = document.getElementById("listaEstudiantesManualQR");
+    if (select) select.value = "";
     escaneandoQR = false;
     procesandoQR = true;
 
@@ -21509,39 +21503,10 @@ async function seleccionarEstudianteManualQR(id) {
     await prepararCalificacionQR(String(estudiante.ci));
 }
 
-function normalizarBusquedaEstudianteQR(valor) {
-    return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-}
-
-function buscarEstudiantesManualQR() {
-    const busqueda = document.getElementById("busquedaEstudianteManualQR");
-    const resultados = document.getElementById("resultadosEstudianteManualQR");
-    if (!busqueda || !resultados) return;
-    const termino = normalizarBusquedaEstudianteQR(busqueda.value);
-    if (!termino) {
-        resultados.innerHTML = '<div class="selector-estudiante-sin-resultados-qr">Escribe un nombre o número de lista para buscar.</div>';
-        resultados.classList.add("visible");
-        return;
+document.addEventListener("change", function(event) {
+    if (event.target && event.target.id === "listaEstudiantesManualQR") {
+        seleccionarEstudianteManualQR(event.target.value);
     }
-    const lista = [...(estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])]
-        .sort((a, b) => (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999));
-    const encontrados = lista.filter(e =>
-        normalizarBusquedaEstudianteQR(e.nombre).includes(termino) ||
-        normalizarBusquedaEstudianteQR(e.num_lista).includes(termino)
-    ).slice(0, 30);
-    resultados.innerHTML = encontrados.length
-        ? encontrados.map(e => `<button type="button" class="selector-estudiante-opcion-qr" data-estudiante-id="${escapeHTML(String(e.id))}" role="option">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</button>`).join("")
-        : '<div class="selector-estudiante-sin-resultados-qr">No se encontraron estudiantes.</div>';
-    resultados.classList.add("visible");
-}
-
-document.addEventListener("input", function(event) {
-    if (event.target && event.target.id === "busquedaEstudianteManualQR") buscarEstudiantesManualQR();
-});
-
-document.addEventListener("click", function(event) {
-    const opcion = event.target && event.target.closest(".selector-estudiante-opcion-qr");
-    if (opcion) seleccionarEstudianteManualQR(opcion.dataset.estudianteId);
 });
 
 async function abrirEscanerQR(actividad) {
@@ -22191,10 +22156,8 @@ async function abrirEscanerAsistenciaQR(modoBloqueado = false) {
     const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
     if (botonManualQR) botonManualQR.style.display = modoBloqueado ? "none" : "flex";
     document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
-    const busquedaManualQR = document.getElementById("busquedaEstudianteManualQR");
-    const resultadosManualQR = document.getElementById("resultadosEstudianteManualQR");
-    if (busquedaManualQR) busquedaManualQR.value = "";
-    if (resultadosManualQR) { resultadosManualQR.innerHTML = ""; resultadosManualQR.classList.remove("visible"); }
+    const listaManualQR = document.getElementById("listaEstudiantesManualQR");
+    if (listaManualQR) listaManualQR.value = "";
     if (modoBloqueado) {
         activarModoPresidenteAsistenciaQR();
     }
