@@ -759,7 +759,23 @@ input, select {
     border-bottom: 1px solid #ddd;
 }
 .selector-estudiante-manual-qr.visible { display: block; }
-.selector-estudiante-manual-qr select { width: 100%; padding: 9px; border-radius: 7px; }
+.selector-estudiante-manual-qr input { width: 100%; padding: 10px; border-radius: 7px; }
+.resultados-estudiantes-manual-qr {
+    display: none; max-height: 190px; overflow-y: auto; margin-top: 7px;
+    border: 1px solid #ddd; border-radius: 7px; background: white;
+}
+.resultados-estudiantes-manual-qr.visible { display: block; }
+.resultado-estudiante-manual-qr {
+    display: block; width: 100%; padding: 10px; border: 0;
+    border-bottom: 1px solid #eee; border-radius: 0; background: white;
+    color: #222; text-align: left; font-size: 14px; cursor: pointer;
+}
+.resultado-estudiante-manual-qr:last-child { border-bottom: 0; }
+.resultado-estudiante-manual-qr:hover,
+.resultado-estudiante-manual-qr:focus { background: #e8f1fb; outline: none; }
+.resultados-estudiantes-manual-qr .sin-resultados {
+    padding: 10px; color: #666; font-size: 13px;
+}
 
 .modal-qr {
     width: 100%;
@@ -6929,9 +6945,11 @@ Cancelar
         </div>
 
         <div id="selectorEstudianteManualQR" class="selector-estudiante-manual-qr">
-            <select id="listaEstudiantesManualQR" aria-label="Elegir estudiante">
-                <option value="">Seleccionar estudiante...</option>
-            </select>
+            <input type="search" id="buscarEstudianteManualQR"
+                   placeholder="Buscar por nombre o N° de lista..."
+                   aria-label="Buscar estudiante por nombre o número de lista"
+                   autocomplete="off">
+            <div id="resultadosEstudiantesManualQR" class="resultados-estudiantes-manual-qr"></div>
         </div>
 
         <div
@@ -21441,58 +21459,145 @@ function compararFechaConHoy(fecha) {
 function alternarSelectorEstudianteQR() {
     if ((!actividadQRSeleccionada && !modoQRAsistencia) || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR) return;
     const panel = document.getElementById("selectorEstudianteManualQR");
-    const select = document.getElementById("listaEstudiantesManualQR");
-    if (!panel || !select) return;
+    const campo = document.getElementById("buscarEstudianteManualQR");
+    const resultados = document.getElementById("resultadosEstudiantesManualQR");
+    if (!panel || !campo || !resultados) return;
 
     const abierto = panel.classList.toggle("visible");
     if (abierto) {
-        const lista = [...(estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])]
-            .sort((a, b) => (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999));
-        select.innerHTML = '<option value="">Seleccionar estudiante...</option>' +
-            lista.map(e => `<option value="${escapeHTML(String(e.id))}">${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}</option>`).join("");
-        select.value = "";
-        select.focus();
+        campo.value = "";
+        resultados.innerHTML = "";
+        resultados.classList.remove("visible");
+        campo.focus();
     }
 }
 
+function buscarEstudianteManualQR() {
+    const campo = document.getElementById("buscarEstudianteManualQR");
+    const resultados = document.getElementById("resultadosEstudiantesManualQR");
+    if (!campo || !resultados) return;
+
+    const normalizarBusquedaQR = valor => String(valor ?? "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("es").trim();
+    const texto = normalizarBusquedaQR(campo.value);
+
+    // Usar la lista global como respaldo y comparar el curso sin diferencias
+    // de mayúsculas o espacios; así no depende de que el índice esté actualizado.
+    const cursoQR = normalizarBusquedaQR(cursoSeleccionado).replace(/\s+/g, "");
+    let lista = Array.isArray(estudiantes) ? estudiantes.filter(e =>
+        normalizarBusquedaQR(e.curso).replace(/\s+/g, "") === cursoQR
+    ) : [];
+    if (!lista.length) {
+        lista = estudiantesPorCursoCache.get(String(cursoSeleccionado)) ||
+            estudiantesPorCursoCache.get(String(cursoSeleccionado).trim()) || [];
+    }
+    lista = [...lista].sort((a, b) =>
+        (Number(a.num_lista) || 99999) - (Number(b.num_lista) || 99999)
+    );
+
+    if (!texto) {
+        resultados.innerHTML = "";
+        resultados.classList.remove("visible");
+        return;
+    }
+
+    const encontrados = lista.filter(e => {
+        const nombreCompleto = [e.nombre, e.nombres, e.paterno, e.materno]
+            .filter(Boolean).join(" ");
+        return normalizarBusquedaQR(nombreCompleto).includes(texto) ||
+            normalizarBusquedaQR(e.num_lista).includes(texto);
+    });
+
+    resultados.innerHTML = encontrados.length
+        ? encontrados.map(e => `
+            <button type="button" class="resultado-estudiante-manual-qr"
+                    data-estudiante-id="${escapeHTML(String(e.id))}">
+                ${escapeHTML(String(e.num_lista ?? ""))} - ${escapeHTML(String(e.nombre || ""))}
+            </button>
+        `).join("")
+        : '<div class="sin-resultados">No se encontraron estudiantes.</div>';
+    resultados.classList.add("visible");
+}
+
+document.addEventListener("input", function(event) {
+    if (event.target && event.target.id === "buscarEstudianteManualQR") {
+        buscarEstudianteManualQR();
+    }
+});
+
+document.addEventListener("click", function(event) {
+    const opcion = event.target && event.target.closest(".resultado-estudiante-manual-qr");
+    if (opcion) seleccionarEstudianteManualQR(opcion.dataset.estudianteId);
+});
+
 async function seleccionarEstudianteManualQR(id) {
     const esAsistenciaManual = modoQRAsistencia;
-    if (!id || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR || (!esAsistenciaManual && !actividadQRSeleccionada)) return;
-    const estudiante = (estudiantesPorCursoCache.get(String(cursoSeleccionado)) || [])
-        .find(e => String(e.id) === String(id));
+    if (!id || procesandoQR || modoQRConsultaEstudiante || modoPresidenteAsistenciaQR || (!esAsistenciaManual && !actividadQRSeleccionada)) return;
+
+    // Recuperar el registro exacto que se mostró en los resultados.
+    // Se revisa la lista general y todas las listas por curso para no depender
+    // de que la clave del caché tenga exactamente el mismo formato.
+    const listasEstudiantes = [
+        ...(Array.isArray(estudiantes) ? [estudiantes] : []),
+        ...Array.from(estudiantesPorCursoCache.values()).filter(Array.isArray)
+    ];
+    let estudiante = null;
+    for (const lista of listasEstudiantes) {
+        estudiante = lista.find(e => String(e?.id) === String(id));
+        if (estudiante) break;
+    }
+
     if (!estudiante) {
-        alert("No se encontró al estudiante seleccionado en el curso actual.");
+        alert("No se encontró al estudiante seleccionado. Actualiza la lista de estudiantes e inténtalo nuevamente.");
         return;
     }
-    if (!estudiante.ci) {
-        alert(esAsistenciaManual
-            ? "El estudiante seleccionado no tiene CI registrado; no se puede procesar su asistencia QR."
-            : "El estudiante seleccionado no tiene CI registrado; no se puede abrir su calificación.");
+
+    const cursoActual = String(cursoSeleccionado || "").trim().replace(/\s+/g, "").toLowerCase();
+    const cursoEstudiante = String(estudiante.curso || "").trim().replace(/\s+/g, "").toLowerCase();
+    if (cursoActual && cursoEstudiante && cursoActual !== cursoEstudiante) {
+        alert("El estudiante pertenece al curso " + estudiante.curso + " y no al curso seleccionado " + cursoSeleccionado + ".");
         return;
     }
+
+    // El CI puede estar vacío: al elegir manualmente ya tenemos el registro
+    // completo del estudiante y no necesitamos volver a localizarlo por CI.
+    const ci = String(estudiante.ci ?? "").trim();
+    const claveAntiDuplicado = ci || `EST-${estudiante.id}`;
+    const ahoraQR = Date.now();
+    if (ultimoCIPRProcesado === claveAntiDuplicado &&
+        ahoraQR - tiempoUltimoQRProcesado < TIEMPO_ANTI_DUPLICADO_QR) return;
+
     if (qrFechaFueraDeHoy && !qrFechaFueraDeHoyConfirmada) {
         const mensajeFecha = esAsistenciaManual
             ? "¿Está seguro de usar asistencia en fecha distinta al de hoy?"
             : "Hoy no es la fecha de revisión. ¿Está seguro de continuar?";
-        if (!window.confirm(mensajeFecha)) {
-            const select = document.getElementById("listaEstudiantesManualQR");
-            if (select) select.value = "";
-            return;
-        }
+        if (!window.confirm(mensajeFecha)) return;
         qrFechaFueraDeHoyConfirmada = true;
         const modalQR = document.getElementById("modalEscanerQR")?.querySelector(".modal-qr");
         if (modalQR) modalQR.classList.remove("qr-fecha-diferente");
     }
+
+    ultimoCIPRProcesado = claveAntiDuplicado;
+    tiempoUltimoQRProcesado = ahoraQR;
+
     const panel = document.getElementById("selectorEstudianteManualQR");
     if (panel) panel.classList.remove("visible");
-    const select = document.getElementById("listaEstudiantesManualQR");
-    if (select) select.value = "";
+    const campo = document.getElementById("buscarEstudianteManualQR");
+    const resultados = document.getElementById("resultadosEstudiantesManualQR");
+    if (campo) campo.value = "";
+    if (resultados) {
+        resultados.innerHTML = "";
+        resultados.classList.remove("visible");
+    }
+
+    // Ejecutar directamente el mismo preparador que utiliza la lectura real
+    // del QR, entregándole el registro elegido para evitar una segunda búsqueda.
     escaneandoQR = false;
     procesandoQR = true;
 
     if (esAsistenciaManual) {
-        // Reutilizar exactamente el flujo normal del QR de asistencia.
-        await prepararAsistenciaQR(String(estudiante.ci));
+        await prepararAsistenciaQR(ci, estudiante);
         return;
     }
 
@@ -21500,14 +21605,8 @@ async function seleccionarEstudianteManualQR(id) {
         document.getElementById("modalEscanerQR")?.classList.add("oculto");
         detenerCamaraQR();
     }
-    await prepararCalificacionQR(String(estudiante.ci));
+    await prepararCalificacionQR(ci, estudiante);
 }
-
-document.addEventListener("change", function(event) {
-    if (event.target && event.target.id === "listaEstudiantesManualQR") {
-        seleccionarEstudianteManualQR(event.target.value);
-    }
-});
 
 async function abrirEscanerQR(actividad) {
 
@@ -22156,8 +22255,13 @@ async function abrirEscanerAsistenciaQR(modoBloqueado = false) {
     const botonManualQR = document.getElementById("botonSeleccionarEstudianteQR");
     if (botonManualQR) botonManualQR.style.display = modoBloqueado ? "none" : "flex";
     document.getElementById("selectorEstudianteManualQR")?.classList.remove("visible");
-    const listaManualQR = document.getElementById("listaEstudiantesManualQR");
-    if (listaManualQR) listaManualQR.value = "";
+    const campoManualQR = document.getElementById("buscarEstudianteManualQR");
+    const resultadosManualQR = document.getElementById("resultadosEstudiantesManualQR");
+    if (campoManualQR) campoManualQR.value = "";
+    if (resultadosManualQR) {
+        resultadosManualQR.innerHTML = "";
+        resultadosManualQR.classList.remove("visible");
+    }
     if (modoBloqueado) {
         activarModoPresidenteAsistenciaQR();
     }
@@ -22259,10 +22363,11 @@ async function iniciarCamaraQR() {
 }
 
 
-async function prepararAsistenciaQR(ci) {
+async function prepararAsistenciaQR(ci, estudianteManual = null) {
 
-    // Búsqueda local primero: el QR no espera a Internet.
-    let data = buscarEstudianteQRLocal(ci);
+    // Si viene de la selección manual, usar directamente el registro elegido.
+    // En la lectura por cámara se conserva la búsqueda habitual mediante CI.
+    let data = estudianteManual || buscarEstudianteQRLocal(ci);
 
     // Solo consulta online como respaldo si el CI no está en la lista local.
     if (!data) {
@@ -22686,13 +22791,15 @@ function construirActividadesAnterioresQR(estudianteId, actividadActual) {
 
 
 async function prepararCalificacionQR(
-    ci
+    ci,
+    estudianteManual = null
 ) {
 
     if (!actividadQRSeleccionada) return;
 
-    // Búsqueda local primero: el QR no espera a Internet.
-    let data = buscarEstudianteQRLocal(ci);
+    // Si viene de la selección manual, usar directamente el registro elegido.
+    // En la lectura por cámara se conserva la búsqueda habitual mediante CI.
+    let data = estudianteManual || buscarEstudianteQRLocal(ci);
 
     // Solo consulta online como respaldo si el CI no está en la lista local.
     if (!data) {
