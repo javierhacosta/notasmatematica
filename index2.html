@@ -873,6 +873,111 @@ button:hover {
 }
 .tabla-actividades td { overflow-wrap: anywhere; }
 
+
+/* Asistencia: fechas arriba, estado/detalle en la segunda fila y hora en la tercera. */
+.tabla-asistencia-horizontal tbody tr:nth-child(2) td { font-size:20px; min-height:42px; }
+.tabla-asistencia-horizontal tbody tr:nth-child(3) td { font-size:12px; color:#475569; height:auto; min-height:28px; padding:5px 3px; }
+.tabla-asistencia-horizontal .detalle-dia-especial { font-size:12px !important; line-height:1.35; white-space:normal; overflow-wrap:anywhere; }
+.tabla-asistencia-horizontal .hora-asistencia { font-size:12px !important; font-variant-numeric:tabular-nums; }
+
+/* Ajuste solicitado: texto compacto para dÃ­as especiales y horas. */
+.tabla-asistencia-horizontal .detalle-dia-especial {
+  font-size: 9px !important;
+  line-height: 1.2;
+  padding: 3px 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tabla-asistencia-horizontal .hora-asistencia {
+  font-size: 9px !important;
+  line-height: 1.15;
+  padding: 3px 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ajuste solicitado: segunda y tercera fila al mismo tamaÃ±o de letra que los encabezados. */
+.tabla-asistencia-horizontal tbody tr:nth-child(1) td,
+.tabla-asistencia-horizontal tbody tr:nth-child(2) td,
+.tabla-asistencia-horizontal tbody tr:nth-child(3) td {
+  font-size: 13px !important;
+  line-height: 1.2;
+}
+.tabla-asistencia-horizontal tbody tr td.detalle-dia-especial,
+.tabla-asistencia-horizontal tbody tr td.hora-asistencia {
+  font-size: 13px !important;
+}
+
+/* Ajuste exclusivo de la primera fila de la tabla de actividades:
+   ampliar el encabezado y evitar que el nombre de la actividad se recorte. */
+.tabla-actividades th {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  height: 230px;
+  min-height: 230px;
+  overflow: visible;
+}
+.tabla-actividades th .encabezado-rotado {
+  width: 210px;
+  max-height: none;
+  height: auto;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+/* Tercera fila de actividades: estado de entrega y fecha de presentaciÃ³n. */
+.tabla-actividades tbody tr:nth-child(2) td {
+  min-width: 72px;
+  width: 72px;
+  max-width: 120px;
+  padding: 5px 3px;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.tabla-actividades .actividad-estado-fila {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.tabla-actividades .actividad-estado-fila .actividad-estado-entrega,
+.tabla-actividades .actividad-estado-fila .actividad-fecha-entrega {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+/* AutoevaluaciÃ³n del estudiante */
+.boton-autoevaluacion { width:auto; margin:0; padding:9px 13px; font-size:14px; background:#00897b; }
+.boton-autoevaluacion:hover { background:#00695c; }
+#modalAutoevaluacion { position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center; padding:12px; }
+#modalAutoevaluacion.oculto { display:none; }
+#modalAutoevaluacion .auto-contenido { width:100%; max-width:680px; max-height:92vh; overflow:auto; background:#fff; border-radius:15px; padding:18px; }
+.auto-titulo { color:#00897b; text-align:center; font-size:20px; font-weight:bold; margin-bottom:8px; }
+.auto-instruccion { color:#555; font-size:13px; line-height:1.45; text-align:center; margin-bottom:12px; }
+.auto-tabla { width:100%; border-collapse:collapse; font-size:13px; }
+.auto-tabla th,.auto-tabla td { border:1px solid #ddd; padding:8px 5px; text-align:center; }
+.auto-tabla th { background:#e0f2f1; color:#174f4b; }
+.auto-tabla td:first-child { text-align:left; }
+.auto-tabla input { width:18px; height:18px; }
+.auto-acciones { display:flex; gap:9px; }
+.auto-acciones button { flex:1; }
+.auto-guardar { background:#00897b; }
+.auto-cancelar { background:#607d8b; }
+.auto-nota-guardada { text-align:center; padding:12px; margin-top:12px; border-radius:10px; background:#e8f5e9; color:#1b5e20; font-weight:bold; }
+@media(max-width:500px) {
+ #modalAutoevaluacion .auto-contenido { padding:12px; }
+ .auto-tabla { font-size:11px; }
+ .auto-tabla th,.auto-tabla td { padding:7px 3px; }
+}
+
 </style>
 
 </head>
@@ -960,6 +1065,19 @@ button:hover {
 </div>
 
 
+
+<div id="modalAutoevaluacion" class="oculto" role="dialog" aria-modal="true" aria-labelledby="tituloAutoevaluacion">
+  <div class="auto-contenido">
+    <div class="auto-titulo" id="tituloAutoevaluacion">ð AutoevaluaciÃ³n de MatemÃ¡tica</div>
+    <div class="auto-instruccion">Selecciona una opciÃ³n en cada aspecto. La nota se calcularÃ¡ automÃ¡ticamente.</div>
+    <div id="contenidoAutoevaluacion"></div>
+    <div class="auto-acciones" id="accionesAutoevaluacion">
+      <button type="button" class="auto-guardar" onclick="guardarAutoevaluacion()">Guardar</button>
+      <button type="button" class="auto-cancelar" onclick="cerrarAutoevaluacion()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 
@@ -978,6 +1096,111 @@ const SUPABASE_KEY =
 
 
 let alumnoActual = null;
+
+let actividadAutoevaluacionActual = null;
+let autoevaluacionYaGuardada = false;
+const ASPECTOS_AUTOEVALUACION = [
+ "Participo activamente en las actividades de MatemÃ¡tica.",
+ "Cumplo con las tareas y trabajos asignados.",
+ "Utilizo correctamente las herramientas y materiales matemÃ¡ticos.",
+ "Respeto las normas de trabajo en el aula.",
+ "Mantengo ordenado y limpio mi espacio de trabajo.",
+ "Trabajo responsablemente con mis compaÃ±eros.",
+ "Cuido los materiales y recursos de aprendizaje.",
+ "Comprendo las explicaciones del profesor.",
+ "Intento resolver los problemas antes de pedir ayuda.",
+ "Soy responsable con mis materiales y trabajos."
+];
+
+async function abrirAutoevaluacion(actividadId) {
+    if (!alumnoActual || !alumnoActual.id) return;
+    actividadAutoevaluacionActual = actividadId;
+    const modal = document.getElementById("modalAutoevaluacion");
+    const contenido = document.getElementById("contenidoAutoevaluacion");
+    const acciones = document.getElementById("accionesAutoevaluacion");
+    contenido.innerHTML = '<p class="cargando">Cargando autoevaluaciÃ³n...</p>';
+    acciones.style.display = "flex";
+    modal.classList.remove("oculto");
+    try {
+        const url = `${SUPABASE_URL}/rest/v1/calificaciones?estudiante_id=eq.${encodeURIComponent(alumnoActual.id)}&actividad_id=eq.${encodeURIComponent(actividadId)}&select=id,nota`;
+        const r = await fetch(url, {headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
+        if (!r.ok) throw new Error("No se pudo consultar el registro.");
+        const existentes = await r.json();
+        autoevaluacionYaGuardada = existentes.length > 0;
+        let html = '<table class="auto-tabla"><thead><tr><th>Aspecto a evaluar</th><th>Siempre<br>0,5 pts</th><th>A veces<br>0,25 pts</th><th>Necesito mejorar<br>0,12 pts</th></tr></thead><tbody>';
+        ASPECTOS_AUTOEVALUACION.forEach((texto,i) => {
+            html += `<tr><td>${escapeHTML(texto)}</td>`;
+            [0.5,0.25,0.12].forEach((valor,j) => {
+                html += `<td><input type="radio" name="auto_${i}" value="${valor}" aria-label="${["Siempre","A veces","Necesito mejorar"][j]}" ${autoevaluacionYaGuardada ? "disabled" : ""}></td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        if (autoevaluacionYaGuardada) {
+            const nota = Math.round(Number(existentes[0].nota));
+            html += `<div class="auto-nota-guardada">â AutoevaluaciÃ³n guardada. Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
+            acciones.style.display = "none";
+        } else {
+            html += '<p style="text-align:center;color:#666;font-size:12px">Debes responder los 10 aspectos antes de guardar.</p>';
+        }
+        contenido.innerHTML = html;
+    } catch (e) {
+        contenido.innerHTML = `<p class="error">${escapeHTML(e.message || "Error al cargar.")}</p>`;
+    }
+}
+
+async function guardarAutoevaluacion() {
+    if (autoevaluacionYaGuardada || !actividadAutoevaluacionActual || !alumnoActual) return;
+    const valores = [];
+    for (let i=0;i<ASPECTOS_AUTOEVALUACION.length;i++) {
+        const elegido = document.querySelector(`input[name="auto_${i}"]:checked`);
+        if (!elegido) {
+            alert("Responde todos los aspectos antes de guardar.");
+            return;
+        }
+        valores.push(Number(elegido.value));
+    }
+    const nota = Math.round(valores.reduce((a,b)=>a+b,0));
+    const boton = document.querySelector("#accionesAutoevaluacion .auto-guardar");
+    if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
+    try {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/calificaciones`, {
+            method:"POST",
+            headers:{
+                "apikey":SUPABASE_KEY,
+                "Authorization":`Bearer ${SUPABASE_KEY}`,
+                "Content-Type":"application/json",
+                "Prefer":"return=representation"
+            },
+            body:JSON.stringify({
+                estudiante_id:alumnoActual.id,
+                actividad_id:actividadAutoevaluacionActual,
+                nota:nota
+            })
+        });
+        if (!r.ok) {
+            const detalle = await r.text();
+            if (r.status === 409) throw new Error("Esta autoevaluaciÃ³n ya fue guardada. Cierra y vuelve a abrir para ver la nota.");
+            throw new Error("No se pudo guardar la autoevaluaciÃ³n. " + detalle);
+        }
+        autoevaluacionYaGuardada = true;
+        document.getElementById("contenidoAutoevaluacion").innerHTML =
+            `<div class="auto-nota-guardada">â AutoevaluaciÃ³n guardada correctamente.<br>Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
+        document.getElementById("accionesAutoevaluacion").style.display = "none";
+        // Actualiza la nota mostrada en la actividad sin alterar el resto de la pÃ¡gina.
+        const btn = Array.from(document.querySelectorAll(".boton-autoevaluacion"))
+            .find(b => b.getAttribute("onclick")?.includes(String(actividadAutoevaluacionActual)));
+        if (btn) btn.textContent = `â AutoevaluaciÃ³n: ${nota} pts`;
+    } catch(e) {
+        alert(e.message || "No se pudo guardar.");
+        if (boton) { boton.disabled = false; boton.textContent = "Guardar"; }
+    }
+}
+
+function cerrarAutoevaluacion() {
+    document.getElementById("modalAutoevaluacion")?.classList.add("oculto");
+}
+
 
 
 /* =================================================
@@ -1493,20 +1716,42 @@ function aplicarVistaDosFilas() {
     const thead = document.createElement('thead');
     const filaTitulos = document.createElement('tr');
     const filaNotas = document.createElement('tr');
+    const filaEstado = document.createElement('tr');
     actividades.forEach(item => {
       const detalle = item.querySelector('.actividad-nombre');
       const nota = item.querySelector('.actividad-nota');
       const th = document.createElement('th');
       const td = document.createElement('td');
-      if (detalle) th.innerHTML = `<span class="encabezado-rotado">${detalle.innerHTML}</span>`;
+      const tdEstado = document.createElement('td');
+      /* El estado y la fecha de presentaciÃ³n se generan dentro de .actividad-nombre,
+         no dentro de .actividad-nota. Se extraen de ahÃ­ para mostrarlos en la tercera fila. */
+      const contenidoDetalle = detalle ? detalle.cloneNode(true) : null;
+      const detallesEstado = document.createElement('div');
+      detallesEstado.className = 'actividad-estado-fila';
+      if (contenidoDetalle) {
+        const estado = contenidoDetalle.querySelector('.actividad-estado-entrega');
+        const fechaPresentacion = contenidoDetalle.querySelector('.actividad-fecha-entrega');
+        if (estado) {
+          detallesEstado.appendChild(estado.cloneNode(true));
+          estado.remove();
+        }
+        if (fechaPresentacion) {
+          detallesEstado.appendChild(fechaPresentacion.cloneNode(true));
+          fechaPresentacion.remove();
+        }
+        th.innerHTML = `<span class="encabezado-rotado">${contenidoDetalle.innerHTML}</span>`;
+      }
       if (nota) td.innerHTML = nota.innerHTML;
+      tdEstado.appendChild(detallesEstado);
       filaTitulos.appendChild(th);
       filaNotas.appendChild(td);
+      filaEstado.appendChild(tdEstado);
       item.remove();
     });
     thead.appendChild(filaTitulos);
     const tbody = document.createElement('tbody');
     tbody.appendChild(filaNotas);
+    tbody.appendChild(filaEstado);
     tabla.appendChild(thead); tabla.appendChild(tbody);
     const envoltura = document.createElement('div');
     envoltura.className = 'tabla-actividades-contenedor';
@@ -1526,6 +1771,7 @@ function aplicarVistaDosFilas() {
     const filaFechas = document.createElement('tr');
     const tbody = document.createElement('tbody');
     const filaIconos = document.createElement('tr');
+    const filaHoras = document.createElement('tr');
     registros.forEach(tr => {
       const celdas = tr.querySelectorAll('td');
       if (!celdas.length) return;
@@ -1535,8 +1781,11 @@ function aplicarVistaDosFilas() {
       const td = document.createElement('td');
       if (celdas[1]) td.innerHTML = celdas[1].innerHTML;
       filaIconos.appendChild(td);
+      const tdHora = document.createElement('td');
+      if (celdas[2]) tdHora.innerHTML = celdas[2].innerHTML;
+      filaHoras.appendChild(tdHora);
     });
-    thead.appendChild(filaFechas); tbody.appendChild(filaIconos);
+    thead.appendChild(filaFechas); tbody.appendChild(filaIconos); tbody.appendChild(filaHoras);
     tabla.appendChild(thead); tabla.appendChild(tbody);
     original.replaceWith(tabla);
   });
@@ -2638,11 +2887,11 @@ async function mostrarDetalles() {
 
                                     <div>
 
-                                        <span style="font-size:12px;color:#555;font-weight:normal;">Nota:</span>
-
-                                        ${valor}
-
-                                        / ${actividad.puntaje_maximo}
+                                        ${
+                                            categoria.codigo === "AUTOEVALUACION"
+                                            ? `<button type="button" class="boton-autoevaluacion" onclick="abrirAutoevaluacion('${String(actividad.id).replace(/'/g, "\\'")}')">${notaVacia ? "ð AutoevaluaciÃ³n" : `â AutoevaluaciÃ³n: ${valor} pts`}</button>`
+                                            : valor
+                                        }
 
                                     </div>
 
@@ -2694,7 +2943,7 @@ async function mostrarDetalles() {
 
                                     ? "â"
 
-                                    : promedioMostrado
+                                    : `${promedioMostrado}/${limite}`
                                 }
 
                                 pts
@@ -2927,8 +3176,9 @@ async function mostrarAsistenciaEnDetalle() {
                     <tr>
                         <td>${formatearFecha(asistencia.fecha)}</td>
                         <td>
-                            <button type="button" class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}" onclick="mostrarMotivoAsistencia('${String([...observaciones, ...(registro.claseInformal ? [registro.claseInformal.motivo || 'Clase informal'] : []), ...(registro.noClases ? [registro.noClases.motivo || 'No se pasÃ³ clases'] : [])].join(' Â· ')).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${informacion.icono}</button>
+                            <span class="icono-dia-asistencia" aria-label="${escapeHTML(informacion.nombre)}" title="${escapeHTML(informacion.nombre)}">${informacion.icono}</span>
                         </td>
+                        <td class="hora-asistencia">${(estado === "asistio" || estado === "atraso") && asistencia.hora ? escapeHTML(String(asistencia.hora).slice(0,5)) : "â"}</td>
                     </tr>
                 `;
                 return;
@@ -2942,7 +3192,8 @@ async function mostrarAsistenciaEnDetalle() {
                 filas += `
                     <tr class="dia-clase-informal">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td><button type="button" class="icono-dia-asistencia" aria-label="Clase informal" title="Clase informal" onclick="mostrarMotivoAsistencia('${String(registro.claseInformal.motivo || 'Clase informal registrada.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">â¹ï¸</button></td>
+                        <td class="detalle-dia-especial">${motivo}</td>
+                        <td class="hora-asistencia">â</td>
                     </tr>
                 `;
                 return;
@@ -2950,13 +3201,14 @@ async function mostrarAsistenciaEnDetalle() {
 
             if (registro.noClases) {
                 const motivo = registro.noClases.motivo && String(registro.noClases.motivo).trim()
-                    ? escapeHTML(String(registro.noClases.motivo).trim())
-                    : "No se registrÃ³ el motivo.";
+                    ? `ð« No hubo clases: ${escapeHTML(String(registro.noClases.motivo).trim())}`
+                    : "ð« No hubo clases";
 
                 filas += `
                     <tr class="dia-no-clases">
                         <td>${formatearFecha(registro.fecha)}</td>
-                        <td><button type="button" class="icono-dia-asistencia" aria-label="No se pasÃ³ clases" title="No se pasÃ³ clases" onclick="mostrarMotivoAsistencia('${String(registro.noClases.motivo || 'No se registrÃ³ el motivo.').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">ð«</button></td>
+                        <td class="detalle-dia-especial">${motivo}</td>
+                        <td class="hora-asistencia">â</td>
                     </tr>
                 `;
                 return;
@@ -3418,6 +3670,192 @@ if (fechaNacimiento) {
         fechaNacimiento;
 
 }
+
+/* Desplazamiento automÃ¡tico suave de las tablas anchas cuando no hay interacciÃ³n. */
+(function activarDesplazamientoSuaveTablas() {
+    const ESPERA_INACTIVIDAD = 2600;
+    const PASO = 1.15;
+    const INTERVALO = 35;
+    const DURACION_PAUSA_FINAL = 1800;
+    let temporizadorInicio = null;
+    let animacion = null;
+    let observador = null;
+    let ultimaInteraccion = Date.now();
+    const procesados = new WeakSet();
+
+    function detenerPorInteraccion() {
+        ultimaInteraccion = Date.now();
+        if (temporizadorInicio) clearTimeout(temporizadorInicio);
+        temporizadorInicio = null;
+        if (animacion) {
+            clearTimeout(animacion);
+            animacion = null;
+        }
+        programar();
+    }
+
+    function estaEnZonaCentral(elemento) {
+        const r = elemento.getBoundingClientRect();
+        const alto = window.innerHeight || document.documentElement.clientHeight;
+        const centro = alto / 2;
+        return r.bottom > centro - alto * 0.35 &&
+               r.top < centro + alto * 0.35 &&
+               r.width > 0 && r.height > 0;
+    }
+
+    function iniciarDeslizamiento(contenedor) {
+        if (!contenedor || !contenedor.isConnected) return;
+        const tabla = contenedor.querySelector('.tabla-actividades, .tabla-asistencia-horizontal');
+        if (!tabla || contenedor.scrollWidth <= contenedor.clientWidth + 8) return;
+        if (!estaEnZonaCentral(contenedor)) return;
+        if (document.hidden || Date.now() - ultimaInteraccion < ESPERA_INACTIVIDAD) return;
+        if (contenedor.dataset.deslizamientoAutomatico === 'activo') return;
+
+        const maximo = Math.max(0, contenedor.scrollWidth - contenedor.clientWidth);
+        if (maximo < 8) return;
+        contenedor.dataset.deslizamientoAutomatico = 'activo';
+        let direccion = 1;
+        let ultimo = performance.now();
+
+        function pasoAhora() {
+            if (!contenedor.isConnected || document.hidden ||
+                Date.now() - ultimaInteraccion < 1000) {
+                contenedor.dataset.deslizamientoAutomatico = '';
+                animacion = null;
+                return;
+            }
+            if (!estaEnZonaCentral(contenedor)) {
+                animacion = setTimeout(pasoAhora, 500);
+                return;
+            }
+            const ahora = performance.now();
+            const delta = Math.min(70, ahora - ultimo);
+            ultimo = ahora;
+            contenedor.scrollLeft += direccion * PASO * (delta / INTERVALO);
+
+            if (direccion === 1 && contenedor.scrollLeft >= maximo - 2) {
+                contenedor.scrollLeft = maximo;
+                direccion = 0;
+                animacion = setTimeout(() => {
+                    direccion = -1;
+                    ultimo = performance.now();
+                    pasoAhora();
+                }, DURACION_PAUSA_FINAL);
+                return;
+            }
+            if (direccion === -1 && contenedor.scrollLeft <= 1) {
+                contenedor.scrollLeft = 0;
+                contenedor.dataset.deslizamientoAutomatico = '';
+                animacion = null;
+                return;
+            }
+            animacion = setTimeout(pasoAhora, INTERVALO);
+        }
+        animacion = setTimeout(pasoAhora, INTERVALO);
+    }
+
+    function buscarTablas() {
+        document.querySelectorAll('.tabla-actividades-contenedor, .tabla-asistencia-contenedor').forEach(contenedor => {
+            if (procesados.has(contenedor)) return;
+            procesados.add(contenedor);
+            // Espera a que el navegador termine de medir las columnas.
+            setTimeout(() => iniciarDeslizamiento(contenedor), 400);
+        });
+        // La tabla horizontal de asistencia puede no conservar un contenedor propio.
+        document.querySelectorAll('.tabla-asistencia-horizontal').forEach(tabla => {
+            const contenedor = tabla.closest('.tabla-asistencia-contenedor') || tabla.parentElement;
+            if (!contenedor || procesados.has(contenedor)) return;
+            procesados.add(contenedor);
+            setTimeout(() => iniciarDeslizamiento(contenedor), 400);
+        });
+        programar();
+    }
+
+    function programar() {
+        if (temporizadorInicio) clearTimeout(temporizadorInicio);
+        // Revisar continuamente la posiciÃ³n de las tablas: cuando una llega
+        // a la zona central y ya pasÃ³ la pausa de inactividad, empieza enseguida.
+        function comprobar() {
+            temporizadorInicio = null;
+            if (document.hidden) {
+                temporizadorInicio = setTimeout(comprobar, 250);
+                return;
+            }
+            const faltaEspera = ESPERA_INACTIVIDAD - (Date.now() - ultimaInteraccion);
+            if (faltaEspera > 0) {
+                temporizadorInicio = setTimeout(comprobar, Math.min(150, faltaEspera));
+                return;
+            }
+            document.querySelectorAll('.tabla-actividades-contenedor, .tabla-asistencia-contenedor').forEach(iniciarDeslizamiento);
+            document.querySelectorAll('.tabla-asistencia-horizontal').forEach(tabla => {
+                iniciarDeslizamiento(tabla.closest('.tabla-asistencia-contenedor') || tabla.parentElement);
+            });
+            // Mantener la comprobaciÃ³n activa para detectar cuando otra tabla
+            // entra en el centro de la pantalla, sin esperar un nuevo evento.
+            temporizadorInicio = setTimeout(comprobar, 150);
+        }
+        temporizadorInicio = setTimeout(comprobar, 0);
+    }
+
+    // Sincroniza el movimiento horizontal con el desplazamiento vertical de la pÃ¡gina.
+    // Cuanto mÃ¡s rÃ¡pido se desplaza la pÃ¡gina, mÃ¡s rÃ¡pido avanza la tabla visible.
+    let ultimaPosicionPagina = window.scrollY || window.pageYOffset || 0;
+    let ultimoDesplazamientoTabla = 0;
+    window.addEventListener('scroll', () => {
+        const posicionActual = window.scrollY || window.pageYOffset || 0;
+        const diferenciaVertical = posicionActual - ultimaPosicionPagina;
+        ultimaPosicionPagina = posicionActual;
+        if (Math.abs(diferenciaVertical) < 0.5) return;
+
+        const tablas = Array.from(document.querySelectorAll(
+            '.tabla-actividades-contenedor, .tabla-asistencia-contenedor'
+        )).filter(contenedor => {
+            const tabla = contenedor.querySelector('.tabla-actividades, .tabla-asistencia-horizontal');
+            return tabla && contenedor.isConnected &&
+                contenedor.scrollWidth > contenedor.clientWidth + 8 &&
+                estaEnZonaCentral(contenedor);
+        });
+        if (!tablas.length) return;
+
+        // Si hay varias tablas en la zona central, sincronizar la mÃ¡s cercana al centro.
+        const centroPantalla = (window.innerHeight || document.documentElement.clientHeight) / 2;
+        tablas.sort((a, b) => {
+            const ra = a.getBoundingClientRect();
+            const rb = b.getBoundingClientRect();
+            return Math.abs((ra.top + ra.bottom) / 2 - centroPantalla) -
+                   Math.abs((rb.top + rb.bottom) / 2 - centroPantalla);
+        });
+        const contenedor = tablas[0];
+        const maximo = Math.max(0, contenedor.scrollWidth - contenedor.clientWidth);
+        // El factor conserva un movimiento natural y escala con la velocidad de la pÃ¡gina.
+        const movimientoHorizontal = diferenciaVertical * 0.65;
+        contenedor.scrollLeft = Math.max(0, Math.min(maximo,
+            contenedor.scrollLeft + movimientoHorizontal));
+        ultimoDesplazamientoTabla = performance.now();
+    }, { passive: true });
+
+    ['pointerdown', 'touchstart', 'wheel', 'keydown', 'mousedown'].forEach(evento =>
+        document.addEventListener(evento, detenerPorInteraccion, { passive: true })
+    );
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            ultimaInteraccion = Date.now();
+            programar();
+        }
+    });
+
+    function iniciarObservador() {
+        buscarTablas();
+        observador = new MutationObserver(() => buscarTablas());
+        observador.observe(document.body, { childList: true, subtree: true });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciarObservador, { once: true });
+    } else {
+        iniciarObservador();
+    }
+})();
+
 </script>
 
 
