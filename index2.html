@@ -1126,47 +1126,81 @@ const ASPECTOS_AUTOEVALUACION = [
 async function abrirAutoevaluacion(actividadId) {
     if (!alumnoActual || !alumnoActual.id) return;
     actividadAutoevaluacionActual = actividadId;
+
     const modal = document.getElementById("modalAutoevaluacion");
     const contenido = document.getElementById("contenidoAutoevaluacion");
     const acciones = document.getElementById("accionesAutoevaluacion");
     contenido.innerHTML = '<p class="cargando">Cargando autoevaluación...</p>';
     acciones.style.display = "flex";
     modal.classList.remove("oculto");
+
     try {
-        const url = `${SUPABASE_URL}/rest/v1/calificaciones?estudiante_id=eq.${encodeURIComponent(alumnoActual.id)}&actividad_id=eq.${encodeURIComponent(actividadId)}&select=id,nota`;
-        const r = await fetch(url, {headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
-        if (!r.ok) throw new Error("No se pudo consultar el registro.");
-        const existentes = await r.json();
-        // Una fila con nota 0 o vacía es un registro pendiente, no una autoevaluación realizada.
-        const registroGuardado = existentes.find(x =>
-            x.nota !== null && x.nota !== undefined && x.nota !== "" && Number(x.nota) > 0
-        );
-        autoevaluacionYaGuardada = !!registroGuardado;
-        autoevaluacionRegistroPendienteId = !registroGuardado && existentes.length
-            ? existentes[0].id
+        // La consulta se realiza en el servidor usando CI + fecha de nacimiento.
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/guardar-autoevaluacion`, {
+            method: "POST",
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                accion: "consultar",
+                ci: String(alumnoActual.ci || "").trim(),
+                fecha_nacimiento: String(alumnoActual.fecha_nacimiento || "").trim(),
+                actividad_id: actividadId
+            })
+        });
+
+        const textoRespuesta = await r.text();
+        let datos = {};
+        if (textoRespuesta) {
+            try { datos = JSON.parse(textoRespuesta); }
+            catch (_) { throw new Error("La función respondió con un formato inesperado."); }
+        }
+        if (!r.ok) {
+            throw new Error(datos.error || datos.message || `No se pudo consultar la autoevaluación (HTTP ${r.status}).`);
+        }
+
+        const respuestasGuardadas = Array.isArray(datos.respuestas) &&
+            datos.respuestas.length === ASPECTOS_AUTOEVALUACION.length
+            ? datos.respuestas.map(v => Number(v))
             : null;
+
+        autoevaluacionYaGuardada = datos.guardado === true;
+        autoevaluacionRegistroPendienteId = null;
+
         const opcionesAuto = [
             {nombre:"Siempre", valor:5, icono:"🌟"},
             {nombre:"Casi siempre", valor:4, icono:"😊"},
             {nombre:"A veces", valor:3, icono:"😐"},
             {nombre:"Necesito mejorar", valor:2, icono:"💪"}
         ];
+
         let html = '<div class="auto-lista">';
-        ASPECTOS_AUTOEVALUACION.forEach((texto,i) => {
-            html += `<section class="auto-aspecto"><div class="auto-pregunta">${i+1}. ${escapeHTML(texto)}</div><div class="auto-opciones">`;
-            opcionesAuto.forEach((op,j) => {
-                html += `<label class="auto-opcion"><input type="radio" name="auto_${i}" value="${op.valor}" aria-label="${op.nombre}" ${autoevaluacionYaGuardada ? "disabled" : ""}><span class="auto-icono" aria-hidden="true">${op.icono}</span><span>${op.nombre}</span></label>`;
+        ASPECTOS_AUTOEVALUACION.forEach((texto, i) => {
+            const valorMarcado = respuestasGuardadas ? respuestasGuardadas[i] : null;
+            html += `<section class="auto-aspecto"><div class="auto-pregunta">${i + 1}. ${escapeHTML(texto)}</div><div class="auto-opciones">`;
+            opcionesAuto.forEach(op => {
+                const marcado = valorMarcado === op.valor ? "checked" : "";
+                const deshabilitado = autoevaluacionYaGuardada ? "disabled" : "";
+                html += `<label class="auto-opcion"><input type="radio" name="auto_${i}" value="${op.valor}" aria-label="${op.nombre}" ${marcado} ${deshabilitado}><span class="auto-icono" aria-hidden="true">${op.icono}</span><span>${op.nombre}</span></label>`;
             });
             html += '</div></section>';
         });
         html += '</div>';
+
         if (autoevaluacionYaGuardada) {
-            const nota = Math.round(Number(registroGuardado.nota));
-            html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada. Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
+            const nota = Math.round(Number(datos.nota));
+            if (respuestasGuardadas) {
+                html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada. Tu nota es: ${nota} pts.<br>Puedes consultar las opciones que seleccionaste. No puedes modificarlas.</div>`;
+            } else {
+                html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada anteriormente. Tu nota es: ${nota} pts.<br>Las respuestas individuales de este registro anterior no están disponibles. No puedes modificarla.</div>`;
+            }
             acciones.style.display = "none";
         } else {
             html += '<p style="text-align:center;color:#666;font-size:12px">Debes seleccionar una opción en cada uno de los 10 aspectos.</p>';
         }
+
         contenido.innerHTML = html;
     } catch (e) {
         contenido.innerHTML = `<p class="error">${escapeHTML(e.message || "Error al cargar.")}</p>`;
@@ -1175,8 +1209,9 @@ async function abrirAutoevaluacion(actividadId) {
 
 async function guardarAutoevaluacion() {
     if (autoevaluacionYaGuardada || !actividadAutoevaluacionActual || !alumnoActual) return;
+
     const valores = [];
-    for (let i=0;i<ASPECTOS_AUTOEVALUACION.length;i++) {
+    for (let i = 0; i < ASPECTOS_AUTOEVALUACION.length; i++) {
         const elegido = document.querySelector(`input[name="auto_${i}"]:checked`);
         if (!elegido) {
             alert("Responde todos los aspectos antes de guardar.");
@@ -1189,8 +1224,6 @@ async function guardarAutoevaluacion() {
     if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
 
     try {
-        // La identidad se verifica en el servidor con CI + fecha de nacimiento.
-        // El navegador nunca escribe directamente en la tabla calificaciones.
         const r = await fetch(`${SUPABASE_URL}/functions/v1/guardar-autoevaluacion`, {
             method: "POST",
             headers: {
@@ -1199,6 +1232,7 @@ async function guardarAutoevaluacion() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
+                accion: "guardar",
                 ci: String(alumnoActual.ci || "").trim(),
                 fecha_nacimiento: String(alumnoActual.fecha_nacimiento || "").trim(),
                 actividad_id: actividadAutoevaluacionActual,
@@ -1224,18 +1258,19 @@ async function guardarAutoevaluacion() {
 
         autoevaluacionYaGuardada = true;
         autoevaluacionRegistroPendienteId = null;
-        document.getElementById("contenidoAutoevaluacion").innerHTML =
-            `<div class="auto-nota-guardada">✅ Autoevaluación guardada correctamente.<br>Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
-        document.getElementById("accionesAutoevaluacion").style.display = "none";
+
+        // Vuelve a consultar el registro para mostrar las 10 opciones ya guardadas y bloqueadas.
+        await abrirAutoevaluacion(actividadAutoevaluacionActual);
 
         const btn = Array.from(document.querySelectorAll(".boton-autoevaluacion"))
             .find(b => b.getAttribute("onclick")?.includes(String(actividadAutoevaluacionActual)));
         if (btn) btn.textContent = `✅ AUTOEVALUACIÓN COMPLETADA: ${nota} pts`;
-    } catch(e) {
+    } catch (e) {
         alert(e.message || "No se pudo guardar.");
         if (boton) { boton.disabled = false; boton.textContent = "Guardar"; }
     }
 }
+
 
 function cerrarAutoevaluacion() {
     document.getElementById("modalAutoevaluacion")?.classList.add("oculto");
