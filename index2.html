@@ -1105,17 +1105,18 @@ let alumnoActual = null;
 
 let actividadAutoevaluacionActual = null;
 let autoevaluacionYaGuardada = false;
+let autoevaluacionRegistroPendienteId = null;
 const ASPECTOS_AUTOEVALUACION = [
- "Participo activamente en las actividades de Matemática.",
- "Cumplo con las tareas y trabajos asignados.",
- "Utilizo correctamente las herramientas y materiales matemáticos.",
- "Respeto las normas de trabajo en el aula.",
- "Mantengo ordenado y limpio mi espacio de trabajo.",
- "Trabajo responsablemente con mis compañeros.",
- "Cuido los materiales y recursos de aprendizaje.",
- "Comprendo las explicaciones del profesor.",
- "Intento resolver los problemas antes de pedir ayuda.",
- "Soy responsable con mis materiales y trabajos."
+ "Presenté el empastado de Matemática completo y ordenado.",
+ "Presenté la teoría desarrollada en mi cuaderno o material de Matemática.",
+ "Presenté las prácticas y ejercicios resueltos que se solicitaron.",
+ "Realicé y presenté las actividades prácticas de Matemática.",
+ "Di las evaluaciones de Matemática en las fechas indicadas.",
+ "Estudié y me preparé para las evaluaciones de Matemática.",
+ "Resuelvo los ejercicios mostrando los procedimientos y operaciones.",
+ "Comprendo y aplico las fórmulas, propiedades y conceptos estudiados.",
+ "Reviso y corrijo los errores de mis ejercicios y evaluaciones.",
+ "Cumplí responsablemente con la presentación de trabajos, teorías y prácticas."
 ];
 
 async function abrirAutoevaluacion(actividadId) {
@@ -1132,7 +1133,14 @@ async function abrirAutoevaluacion(actividadId) {
         const r = await fetch(url, {headers:{"apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`}});
         if (!r.ok) throw new Error("No se pudo consultar el registro.");
         const existentes = await r.json();
-        autoevaluacionYaGuardada = existentes.length > 0;
+        // Una fila con nota 0 o vacía es un registro pendiente, no una autoevaluación realizada.
+        const registroGuardado = existentes.find(x =>
+            x.nota !== null && x.nota !== undefined && x.nota !== "" && Number(x.nota) > 0
+        );
+        autoevaluacionYaGuardada = !!registroGuardado;
+        autoevaluacionRegistroPendienteId = !registroGuardado && existentes.length
+            ? existentes[0].id
+            : null;
         const opcionesAuto = [
             {nombre:"Siempre", valor:5, icono:"🌟"},
             {nombre:"Casi siempre", valor:4, icono:"😊"},
@@ -1149,7 +1157,7 @@ async function abrirAutoevaluacion(actividadId) {
         });
         html += '</div>';
         if (autoevaluacionYaGuardada) {
-            const nota = Math.round(Number(existentes[0].nota));
+            const nota = Math.round(Number(registroGuardado.nota));
             html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada. Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
             acciones.style.display = "none";
         } else {
@@ -1176,19 +1184,25 @@ async function guardarAutoevaluacion() {
     const boton = document.querySelector("#accionesAutoevaluacion .auto-guardar");
     if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
     try {
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/calificaciones`, {
-            method:"POST",
+        const esActualizacion = !!autoevaluacionRegistroPendienteId;
+        const urlGuardar = esActualizacion
+            ? `${SUPABASE_URL}/rest/v1/calificaciones?id=eq.${encodeURIComponent(autoevaluacionRegistroPendienteId)}`
+            : `${SUPABASE_URL}/rest/v1/calificaciones`;
+        const r = await fetch(urlGuardar, {
+            method: esActualizacion ? "PATCH" : "POST",
             headers:{
                 "apikey":SUPABASE_KEY,
                 "Authorization":`Bearer ${SUPABASE_KEY}`,
                 "Content-Type":"application/json",
                 "Prefer":"return=representation"
             },
-            body:JSON.stringify({
-                estudiante_id:alumnoActual.id,
-                actividad_id:actividadAutoevaluacionActual,
-                nota:nota
-            })
+            body:JSON.stringify(esActualizacion
+                ? {nota:nota}
+                : {
+                    estudiante_id:alumnoActual.id,
+                    actividad_id:actividadAutoevaluacionActual,
+                    nota:nota
+                })
         });
         if (!r.ok) {
             const detalle = await r.text();
@@ -1196,6 +1210,7 @@ async function guardarAutoevaluacion() {
             throw new Error("No se pudo guardar la autoevaluación. " + detalle);
         }
         autoevaluacionYaGuardada = true;
+        autoevaluacionRegistroPendienteId = null;
         document.getElementById("contenidoAutoevaluacion").innerHTML =
             `<div class="auto-nota-guardada">✅ Autoevaluación guardada correctamente.<br>Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
         document.getElementById("accionesAutoevaluacion").style.display = "none";
@@ -2901,7 +2916,7 @@ async function mostrarDetalles() {
 
                                         ${
                                             categoria.codigo === "AUTOEVALUACION"
-                                            ? `<button type="button" class="boton-autoevaluacion" onclick="abrirAutoevaluacion('${String(actividad.id).replace(/'/g, "\\'")}')">${notaVacia ? "📝 LLENAR MI AUTOEVALUACIÓN" : `✅ AUTOEVALUACIÓN COMPLETADA: ${valor} pts`}</button>`
+                                            ? `<button type="button" class="boton-autoevaluacion" onclick="abrirAutoevaluacion('${String(actividad.id).replace(/'/g, "\\'")}')">${(notaVacia || Number(nota) <= 0) ? "📝 LLENAR MI AUTOEVALUACIÓN" : `✅ AUTOEVALUACIÓN COMPLETADA: ${valor} pts`}</button>`
                                             : valor
                                         }
 
