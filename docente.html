@@ -8107,7 +8107,7 @@ const OPCIONES_DETALLE_AUTOEVALUACION = {
     2: "Necesito mejorar"
 };
 
-function alternarDetalleAutoevaluacion(actividadId, estudianteId, boton) {
+async function alternarDetalleAutoevaluacion(actividadId, estudianteId, boton) {
     const fila = boton?.closest("tr");
     const contenedor = fila?.querySelector(".detalle-autoevaluacion");
     if (!contenedor) return;
@@ -8119,25 +8119,83 @@ function alternarDetalleAutoevaluacion(actividadId, estudianteId, boton) {
         return;
     }
 
-    const detalle = detallesAutoevaluaciones[`${estudianteId}|${actividadId}`];
-    if (detalle?.error) {
-        contenedor.innerHTML = `<small style="display:block;margin-top:6px;color:#b45309;white-space:normal">${escapeHTML(detalle.error)}</small>`;
-    } else if (detalle?.sinRespuestas) {
-        contenedor.innerHTML = `<small style="display:block;margin-top:6px;color:#777;white-space:normal">${escapeHTML(detalle.mensaje || "La calificación no tiene respuestas individuales guardadas.")}</small>`;
-    } else if (!detalle || !Array.isArray(detalle.respuestas) || detalle.respuestas.length !== ASPECTOS_DETALLE_AUTOEVALUACION.length) {
-        contenedor.innerHTML = '<small style="display:block;margin-top:6px;color:#777;white-space:normal">No se encontraron respuestas individuales para esta calificación.</small>';
-    } else {
-        contenedor.innerHTML = `<div style="margin-top:7px;padding:8px;border:1px solid #cfd8dc;border-radius:7px;background:#f8fafb;white-space:normal;text-align:left;min-width:220px">` +
-            `<strong style="display:block;margin-bottom:6px;color:#006064">Detalle de autoevaluación · ${Math.round(Number(detalle.nota ?? 0))} pts</strong>` +
-            detalle.respuestas.map((valor, i) => {
-                const n = Number(valor);
-                const opcion = OPCIONES_DETALLE_AUTOEVALUACION[n] || "Respuesta no reconocida";
-                return `<div style="font-size:11px;line-height:1.4;padding:3px 0;border-top:1px solid #e5e9eb"><b>${i + 1}.</b> ${escapeHTML(ASPECTOS_DETALLE_AUTOEVALUACION[i])}<br><span style="color:#006064;font-weight:600">${escapeHTML(opcion)} (${Number.isFinite(n) ? n : "—"} pts)</span></div>`;
-            }).join("") + `</div>`;
-    }
     contenedor.style.display = "block";
-    boton.textContent = "📋 Ocultar detalles";
+    boton.textContent = "⏳ Cargando...";
+    boton.disabled = true;
+    contenedor.innerHTML = '<small style="display:block;margin-top:6px;color:#555">Consultando respuestas de la autoevaluación...</small>';
+
+    const claveDetalle = `${estudianteId}|${actividadId}`;
+    try {
+        // Sólo consulta una vez: los detalles se solicitan al abrir y luego quedan en caché.
+        if (!Object.prototype.hasOwnProperty.call(detallesAutoevaluaciones, claveDetalle)) {
+            const estudiante = estudiantes.find(e => String(e.id) === String(estudianteId));
+            const actividad = actividades.find(a => String(a.id) === String(actividadId));
+            const ci = String(estudiante?.ci ?? "").trim();
+            const fechaNacimiento = String(estudiante?.fecha_nacimiento ?? "").slice(0, 10);
+
+            if (!estudiante || !actividad) throw new Error("No se encontró al estudiante o la actividad.");
+            if (!ci || !/^\d{4}-\d{2}-\d{2}$/.test(fechaNacimiento)) {
+                throw new Error("Faltan CI o fecha de nacimiento para verificar el detalle.");
+            }
+
+            const { data: resultado, error: errorFuncion } = await supabaseClient.functions.invoke(
+                "guardar-autoevaluacion",
+                {
+                    body: {
+                        accion: "consultar",
+                        ci,
+                        fecha_nacimiento: fechaNacimiento,
+                        actividad_id: String(actividad.id)
+                    }
+                }
+            );
+            if (errorFuncion) throw errorFuncion;
+
+            if (resultado && Array.isArray(resultado.respuestas)) {
+                detallesAutoevaluaciones[claveDetalle] = {
+                    actividad_id: actividad.id,
+                    estudiante_id: estudiante.id,
+                    respuestas: resultado.respuestas,
+                    nota: resultado.nota
+                };
+            } else {
+                const cal = calificaciones?.[estudianteId]?.[actividadId];
+                detallesAutoevaluaciones[claveDetalle] = {
+                    nota: resultado?.nota ?? cal?.nota,
+                    sinRespuestas: true,
+                    mensaje: resultado?.respuestasDisponibles === false
+                        ? "La calificación existe, pero no se guardaron las respuestas individuales."
+                        : "No se encontraron respuestas individuales guardadas."
+                };
+            }
+        }
+
+        const detalle = detallesAutoevaluaciones[claveDetalle];
+        if (detalle?.error) {
+            contenedor.innerHTML = `<small style="display:block;margin-top:6px;color:#b45309;white-space:normal">${escapeHTML(detalle.error)}</small>`;
+        } else if (detalle?.sinRespuestas) {
+            contenedor.innerHTML = `<small style="display:block;margin-top:6px;color:#777;white-space:normal">${escapeHTML(detalle.mensaje || "La calificación no tiene respuestas individuales guardadas.")}</small>`;
+        } else if (!detalle || !Array.isArray(detalle.respuestas) || detalle.respuestas.length !== ASPECTOS_DETALLE_AUTOEVALUACION.length) {
+            contenedor.innerHTML = '<small style="display:block;margin-top:6px;color:#777;white-space:normal">No se encontraron respuestas individuales para esta calificación.</small>';
+        } else {
+            contenedor.innerHTML = `<div style="margin-top:7px;padding:8px;border:1px solid #cfd8dc;border-radius:7px;background:#f8fafb;white-space:normal;text-align:left;min-width:220px">` +
+                `<strong style="display:block;margin-bottom:6px;color:#006064">Detalle de autoevaluación · ${Math.round(Number(detalle.nota ?? 0))} pts</strong>` +
+                detalle.respuestas.map((valor, i) => {
+                    const n = Number(valor);
+                    const opcion = OPCIONES_DETALLE_AUTOEVALUACION[n] || "Respuesta no reconocida";
+                    return `<div style="font-size:11px;line-height:1.4;padding:3px 0;border-top:1px solid #e5e9eb"><b>${i + 1}.</b> ${escapeHTML(ASPECTOS_DETALLE_AUTOEVALUACION[i])}<br><span style="color:#006064;font-weight:600">${escapeHTML(opcion)} (${Number.isFinite(n) ? n : "—"} pts)</span></div>`;
+                }).join("") + `</div>`;
+        }
+        boton.textContent = "📋 Ocultar detalles";
+    } catch (errorDetalleAuto) {
+        console.warn("No se pudo consultar el detalle de autoevaluación:", errorDetalleAuto);
+        contenedor.innerHTML = `<small style="display:block;margin-top:6px;color:#b45309;white-space:normal">${escapeHTML(errorDetalleAuto?.message || "No se pudo consultar el detalle. Intenta nuevamente.")}</small>`;
+        boton.textContent = "📋 Reintentar";
+    } finally {
+        boton.disabled = false;
+    }
 }
+
 let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
@@ -13125,83 +13183,8 @@ async function cargarCalificaciones() {
 
     });
 
-    // Cargar las respuestas individuales mediante la Edge Function segura.
-    // La consulta directa a autoevaluaciones_respuestas queda evitada porque
-    // la tabla tiene RLS activado y no dispone de una política SELECT para docentes.
-    detallesAutoevaluaciones = {};
-    const actividadesAuto = actividades.filter(
-        a => String(a.categoria || "").trim().toUpperCase() === "AUTOEVALUACION"
-    );
-    if (actividadesAuto.length) {
-        const consultasDetalle = [];
-        for (const actividadAuto of actividadesAuto) {
-            for (const estudianteAuto of estudiantesCurso) {
-                const cal = calificaciones?.[estudianteAuto.id]?.[actividadAuto.id];
-                // Consultar únicamente a estudiantes que ya tienen una nota registrada.
-                if (!cal || cal.nota === null || cal.nota === undefined || cal.nota === "") continue;
-                consultasDetalle.push({ actividad: actividadAuto, estudiante: estudianteAuto });
-            }
-        }
-
-        let indiceConsultaDetalle = 0;
-        const trabajadoresDetalle = Array.from(
-            { length: Math.min(4, consultasDetalle.length) },
-            async () => {
-                while (indiceConsultaDetalle < consultasDetalle.length) {
-                    const actual = consultasDetalle[indiceConsultaDetalle++];
-                    const e = actual.estudiante;
-                    const actividadAuto = actual.actividad;
-                    const claveDetalle = `${e.id}|${actividadAuto.id}`;
-                    const ci = String(e.ci ?? "").trim();
-                    const fechaNacimiento = String(e.fecha_nacimiento ?? "").slice(0, 10);
-
-                    if (!ci || !/^\d{4}-\d{2}-\d{2}$/.test(fechaNacimiento)) {
-                        detallesAutoevaluaciones[claveDetalle] = {
-                            error: "Faltan CI o fecha de nacimiento para verificar el detalle."
-                        };
-                        continue;
-                    }
-
-                    try {
-                        const { data: resultado, error: errorFuncion } = await supabaseClient.functions.invoke(
-                            "guardar-autoevaluacion",
-                            {
-                                body: {
-                                    accion: "consultar",
-                                    ci,
-                                    fecha_nacimiento: fechaNacimiento,
-                                    actividad_id: String(actividadAuto.id)
-                                }
-                            }
-                        );
-                        if (errorFuncion) throw errorFuncion;
-                        if (resultado && Array.isArray(resultado.respuestas)) {
-                            detallesAutoevaluaciones[claveDetalle] = {
-                                actividad_id: actividadAuto.id,
-                                estudiante_id: e.id,
-                                respuestas: resultado.respuestas,
-                                nota: resultado.nota
-                            };
-                        } else {
-                            detallesAutoevaluaciones[claveDetalle] = {
-                                nota: resultado?.nota ?? cal.nota,
-                                sinRespuestas: true,
-                                mensaje: resultado?.respuestasDisponibles === false
-                                    ? "La calificación existe, pero no se guardaron las respuestas individuales."
-                                    : "No se encontraron respuestas individuales guardadas."
-                            };
-                        }
-                    } catch (errorDetalleAuto) {
-                        console.warn("No se pudo consultar el detalle de autoevaluación:", errorDetalleAuto);
-                        detallesAutoevaluaciones[claveDetalle] = {
-                            error: "No se pudo consultar el detalle. Verifica que la función guardar-autoevaluacion esté desplegada y disponible."
-                        };
-                    }
-                }
-            }
-        );
-        await Promise.all(trabajadoresDetalle);
-    }
+    // Los detalles de autoevaluación se consultan bajo demanda al pulsar "Ver detalles".
+    // Así la carga inicial de calificaciones no espera llamadas individuales a la Edge Function.
 
     /* Recalcular 3T y Final únicamente en memoria/HTML. */
     await recalcularNotasLocalesCurso();
