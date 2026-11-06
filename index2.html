@@ -962,20 +962,26 @@ button:hover {
 #modalAutoevaluacion .auto-contenido { width:100%; max-width:680px; max-height:92vh; overflow:auto; background:#fff; border-radius:15px; padding:18px; }
 .auto-titulo { color:#00897b; text-align:center; font-size:20px; font-weight:bold; margin-bottom:8px; }
 .auto-instruccion { color:#555; font-size:13px; line-height:1.45; text-align:center; margin-bottom:12px; }
-.auto-tabla { width:100%; border-collapse:collapse; font-size:13px; }
-.auto-tabla th,.auto-tabla td { border:1px solid #ddd; padding:8px 5px; text-align:center; }
-.auto-tabla th { background:#e0f2f1; color:#174f4b; }
-.auto-tabla td:first-child { text-align:left; }
-.auto-tabla input { width:18px; height:18px; }
-.auto-acciones { display:flex; gap:9px; }
+.auto-aspecto { padding:12px 0; border-bottom:1px solid #e5e7eb; }
+.auto-pregunta { font-size:14px; font-weight:600; color:#263238; margin-bottom:9px; }
+.auto-opciones { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.auto-opcion { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-width:0; padding:8px 3px; border:1px solid #d8dee3; border-radius:10px; background:#f7f8f9; color:#65727b; cursor:pointer; font-size:11px; text-align:center; }
+.auto-opcion input { position:absolute; opacity:0; pointer-events:none; }
+.auto-opcion .auto-icono { font-size:25px; line-height:1.2; filter:grayscale(1); opacity:.35; transition:filter .15s,opacity .15s,transform .15s; }
+.auto-opcion:has(input:checked) { border:2px solid #00897b; background:#e0f2f1; color:#00695c; font-weight:700; }
+.auto-opcion:has(input:checked) .auto-icono { filter:none; opacity:1; transform:scale(1.15); }
+.auto-opcion:focus-within { outline:2px solid #26a69a; outline-offset:2px; }
+.auto-acciones { display:flex; gap:9px; margin-top:14px; }
 .auto-acciones button { flex:1; }
 .auto-guardar { background:#00897b; }
 .auto-cancelar { background:#607d8b; }
 .auto-nota-guardada { text-align:center; padding:12px; margin-top:12px; border-radius:10px; background:#e8f5e9; color:#1b5e20; font-weight:bold; }
 @media(max-width:500px) {
  #modalAutoevaluacion .auto-contenido { padding:12px; }
- .auto-tabla { font-size:11px; }
- .auto-tabla th,.auto-tabla td { padding:7px 3px; }
+ .auto-pregunta { font-size:13px; }
+ .auto-opciones { gap:4px; }
+ .auto-opcion { padding:7px 1px; font-size:10px; }
+ .auto-opcion .auto-icono { font-size:22px; }
 }
 
 </style>
@@ -1127,21 +1133,27 @@ async function abrirAutoevaluacion(actividadId) {
         if (!r.ok) throw new Error("No se pudo consultar el registro.");
         const existentes = await r.json();
         autoevaluacionYaGuardada = existentes.length > 0;
-        let html = '<table class="auto-tabla"><thead><tr><th>Aspecto a evaluar</th><th>Siempre<br>0,5 pts</th><th>A veces<br>0,25 pts</th><th>Necesito mejorar<br>0,12 pts</th></tr></thead><tbody>';
+        const opcionesAuto = [
+            {nombre:"Siempre", valor:5, icono:"ð"},
+            {nombre:"Casi siempre", valor:4, icono:"ð"},
+            {nombre:"A veces", valor:3, icono:"ð"},
+            {nombre:"Necesito mejorar", valor:2, icono:"ðª"}
+        ];
+        let html = '<div class="auto-lista">';
         ASPECTOS_AUTOEVALUACION.forEach((texto,i) => {
-            html += `<tr><td>${escapeHTML(texto)}</td>`;
-            [0.5,0.25,0.12].forEach((valor,j) => {
-                html += `<td><input type="radio" name="auto_${i}" value="${valor}" aria-label="${["Siempre","A veces","Necesito mejorar"][j]}" ${autoevaluacionYaGuardada ? "disabled" : ""}></td>`;
+            html += `<section class="auto-aspecto"><div class="auto-pregunta">${i+1}. ${escapeHTML(texto)}</div><div class="auto-opciones">`;
+            opcionesAuto.forEach((op,j) => {
+                html += `<label class="auto-opcion"><input type="radio" name="auto_${i}" value="${op.valor}" aria-label="${op.nombre}" ${autoevaluacionYaGuardada ? "disabled" : ""}><span class="auto-icono" aria-hidden="true">${op.icono}</span><span>${op.nombre}</span></label>`;
             });
-            html += '</tr>';
+            html += '</div></section>';
         });
-        html += '</tbody></table>';
+        html += '</div>';
         if (autoevaluacionYaGuardada) {
             const nota = Math.round(Number(existentes[0].nota));
             html += `<div class="auto-nota-guardada">â AutoevaluaciÃ³n guardada. Tu nota es: ${nota} pts.<br>Ya no puedes modificarla.</div>`;
             acciones.style.display = "none";
         } else {
-            html += '<p style="text-align:center;color:#666;font-size:12px">Debes responder los 10 aspectos antes de guardar.</p>';
+            html += '<p style="text-align:center;color:#666;font-size:12px">Debes seleccionar una opciÃ³n en cada uno de los 10 aspectos.</p>';
         }
         contenido.innerHTML = html;
     } catch (e) {
@@ -1160,7 +1172,7 @@ async function guardarAutoevaluacion() {
         }
         valores.push(Number(elegido.value));
     }
-    const nota = Math.round(valores.reduce((a,b)=>a+b,0));
+    const nota = Math.round(valores.reduce((a,b)=>a+b,0) / valores.length);
     const boton = document.querySelector("#accionesAutoevaluacion .auto-guardar");
     if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
     try {
