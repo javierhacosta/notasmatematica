@@ -953,6 +953,39 @@ button:hover {
   font-size: 11px;
   line-height: 1.25;
 }
+
+/* Autoevaluación del estudiante */
+.boton-autoevaluacion { width:auto; margin:4px 0; padding:12px 16px; font-size:15px; font-weight:800; letter-spacing:.3px; color:#fff; background:#e65100; border:2px solid #bf360c; border-radius:10px; box-shadow:0 3px 7px rgba(0,0,0,.25); }
+.boton-autoevaluacion:hover { background:#bf360c; transform:translateY(-1px); }
+#modalAutoevaluacion { position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center; padding:12px; }
+#modalAutoevaluacion.oculto { display:none; }
+#modalAutoevaluacion .auto-contenido { width:100%; max-width:680px; max-height:92vh; overflow:auto; background:#fff; border-radius:15px; padding:18px; }
+.auto-cabecera { position:relative; padding:0 0 8px; }
+.auto-titulo { color:#00897b; text-align:center; font-size:20px; font-weight:bold; margin-bottom:8px; }
+.auto-cerrar-superior { display:block; margin:0 0 8px auto; width:auto; padding:7px 12px; background:#607d8b; color:#fff; border:0; border-radius:8px; font-size:13px; }
+.auto-instruccion { color:#555; font-size:13px; line-height:1.45; text-align:center; margin-bottom:12px; }
+.auto-aspecto { padding:12px 0; border-bottom:1px solid #e5e7eb; }
+.auto-pregunta { font-size:14px; font-weight:600; color:#263238; margin-bottom:9px; }
+.auto-opciones { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.auto-opcion { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-width:0; padding:8px 3px; border:1px solid #d8dee3; border-radius:10px; background:#f7f8f9; color:#65727b; cursor:pointer; font-size:11px; text-align:center; }
+.auto-opcion input { position:absolute; opacity:0; pointer-events:none; }
+.auto-opcion .auto-icono { font-size:25px; line-height:1.2; filter:grayscale(1); opacity:.35; transition:filter .15s,opacity .15s,transform .15s; }
+.auto-opcion:has(input:checked) { border:2px solid #00897b; background:#e0f2f1; color:#00695c; font-weight:700; }
+.auto-opcion:has(input:checked) .auto-icono { filter:none; opacity:1; transform:scale(1.15); }
+.auto-opcion:focus-within { outline:2px solid #26a69a; outline-offset:2px; }
+.auto-acciones { display:flex; gap:9px; margin-top:14px; }
+.auto-acciones button { flex:1; }
+.auto-guardar { background:#00897b; }
+.auto-cancelar { background:#607d8b; }
+.auto-nota-guardada { text-align:center; padding:12px; margin-top:12px; border-radius:10px; background:#e8f5e9; color:#1b5e20; font-weight:bold; }
+@media(max-width:500px) {
+ #modalAutoevaluacion .auto-contenido { padding:12px; }
+ .auto-pregunta { font-size:13px; }
+ .auto-opciones { gap:4px; }
+ .auto-opcion { padding:7px 1px; font-size:10px; }
+ .auto-opcion .auto-icono { font-size:22px; }
+}
+
 </style>
 
 </head>
@@ -1040,6 +1073,21 @@ button:hover {
 </div>
 
 
+
+<div id="modalAutoevaluacion" class="oculto" role="dialog" aria-modal="true" aria-labelledby="tituloAutoevaluacion">
+  <div class="auto-contenido">
+    <div class="auto-cabecera">
+      <div class="auto-titulo" id="tituloAutoevaluacion">📝 Autoevaluación de Matemática</div>
+      <button type="button" class="auto-cerrar-superior" onclick="cerrarAutoevaluacion()" aria-label="Cerrar autoevaluación">✖ Cerrar</button>
+    </div>
+    <div class="auto-instruccion">Selecciona una opción en cada aspecto. La nota se calculará automáticamente.</div>
+    <div id="contenidoAutoevaluacion"></div>
+    <div class="auto-acciones" id="accionesAutoevaluacion">
+      <button type="button" class="auto-guardar" onclick="guardarAutoevaluacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 
@@ -1058,6 +1106,184 @@ const SUPABASE_KEY =
 
 
 let alumnoActual = null;
+
+let actividadAutoevaluacionActual = null;
+let autoevaluacionYaGuardada = false;
+let autoevaluacionRegistroPendienteId = null;
+const ASPECTOS_AUTOEVALUACION = [
+ "Presenté el empastado de Matemática completo y ordenado.",
+ "Presenté la teoría desarrollada en mi cuaderno o material de Matemática.",
+ "Presenté las prácticas y ejercicios resueltos que se solicitaron.",
+ "Realicé y presenté las actividades prácticas de Matemática.",
+ "Di las evaluaciones de Matemática en las fechas indicadas.",
+ "Estudié y me preparé para las evaluaciones de Matemática.",
+ "Resuelvo los ejercicios mostrando los procedimientos y operaciones.",
+ "Comprendo y aplico las fórmulas, propiedades y conceptos estudiados.",
+ "Reviso y corrijo los errores de mis ejercicios y evaluaciones.",
+ "Cumplí responsablemente con la presentación de trabajos, teorías y prácticas."
+];
+
+async function abrirAutoevaluacion(actividadId) {
+    if (!alumnoActual || !alumnoActual.id) return;
+    actividadAutoevaluacionActual = actividadId;
+
+    const modal = document.getElementById("modalAutoevaluacion");
+    const contenido = document.getElementById("contenidoAutoevaluacion");
+    const acciones = document.getElementById("accionesAutoevaluacion");
+    contenido.innerHTML = '<p class="cargando">Cargando autoevaluación...</p>';
+    acciones.style.display = "flex";
+    modal.classList.remove("oculto");
+
+    try {
+        // La consulta se realiza en el servidor usando CI + fecha de nacimiento.
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/guardar-autoevaluacion`, {
+            method: "POST",
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                accion: "consultar",
+                ci: String(alumnoActual.ci || "").trim(),
+                fecha_nacimiento: String(alumnoActual.fecha_nacimiento || "").trim(),
+                actividad_id: actividadId
+            })
+        });
+
+        const textoRespuesta = await r.text();
+        let datos = {};
+        if (textoRespuesta) {
+            try { datos = JSON.parse(textoRespuesta); }
+            catch (_) { throw new Error("La función respondió con un formato inesperado."); }
+        }
+        if (!r.ok) {
+            throw new Error(datos.error || datos.message || `No se pudo consultar la autoevaluación (HTTP ${r.status}).`);
+        }
+
+        const respuestasGuardadas = Array.isArray(datos.respuestas) &&
+            datos.respuestas.length === ASPECTOS_AUTOEVALUACION.length
+            ? datos.respuestas.map(v => Number(v))
+            : null;
+
+        // Si la nota oficial está vacía o en cero, el estudiante puede corregir
+        // sus respuestas incluso cuando ya existía un detalle guardado.
+        const puedeEditarAutoevaluacion = datos.editable === true || datos.guardado !== true;
+        autoevaluacionYaGuardada = !puedeEditarAutoevaluacion;
+        autoevaluacionRegistroPendienteId = null;
+
+        const opcionesAuto = [
+            {nombre:"Siempre", valor:5, icono:"🌟"},
+            {nombre:"Casi siempre", valor:4, icono:"😊"},
+            {nombre:"A veces", valor:3, icono:"😐"},
+            {nombre:"Necesito mejorar", valor:2, icono:"💪"}
+        ];
+
+        let html = '<div class="auto-lista">';
+        ASPECTOS_AUTOEVALUACION.forEach((texto, i) => {
+            const valorMarcado = respuestasGuardadas ? respuestasGuardadas[i] : null;
+            html += `<section class="auto-aspecto"><div class="auto-pregunta">${i + 1}. ${escapeHTML(texto)}</div><div class="auto-opciones">`;
+            opcionesAuto.forEach(op => {
+                const marcado = valorMarcado === op.valor ? "checked" : "";
+                const deshabilitado = autoevaluacionYaGuardada ? "disabled" : "";
+                html += `<label class="auto-opcion"><input type="radio" name="auto_${i}" value="${op.valor}" aria-label="${op.nombre}" ${marcado} ${deshabilitado}><span class="auto-icono" aria-hidden="true">${op.icono}</span><span>${op.nombre}</span></label>`;
+            });
+            html += '</div></section>';
+        });
+        html += '</div>';
+
+        if (autoevaluacionYaGuardada) {
+            const nota = Math.round(Number(datos.nota));
+            if (respuestasGuardadas) {
+                html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada. Tu nota es: ${nota} pts.<br>Puedes consultar las opciones que seleccionaste.</div>`;
+            } else {
+                html += `<div class="auto-nota-guardada">✅ Autoevaluación guardada anteriormente. Tu nota es: ${nota} pts.<br>Las respuestas individuales de este registro anterior no están disponibles.</div>`;
+            }
+            acciones.style.display = "none";
+        } else {
+            html += '<p style="text-align:center;color:#666;font-size:12px">Tu calificación está vacía o es 0. Puedes editar la autoevaluación. Selecciona una opción en cada uno de los 10 aspectos y guarda los cambios.</p>';
+            acciones.style.display = "flex";
+        }
+
+        contenido.innerHTML = html;
+    } catch (e) {
+        contenido.innerHTML = `<p class="error">${escapeHTML(e.message || "Error al cargar.")}</p>`;
+    }
+}
+
+async function guardarAutoevaluacion() {
+    if (autoevaluacionYaGuardada || !actividadAutoevaluacionActual || !alumnoActual) return;
+
+    const valores = [];
+    for (let i = 0; i < ASPECTOS_AUTOEVALUACION.length; i++) {
+        const elegido = document.querySelector(`input[name="auto_${i}"]:checked`);
+        if (!elegido) {
+            alert("Responde todos los aspectos antes de guardar.");
+            return;
+        }
+        valores.push(Number(elegido.value));
+    }
+
+    const boton = document.querySelector("#accionesAutoevaluacion .auto-guardar");
+    if (boton) { boton.disabled = true; boton.textContent = "Guardando..."; }
+
+    try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/guardar-autoevaluacion`, {
+            method: "POST",
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                accion: "guardar",
+                ci: String(alumnoActual.ci || "").trim(),
+                fecha_nacimiento: String(alumnoActual.fecha_nacimiento || "").trim(),
+                actividad_id: actividadAutoevaluacionActual,
+                respuestas: valores
+            })
+        });
+
+        const respuesta = await r.text();
+        let datos = {};
+        if (respuesta) {
+            try { datos = JSON.parse(respuesta); }
+            catch (_) { throw new Error("La función respondió con un formato inesperado: " + respuesta); }
+        }
+
+        if (!r.ok) {
+            throw new Error(datos.error || datos.message || `No se pudo guardar la autoevaluación (HTTP ${r.status}).`);
+        }
+
+        const nota = Number(datos.nota);
+        if (!Number.isFinite(nota) || nota <= 0 || datos.guardado !== true) {
+            throw new Error("El servidor no confirmó el guardado de la autoevaluación.");
+        }
+
+        autoevaluacionYaGuardada = true;
+        autoevaluacionRegistroPendienteId = null;
+
+        // Vuelve a consultar el registro para mostrar las 10 opciones ya guardadas y bloqueadas.
+        await abrirAutoevaluacion(actividadAutoevaluacionActual);
+
+        // Actualiza automáticamente la nota del trimestre y todos sus detalles
+        // sin que el estudiante tenga que salir ni volver a consultar la página.
+        await mostrarResultado(alumnoActual);
+
+        const btn = Array.from(document.querySelectorAll(".boton-autoevaluacion"))
+            .find(b => b.getAttribute("onclick")?.includes(String(actividadAutoevaluacionActual)));
+        if (btn) btn.textContent = `✅ AUTOEVALUACIÓN COMPLETADA: ${nota} pts`;
+    } catch (e) {
+        alert(e.message || "No se pudo guardar.");
+        if (boton) { boton.disabled = false; boton.textContent = "Guardar"; }
+    }
+}
+
+
+function cerrarAutoevaluacion() {
+    document.getElementById("modalAutoevaluacion")?.classList.add("oculto");
+}
+
 
 
 /* =================================================
@@ -2744,7 +2970,11 @@ async function mostrarDetalles() {
 
                                     <div>
 
-                                        ${valor}
+                                        ${
+                                            categoria.codigo === "AUTOEVALUACION"
+                                            ? `<button type="button" class="boton-autoevaluacion" onclick="abrirAutoevaluacion('${String(actividad.id).replace(/'/g, "\\'")}')">${(notaVacia || Number(nota) <= 0) ? "📝 LLENAR MI AUTOEVALUACIÓN" : `✅ AUTOEVALUACIÓN COMPLETADA: ${valor} pts`}</button>`
+                                            : valor
+                                        }
 
                                     </div>
 
