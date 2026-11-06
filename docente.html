@@ -8086,6 +8086,54 @@ let actividades = [];
 let anotacionesActividades = {};
 let actividadAnotacionActual = null;
 let calificaciones = {};
+// Respuestas individuales de autoevaluación, separadas de la tabla de notas.
+let detallesAutoevaluaciones = {};
+const ASPECTOS_DETALLE_AUTOEVALUACION = [
+    "Presenté el empastado de Matemática completo y ordenado.",
+    "Presenté la teoría desarrollada en mi cuaderno o material de Matemática.",
+    "Presenté las prácticas y ejercicios resueltos que se solicitaron.",
+    "Realicé y presenté las actividades prácticas de Matemática.",
+    "Di las evaluaciones de Matemática en las fechas indicadas.",
+    "Estudié y me preparé para las evaluaciones de Matemática.",
+    "Resuelvo los ejercicios mostrando los procedimientos y operaciones.",
+    "Comprendo y aplico las fórmulas, propiedades y conceptos estudiados.",
+    "Reviso y corrijo los errores de mis ejercicios y evaluaciones.",
+    "Cumplí responsablemente con la presentación de trabajos, teorías y prácticas."
+];
+const OPCIONES_DETALLE_AUTOEVALUACION = {
+    5: "Siempre",
+    4: "Casi siempre",
+    3: "A veces",
+    2: "Necesito mejorar"
+};
+
+function alternarDetalleAutoevaluacion(actividadId, estudianteId, boton) {
+    const fila = boton?.closest("tr");
+    const contenedor = fila?.querySelector(".detalle-autoevaluacion");
+    if (!contenedor) return;
+
+    const visible = contenedor.style.display !== "none";
+    if (visible) {
+        contenedor.style.display = "none";
+        boton.textContent = "📋 Ver detalles";
+        return;
+    }
+
+    const detalle = detallesAutoevaluaciones[`${estudianteId}|${actividadId}`];
+    if (!detalle || !Array.isArray(detalle.respuestas) || detalle.respuestas.length !== ASPECTOS_DETALLE_AUTOEVALUACION.length) {
+        contenedor.innerHTML = '<small style="display:block;margin-top:6px;color:#777;white-space:normal">No hay respuestas individuales disponibles para esta calificación.</small>';
+    } else {
+        contenedor.innerHTML = `<div style="margin-top:7px;padding:8px;border:1px solid #cfd8dc;border-radius:7px;background:#f8fafb;white-space:normal;text-align:left;min-width:220px">` +
+            `<strong style="display:block;margin-bottom:6px;color:#006064">Detalle de autoevaluación · ${Math.round(Number(detalle.nota ?? 0))} pts</strong>` +
+            detalle.respuestas.map((valor, i) => {
+                const n = Number(valor);
+                const opcion = OPCIONES_DETALLE_AUTOEVALUACION[n] || "Respuesta no reconocida";
+                return `<div style="font-size:11px;line-height:1.4;padding:3px 0;border-top:1px solid #e5e9eb"><b>${i + 1}.</b> ${escapeHTML(ASPECTOS_DETALLE_AUTOEVALUACION[i])}<br><span style="color:#006064;font-weight:600">${escapeHTML(opcion)} (${Number.isFinite(n) ? n : "—"} pts)</span></div>`;
+            }).join("") + `</div>`;
+    }
+    contenedor.style.display = "block";
+    boton.textContent = "📋 Ocultar detalles";
+}
 let guardandoNotasEnProceso = false;
 let guardandoAsistenciaEnProceso = false;
 let cursoSeleccionado = "";
@@ -13073,6 +13121,30 @@ async function cargarCalificaciones() {
 
     });
 
+    // Cargar también las 10 respuestas de cada autoevaluación para mostrarlas
+    // desde la misma fila de la actividad, sin modificar calificaciones.
+    detallesAutoevaluaciones = {};
+    const idsActividadesAuto = actividades
+        .filter(a => String(a.categoria || "").toUpperCase() === "AUTOEVALUACION")
+        .map(a => a.id);
+    if (idsActividadesAuto.length) {
+        try {
+            const { data: detalles, error: errorDetalles } = await supabaseClient
+                .from("autoevaluaciones_respuestas")
+                .select("actividad_id,estudiante_id,respuestas,nota")
+                .in("actividad_id", idsActividadesAuto)
+                .in("estudiante_id", idsEstudiantes);
+            if (errorDetalles) throw errorDetalles;
+            (detalles || []).forEach(registro => {
+                detallesAutoevaluaciones[`${registro.estudiante_id}|${registro.actividad_id}`] = registro;
+            });
+        } catch (errorDetalleAuto) {
+            // Si la política de lectura no permite consultar esta tabla,
+            // las notas normales siguen cargando sin interrumpir la pantalla.
+            console.warn("No se pudieron cargar los detalles de autoevaluación:", errorDetalleAuto);
+        }
+    }
+
     /* Recalcular 3T y Final únicamente en memoria/HTML. */
     await recalcularNotasLocalesCurso();
 
@@ -14407,6 +14479,10 @@ function crearActividadHTML(
                     oninput="validarNota(this); programarGuardadoCambioActividad(this)"
 
                 >
+                ${String(actividad.categoria || "").toUpperCase() === "AUTOEVALUACION" ? `
+                    <button type="button" class="boton-detalle-autoevaluacion" style="display:block;margin:5px auto 0;padding:4px 7px;border:1px solid #80cbc4;border-radius:6px;background:#e0f2f1;color:#00695c;font-size:11px;cursor:pointer" onclick="alternarDetalleAutoevaluacion('${estudiante.id}','${actividad.id}',this)">📋 Ver detalles</button>
+                    <div class="detalle-autoevaluacion" style="display:none;max-width:360px;margin:0 auto"></div>
+                ` : ""}
 
             </td>
 
