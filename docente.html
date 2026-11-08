@@ -30611,6 +30611,65 @@ let editorFotoActual=null, editorFotoLista=[], editorFotoIndice=0, editorFotoIma
 let editorFotoHerramienta="lapiz", editorFotoDibujando=false, editorFotoDirty=false;
 let editorFotoPila=[], editorFotoRehacer=[], editorFotoUltimoPunto=null;
 let editorFotoZoom=1, editorFotoPinchInicio=0, editorFotoZoomInicio=1;
+let editorFotoContextoActividad=null;
+
+function guardarContextoActividadAntesDeFoto(f){
+ const id=String(f?.actividad_id ?? "");
+ if(!id){editorFotoContextoActividad=null;return}
+ const bloque=document.querySelector(`.actividad[data-actividad-id="${id}"]`);
+ if(!bloque){editorFotoContextoActividad=null;return}
+ const categoria=bloque.closest(".contenido-categoria");
+ const encabezado=categoria?.previousElementSibling;
+ const botonExpandir=bloque.querySelector(".boton-ocultar");
+ const contenido=bloque.querySelector(".contenido-actividad");
+ const tabla=bloque.querySelector(".tabla-contenedor");
+ editorFotoContextoActividad={
+  actividadId:id,
+  categoriaAbierta:!!categoria?.classList.contains("abierta"),
+  modoVista:categoria?.dataset.modoVista||"",
+  actividadVisible:bloque.style.display,
+  contenidoAbierto:!!contenido&&!contenido.classList.contains("oculto"),
+  textoBoton:botonExpandir?.textContent||"",
+  scrollTabla:tabla?.scrollLeft||0,
+  scrollX:window.scrollX||0,
+  scrollY:window.scrollY||0,
+  posicionSuperior:bloque.getBoundingClientRect().top
+ };
+}
+
+function restaurarContextoActividadDespuesDeFoto(){
+ const contexto=editorFotoContextoActividad;
+ if(!contexto)return;
+ const bloque=document.querySelector(`.actividad[data-actividad-id="${contexto.actividadId}"]`);
+ if(!bloque)return;
+ const categoria=bloque.closest(".contenido-categoria");
+ const encabezado=categoria?.previousElementSibling;
+ const icono=encabezado?.querySelector(".icono-expandir-categoria");
+ if(categoria){
+  categoria.classList.toggle("abierta",contexto.categoriaAbierta);
+  categoria.dataset.modoVista=contexto.modoVista;
+  if(icono)icono.textContent=contexto.categoriaAbierta?"−":"+";
+ }
+ bloque.style.display=contexto.actividadVisible;
+ const contenido=bloque.querySelector(".contenido-actividad");
+ const boton=bloque.querySelector(".boton-ocultar");
+ if(contenido)contenido.classList.toggle("oculto",!contexto.contenidoAbierto);
+ if(boton){
+  boton.textContent=contexto.contenidoAbierto?"−":"+";
+  boton.title=contexto.contenidoAbierto?"Ocultar estudiantes":"Mostrar estudiantes";
+ }
+ const tabla=bloque.querySelector(".tabla-contenedor");
+ if(tabla)tabla.scrollLeft=contexto.scrollTabla;
+ requestAnimationFrame(()=>{
+  const actual=document.querySelector(`.actividad[data-actividad-id="${contexto.actividadId}"]`);
+  if(!actual)return;
+  const diferencia=actual.getBoundingClientRect().top-contexto.posicionSuperior;
+  window.scrollTo({left:contexto.scrollX,top:Math.max(0,contexto.scrollY+diferencia),behavior:"instant"});
+  const tablaActual=actual.querySelector(".tabla-contenedor");
+  if(tablaActual)tablaActual.scrollLeft=contexto.scrollTabla;
+ });
+ editorFotoContextoActividad=null;
+}
 async function cargarImagenEditorFoto(foto){
  const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta,600);
  if(error||!data?.signedUrl)throw error||new Error("No se pudo generar el enlace de la fotografía.");
@@ -30627,6 +30686,7 @@ async function cargarImagenEditorFoto(foto){
 }
 async function abrirFotoActividad(f){
  if(!f?.ruta)return;
+ guardarContextoActividadAntesDeFoto(f);
  try{
   editorFotoActual=f;
   editorFotoLista=(f.actividad_id!=null&&f.estudiante_id!=null)?obtenerFotosActividad(f.actividad_id,f.estudiante_id):[f];
@@ -30782,7 +30842,12 @@ async function cerrarEditorFotoActividad(){
   if(typeof actualizarEstudiantesInforme==="function"&&informeGeneralVisible)actualizarEstudiantesInforme();
   if(typeof mostrarTablaCalificacionesCurso==="function")mostrarTablaCalificacionesCurso();
   if(typeof actualizarCalificacionesCursoVisible==="function")await actualizarCalificacionesCursoVisible();
- }catch(error){console.error("No se pudieron actualizar las calificaciones al cerrar el editor de fotografías:",error)}
+  // Recuperar la misma actividad abierta y la posición exacta de desplazamiento.
+  restaurarContextoActividadDespuesDeFoto();
+ }catch(error){
+  console.error("No se pudieron actualizar las calificaciones al cerrar el editor de fotografías:",error);
+  restaurarContextoActividadDespuesDeFoto();
+ }
 }
 
 </script>
