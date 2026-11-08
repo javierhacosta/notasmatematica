@@ -5802,7 +5802,7 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-acciones .guardar{background:#16803c;color:#fff}
 .editor-foto-acciones .nueva{background:#1565c0;color:#fff}
 .editor-foto-acciones .cancelar{background:#777;color:#fff}
-.editor-foto-estado{font-size:12px;color:#555}
+.editor-foto-estado{font-size:12px;color:#16803c;font-weight:600}
  
 .editor-foto-zoom{display:flex;align-items:center;justify-content:center;gap:12px;padding:5px;background:#e9edf1;color:#263238}
 .editor-foto-zoom button{min-width:36px;height:30px;border:1px solid #b7c1ca;border-radius:6px;background:#fff;font-size:20px}
@@ -30590,8 +30590,6 @@ document.addEventListener("contextmenu", function(event) {
   <div class="editor-foto-barra">
    <button type="button" id="herramientaLapizFoto" class="activo" onclick="seleccionarHerramientaFoto('lapiz')">✏️ Bolígrafo</button>
    <input type="color" id="colorLapizFoto" value="#e53935" title="Color del bolígrafo">
-   <button type="button" onclick="seleccionarHerramientaFoto('goma')">🧽 Goma</button>
-   
    <button type="button" onclick="deshacerFotoEditor()" title="Ir atrás">↶</button>
    <button type="button" onclick="rehacerFotoEditor()" title="Ir adelante">↷</button>
    <button type="button" onclick="limpiarAnotacionesFotoEditor()">Limpiar</button>
@@ -30677,7 +30675,7 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
  const c=document.getElementById("canvasEditorFoto");if(!c)return;
  c.addEventListener("pointerdown",e=>{if(!editorFotoImagen)return;c.setPointerCapture(e.pointerId);const p=puntoFotoEditor(e);
   if(editorFotoHerramienta==="texto")return;
-  editorFotoDibujando=true;editorFotoUltimoPunto=p;const x=c.getContext("2d");x.beginPath();x.moveTo(p.x,p.y);x.lineCap="round";x.lineJoin="round";x.lineWidth=Math.max(4,c.width/250);x.strokeStyle=document.getElementById("colorLapizFoto").value;x.globalCompositeOperation=editorFotoHerramienta==="goma"?"destination-out":"source-over";
+  editorFotoDibujando=true;editorFotoUltimoPunto=p;const x=c.getContext("2d");x.beginPath();x.moveTo(p.x,p.y);x.lineCap="round";x.lineJoin="round";x.lineWidth=Math.max(4,c.width/250);x.strokeStyle=document.getElementById("colorLapizFoto").value;x.globalCompositeOperation="source-over";
  });
  c.addEventListener("pointermove",e=>{if(!editorFotoDibujando)return;const p=puntoFotoEditor(e),x=c.getContext("2d");x.lineTo(p.x,p.y);x.stroke();editorFotoUltimoPunto=p;editorFotoDirty=true});
  const fin=()=>{if(!editorFotoDibujando)return;editorFotoDibujando=false;c.getContext("2d").globalCompositeOperation="source-over";guardarEstadoFotoEditor()};
@@ -30688,14 +30686,15 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
  zona.addEventListener("touchend",e=>{if(e.touches.length<2)editorFotoPinchInicio=0},{passive:true});
 })();
 function activarTextoFotoEditor(){document.getElementById("textoNotaFotoEditor").focus()}
+function mensajeEditorFoto(texto){const e=document.getElementById("estadoEditorFotoActividad");if(e){e.textContent=texto;e.style.color="#16803c";e.style.fontWeight="600"}}
 async function guardarCalificacionFotoEditor(){
  const f=editorFotoActual;const campo=document.getElementById("textoNotaFotoEditor");
- if(!f||f.actividad_id==null||f.estudiante_id==null){alert("No se pudo identificar la actividad y el estudiante.");return}
+ if(!f||f.actividad_id==null||f.estudiante_id==null){mensajeEditorFoto("No se pudo identificar la actividad y el estudiante.");return}
  const valor=String(campo.value||"").trim().replace(",",".");
- if(valor===""){alert("Introduzca la calificación de esta actividad.");campo.focus();return}
+ if(valor===""){mensajeEditorFoto("Introduzca la calificación de esta actividad.");campo.focus();return}
  const nota=Number(valor);const actividad=actividades.find(a=>String(a.id)===String(f.actividad_id));
  let maximo=Number(actividad?.puntaje_maximo);if(!maximo||maximo<=0)maximo=Number(LIMITES?.[actividad?.categoria])||null;
- if(!Number.isFinite(nota)||nota<0||(maximo!==null&&nota>maximo)){alert(maximo!==null?`La calificación debe estar entre 0 y ${maximo}.`:"Introduzca una calificación válida.");campo.focus();return}
+ if(!Number.isFinite(nota)||nota<0||(maximo!==null&&nota>maximo)){mensajeEditorFoto(maximo!==null?`La calificación debe estar entre 0 y ${maximo}.`:"Introduzca una calificación válida.");campo.focus();return}
  const boton=document.querySelector("#editorFotoActividad .editor-foto-nota button");const textoOriginal=boton?.textContent;if(boton){boton.disabled=true;boton.textContent="Guardando..."}
  try{
   const consulta=await supabaseClient.from("calificaciones").select("id").eq("actividad_id",Number(f.actividad_id)).eq("estudiante_id",Number(f.estudiante_id)).maybeSingle();
@@ -30706,9 +30705,8 @@ async function guardarCalificacionFotoEditor(){
   if(!calificaciones[f.estudiante_id])calificaciones[f.estudiante_id]={};
   const anterior=calificaciones[f.estudiante_id][f.actividad_id]||{};
   calificaciones[f.estudiante_id][f.actividad_id]={...anterior,nota};
-  document.getElementById("estadoEditorFotoActividad").textContent="Calificación guardada: "+nota;
-  alert("Calificación guardada correctamente.");
- }catch(e){alert("No se pudo guardar la calificación.\n\n"+(e.message||e))}
+  mensajeEditorFoto("Calificación guardada correctamente: "+nota);
+ }catch(e){mensajeEditorFoto("No se pudo guardar la calificación: "+(e.message||e))}
  finally{if(boton){boton.disabled=false;boton.textContent=textoOriginal||"Guardar calificación"}}
 }
 function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehacer.push(editorFotoPila.pop());restaurarEstadoFotoEditor(editorFotoPila[editorFotoPila.length-1])}
@@ -30733,16 +30731,17 @@ function navegarSiguienteEstudianteFotoEditor(){
  alert("No hay más estudiantes con fotografías en esta actividad.");
 }
 async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
- if(!editorFotoDirty){alert("No hay anotaciones nuevas para guardar.");return}
+ if(!editorFotoDirty){mensajeEditorFoto("No hay anotaciones nuevas para guardar.");return}
  const f=editorFotoActual;
- if(f?.actividad_id==null||f?.estudiante_id==null){alert("No se pudo identificar la actividad y el estudiante.");return}
+ if(f?.actividad_id==null||f?.estudiante_id==null){mensajeEditorFoto("No se pudo identificar la actividad y el estudiante.");return}
+ const botones=document.querySelectorAll("#editorFotoActividad .editor-foto-acciones button");botones.forEach(b=>b.disabled=true);
  try{
   const c=document.getElementById("canvasEditorFoto");
   const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));if(!blob)throw new Error("No se pudo preparar la imagen.");
   const servidor=await obtenerFotosActividadServidor(f.actividad_id,f.estudiante_id);
   const objetivo=servidor.find(x=>String(x.id)===String(f.id));
   if(!objetivo)throw new Error("La fotografía original ya no está registrada.");
-  const base=(objetivo.nombre_archivo||"foto").replace(/\.[^.]+$/,"")+"_anotada";
+  const base=(objetivo.nombre_archivo||"foto").replace(/\.[^.]+$/ ,"")+"_anotada";
   const nombre=obtenerNombreFotoActividadUnicoServidor(f.actividad_id,f.estudiante_id,base,servidor);
   const ruta=`${f.estudiante_id}/${nombre}`;
   const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:false,contentType:"image/jpeg"});
@@ -30756,15 +30755,16 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
   actualizarCeldasFotosActividad(f.actividad_id);
   await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);
   editorFotoDirty=false;
-  const salida=document.getElementById("dialogoSalidaEditorFoto");if(salida)salida.classList.add("oculto");
   const nuevas=obtenerFotosActividad(f.actividad_id,f.estudiante_id);
-  const guardada=nuevas.find(x=>x.ruta===ruta)||{...reg,id:null};
+  const indiceGuardada=nuevas.findIndex(x=>x.ruta===ruta);
   editorFotoLista=nuevas;
-  if(comoNueva)editorFotoIndice=Math.max(0,nuevas.findIndex(x=>x.ruta===ruta));
+  editorFotoIndice=indiceGuardada>=0?indiceGuardada:0;
+  const guardada=nuevas[editorFotoIndice]||{...reg,id:null};
   editorFotoActual=guardada;
-  alert(comoNueva?"Fotografía guardada como nueva.":"Fotografía actualizada correctamente.");
-  cerrarEditorFotoActividad();
- }catch(e){alert("No se pudo guardar la fotografía.\n\n"+(e.message||e))}
+  await mostrarFotoEnEditorActividad();
+  mensajeEditorFoto(comoNueva?"Fotografía guardada como nueva correctamente.":"Fotografía actualizada correctamente.");
+ }catch(e){mensajeEditorFoto("No se pudo guardar la fotografía: "+(e.message||e))}
+ finally{botones.forEach(b=>b.disabled=false)}
 }
 function solicitarCerrarEditorFotoActividad(){if(editorFotoDirty){document.getElementById("dialogoSalidaEditorFoto").classList.remove("oculto");return}cerrarEditorFotoActividad()}
 function cerrarDialogoSalidaFoto(){document.getElementById("dialogoSalidaEditorFoto").classList.add("oculto")}
