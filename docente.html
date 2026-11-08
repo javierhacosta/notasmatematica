@@ -5793,6 +5793,11 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-barra button.activo{background:#1565c0;color:#fff}
 .editor-foto-barra input[type=color]{width:38px;height:36px;padding:2px;border:0;background:transparent}
 .editor-foto-barra select{width:auto;padding:7px;border-radius:6px}
+.editor-foto-zoom-inline{display:flex;align-items:center;gap:3px;padding:0;background:transparent;color:#fff}
+.editor-foto-zoom-inline button{width:29px;min-width:29px;height:30px;padding:0!important;border:1px solid #b7c1ca;background:#fff;color:#263746;font-size:19px;line-height:1}
+.editor-foto-zoom-inline span{min-width:42px;text-align:center;color:#fff;font-size:12px;font-weight:700}
+.editor-foto-navegacion{display:flex;align-items:center;gap:5px}
+.editor-foto-navegacion button{width:32px;height:30px;min-width:32px;padding:0;border:1px solid #b7c1ca;border-radius:6px;background:#eef3f7;color:#263746;font-size:16px;font-weight:700;cursor:pointer}
 .editor-foto-nota{display:flex;gap:6px;padding:7px;background:#f1f4f7}
 .editor-foto-nota input{min-width:0;flex:1}
 .editor-foto-lienzo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#202124;overflow:auto;touch-action:pan-x pan-y}
@@ -5807,10 +5812,9 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-zoom{display:flex;align-items:center;justify-content:center;gap:12px;padding:5px;background:#e9edf1;color:#263238}
 .editor-foto-zoom button{min-width:36px;height:30px;border:1px solid #b7c1ca;border-radius:6px;background:#fff;font-size:20px}
 .editor-foto-zoom span{font-weight:700;min-width:48px;text-align:center}
-.editor-foto-zoom small{font-size:11px;color:#54616b}
 .editor-foto-lienzo{touch-action:pan-x pan-y}
 #canvasEditorFoto{max-width:100%;max-height:100%;width:auto;height:auto;flex-shrink:0}
-@media(max-width:600px){#editorFotoActividad.modal-fondo{padding:3px}#editorFotoActividad .editor-foto-panel{height:98vh;border-radius:8px}.editor-foto-barra{gap:4px;padding:5px}.editor-foto-barra button{padding:8px;font-size:13px}.editor-foto-nota{padding:5px}.editor-foto-pie{padding:6px}.editor-foto-acciones button{padding:9px 10px;font-size:12px}}
+@media(max-width:600px){#editorFotoActividad.modal-fondo{padding:3px}#editorFotoActividad .editor-foto-panel{height:98vh;border-radius:8px}.editor-foto-barra{gap:4px;padding:5px}.editor-foto-barra button{padding:8px;font-size:13px}.editor-foto-nota{padding:5px}.editor-foto-pie{padding:6px}.editor-foto-navegacion{gap:4px}.editor-foto-navegacion button{width:29px;min-width:29px;height:29px}.editor-foto-acciones button{padding:9px 10px;font-size:12px}}
 
 </style>
 
@@ -30588,17 +30592,17 @@ document.addEventListener("contextmenu", function(event) {
  <div class="editor-foto-panel" onclick="event.stopPropagation()">
   <div class="modal-cabecera"><h3 id="tituloEditorFotoActividad">Calificar fotografía</h3><button type="button" class="boton-cerrar-modal" onclick="solicitarCerrarEditorFotoActividad()">×</button></div>
   <div class="editor-foto-barra">
-   <button type="button" id="herramientaLapizFoto" class="activo" onclick="seleccionarHerramientaFoto('lapiz')">✏️ Bolígrafo</button>
+   <button type="button" id="herramientaLapizFoto" class="activo" onclick="seleccionarHerramientaFoto('lapiz')" title="Bolígrafo" aria-label="Bolígrafo">✏️</button>
    <input type="color" id="colorLapizFoto" value="#e53935" title="Color del bolígrafo">
    <button type="button" onclick="deshacerFotoEditor()" title="Ir atrás">↶</button>
    <button type="button" onclick="rehacerFotoEditor()" title="Ir adelante">↷</button>
-   <button type="button" onclick="limpiarAnotacionesFotoEditor()">Limpiar</button>
+   <button type="button" onclick="limpiarAnotacionesFotoEditor()" title="Limpiar anotaciones" aria-label="Limpiar anotaciones">🧹</button>
+   <div class="editor-foto-zoom editor-foto-zoom-inline"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)" title="Reducir zoom" aria-label="Reducir zoom">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)" title="Aumentar zoom" aria-label="Aumentar zoom">+</button></div>
   </div>
   <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" inputmode="decimal" placeholder="Calificación de esta actividad"><button type="button" onclick="guardarCalificacionFotoEditor()">Guardar calificación</button></div>
-  <div class="editor-foto-zoom"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)">+</button><small>Amplíe también con dos dedos</small></div>
   <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
   <div class="editor-foto-pie">
-   <div style="display:flex;gap:7px;flex-wrap:wrap"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button><button type="button" onclick="navegarAnteriorEstudianteFotoEditor()">Anterior estudiante</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()">Siguiente estudiante</button></div>
+   <div class="editor-foto-navegacion"><button type="button" onclick="navegarFotoEditor(-1)" title="Fotografía anterior" aria-label="Fotografía anterior">◀</button><button type="button" onclick="navegarFotoEditor(1)" title="Fotografía siguiente" aria-label="Fotografía siguiente">▶</button><button type="button" onclick="navegarAnteriorEstudianteFotoEditor()" title="Anterior estudiante" aria-label="Anterior estudiante">⏮</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()" title="Siguiente estudiante" aria-label="Siguiente estudiante">⏭</button></div>
    <div class="editor-foto-estado-contenedor"><span id="estadoEditorFotoActividad" class="editor-foto-estado"></span><div id="progresoEditorFotoActividad" class="editor-foto-progreso" role="progressbar" aria-label="Guardando fotografía"></div></div>
    <div class="editor-foto-acciones"><button type="button" class="guardar" onclick="guardarFotoEditadaActividad(false)">Guardar</button><button type="button" class="nueva" onclick="guardarFotoEditadaActividad(true)">Guardar como nueva</button><button type="button" class="cancelar" onclick="cancelarEditorFotoActividad()">Cancelar</button></div>
   </div>
