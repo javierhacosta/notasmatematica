@@ -5803,6 +5803,13 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-acciones .nueva{background:#1565c0;color:#fff}
 .editor-foto-acciones .cancelar{background:#777;color:#fff}
 .editor-foto-estado{font-size:12px;color:#555}
+ 
+.editor-foto-zoom{display:flex;align-items:center;justify-content:center;gap:12px;padding:5px;background:#e9edf1;color:#263238}
+.editor-foto-zoom button{min-width:36px;height:30px;border:1px solid #b7c1ca;border-radius:6px;background:#fff;font-size:20px}
+.editor-foto-zoom span{font-weight:700;min-width:48px;text-align:center}
+.editor-foto-zoom small{font-size:11px;color:#54616b}
+.editor-foto-lienzo{touch-action:pan-x pan-y}
+#canvasEditorFoto{max-width:100%;max-height:100%;width:auto;height:auto;flex-shrink:0}
 @media(max-width:600px){#editorFotoActividad.modal-fondo{padding:3px}#editorFotoActividad .editor-foto-panel{height:98vh;border-radius:8px}.editor-foto-barra{gap:4px;padding:5px}.editor-foto-barra button{padding:8px;font-size:13px}.editor-foto-nota{padding:5px}.editor-foto-pie{padding:6px}.editor-foto-acciones button{padding:9px 10px;font-size:12px}}
 
 </style>
@@ -30589,8 +30596,9 @@ document.addEventListener("contextmenu", function(event) {
    <button type="button" onclick="rehacerFotoEditor()" title="Ir adelante">↷</button>
    <button type="button" onclick="limpiarAnotacionesFotoEditor()">Limpiar</button>
   </div>
-  <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" placeholder="Anotar nota (ej. 18/20)"><button type="button" onclick="activarTextoFotoEditor()">Colocar texto</button></div>
-  <div class="editor-foto-lienzo"><canvas id="canvasEditorFoto"></canvas></div>
+  <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" inputmode="decimal" placeholder="Calificación de esta actividad (ej. 18/20)"><button type="button" onclick="activarTextoFotoEditor()">Colocar calificación</button></div>
+  <div class="editor-foto-zoom"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)">+</button><small>Amplíe también con dos dedos</small></div>
+  <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
   <div class="editor-foto-pie">
    <div style="display:flex;gap:7px"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button></div>
    <span id="estadoEditorFotoActividad" class="editor-foto-estado"></span>
@@ -30601,15 +30609,23 @@ document.addEventListener("contextmenu", function(event) {
 
 <script>
 
-let editorFotoActual=null, editorFotoLista=[], editorFotoIndice=0, editorFotoImagen=null;
+let editorFotoActual=null, editorFotoLista=[], editorFotoIndice=0, editorFotoImagen=null, editorFotoObjectUrl=null;
 let editorFotoHerramienta="lapiz", editorFotoDibujando=false, editorFotoDirty=false;
 let editorFotoPila=[], editorFotoRehacer=[], editorFotoUltimoPunto=null;
-function cargarImagenEditorFoto(foto){
- return new Promise(async(resolve,reject)=>{try{
-  const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta,600);
-  if(error||!data?.signedUrl)throw error||new Error("No se pudo abrir la foto.");
-  const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error("No se pudo cargar la imagen."));im.src=data.signedUrl;
- }catch(e){reject(e)}});
+let editorFotoZoom=1, editorFotoPinchInicio=0, editorFotoZoomInicio=1;
+async function cargarImagenEditorFoto(foto){
+ const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta,600);
+ if(error||!data?.signedUrl)throw error||new Error("No se pudo generar el enlace de la fotografía.");
+ // Cargar como Blob y usar una URL local: evita que la imagen remota contamine el canvas.
+ const respuesta=await fetch(data.signedUrl);
+ if(!respuesta.ok)throw new Error("No se pudo descargar la fotografía ("+respuesta.status+").");
+ const blob=await respuesta.blob();
+ if(editorFotoObjectUrl)URL.revokeObjectURL(editorFotoObjectUrl);
+ editorFotoObjectUrl=URL.createObjectURL(blob);
+ return await new Promise((resolve,reject)=>{
+  const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error("No se pudo decodificar la fotografía."));
+  im.src=editorFotoObjectUrl;
+ });
 }
 async function abrirFotoActividad(f){
  if(!f?.ruta)return;
@@ -30627,12 +30643,22 @@ async function mostrarFotoEnEditorActividad(){
  editorFotoActual=f;editorFotoDirty=false;editorFotoPila=[];editorFotoRehacer=[];
  const im=await cargarImagenEditorFoto(f);editorFotoImagen=im;
  const c=document.getElementById("canvasEditorFoto"),ctx=c.getContext("2d");
+ editorFotoZoom=1;actualizarZoomFotoEditor();
  c.width=im.naturalWidth;c.height=im.naturalHeight;ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(im,0,0);
  guardarEstadoFotoEditor();
  document.getElementById("tituloEditorFotoActividad").textContent=`Fotografía ${editorFotoIndice+1} de ${editorFotoLista.length}`;
  document.getElementById("estadoEditorFotoActividad").textContent=f.nombre_archivo||"";
  document.getElementById("textoNotaFotoEditor").value="";
 }
+function actualizarZoomFotoEditor(){
+ const c=document.getElementById("canvasEditorFoto");if(!c)return;
+ c.style.transform=`scale(${editorFotoZoom})`;
+ c.style.transformOrigin="center center";
+ const e=document.getElementById("zonaLienzoFotoEditor");
+ if(e)e.style.overflow=editorFotoZoom>1?"auto":"auto";
+ const z=document.getElementById("zoomFotoEditorTexto");if(z)z.textContent=Math.round(editorFotoZoom*100)+"%";
+}
+function cambiarZoomFotoEditor(delta){editorFotoZoom=Math.max(1,Math.min(4,editorFotoZoom+delta));actualizarZoomFotoEditor()}
 function guardarEstadoFotoEditor(){const c=document.getElementById("canvasEditorFoto");editorFotoPila.push(c.toDataURL("image/png"));if(editorFotoPila.length>30)editorFotoPila.shift();editorFotoRehacer=[]}
 function restaurarEstadoFotoEditor(url){const im=new Image();im.onload=()=>{const c=document.getElementById("canvasEditorFoto");c.getContext("2d").clearRect(0,0,c.width,c.height);c.getContext("2d").drawImage(im,0,0);editorFotoDirty=true};im.src=url}
 function seleccionarHerramientaFoto(h){editorFotoHerramienta=h;document.querySelectorAll("#editorFotoActividad .editor-foto-barra button").forEach(b=>b.classList.remove("activo"));if(h==="lapiz")document.getElementById("herramientaLapizFoto").classList.add("activo")}
@@ -30640,12 +30666,16 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
 (function iniciarLienzoEditorFoto(){
  const c=document.getElementById("canvasEditorFoto");if(!c)return;
  c.addEventListener("pointerdown",e=>{if(!editorFotoImagen)return;c.setPointerCapture(e.pointerId);const p=puntoFotoEditor(e);
-  if(editorFotoHerramienta==="texto"){const t=document.getElementById("textoNotaFotoEditor").value.trim();if(!t)return;const x=c.getContext("2d");x.save();x.font=`bold ${Math.max(28,c.width/35)}px Arial`;x.lineWidth=Math.max(3,c.width/500);x.strokeStyle="#fff";x.fillStyle=document.getElementById("colorLapizFoto").value;x.strokeText(t,p.x,p.y);x.fillText(t,p.x,p.y);x.restore();editorFotoDirty=true;guardarEstadoFotoEditor();return}
+  if(editorFotoHerramienta==="texto"){const valor=document.getElementById("textoNotaFotoEditor").value.trim();if(!valor)return;const t=/^(nota|calificación)\s*:/i.test(valor)?valor:"CALIFICACIÓN: "+valor;const x=c.getContext("2d");x.save();x.font=`bold ${Math.max(28,c.width/35)}px Arial`;x.lineWidth=Math.max(3,c.width/500);x.strokeStyle="#fff";x.fillStyle=document.getElementById("colorLapizFoto").value;x.strokeText(t,p.x,p.y);x.fillText(t,p.x,p.y);x.restore();editorFotoDirty=true;guardarEstadoFotoEditor();return}
   editorFotoDibujando=true;editorFotoUltimoPunto=p;const x=c.getContext("2d");x.beginPath();x.moveTo(p.x,p.y);x.lineCap="round";x.lineJoin="round";x.lineWidth=Math.max(4,c.width/250);x.strokeStyle=document.getElementById("colorLapizFoto").value;x.globalCompositeOperation=editorFotoHerramienta==="goma"?"destination-out":"source-over";
  });
  c.addEventListener("pointermove",e=>{if(!editorFotoDibujando)return;const p=puntoFotoEditor(e),x=c.getContext("2d");x.lineTo(p.x,p.y);x.stroke();editorFotoUltimoPunto=p;editorFotoDirty=true});
  const fin=()=>{if(!editorFotoDibujando)return;editorFotoDibujando=false;c.getContext("2d").globalCompositeOperation="source-over";guardarEstadoFotoEditor()};
  c.addEventListener("pointerup",fin);c.addEventListener("pointercancel",fin);
+ const zona=document.getElementById("zonaLienzoFotoEditor");
+ zona.addEventListener("touchstart",e=>{if(e.touches.length===2){editorFotoDibujando=false;editorFotoPinchInicio=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);editorFotoZoomInicio=editorFotoZoom;e.preventDefault()}},{passive:false});
+ zona.addEventListener("touchmove",e=>{if(e.touches.length===2&&editorFotoPinchInicio){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);editorFotoZoom=Math.max(1,Math.min(4,editorFotoZoomInicio*d/editorFotoPinchInicio));actualizarZoomFotoEditor();e.preventDefault()}},{passive:false});
+ zona.addEventListener("touchend",e=>{if(e.touches.length<2)editorFotoPinchInicio=0},{passive:true});
 })();
 function activarTextoFotoEditor(){seleccionarHerramientaFoto("texto");document.getElementById("estadoEditorFotoActividad").textContent="Toque la fotografía donde desea colocar el texto."}
 function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehacer.push(editorFotoPila.pop());restaurarEstadoFotoEditor(editorFotoPila[editorFotoPila.length-1])}
@@ -30689,7 +30719,7 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
 function solicitarCerrarEditorFotoActividad(){if(editorFotoDirty){document.getElementById("dialogoSalidaEditorFoto").classList.remove("oculto");return}cerrarEditorFotoActividad()}
 function cerrarDialogoSalidaFoto(){document.getElementById("dialogoSalidaEditorFoto").classList.add("oculto")}
 function cancelarEditorFotoActividad(){solicitarCerrarEditorFotoActividad()}
-function cerrarEditorFotoActividad(){document.getElementById("editorFotoActividad").classList.add("oculto");editorFotoActual=null;editorFotoImagen=null}
+function cerrarEditorFotoActividad(){document.getElementById("editorFotoActividad").classList.add("oculto");editorFotoActual=null;editorFotoImagen=null;if(editorFotoObjectUrl){URL.revokeObjectURL(editorFotoObjectUrl);editorFotoObjectUrl=null}}
 
 </script>
 
