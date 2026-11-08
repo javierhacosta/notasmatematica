@@ -30598,7 +30598,7 @@ document.addEventListener("contextmenu", function(event) {
   <div class="editor-foto-zoom"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)">+</button><small>Amplíe también con dos dedos</small></div>
   <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
   <div class="editor-foto-pie">
-   <div style="display:flex;gap:7px;flex-wrap:wrap"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()">Siguiente estudiante</button></div>
+   <div style="display:flex;gap:7px;flex-wrap:wrap"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button><button type="button" onclick="navegarAnteriorEstudianteFotoEditor()">Anterior estudiante</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()">Siguiente estudiante</button></div>
    <div class="editor-foto-estado-contenedor"><span id="estadoEditorFotoActividad" class="editor-foto-estado"></span><div id="progresoEditorFotoActividad" class="editor-foto-progreso" role="progressbar" aria-label="Guardando fotografía"></div></div>
    <div class="editor-foto-acciones"><button type="button" class="guardar" onclick="guardarFotoEditadaActividad(false)">Guardar</button><button type="button" class="nueva" onclick="guardarFotoEditadaActividad(true)">Guardar como nueva</button><button type="button" class="cancelar" onclick="cancelarEditorFotoActividad()">Cancelar</button></div>
   </div>
@@ -30774,6 +30774,23 @@ function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehace
 function rehacerFotoEditor(){if(!editorFotoRehacer.length)return;const u=editorFotoRehacer.pop();editorFotoPila.push(u);restaurarEstadoFotoEditor(u)}
 function limpiarAnotacionesFotoEditor(){if(!editorFotoImagen||!confirm("¿Quitar todas las anotaciones de esta fotografía?"))return;const c=document.getElementById("canvasEditorFoto"),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);x.drawImage(editorFotoImagen,0,0);editorFotoDirty=true;guardarEstadoFotoEditor()}
 function navegarFotoEditor(d){if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de fotografía?"))return;const n=editorFotoIndice+d;if(n<0||n>=editorFotoLista.length)return;editorFotoIndice=n;mostrarFotoEnEditorActividad().catch(e=>alert(e.message||e))}
+function navegarAnteriorEstudianteFotoEditor(){
+ if(!editorFotoActual||editorFotoActual.actividad_id==null)return;
+ if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y pasar al estudiante anterior?"))return;
+ const actividadId=String(editorFotoActual.actividad_id);
+ const orden=(estudiantes||[]).slice().sort((a,b)=>{
+  const na=Number(a.num_lista),nb=Number(b.num_lista);
+  if(Number.isFinite(na)&&Number.isFinite(nb)&&na!==nb)return na-nb;
+  return String(a.nombre||a.nombre_completo||"").localeCompare(String(b.nombre||b.nombre_completo||""),"es");
+ });
+ const indiceActual=orden.findIndex(e=>String(e.id)===String(editorFotoActual.estudiante_id));
+ for(let i=indiceActual-1;i>=0;i--){
+  const anterior=orden[i];
+  const fotos=obtenerFotosActividad(actividadId,anterior.id);
+  if(fotos.length){editorFotoLista=fotos.slice();editorFotoIndice=0;mostrarFotoEnEditorActividad().catch(e=>alert(e.message||e));return}
+ }
+ mensajeEditorFoto("No hay estudiantes anteriores con fotografías en esta actividad.");
+}
 function navegarSiguienteEstudianteFotoEditor(){
  if(!editorFotoActual||editorFotoActual.actividad_id==null)return;
  if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y pasar al siguiente estudiante?"))return;
