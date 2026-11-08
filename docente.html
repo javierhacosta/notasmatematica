@@ -5793,9 +5793,10 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-barra button.activo{background:#1565c0;color:#fff}
 .editor-foto-barra input[type=color]{width:38px;height:36px;padding:2px;border:0;background:transparent}
 .editor-foto-barra select{width:auto;padding:7px;border-radius:6px}
-.editor-foto-zoom-inline{display:flex;align-items:center;gap:3px;padding:0;background:transparent;color:#fff}
-.editor-foto-zoom-inline button{width:29px;min-width:29px;height:30px;padding:0!important;border:1px solid #b7c1ca;background:#fff;color:#263746;font-size:19px;line-height:1}
-.editor-foto-zoom-inline span{min-width:42px;text-align:center;color:#fff;font-size:12px;font-weight:700}
+.editor-foto-limpiar-zoom{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;white-space:nowrap}
+.editor-foto-zoom-inline{display:inline-flex;align-items:center;gap:2px;padding:0;background:transparent;color:#fff;flex:0 0 auto;white-space:nowrap}
+.editor-foto-zoom-inline button{width:22px;min-width:22px;height:24px;padding:0!important;border:1px solid #b7c1ca;border-radius:5px;background:#fff;color:#263746;font-size:15px;line-height:1}
+.editor-foto-zoom-inline span{min-width:34px;text-align:center;color:#fff;font-size:10px;font-weight:700}
 .editor-foto-navegacion{display:flex;align-items:center;gap:5px}
 .editor-foto-navegacion button{width:32px;height:30px;min-width:32px;padding:0;border:1px solid #b7c1ca;border-radius:6px;background:#eef3f7;color:#263746;font-size:16px;font-weight:700;cursor:pointer}
 .editor-foto-nota{display:flex;gap:6px;padding:7px;background:#f1f4f7}
@@ -30596,8 +30597,10 @@ document.addEventListener("contextmenu", function(event) {
    <input type="color" id="colorLapizFoto" value="#e53935" title="Color del bolígrafo">
    <button type="button" onclick="deshacerFotoEditor()" title="Ir atrás">↶</button>
    <button type="button" onclick="rehacerFotoEditor()" title="Ir adelante">↷</button>
-   <button type="button" onclick="limpiarAnotacionesFotoEditor()" title="Limpiar anotaciones" aria-label="Limpiar anotaciones">🧹</button>
-   <div class="editor-foto-zoom editor-foto-zoom-inline"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)" title="Reducir zoom" aria-label="Reducir zoom">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)" title="Aumentar zoom" aria-label="Aumentar zoom">+</button></div>
+   <div class="editor-foto-limpiar-zoom">
+    <button type="button" onclick="limpiarAnotacionesFotoEditor()" title="Limpiar anotaciones" aria-label="Limpiar anotaciones">🧹</button>
+    <div class="editor-foto-zoom-inline"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)" title="Reducir zoom" aria-label="Reducir zoom">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)" title="Aumentar zoom" aria-label="Aumentar zoom">+</button></div>
+   </div>
   </div>
   <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" inputmode="decimal" placeholder="Calificación de esta actividad"><button type="button" onclick="guardarCalificacionFotoEditor()">Guardar calificación</button></div>
   <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
@@ -30851,6 +30854,12 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
 }
 function solicitarCerrarEditorFotoActividad(){if(editorFotoDirty){document.getElementById("dialogoSalidaEditorFoto").classList.remove("oculto");return}cerrarEditorFotoActividad()}
 function cerrarDialogoSalidaFoto(){document.getElementById("dialogoSalidaEditorFoto").classList.add("oculto")}
+function salirSinGuardarFotoEditor(){
+ // Descarta únicamente las anotaciones pendientes de la fotografía y cierra el editor.
+ editorFotoDirty=false;
+ cerrarDialogoSalidaFoto();
+ cerrarEditorFotoActividad();
+}
 function cancelarEditorFotoActividad(){solicitarCerrarEditorFotoActividad()}
 async function cerrarEditorFotoActividad(){
  document.getElementById("editorFotoActividad").classList.add("oculto");
@@ -30881,6 +30890,7 @@ async function cerrarEditorFotoActividad(){
    <button type="button" class="boton-foto-confirmar" onclick="guardarFotoEditadaActividad(false,true)">Guardar</button>
    <button type="button" class="boton-foto-nueva" onclick="guardarFotoEditadaActividad(true,true)">Guardar como nueva</button>
    <button type="button" class="boton-foto-cancelar" onclick="cerrarDialogoSalidaFoto()">Cancelar</button>
+   <button type="button" class="boton-foto-rechazar" onclick="salirSinGuardarFotoEditor()" title="Salir sin guardar" aria-label="Salir sin guardar">🚪</button>
   </div>
  </div>
 </div>
