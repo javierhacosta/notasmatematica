@@ -5749,6 +5749,40 @@ table tbody tr:nth-child(10n+10) td {
 .foto-asiento-aula-borrar{width:32px;height:30px;border:0;border-radius:6px;background:#c62828;color:white;font-size:16px;cursor:pointer}
 .foto-asiento-aula-vacio{color:#777;font-size:12px;padding:4px 0}
 @media(max-width:600px){.observacion-asiento-fila-foto{gap:6px}.boton-foto-asiento-aula{flex-basis:44px;width:44px}.galeria-fotos-asiento-aula-lista{gap:7px}}
+
+
+/* ACTUALIZACIÓN AUTOMÁTICA DE NOTA DE ASISTENCIA EN SER */
+.boton-actualizar-nota-asistencia-ser {
+    border: none;
+    border-radius: 7px;
+    padding: 7px 10px;
+    background: #16803c;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.boton-actualizar-nota-asistencia-ser:disabled {
+    opacity: .65;
+    cursor: wait;
+}
+.meta-nota-asistencia-ser {
+    padding: 4px 12px 7px;
+    background: #faf7fc;
+    color: #6a1b9a;
+    font-size: 11px;
+    text-align: right;
+}
+@media (max-width: 600px) {
+    .boton-actualizar-nota-asistencia-ser {
+        padding: 6px 7px;
+        font-size: 11px;
+    }
+    .meta-nota-asistencia-ser {
+        font-size: 10px;
+    }
+}
 </style>
 
 <style>
@@ -13908,6 +13942,183 @@ document.addEventListener("change", function(event) {
    CREAR HTML ACTIVIDAD
 ===================================================== */
 
+
+/* =====================================================
+   ACTUALIZAR NOTA DE ASISTENCIA EN SER
+   1 punto por asistencia, 0.5 por atraso y 0 por falta/licencia.
+===================================================== */
+function obtenerClaveMetaNotaAsistencia(actividadId) {
+    return "nota_asistencia_ser_" + String(cursoSeleccionado) + "_" + String(actividadId);
+}
+
+function actualizarTextoMetaNotaAsistencia(actividadId, contenedor) {
+    if (!contenedor) return;
+    let meta = null;
+    try {
+        meta = JSON.parse(localStorage.getItem(obtenerClaveMetaNotaAsistencia(actividadId)) || "null");
+    } catch (_) {}
+    if (meta && meta.fecha && Number.isFinite(Number(meta.clases))) {
+        const fecha = new Date(meta.fecha);
+        const fechaTexto = fecha.toLocaleDateString("es-BO", {
+            day: "numeric", month: "long"
+        });
+        contenedor.textContent = "Nota actualizada el " + fechaTexto + " · " + meta.clases + " clases";
+    } else {
+        contenedor.textContent = "Nota todavía no actualizada";
+    }
+}
+
+async function actualizarNotaAsistenciaSER(actividadId, boton) {
+    const actividad = actividades.find(a => Number(a.id) === Number(actividadId));
+    if (!actividad || String(actividad.categoria || "").toUpperCase() !== "SER" ||
+        String(actividad.nombre || "").trim().toLowerCase() !== "asistencia") return;
+
+    if (guardandoNotasEnProceso) {
+        alert("Espera a que termine el guardado de las calificaciones.");
+        return;
+    }
+
+    const confirmar = confirm(
+        "Se actualizará la nota de Asistencia de todos los estudiantes del curso según las clases normales registradas.\n\n" +
+        "Asistencia: 1 punto · Atraso: 0,5 puntos · Falta y permiso: 0 puntos.\n\n" +
+        "¿Deseas actualizar la nota?"
+    );
+    if (!confirmar) return;
+
+    const estudiantesCurso = estudiantes.filter(e => String(e.curso) === String(cursoSeleccionado));
+    const ids = estudiantesCurso.map(e => Number(e.id)).filter(Number.isFinite);
+    if (!ids.length) {
+        alert("No se encontraron estudiantes en este curso.");
+        return;
+    }
+
+    const textoOriginal = boton ? boton.textContent : "";
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = "⏳ Actualizando...";
+    }
+
+    guardadoManualEnCurso = true;
+    guardandoNotasEnProceso = true;
+
+    try {
+        const [resultadoAsistencia, resultadoTipos] = await Promise.all([
+            supabaseClient.from("asistencia")
+                .select("estudiante_id,fecha,estado")
+                .in("estudiante_id", ids),
+            supabaseClient.from("asistencia_tipos_dia")
+                .select("fecha,tipo")
+                .eq("curso", cursoSeleccionado)
+        ]);
+
+        if (resultadoAsistencia.error) throw resultadoAsistencia.error;
+        if (resultadoTipos.error) throw resultadoTipos.error;
+
+        const tiposPorFecha = new Map(
+            (resultadoTipos.data || []).map(r => [
+                String(r.fecha).slice(0, 10),
+                String(r.tipo || "").toLowerCase()
+            ])
+        );
+
+        // Una clase se cuenta una sola vez si hay registros de asistencia
+        // y no está marcada como día sin clases o clase informal.
+        const fechasNormales = new Set();
+        (resultadoAsistencia.data || []).forEach(r => {
+            const fecha = String(r.fecha || "").slice(0, 10);
+            const tipo = tiposPorFecha.get(fecha) || "";
+            if (fecha && tipo !== "no_clases" && tipo !== "clase_informal") {
+                fechasNormales.add(fecha);
+            }
+        });
+
+        const cantidadClases = fechasNormales.size;
+        if (!cantidadClases) {
+            alert("No se encontraron clases normales con asistencia registrada para este curso.");
+            return;
+        }
+
+        const puntajeMaximo = Number(actividad.puntaje_maximo) || 10;
+        const totales = new Map(ids.map(id => [String(id), 0]));
+
+        (resultadoAsistencia.data || []).forEach(r => {
+            const fecha = String(r.fecha || "").slice(0, 10);
+            if (!fechasNormales.has(fecha)) return;
+
+            const estado = String(r.estado || "").trim().toLowerCase();
+            const clave = String(r.estudiante_id);
+            if (!totales.has(clave)) return;
+
+            if (estado === "asistio") {
+                totales.set(clave, totales.get(clave) + 1);
+            } else if (estado === "atraso") {
+                totales.set(clave, totales.get(clave) + 0.5);
+            }
+        });
+
+        const registros = estudiantesCurso.map(e => {
+            const puntaje = Math.round(totales.get(String(e.id)) || 0);
+            return {
+                actividad_id: Number(actividad.id),
+                estudiante_id: Number(e.id),
+                nota: Math.max(0, Math.min(puntajeMaximo, puntaje))
+            };
+        });
+
+        const { error: errorGuardar } = await supabaseClient
+            .from("calificaciones")
+            .upsert(registros, { onConflict: "actividad_id,estudiante_id" });
+        if (errorGuardar) throw errorGuardar;
+
+        // Actualizar el estado local y los campos visibles sin reconstruir
+        // las demás actividades ni modificar sus cambios pendientes.
+        registros.forEach(r => {
+            if (!calificaciones[r.estudiante_id]) calificaciones[r.estudiante_id] = {};
+            const anterior = calificaciones[r.estudiante_id][actividad.id];
+            calificaciones[r.estudiante_id][actividad.id] =
+                anterior && typeof anterior === "object"
+                    ? { ...anterior, nota: r.nota }
+                    : { nota: r.nota, observacion: "", fecha_entrega: "" };
+
+            const input = document.querySelector(
+                `.nota-input[data-actividad="${actividad.id}"][data-estudiante="${r.estudiante_id}"]`
+            );
+            if (input) {
+                input.value = String(r.nota);
+                input.dataset.valorInicial = String(r.nota);
+            }
+        });
+
+        const meta = { fecha: new Date().toISOString(), clases: cantidadClases };
+        try {
+            localStorage.setItem(obtenerClaveMetaNotaAsistencia(actividad.id), JSON.stringify(meta));
+        } catch (_) {}
+
+        const info = document.querySelector(
+            `.meta-nota-asistencia-ser[data-actividad-id="${actividad.id}"]`
+        );
+        actualizarTextoMetaNotaAsistencia(actividad.id, info);
+
+        actividadesPendientes.delete(String(actividad.id));
+        contextosActividadesPendientes.delete(String(actividad.id));
+        actualizarBotonGuardarActividadManual(actividad.id);
+        cambiosPendientesActividades = actividadesPendientes.size > 0;
+        actualizarEstadosGuardado();
+
+        mostrarMensaje("✓ Nota de Asistencia actualizada para todos los estudiantes.");
+    } catch (error) {
+        console.error("Error al actualizar nota de asistencia SER:", error);
+        alert("No se pudo actualizar la nota de asistencia: " + (error.message || error));
+    } finally {
+        guardandoNotasEnProceso = false;
+        guardadoManualEnCurso = false;
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = textoOriginal || "↻ Actualizar nota";
+        }
+    }
+}
+
 function crearActividadHTML(
     actividad
 ) {
@@ -14098,6 +14309,24 @@ function crearActividadHTML(
     derecha.className =
     "derecha-actividad";
 
+    // El botón aparece únicamente en SER cuando la actividad se llama "Asistencia".
+    const esActividadAsistenciaSER =
+        String(actividad.categoria || "").toUpperCase() === "SER" &&
+        String(actividad.nombre || "").trim().toLowerCase() === "asistencia";
+
+    if (esActividadAsistenciaSER) {
+        const botonActualizarNotaAsistencia = document.createElement("button");
+        botonActualizarNotaAsistencia.type = "button";
+        botonActualizarNotaAsistencia.className = "boton-actualizar-nota-asistencia-ser";
+        botonActualizarNotaAsistencia.textContent = "↻ Actualizar nota";
+        botonActualizarNotaAsistencia.title = "Calcular la nota según la asistencia del curso";
+        botonActualizarNotaAsistencia.addEventListener("click", function(event) {
+            event.stopPropagation();
+            actualizarNotaAsistenciaSER(actividad.id, botonActualizarNotaAsistencia);
+        });
+
+        derecha.appendChild(botonActualizarNotaAsistencia);
+    }
 
     const botonOcultar =
     document.createElement(
@@ -14319,6 +14548,14 @@ function crearActividadHTML(
     bloque.appendChild(
         encabezado
     );
+
+    if (esActividadAsistenciaSER) {
+        const metaNotaAsistencia = document.createElement("div");
+        metaNotaAsistencia.className = "meta-nota-asistencia-ser";
+        metaNotaAsistencia.dataset.actividadId = String(actividad.id);
+        actualizarTextoMetaNotaAsistencia(actividad.id, metaNotaAsistencia);
+        bloque.appendChild(metaNotaAsistencia);
+    }
 
 
     const contenido =
