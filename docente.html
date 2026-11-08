@@ -30771,7 +30771,19 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
 function solicitarCerrarEditorFotoActividad(){if(editorFotoDirty){document.getElementById("dialogoSalidaEditorFoto").classList.remove("oculto");return}cerrarEditorFotoActividad()}
 function cerrarDialogoSalidaFoto(){document.getElementById("dialogoSalidaEditorFoto").classList.add("oculto")}
 function cancelarEditorFotoActividad(){solicitarCerrarEditorFotoActividad()}
-function cerrarEditorFotoActividad(){document.getElementById("editorFotoActividad").classList.add("oculto");editorFotoActual=null;editorFotoImagen=null;if(editorFotoObjectUrl){URL.revokeObjectURL(editorFotoObjectUrl);editorFotoObjectUrl=null}}
+async function cerrarEditorFotoActividad(){
+ document.getElementById("editorFotoActividad").classList.add("oculto");
+ editorFotoActual=null;editorFotoImagen=null;
+ if(editorFotoObjectUrl){URL.revokeObjectURL(editorFotoObjectUrl);editorFotoObjectUrl=null}
+ // Actualizar las calificaciones desde Supabase al cerrar el editor, sin recargar toda la página.
+ try{
+  await cargarCalificaciones();
+  if(typeof mostrarActividades==="function")mostrarActividades();
+  if(typeof actualizarEstudiantesInforme==="function"&&informeGeneralVisible)actualizarEstudiantesInforme();
+  if(typeof mostrarTablaCalificacionesCurso==="function")mostrarTablaCalificacionesCurso();
+  if(typeof actualizarCalificacionesCursoVisible==="function")await actualizarCalificacionesCursoVisible();
+ }catch(error){console.error("No se pudieron actualizar las calificaciones al cerrar el editor de fotografías:",error)}
+}
 
 </script>
 
