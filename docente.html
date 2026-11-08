@@ -30600,7 +30600,7 @@ document.addEventListener("contextmenu", function(event) {
   <div class="editor-foto-zoom"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)">+</button><small>Amplíe también con dos dedos</small></div>
   <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
   <div class="editor-foto-pie">
-   <div style="display:flex;gap:7px"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button></div>
+   <div style="display:flex;gap:7px;flex-wrap:wrap"><button type="button" onclick="navegarFotoEditor(-1)">◀ Anterior</button><button type="button" onclick="navegarFotoEditor(1)">Siguiente ▶</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()">Siguiente estudiante</button></div>
    <span id="estadoEditorFotoActividad" class="editor-foto-estado"></span>
    <div class="editor-foto-acciones"><button type="button" class="guardar" onclick="guardarFotoEditadaActividad(false)">Guardar</button><button type="button" class="nueva" onclick="guardarFotoEditadaActividad(true)">Guardar como nueva</button><button type="button" class="cancelar" onclick="cancelarEditorFotoActividad()">Cancelar</button></div>
   </div>
@@ -30638,6 +30638,16 @@ async function abrirFotoActividad(f){
   await mostrarFotoEnEditorActividad();
  }catch(e){alert("No se pudo abrir la fotografía.\n\n"+(e.message||e))}
 }
+function nombreEstudianteFotoEditor(estudianteId){
+ const e=(estudiantes||[]).find(x=>String(x.id)===String(estudianteId));
+ if(!e)return "Estudiante";
+ return String(e.nombre||e.nombre_completo||[e.nombres,e.paterno,e.materno].filter(Boolean).join(" ")||"Estudiante").trim();
+}
+function cargarCalificacionEnFotoEditor(f){
+ const registro=calificaciones?.[f.estudiante_id]?.[f.actividad_id];
+ const nota=registro&&typeof registro==="object"?registro.nota:registro;
+ document.getElementById("textoNotaFotoEditor").value=(nota===null||nota===undefined)?"":String(nota);
+}
 async function mostrarFotoEnEditorActividad(){
  const f=editorFotoLista[editorFotoIndice];if(!f)return;
  editorFotoActual=f;editorFotoDirty=false;editorFotoPila=[];editorFotoRehacer=[];
@@ -30646,9 +30656,9 @@ async function mostrarFotoEnEditorActividad(){
  editorFotoZoom=1;actualizarZoomFotoEditor();
  c.width=im.naturalWidth;c.height=im.naturalHeight;ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(im,0,0);
  guardarEstadoFotoEditor();
- document.getElementById("tituloEditorFotoActividad").textContent=`Fotografía ${editorFotoIndice+1} de ${editorFotoLista.length}`;
+ document.getElementById("tituloEditorFotoActividad").textContent=`${nombreEstudianteFotoEditor(f.estudiante_id)} · Fotografía ${editorFotoIndice+1} de ${editorFotoLista.length}`;
  document.getElementById("estadoEditorFotoActividad").textContent=f.nombre_archivo||"";
- document.getElementById("textoNotaFotoEditor").value="";
+ cargarCalificacionEnFotoEditor(f);
 }
 function actualizarZoomFotoEditor(){
  const c=document.getElementById("canvasEditorFoto");if(!c)return;
@@ -30705,6 +30715,23 @@ function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehace
 function rehacerFotoEditor(){if(!editorFotoRehacer.length)return;const u=editorFotoRehacer.pop();editorFotoPila.push(u);restaurarEstadoFotoEditor(u)}
 function limpiarAnotacionesFotoEditor(){if(!editorFotoImagen||!confirm("¿Quitar todas las anotaciones de esta fotografía?"))return;const c=document.getElementById("canvasEditorFoto"),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);x.drawImage(editorFotoImagen,0,0);editorFotoDirty=true;guardarEstadoFotoEditor()}
 function navegarFotoEditor(d){if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de fotografía?"))return;const n=editorFotoIndice+d;if(n<0||n>=editorFotoLista.length)return;editorFotoIndice=n;mostrarFotoEnEditorActividad().catch(e=>alert(e.message||e))}
+function navegarSiguienteEstudianteFotoEditor(){
+ if(!editorFotoActual||editorFotoActual.actividad_id==null)return;
+ if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y pasar al siguiente estudiante?"))return;
+ const actividadId=String(editorFotoActual.actividad_id);
+ const orden=(estudiantes||[]).slice().sort((a,b)=>{
+  const na=Number(a.num_lista),nb=Number(b.num_lista);
+  if(Number.isFinite(na)&&Number.isFinite(nb)&&na!==nb)return na-nb;
+  return String(a.nombre||a.nombre_completo||"").localeCompare(String(b.nombre||b.nombre_completo||""),"es");
+ });
+ const indiceActual=orden.findIndex(e=>String(e.id)===String(editorFotoActual.estudiante_id));
+ for(let i=indiceActual+1;i<orden.length;i++){
+  const siguiente=orden[i];
+  const fotos=obtenerFotosActividad(actividadId,siguiente.id);
+  if(fotos.length){editorFotoLista=fotos.slice();editorFotoIndice=0;mostrarFotoEnEditorActividad().catch(e=>alert(e.message||e));return}
+ }
+ alert("No hay más estudiantes con fotografías en esta actividad.");
+}
 async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
  if(!editorFotoDirty){alert("No hay anotaciones nuevas para guardar.");return}
  const f=editorFotoActual;
