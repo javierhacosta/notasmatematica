@@ -13980,7 +13980,8 @@ async function actualizarNotaAsistenciaSER(actividadId, boton) {
 
     const confirmar = confirm(
         "Se actualizará la nota de Asistencia de todos los estudiantes del curso según las clases normales registradas.\n\n" +
-        "Asistencia: 1 punto · Atraso: 0,5 puntos · Falta y permiso: 0 puntos.\n\n" +
+        "La nota se calculará proporcionalmente a los días de clases formales registrados.\n" +
+        "Presente: 1 · Atraso: 0,5 · Falta o permiso: 0, según la nota máxima de la actividad.\n\n" +
         "¿Deseas actualizar la nota?"
     );
     if (!confirmar) return;
@@ -14056,8 +14057,12 @@ async function actualizarNotaAsistenciaSER(actividadId, boton) {
             }
         });
 
+        // Distribuir la nota máxima entre todos los días formales registrados.
+        // Cada presente aporta 1 fracción del día y cada atraso 0,5.
         const registros = estudiantesCurso.map(e => {
-            const puntaje = Math.round(totales.get(String(e.id)) || 0);
+            const puntosAsistencia = totales.get(String(e.id)) || 0;
+            const notaProporcional = (puntosAsistencia / cantidadClases) * puntajeMaximo;
+            const puntaje = Math.round(notaProporcional);
             return {
                 actividad_id: Number(actividad.id),
                 estudiante_id: Number(e.id),
