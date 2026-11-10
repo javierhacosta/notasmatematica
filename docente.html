@@ -30045,7 +30045,7 @@ async function convertirPDFEnImagenesActividad(archivoPDF, informarProgreso = nu
     return imagenes;
 }
 
-function seleccionarEstudianteManualFotoActividad(file, alumnosCurso) {
+function seleccionarEstudianteManualFotoActividad(file, alumnosCurso, estudiantesConFoto = new Set()) {
     return new Promise(resolve => {
         const fondo = document.createElement("div");
         fondo.className = "modal-fondo";
@@ -30057,28 +30057,57 @@ function seleccionarEstudianteManualFotoActividad(file, alumnosCurso) {
         const titulo = document.createElement("h3"); titulo.textContent = "🖼️ Asignar estudiante manualmente";
         cab.appendChild(titulo);
         const cuerpo = document.createElement("div"); cuerpo.className = "modal-cuerpo";
-        const ayuda = document.createElement("p"); ayuda.textContent = "No se pudo identificar esta imagen automáticamente. Revísela y elija el estudiante al que pertenece.";
+        const ayuda = document.createElement("p");
+        ayuda.textContent = "No se pudo identificar esta imagen automáticamente. Revísela y elija el estudiante al que pertenece.";
+        const mostrarTodoCont = document.createElement("label");
+        mostrarTodoCont.style.cssText = "display:inline-flex;align-items:center;gap:7px;margin:0 0 12px;font-weight:normal;cursor:pointer";
+        const mostrarTodo = document.createElement("input");
+        mostrarTodo.type = "checkbox";
+        mostrarTodo.checked = false;
+        mostrarTodo.style.cssText = "width:18px;height:18px;margin:0";
+        const mostrarTodoTexto = document.createElement("span");
+        mostrarTodoTexto.textContent = "Mostrar todo";
+        mostrarTodoCont.append(mostrarTodo, mostrarTodoTexto);
         const imagen = document.createElement("img");
         const url = URL.createObjectURL(file);
         imagen.src = url; imagen.alt = "Imagen sin estudiante identificado";
         imagen.style.cssText = "display:block;width:100%;max-height:62vh;object-fit:contain;background:#eee;border-radius:8px;margin-bottom:14px";
         const etiqueta = document.createElement("label"); etiqueta.textContent = "Seleccionar estudiante";
         const select = document.createElement("select"); select.style.width = "100%";
-        const inicial = document.createElement("option"); inicial.value = ""; inicial.textContent = "— Elegir estudiante —"; select.appendChild(inicial);
-        alumnosCurso.slice().sort((a,b) => Number(a.num_lista||0)-Number(b.num_lista||0)).forEach(e => {
-            const op = document.createElement("option"); op.value = String(e.id);
-            op.textContent = (e.num_lista != null ? String(e.num_lista).padStart(2,"0") + " - " : "") + (obtenerNombreCompletoFotoActividad(e) || e.nombre || ("Estudiante " + e.id));
-            select.appendChild(op);
-        });
+        const inicial = document.createElement("option"); inicial.value = ""; inicial.textContent = "— Elegir estudiante —";
+        const ordenados = alumnosCurso.slice().sort((a,b) => Number(a.num_lista||0)-Number(b.num_lista||0));
+        const actualizarOpciones = () => {
+            const valorAnterior = select.value;
+            select.replaceChildren();
+            select.appendChild(inicial);
+            const disponibles = mostrarTodo.checked
+                ? ordenados
+                : ordenados.filter(e => !estudiantesConFoto.has(String(e.id)));
+            disponibles.forEach(e => {
+                const op = document.createElement("option"); op.value = String(e.id);
+                op.textContent = (e.num_lista != null ? String(e.num_lista).padStart(2,"0") + " - " : "") + (obtenerNombreCompletoFotoActividad(e) || e.nombre || ("Estudiante " + e.id));
+                select.appendChild(op);
+            });
+            if (valorAnterior && disponibles.some(e => String(e.id) === valorAnterior)) select.value = valorAnterior;
+            guardar.disabled = !select.value;
+            if (!disponibles.length) {
+                const vacio = document.createElement("option");
+                vacio.value = "";
+                vacio.textContent = "Todos los estudiantes ya tienen foto en esta actividad";
+                select.appendChild(vacio);
+            }
+        };
         const acciones = document.createElement("div"); acciones.className = "modal-acciones";
         const omitir = document.createElement("button"); omitir.type = "button"; omitir.className = "boton-cancelar"; omitir.textContent = "Omitir";
         const guardar = document.createElement("button"); guardar.type = "button"; guardar.className = "boton-crear-modal"; guardar.textContent = "Asignar y guardar"; guardar.disabled = true;
         select.onchange = () => guardar.disabled = !select.value;
+        mostrarTodo.onchange = actualizarOpciones;
         const cerrar = valor => { URL.revokeObjectURL(url); fondo.remove(); resolve(valor); };
         omitir.onclick = () => cerrar(null);
         guardar.onclick = () => cerrar(alumnosCurso.find(e => String(e.id) === select.value) || null);
+        actualizarOpciones();
         acciones.append(omitir, guardar);
-        cuerpo.append(ayuda, imagen, etiqueta, select, acciones);
+        cuerpo.append(ayuda, mostrarTodoCont, imagen, etiqueta, select, acciones);
         caja.append(cab, cuerpo); fondo.appendChild(caja); document.body.appendChild(fondo);
     });
 }
@@ -30231,8 +30260,22 @@ document.getElementById("inputFotosGaleriaActividadQR")?.addEventListener("chang
     // Tercera opción: asignar manualmente las imágenes que no se pudieron identificar.
     if (pendientesAsignacionManual.length) {
         const alumnosCurso = (estudiantes || []).filter(e => String(e.curso) === String(cursoSeleccionado));
+        // Consultar las fotos ya guardadas en esta actividad, incluidas las que
+        // se identificaron y guardaron durante las pasadas QR/nombre.
+        let estudiantesConFoto = new Set();
+        try {
+            const consultaFotos = await supabaseClient.from("fotos_actividades")
+                .select("estudiante_id")
+                .eq("actividad_id", Number(actividad.id));
+            if (consultaFotos.error) throw consultaFotos.error;
+            estudiantesConFoto = new Set((consultaFotos.data || []).map(f => String(f.estudiante_id)));
+        } catch (errorConsultaFotos) {
+            console.warn("No se pudo consultar qué estudiantes ya tienen fotos en esta actividad.", errorConsultaFotos);
+            alert("No se pudo comprobar qué estudiantes ya tienen fotografías en esta actividad. Se mostrará la lista completa para evitar ocultar estudiantes.");
+            estudiantesConFoto = new Set();
+        }
         for (const pendiente of pendientesAsignacionManual) {
-            const asignacion = await seleccionarEstudianteManualFotoActividad(pendiente.file, alumnosCurso);
+            const asignacion = await seleccionarEstudianteManualFotoActividad(pendiente.file, alumnosCurso, estudiantesConFoto);
             if (!asignacion) continue;
             try {
                 const cfg = obtenerConfigFotoActividad(actividad.id);
