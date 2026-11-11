@@ -30923,10 +30923,37 @@ async function cargarImagenEditorFoto(foto){
   im.src=editorFotoObjectUrl;
  });
 }
+async function recuperarOriginalesDeFotosAnotadas(actividadId,estudianteId){
+ // Las versiones anteriores del editor podían cambiar la ruta del registro
+ // a *_anotada.jpg y dejar el archivo original guardado en Storage sin registro.
+ try{
+  const registros=await obtenerFotosActividadServidor(actividadId,estudianteId);
+  const {data:archivos,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).list(String(estudianteId),{limit:1000});
+  if(error)throw error;
+  const nombres=new Set((archivos||[]).map(x=>x.name));
+  const rutasRegistradas=new Set(registros.map(x=>x.ruta));
+  let recuperadas=0;
+  for(const foto of registros){
+   const nombre=foto.nombre_archivo||String(foto.ruta||"").split("/").pop()||"";
+   const original=nombre.replace(/_anotada(?:_\d+)?(?=\.[^.]+$)/i,"");
+   if(original===nombre||!nombres.has(original))continue;
+   const rutaOriginal=`${estudianteId}/${original}`;
+   if(rutasRegistradas.has(rutaOriginal))continue;
+   const ins=await supabaseClient.from("fotos_actividades").insert({actividad_id:Number(actividadId),estudiante_id:Number(estudianteId),ruta:rutaOriginal,nombre_archivo:original});
+   if(!ins.error){rutasRegistradas.add(rutaOriginal);recuperadas++}
+   else if(ins.error.code!=="23505")console.warn("No se pudo registrar la fotografía original recuperada:",ins.error);
+  }
+  if(recuperadas)await cargarFotosActividades();
+ }catch(error){console.warn("No se pudieron recuperar fotografías originales almacenadas:",error)}
+}
 async function abrirFotoActividad(f){
  if(!f?.ruta)return;
  guardarContextoActividadAntesDeFoto(f);
  try{
+  if(f.actividad_id!=null&&f.estudiante_id!=null){
+   await recuperarOriginalesDeFotosAnotadas(f.actividad_id,f.estudiante_id);
+   f=(obtenerFotosActividad(f.actividad_id,f.estudiante_id).find(x=>String(x.id)===String(f.id))||f);
+  }
   editorFotoActual=f;
   editorFotoLista=(f.actividad_id!=null&&f.estudiante_id!=null)?obtenerFotosActividad(f.actividad_id,f.estudiante_id):[f];
   if(!editorFotoLista.some(x=>String(x.id)===String(f.id)))editorFotoLista.push(f);
@@ -31116,16 +31143,27 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
   const servidor=await obtenerFotosActividadServidor(f.actividad_id,f.estudiante_id);
   const objetivo=servidor.find(x=>String(x.id)===String(f.id));
   if(!objetivo)throw new Error("La fotografía original ya no está registrada.");
-  const base=(objetivo.nombre_archivo||"foto").replace(/\.[^.]+$/ ,"")+"_anotada";
-  const nombre=obtenerNombreFotoActividadUnicoServidor(f.actividad_id,f.estudiante_id,base,servidor);
-  const ruta=`${f.estudiante_id}/${nombre}`;
-  const up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:false,contentType:"image/jpeg"});
-  if(up.error)throw up.error;
-  const reg={actividad_id:Number(f.actividad_id),estudiante_id:Number(f.estudiante_id),ruta,nombre_archivo:nombre};
-  let q;
-  if(comoNueva)q=await supabaseClient.from("fotos_actividades").insert(reg);
-  else q=await supabaseClient.from("fotos_actividades").update(reg).eq("id",objetivo.id);
-  if(q.error){await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);throw q.error}
+  let nombre=objetivo.nombre_archivo||String(objetivo.ruta||"").split("/").pop()||"foto.jpg";
+  let ruta=objetivo.ruta;
+  let up;
+  if(comoNueva){
+   // Sólo "Guardar como nueva" crea otro archivo y otro registro.
+   const base=nombre.replace(/\.[^.]+$/ ,"");
+   nombre=obtenerNombreFotoActividadUnicoServidor(f.actividad_id,f.estudiante_id,base,servidor);
+   ruta=`${f.estudiante_id}/${nombre}`;
+   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:false,contentType:"image/jpeg"});
+   if(up.error)throw up.error;
+   const reg={actividad_id:Number(f.actividad_id),estudiante_id:Number(f.estudiante_id),ruta,nombre_archivo:nombre};
+   const q=await supabaseClient.from("fotos_actividades").insert(reg);
+   if(q.error){await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove([ruta]);throw q.error}
+  }else{
+   // "Guardar" reemplaza el contenido del archivo original, conservando
+   // su ruta y su registro. No crea *_anotada ni deja la foto original huérfana.
+   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:true,contentType:"image/jpeg"});
+   if(up.error)throw up.error;
+   const q=await supabaseClient.from("fotos_actividades").update({nombre_archivo:nombre,ruta}).eq("id",objetivo.id);
+   if(q.error)throw q.error;
+  }
   await cargarFotosActividades();
   actualizarCeldasFotosActividad(f.actividad_id);
   await actualizarFotosDetalleQR(f.actividad_id,f.estudiante_id);
@@ -31134,13 +31172,14 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
   const indiceGuardada=nuevas.findIndex(x=>x.ruta===ruta);
   editorFotoLista=nuevas;
   editorFotoIndice=indiceGuardada>=0?indiceGuardada:0;
-  const guardada=nuevas[editorFotoIndice]||{...reg,id:null};
+  const guardada=nuevas[editorFotoIndice]||{...objetivo,ruta,nombre_archivo:nombre};
   editorFotoActual=guardada;
   await mostrarFotoEnEditorActividad();
-  mensajeEditorFoto(comoNueva?"Fotografía guardada como nueva correctamente.":"Fotografía actualizada correctamente.");
+  mensajeEditorFoto(comoNueva?"Fotografía guardada como nueva correctamente. La original se conservó.":"Fotografía original reemplazada correctamente.");
  }catch(e){mensajeEditorFoto("No se pudo guardar la fotografía: "+(e.message||e))}
  finally{mostrarProgresoGuardadoFoto(false);botones.forEach(b=>b.disabled=false)}
 }
+
 function solicitarCerrarEditorFotoActividad(){if(editorFotoDirty){document.getElementById("dialogoSalidaEditorFoto").classList.remove("oculto");return}cerrarEditorFotoActividad()}
 function cerrarDialogoSalidaFoto(){document.getElementById("dialogoSalidaEditorFoto").classList.add("oculto")}
 function salirSinGuardarFotoEditor(){
