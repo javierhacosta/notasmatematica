@@ -11706,6 +11706,23 @@ function seleccionarFotoAsistencia(estudianteId,fotoId=null){
  // Mantener el .click() dentro de la acción del usuario para que Android abra cámara/galería.
  input.click();
 }
+// Reutiliza enlaces firmados durante su vigencia y limita las solicitudes repetidas.
+const cacheUrlsFotosRapidas = new Map();
+async function obtenerUrlFotoRapida(ruta, segundos=600){
+ if(!ruta)throw new Error("Ruta de fotografía no válida.");
+ const ahora=Date.now(), guardada=cacheUrlsFotosRapidas.get(ruta);
+ if(guardada && guardada.vence>ahora+30000)return guardada.url;
+ const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,segundos);
+ if(error||!data?.signedUrl)throw error||new Error("No se pudo generar el enlace de la fotografía.");
+ cacheUrlsFotosRapidas.set(ruta,{url:data.signedUrl,vence:ahora+(segundos-45)*1000});
+ if(cacheUrlsFotosRapidas.size>500){for(const [k,v] of cacheUrlsFotosRapidas){if(v.vence<=ahora)cacheUrlsFotosRapidas.delete(k);if(cacheUrlsFotosRapidas.size<=350)break;}}
+ return data.signedUrl;
+}
+async function obtenerUrlsFotosEnLote(fotos,segundos=600,limite=6){
+ const salida=new Array(fotos.length);let siguiente=0;
+ const trabajadores=Array.from({length:Math.min(limite,fotos.length)},async()=>{while(true){const i=siguiente++;if(i>=fotos.length)return;try{salida[i]=await obtenerUrlFotoRapida(fotos[i].ruta,segundos);}catch(e){console.warn("No se pudo preparar una fotografía:",e);salida[i]=null;}}});
+ await Promise.all(trabajadores);return salida;
+}
 async function cargarFotosAsistenciaEstudiante(estudianteId){
  const cont=document.getElementById("fotosAsistencia-"+estudianteId);if(!cont)return;
  const fila=cont.closest("tr");
@@ -11719,11 +11736,11 @@ async function cargarFotosAsistenciaEstudiante(estudianteId){
   cont.innerHTML="";
   const fotos=data||[];
   if(!fotos.length){cont.textContent="—";return;}
-  for(const f of fotos){
-   const signed=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta,600);
-   if(signed.error){console.warn("No se pudo abrir la foto de asistencia:",signed.error);continue;}
+  const urls=await obtenerUrlsFotosEnLote(fotos,600,6);
+  for(let i=0;i<fotos.length;i++){
+   const f=fotos[i],url=urls[i];if(!url)continue;
    const item=document.createElement("div");item.className="foto-asistencia-item";
-   const img=document.createElement("img");img.className="foto-asistencia-miniatura";img.src=signed.data.signedUrl;img.alt="Foto de asistencia";img.style.cursor="pointer";img.onclick=()=>window.open(signed.data.signedUrl,"_blank","noopener");item.appendChild(img);
+   const img=document.createElement("img");img.className="foto-asistencia-miniatura";img.loading="lazy";img.decoding="async";img.src=url;img.alt="Foto de asistencia";img.style.cursor="pointer";img.onclick=()=>window.open(url,"_blank","noopener");item.appendChild(img);
    if(asistenciaDesbloqueada){
     const acts=document.createElement("div");acts.className="botones-foto-asistencia";
     const ed=document.createElement("button");ed.type="button";ed.textContent="✏️";ed.title="Reemplazar foto";ed.onclick=()=>seleccionarFotoAsistencia(estudianteId,f.id);
@@ -12351,13 +12368,13 @@ async function cargarFotosPendientesAsistencia(estudianteId) {
         if (error) throw error;
         cont.innerHTML = "";
         if (!data?.length) { cont.textContent = "—"; return; }
-        for (const f of data) {
-            const signed = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 600);
-            if (signed.error) continue;
+        const urls = await obtenerUrlsFotosEnLote(data, 600, 6);
+        for (let i=0;i<data.length;i++) {
+            const f=data[i], url=urls[i]; if(!url)continue;
             const item = document.createElement("div"); item.className = "foto-asistencia-item";
             const img = document.createElement("img"); img.className = "foto-asistencia-miniatura";
-            img.src = signed.data.signedUrl; img.alt = "Foto de asistencia";
-            img.onclick = () => window.open(signed.data.signedUrl, "_blank", "noopener");
+            img.loading="lazy"; img.decoding="async"; img.src = url; img.alt = "Foto de asistencia";
+            img.onclick = () => window.open(url, "_blank", "noopener");
             item.appendChild(img);
             if (asistenciaDesbloqueada) {
                 const acts = document.createElement("div"); acts.className = "botones-foto-asistencia";
@@ -15129,7 +15146,7 @@ function renderFotoActividadCelda(a,e){const fotos=obtenerFotosActividad(a,e);co
 function anadirFotoActividadDesdeCelda(a,e){const actividad=actividades.find(x=>String(x.id)===String(a));const estudiante=(estudiantes||[]).find(x=>String(x.id)===String(e));if(actividad&&estudiante){estudianteQRSeleccionado=estudiante;abrirCapturaFotoActividad(actividad,'directa');}}
 function datosFotoCodificados(c){try{return JSON.parse(decodeURIComponent(c))}catch(_){return null}}
 function abrirFotoActividadDesdeCelda(c){const f=datosFotoCodificados(c);if(f)abrirFotoActividad(f)}
-async function cargarMiniaturasFotosActividad(contenedor=document){const imagenes=contenedor.querySelectorAll(".boton-foto-miniatura-img[data-ruta-foto]");await Promise.all(Array.from(imagenes).map(async img=>{const ruta=img.dataset.rutaFoto;if(!ruta||img.dataset.cargada==="1")return;try{const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,600);if(!error&&data?.signedUrl){img.src=data.signedUrl;img.dataset.cargada="1"}}catch(error){console.warn("No se pudo mostrar la miniatura de una fotografía:",error)}}))}
+async function cargarMiniaturasFotosActividad(contenedor=document){const imagenes=contenedor.querySelectorAll(".boton-foto-miniatura-img[data-ruta-foto]");await Promise.all(Array.from(imagenes).map(async img=>{const ruta=img.dataset.rutaFoto;if(!ruta||img.dataset.cargada==="1")return;try{const url=await obtenerUrlFotoRapida(ruta,600);img.loading="lazy";img.decoding="async";img.src=url;img.dataset.cargada="1"}catch(error){console.warn("No se pudo mostrar la miniatura de una fotografía:",error)}}))}
 function actualizarCeldasFotosActividad(a){document.querySelectorAll(`.foto-actividad-celda[data-foto-actividad="${a}"]`).forEach(td=>td.innerHTML=renderFotoActividadCelda(a,td.dataset.fotoEstudiante));cargarMiniaturasFotosActividad(document)}
 function iniciarPulsacionFotoActividad(e,a){pulsacionLargaFotoActividad=false;if(temporizadorPulsacionFotoActividad)clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=setTimeout(()=>{pulsacionLargaFotoActividad=true;abrirConfigFotoActividad(a)},650)}
 function cancelarPulsacionFotoActividad(e,a){if(temporizadorPulsacionFotoActividad){clearTimeout(temporizadorPulsacionFotoActividad);temporizadorPulsacionFotoActividad=null}if(pulsacionLargaFotoActividad){e.preventDefault();e.stopPropagation();pulsacionLargaFotoActividad=false;return}if(e.type==="pointerup")abrirCapturaFotoActividad(a,"nueva")}
@@ -18245,30 +18262,36 @@ async function abrirModalGaleriaImagenesEstadistica() {
         const mapaAlumnos = new Map(alumnos.map(e => [String(e.id), e]));
         const mapaActividades = new Map(actividadesTodas.map(a => [String(a.id), a]));
         const registros = [];
+        const [urlsActividad, urlsAsistencia] = await Promise.all([
+            obtenerUrlsFotosEnLote(fotosActividad.filter(f=>f.ruta),3600,6),
+            obtenerUrlsFotosEnLote(fotosAsistencia.filter(f=>f.ruta),3600,6)
+        ]);
+        const mapaUrlActividad=new Map(fotosActividad.filter(f=>f.ruta).map((f,i)=>[f,urlsActividad[i]]));
+        const mapaUrlAsistencia=new Map(fotosAsistencia.filter(f=>f.ruta).map((f,i)=>[f,urlsAsistencia[i]]));
         for (const f of fotosActividad) {
             const e = mapaAlumnos.get(String(f.estudiante_id));
             const a = mapaActividades.get(String(f.actividad_id));
             if (!f.ruta) continue;
-            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 3600);
-            if (firmado.error || !firmado.data?.signedUrl) continue;
+            const url = mapaUrlActividad.get(f);
+            if (!url) continue;
             registros.push({
                 tipo: "Actividad", curso: a?.curso || e?.curso || "",
                 actividad: a?.nombre || `Actividad ${f.actividad_id}`,
                 fecha: a?.fecha || (f.created_at ? String(f.created_at).slice(0,10) : ""),
                 estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
-                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url: firmado.data.signedUrl
+                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url
             });
         }
         for (const f of fotosAsistencia) {
             const e = mapaAlumnos.get(String(f.estudiante_id));
             if (!f.ruta) continue;
-            const firmado = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(f.ruta, 3600);
-            if (firmado.error || !firmado.data?.signedUrl) continue;
+            const url = mapaUrlAsistencia.get(f);
+            if (!url) continue;
             registros.push({
                 tipo: "Asistencia", curso: String(f.curso_id || e?.curso || ""),
                 actividad: "", fecha: f.fecha || "",
                 estudiante: e?.nombre || [e?.nombres, e?.paterno, e?.materno].filter(Boolean).join(" ") || `Estudiante ${f.estudiante_id}`,
-                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url: firmado.data.signedUrl
+                nombreArchivo: f.nombre_archivo || f.ruta.split("/").pop(), url
             });
         }
         registros.sort((a,b) => String(b.fecha).localeCompare(String(a.fecha)) || a.curso.localeCompare(b.curso));
@@ -25655,8 +25678,8 @@ async function cargarPreviewsFotosAsistenciaDetalleQR() {
     const imgs = document.querySelectorAll("#detalleEstudianteQR img[data-ruta-foto-asistencia]");
     await Promise.all(Array.from(imgs).map(async img => {
         try {
-            const { data, error } = await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(img.dataset.rutaFotoAsistencia, 600);
-            if (!error && data?.signedUrl) img.src = data.signedUrl;
+            const url = await obtenerUrlFotoRapida(img.dataset.rutaFotoAsistencia, 600);
+            img.loading="lazy"; img.decoding="async"; img.src = url;
         } catch (e) { console.warn("No se pudo mostrar foto de asistencia en la ficha:", e); }
     }));
 }
@@ -25763,10 +25786,8 @@ async function cargarPreviewsFotosDetalleQR() {
         const ruta = img.dataset.rutaFoto;
         if (!ruta) return;
         try {
-            const { data, error } = await supabaseClient.storage
-                .from(BUCKET_ARCHIVOS_ESTUDIANTES)
-                .createSignedUrl(ruta, 600);
-            if (!error && data?.signedUrl) img.src = data.signedUrl;
+            const url = await obtenerUrlFotoRapida(ruta, 600);
+            img.loading="lazy"; img.decoding="async"; img.src = url;
         } catch (error) {
             console.warn("No se pudo mostrar la vista previa de una fotografía:", error);
         }
@@ -30910,10 +30931,9 @@ function restaurarContextoActividadDespuesDeFoto(){
  editorFotoContextoActividad=null;
 }
 async function cargarImagenEditorFoto(foto){
- const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(foto.ruta,600);
- if(error||!data?.signedUrl)throw error||new Error("No se pudo generar el enlace de la fotografía.");
+ const signedUrl=await obtenerUrlFotoRapida(foto.ruta,600);
  // Cargar como Blob y usar una URL local: evita que la imagen remota contamine el canvas.
- const respuesta=await fetch(data.signedUrl);
+ const respuesta=await fetch(signedUrl);
  if(!respuesta.ok)throw new Error("No se pudo descargar la fotografía ("+respuesta.status+").");
  const blob=await respuesta.blob();
  if(editorFotoObjectUrl)URL.revokeObjectURL(editorFotoObjectUrl);
