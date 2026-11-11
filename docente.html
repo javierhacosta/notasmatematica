@@ -14489,6 +14489,18 @@ function crearActividadHTML(
         abrirSelectorFotosActividadQR(actividad);
     });
 
+    // Importar calificaciones desde una hoja de Excel, sin alterar el flujo de fotografías.
+    const botonImportarExcelActividad = document.createElement("button");
+    botonImportarExcelActividad.type = "button";
+    botonImportarExcelActividad.className = "boton-bloquear";
+    botonImportarExcelActividad.textContent = "📊";
+    botonImportarExcelActividad.title = "Importar notas desde Excel";
+    botonImportarExcelActividad.addEventListener("click", function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        abrirSelectorExcelActividad(actividad);
+    });
+
     // Por defecto, la configuración permanece oculta.
     botonConfigFotoQR.style.display = "none";
 
@@ -14556,6 +14568,10 @@ function crearActividadHTML(
 
     derecha.appendChild(
         botonSeleccionarFotosQR
+    );
+
+    derecha.appendChild(
+        botonImportarExcelActividad
     );
 
     derecha.appendChild(
@@ -29765,6 +29781,7 @@ if (document.readyState === "loading") {
 <input type="file" id="inputFotoActividad" accept="image/*" style="display:none">
 <input type="file" id="inputFotoActividadCamara" accept="image/*" capture="environment" style="display:none">
 <input type="file" id="inputFotosGaleriaActividadQR" accept="image/*,application/pdf,.pdf" multiple style="display:none">
+<input type="file" id="inputExcelActividad" accept=".xlsx,.xls,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none">
 <script>
 document.getElementById("inputFotoActividad")?.addEventListener("change",async function(){
     const file=this.files?.[0];
@@ -29807,6 +29824,143 @@ document.getElementById("inputFotoActividadCamara")?.addEventListener("change", 
     fotoActividadModo="calificacion";
     try{await procesarFotoActividadParaCalificacion(file,a)}
     finally{try{sessionStorage.removeItem("contextoFotoCalificacionCamara_v1")}catch(_){}}
+});
+</script>
+
+<script>
+let actividadSeleccionadaExcel = null;
+function abrirSelectorExcelActividad(actividad) {
+    actividadSeleccionadaExcel = actividad;
+    const input = document.getElementById("inputExcelActividad");
+    if (!input) { alert("No se encontró el selector de archivos Excel."); return; }
+    input.value = "";
+    input.click();
+}
+function normalizarNombreExcelActividad(valor) {
+    return String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("es").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+function letraColumnaExcelActividad(indice) {
+    let n = indice + 1, letra = "";
+    while (n > 0) { const r = (n - 1) % 26; letra = String.fromCharCode(65 + r) + letra; n = Math.floor((n - 1) / 26); }
+    return letra;
+}
+function elegirColumnaExcelActividad(encabezados, tipo) {
+    const opciones = encabezados.map((h, i) => `${letraColumnaExcelActividad(i)} - ${String(h ?? "").trim() || "(sin título)"}`).join("\n");
+    const sugerida = tipo === "nombre" ? "A" : "B";
+    const respuesta = prompt(
+        `Indique la LETRA de la columna que contiene ${tipo === "nombre" ? "el nombre del estudiante" : "la nota"}.\n\n` +
+        `Las letras corresponden a la primera fila del Excel:\n${opciones}\n\n` +
+        `Escriba la letra de la columna:`, sugerida
+    );
+    if (respuesta === null) return null;
+    const letra = respuesta.trim().toUpperCase();
+    if (!/^[A-Z]+$/.test(letra)) { alert("Escriba una letra de columna válida (por ejemplo, A, B o X)."); return elegirColumnaExcelActividad(encabezados, tipo); }
+    let indice = 0;
+    for (const c of letra) indice = indice * 26 + c.charCodeAt(0) - 64;
+    indice--;
+    if (indice < 0 || indice >= encabezados.length) { alert("La columna " + letra + " no existe en la primera fila del archivo."); return elegirColumnaExcelActividad(encabezados, tipo); }
+    return indice;
+}
+document.getElementById("inputExcelActividad")?.addEventListener("change", async function() {
+    const archivo = this.files?.[0];
+    const actividad = actividadSeleccionadaExcel;
+    this.value = "";
+    if (!archivo || !actividad) return;
+    try {
+        if (typeof XLSX === "undefined") await cargarXLSX();
+        if (typeof XLSX === "undefined") throw new Error("No se pudo cargar el lector de Excel. Verifique su conexión.");
+        const libro = XLSX.read(await archivo.arrayBuffer(), { type: "array", cellDates: true });
+        const hojas = libro.SheetNames || [];
+        if (!hojas.length) throw new Error("El archivo no contiene hojas de cálculo.");
+        let nombreHoja = hojas[0];
+        if (hojas.length > 1) {
+            const opcionesHojas = hojas.map((nombre, i) => `${i + 1}. ${nombre}`).join("\n");
+            const respuestaHoja = prompt(
+                `El archivo contiene varias hojas de Excel.\n\n` +
+                `¿Qué hoja desea leer para importar las notas?\n${opcionesHojas}\n\n` +
+                `Escriba el número de la hoja:`, "1"
+            );
+            if (respuestaHoja === null) return;
+            const numeroHoja = Number(respuestaHoja.trim());
+            if (!Number.isInteger(numeroHoja) || numeroHoja < 1 || numeroHoja > hojas.length) {
+                alert("Seleccione un número de hoja válido.");
+                return;
+            }
+            nombreHoja = hojas[numeroHoja - 1];
+        }
+        const filas = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "", raw: false });
+        if (!filas || filas.length < 2) throw new Error(`La hoja "${nombreHoja}" no contiene encabezados y filas de estudiantes.`);
+        const encabezados = filas[0] || [];
+        const colNombre = elegirColumnaExcelActividad(encabezados, "nombre");
+        if (colNombre === null) return;
+        const colNota = elegirColumnaExcelActividad(encabezados, "nota");
+        if (colNota === null) return;
+        if (colNombre === colNota) { alert("Debe elegir columnas diferentes para el nombre y la nota."); return; }
+
+        const alumnos = (estudiantes || []).filter(e => String(e.curso) === String(cursoSeleccionado));
+        const porNombre = new Map();
+        alumnos.forEach(e => {
+            const nombre = normalizarNombreExcelActividad(
+                (typeof obtenerNombreCompletoFotoActividad === "function"
+                    ? obtenerNombreCompletoFotoActividad(e)
+                    : (e.nombre_completo || [e.nombres, e.paterno, e.materno].filter(Boolean).join(" ") || e.nombre))
+            );
+            if (!nombre) return;
+            if (!porNombre.has(nombre)) porNombre.set(nombre, []);
+            porNombre.get(nombre).push(e);
+        });
+        const asignaciones = [], noEncontrados = [], ambiguos = [], notasInvalidas = [];
+        const maximo = Number(actividad.puntaje_maximo || LIMITES[actividad.categoria]);
+        for (let i = 1; i < filas.length; i++) {
+            const fila = filas[i] || [];
+            const nombreCelda = String(fila[colNombre] ?? "").trim();
+            const notaTexto = String(fila[colNota] ?? "").trim();
+            if (!nombreCelda || !notaTexto) continue;
+            const clave = normalizarNombreExcelActividad(nombreCelda);
+            const coincidencias = porNombre.get(clave) || [];
+            if (!coincidencias.length) { noEncontrados.push(nombreCelda); continue; }
+            if (coincidencias.length > 1) { ambiguos.push(nombreCelda); continue; }
+            const nota = Number(notaTexto.replace(/\s/g, "").replace(",", "."));
+            if (!Number.isFinite(nota) || nota < 0 || nota > maximo) { notasInvalidas.push(`${nombreCelda}: ${notaTexto}`); continue; }
+            asignaciones.push({ estudiante: coincidencias[0], nota });
+        }
+        if (!asignaciones.length) {
+            alert("No se encontraron notas válidas para estudiantes de " + cursoSeleccionado + ".\n\n" +
+                (noEncontrados.length ? "Sin coincidencia: " + noEncontrados.slice(0, 8).join(", ") + "\n" : "") +
+                (ambiguos.length ? "Nombres repetidos: " + ambiguos.slice(0, 8).join(", ") + "\n" : "") +
+                (notasInvalidas.length ? "Notas inválidas: " + notasInvalidas.slice(0, 8).join("; ") : ""));
+            return;
+        }
+        const resumen = `Se identificaron ${asignaciones.length} estudiante(s) con nota válida para la actividad "${actividad.nombre}".\n\n` +
+            `Hoja de Excel: ${nombreHoja}\n` +
+            `Columna de nombres: ${letraColumnaExcelActividad(colNombre)} (${encabezados[colNombre] || "sin título"})\n` +
+            `Columna de notas: ${letraColumnaExcelActividad(colNota)} (${encabezados[colNota] || "sin título"})\n\n` +
+            `No encontrados: ${noEncontrados.length}\nNombres ambiguos: ${ambiguos.length}\nNotas inválidas: ${notasInvalidas.length}\n\n¿Desea copiar las notas y guardarlas en esta actividad?`;
+        if (!confirm(resumen)) return;
+        const entradas = new Map(Array.from(document.querySelectorAll(`.nota-input[data-actividad="${Number(actividad.id)}"]`))
+            .map(el => [String(el.dataset.estudiante), el]));
+        let aplicadas = 0;
+        for (const item of asignaciones) {
+            const campo = entradas.get(String(item.estudiante.id));
+            if (!campo) continue;
+            campo.value = String(item.nota);
+            campo.dispatchEvent(new Event("input", { bubbles: true }));
+            campo.dispatchEvent(new Event("change", { bubbles: true }));
+            aplicadas++;
+        }
+        if (!aplicadas) throw new Error("No se encontraron los campos de notas de esta actividad en pantalla.");
+        const guardado = await guardarActividadManual(actividad.id);
+        if (!guardado) throw new Error("No se pudo completar el guardado. Revise los avisos de la actividad.");
+        let mensaje = `✓ Se importaron y guardaron ${aplicadas} nota(s) en "${actividad.nombre}".`;
+        if (noEncontrados.length) mensaje += `\n\nSin coincidencia: ${noEncontrados.length}`;
+        if (ambiguos.length) mensaje += `\nNombres repetidos (omitidos): ${ambiguos.length}`;
+        if (notasInvalidas.length) mensaje += `\nNotas inválidas (omitidas): ${notasInvalidas.length}`;
+        alert(mensaje);
+    } catch (error) {
+        console.error("Error al importar notas desde Excel:", error);
+        alert("No se pudo importar el archivo Excel.\n\n" + (error?.message || error));
+    }
 });
 </script>
 
