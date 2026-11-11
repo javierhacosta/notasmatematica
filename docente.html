@@ -30665,7 +30665,7 @@ let editorFotoHerramienta="lapiz", editorFotoDibujando=false, editorFotoDirty=fa
 let editorFotoPila=[], editorFotoRehacer=[], editorFotoUltimoPunto=null;
 let editorFotoZoom=1, editorFotoPinchInicio=0, editorFotoZoomInicio=1;
 let editorFotoDesplazamientoX=0, editorFotoDesplazamientoY=0, editorFotoCentroX=0, editorFotoCentroY=0;
-let editorFotoAnguloAnterior=0, editorFotoRotacionTemporal=0;
+let editorFotoAnguloAnterior=0, editorFotoRotacionTemporal=0, editorFotoPinchEsZoom=false;
 let editorFotoContextoActividad=null;
 
 function guardarContextoActividadAntesDeFoto(f){
@@ -30806,15 +30806,16 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
  function aplicarRotacionFotoEditor(){
   // El giro queda ajustado siempre a múltiplos exactos de 90°:
   // 90° o 180° hacia la izquierda o la derecha, sin ángulos intermedios.
-  const giroSolicitado=editorFotoRotacionTemporal;
+  // Si el gesto fue de acercar/alejar, no aplicar ningún giro accidental.
+  const giroSolicitado=editorFotoPinchEsZoom?0:editorFotoRotacionTemporal;
   const grados=Math.round(giroSolicitado/90)*90;
-  if(!grados){editorFotoRotacionTemporal=0;actualizarZoomFotoEditor();return}
+  if(!grados){editorFotoRotacionTemporal=0;editorFotoPinchEsZoom=false;actualizarZoomFotoEditor();return}
   const c=document.getElementById("canvasEditorFoto"),anterior=document.createElement("canvas");
   anterior.width=c.width;anterior.height=c.height;anterior.getContext("2d").drawImage(c,0,0);
   const rad=grados*Math.PI/180,ancho=Math.abs(anterior.width*Math.cos(rad))+Math.abs(anterior.height*Math.sin(rad)),alto=Math.abs(anterior.width*Math.sin(rad))+Math.abs(anterior.height*Math.cos(rad));
   c.width=Math.ceil(ancho);c.height=Math.ceil(alto);
   const ctx=c.getContext("2d");ctx.translate(c.width/2,c.height/2);ctx.rotate(rad);ctx.drawImage(anterior,-anterior.width/2,-anterior.height/2);
-  editorFotoRotacionTemporal=0;editorFotoDirty=true;guardarEstadoFotoEditor();actualizarZoomFotoEditor();
+  editorFotoRotacionTemporal=0;editorFotoPinchEsZoom=false;editorFotoDirty=true;guardarEstadoFotoEditor();actualizarZoomFotoEditor();
  }
  zona.addEventListener("touchstart",e=>{
   if(e.touches.length===2){
@@ -30823,7 +30824,7 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
    editorFotoZoomInicio=editorFotoZoom;
    editorFotoCentroX=(e.touches[0].clientX+e.touches[1].clientX)/2;
    editorFotoCentroY=(e.touches[0].clientY+e.touches[1].clientY)/2;
-   editorFotoAnguloAnterior=anguloDedosFotoEditor(e.touches);editorFotoRotacionTemporal=0;
+   editorFotoAnguloAnterior=anguloDedosFotoEditor(e.touches);editorFotoRotacionTemporal=0;editorFotoPinchEsZoom=false;
    e.preventDefault();
   }
  },{passive:false});
@@ -30833,9 +30834,12 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
    const centroX=(e.touches[0].clientX+e.touches[1].clientX)/2;
    const centroY=(e.touches[0].clientY+e.touches[1].clientY)/2;
    const anguloActual=anguloDedosFotoEditor(e.touches);
+   // Un cambio claro de distancia identifica zoom; el zoom nunca inclina la foto.
+   if(Math.abs(d-editorFotoPinchInicio)/editorFotoPinchInicio>0.08)editorFotoPinchEsZoom=true;
    let deltaAngulo=anguloActual-editorFotoAnguloAnterior;
    if(deltaAngulo>180)deltaAngulo-=360;if(deltaAngulo<-180)deltaAngulo+=360;
-   editorFotoRotacionTemporal+=deltaAngulo;editorFotoAnguloAnterior=anguloActual;
+   if(!editorFotoPinchEsZoom)editorFotoRotacionTemporal+=deltaAngulo;
+   editorFotoAnguloAnterior=anguloActual;
    editorFotoZoom=Math.max(1,Math.min(4,editorFotoZoomInicio*d/editorFotoPinchInicio));
    if(editorFotoZoom===1){
     editorFotoDesplazamientoX=0;editorFotoDesplazamientoY=0;
