@@ -15910,16 +15910,42 @@ async function guardarFotoActividadConfirmada(){
         const cfg=obtenerConfigFotoActividad(p.actividad.id);
         const archivo0=await comprimirFotoCalidad(p.file,cfg.calidad||"media");
         const tipo=archivo0.type||"image/jpeg";
-        const archivo=new File([archivo0],p.nombre,{type:tipo});
-        const ruta=`${p.estudiante.id}/${p.nombre}`;
+        let archivo = new File([archivo0],p.nombre,{type:tipo});
+        let ruta = `${p.estudiante.id}/${p.nombre}`;
 
         mostrarMensaje("💾 Guardando fotografía en Archivos...");
-        // IMPORTANTE: solo una operación de REEMPLAZO confirmada puede usar
-        // upsert. Una foto NUEVA jamás puede sobrescribir un archivo existente.
-        const up=await supabaseClient.storage
-            .from(BUCKET_ARCHIVOS_ESTUDIANTES)
-            .upload(ruta,archivo,{cacheControl:"3600",upsert:p.modo==="cambiar",contentType:tipo});
-        if(up.error)throw new Error("Storage: "+(up.error.message||up.error));
+        let up;
+        if(p.modo==="cambiar"){
+            // El reemplazo fue confirmado expresamente: conserva su nombre y
+            // actualiza el archivo existente.
+            up=await supabaseClient.storage
+                .from(BUCKET_ARCHIVOS_ESTUDIANTES)
+                .upload(ruta,archivo,{cacheControl:"3600",upsert:true,contentType:tipo});
+            if(up.error)throw new Error("Storage: "+(up.error.message||up.error));
+        }else{
+            // Una foto NUEVA nunca sobrescribe archivos. Si Storage ya tiene
+            // ese nombre (aunque no figure en fotos_actividades), probar con
+            // _2, _3, etc. y registrar exactamente la ruta que se logró subir.
+            const base=String(p.nombre||"foto").replace(/\\.[^.]+$/i,"")||"foto";
+            let numero=1;
+            while(numero<=30){
+                const nombre=numero===1?`${base}.jpg`:`${base}_${numero}.jpg`;
+                ruta=`${p.estudiante.id}/${nombre}`;
+                archivo=new File([archivo0],nombre,{type:tipo});
+                up=await supabaseClient.storage
+                    .from(BUCKET_ARCHIVOS_ESTUDIANTES)
+                    .upload(ruta,archivo,{cacheControl:"3600",upsert:false,contentType:tipo});
+                if(!up.error){
+                    p.nombre=nombre;
+                    break;
+                }
+                const mensaje=String(up.error.message||up.error).toLowerCase();
+                const yaExiste=mensaje.includes("already exists")||mensaje.includes("resource already exists")||mensaje.includes("duplicate");
+                if(!yaExiste)throw new Error("Storage: "+(up.error.message||up.error));
+                numero++;
+            }
+            if(up?.error)throw new Error("Storage: no se pudo encontrar un nombre libre para la fotografía después de 30 intentos. "+(up.error.message||up.error));
+        }
 
         const reg={
             actividad_id:Number(p.actividad.id),
