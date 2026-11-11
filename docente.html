@@ -30804,8 +30804,11 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
  const zona=document.getElementById("zonaLienzoFotoEditor");
  function anguloDedosFotoEditor(t){return Math.atan2(t[1].clientY-t[0].clientY,t[1].clientX-t[0].clientX)*180/Math.PI}
  function aplicarRotacionFotoEditor(){
-  const grados=editorFotoRotacionTemporal;
-  if(Math.abs(grados)<0.5){editorFotoRotacionTemporal=0;actualizarZoomFotoEditor();return}
+  // El giro queda ajustado siempre a múltiplos exactos de 90°:
+  // 90° o 180° hacia la izquierda o la derecha, sin ángulos intermedios.
+  const giroSolicitado=editorFotoRotacionTemporal;
+  const grados=Math.round(giroSolicitado/90)*90;
+  if(!grados){editorFotoRotacionTemporal=0;actualizarZoomFotoEditor();return}
   const c=document.getElementById("canvasEditorFoto"),anterior=document.createElement("canvas");
   anterior.width=c.width;anterior.height=c.height;anterior.getContext("2d").drawImage(c,0,0);
   const rad=grados*Math.PI/180,ancho=Math.abs(anterior.width*Math.cos(rad))+Math.abs(anterior.height*Math.sin(rad)),alto=Math.abs(anterior.width*Math.sin(rad))+Math.abs(anterior.height*Math.cos(rad));
