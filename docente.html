@@ -30665,6 +30665,7 @@ let editorFotoHerramienta="lapiz", editorFotoDibujando=false, editorFotoDirty=fa
 let editorFotoPila=[], editorFotoRehacer=[], editorFotoUltimoPunto=null;
 let editorFotoZoom=1, editorFotoPinchInicio=0, editorFotoZoomInicio=1;
 let editorFotoDesplazamientoX=0, editorFotoDesplazamientoY=0, editorFotoCentroX=0, editorFotoCentroY=0;
+let editorFotoAnguloAnterior=0, editorFotoRotacionTemporal=0;
 let editorFotoContextoActividad=null;
 
 function guardarContextoActividadAntesDeFoto(f){
@@ -30776,7 +30777,7 @@ async function mostrarFotoEnEditorActividad(){
 }
 function actualizarZoomFotoEditor(){
  const c=document.getElementById("canvasEditorFoto");if(!c)return;
- c.style.transform=`translate(${editorFotoDesplazamientoX}px, ${editorFotoDesplazamientoY}px) scale(${editorFotoZoom})`;
+ c.style.transform=`translate(${editorFotoDesplazamientoX}px, ${editorFotoDesplazamientoY}px) scale(${editorFotoZoom}) rotate(${editorFotoRotacionTemporal}deg)`;
  c.style.transformOrigin="center center";
  const e=document.getElementById("zonaLienzoFotoEditor");
  if(e)e.style.overflow="auto";
@@ -30801,6 +30802,17 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
  const fin=()=>{if(!editorFotoDibujando)return;editorFotoDibujando=false;c.getContext("2d").globalCompositeOperation="source-over";guardarEstadoFotoEditor()};
  c.addEventListener("pointerup",fin);c.addEventListener("pointercancel",fin);
  const zona=document.getElementById("zonaLienzoFotoEditor");
+ function anguloDedosFotoEditor(t){return Math.atan2(t[1].clientY-t[0].clientY,t[1].clientX-t[0].clientX)*180/Math.PI}
+ function aplicarRotacionFotoEditor(){
+  const grados=editorFotoRotacionTemporal;
+  if(Math.abs(grados)<0.5){editorFotoRotacionTemporal=0;actualizarZoomFotoEditor();return}
+  const c=document.getElementById("canvasEditorFoto"),anterior=document.createElement("canvas");
+  anterior.width=c.width;anterior.height=c.height;anterior.getContext("2d").drawImage(c,0,0);
+  const rad=grados*Math.PI/180,ancho=Math.abs(anterior.width*Math.cos(rad))+Math.abs(anterior.height*Math.sin(rad)),alto=Math.abs(anterior.width*Math.sin(rad))+Math.abs(anterior.height*Math.cos(rad));
+  c.width=Math.ceil(ancho);c.height=Math.ceil(alto);
+  const ctx=c.getContext("2d");ctx.translate(c.width/2,c.height/2);ctx.rotate(rad);ctx.drawImage(anterior,-anterior.width/2,-anterior.height/2);
+  editorFotoRotacionTemporal=0;editorFotoDirty=true;guardarEstadoFotoEditor();actualizarZoomFotoEditor();
+ }
  zona.addEventListener("touchstart",e=>{
   if(e.touches.length===2){
    editorFotoDibujando=false;
@@ -30808,6 +30820,7 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
    editorFotoZoomInicio=editorFotoZoom;
    editorFotoCentroX=(e.touches[0].clientX+e.touches[1].clientX)/2;
    editorFotoCentroY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+   editorFotoAnguloAnterior=anguloDedosFotoEditor(e.touches);editorFotoRotacionTemporal=0;
    e.preventDefault();
   }
  },{passive:false});
@@ -30816,6 +30829,10 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
    const centroX=(e.touches[0].clientX+e.touches[1].clientX)/2;
    const centroY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+   const anguloActual=anguloDedosFotoEditor(e.touches);
+   let deltaAngulo=anguloActual-editorFotoAnguloAnterior;
+   if(deltaAngulo>180)deltaAngulo-=360;if(deltaAngulo<-180)deltaAngulo+=360;
+   editorFotoRotacionTemporal+=deltaAngulo;editorFotoAnguloAnterior=anguloActual;
    editorFotoZoom=Math.max(1,Math.min(4,editorFotoZoomInicio*d/editorFotoPinchInicio));
    if(editorFotoZoom===1){
     editorFotoDesplazamientoX=0;editorFotoDesplazamientoY=0;
@@ -30828,8 +30845,8 @@ function puntoFotoEditor(e){const c=document.getElementById("canvasEditorFoto"),
    e.preventDefault();
   }
  },{passive:false});
- zona.addEventListener("touchend",e=>{if(e.touches.length<2)editorFotoPinchInicio=0},{passive:true});
- zona.addEventListener("touchcancel",()=>{editorFotoPinchInicio=0},{passive:true});
+ zona.addEventListener("touchend",e=>{if(e.touches.length<2){editorFotoPinchInicio=0;aplicarRotacionFotoEditor()}},{passive:true});
+ zona.addEventListener("touchcancel",()=>{editorFotoPinchInicio=0;aplicarRotacionFotoEditor()},{passive:true});
 })();
 function activarTextoFotoEditor(){document.getElementById("textoNotaFotoEditor").focus()}
 function mensajeEditorFoto(texto){const e=document.getElementById("estadoEditorFotoActividad");if(e){e.textContent=texto;e.style.color="#16803c";e.style.fontWeight="600"}}
