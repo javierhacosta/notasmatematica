@@ -29845,8 +29845,13 @@ function letraColumnaExcelActividad(indice) {
     while (n > 0) { const r = (n - 1) % 26; letra = String.fromCharCode(65 + r) + letra; n = Math.floor((n - 1) / 26); }
     return letra;
 }
-function elegirColumnaExcelActividad(encabezados, tipo) {
-    const opciones = encabezados.map((h, i) => `${letraColumnaExcelActividad(i)} - ${String(h ?? "").trim() || "(sin título)"}`).join("\n");
+function elegirColumnaExcelActividad(encabezados, tipo, filas) {
+    const opciones = encabezados.map((h, i) => {
+        const titulo = String(h ?? "").trim();
+        const primerDato = (filas || []).slice(1).map(f => String((f || [])[i] ?? "").trim()).find(v => v !== "") || "(vacía)";
+        const referencia = titulo || primerDato;
+        return `${letraColumnaExcelActividad(i)} - ${referencia}`;
+    }).join("\n");
     const sugerida = tipo === "nombre" ? "A" : "B";
     const respuesta = prompt(
         `Indique la LETRA de la columna que contiene ${tipo === "nombre" ? "el nombre del estudiante" : "la nota"}.\n\n` +
@@ -29855,11 +29860,11 @@ function elegirColumnaExcelActividad(encabezados, tipo) {
     );
     if (respuesta === null) return null;
     const letra = respuesta.trim().toUpperCase();
-    if (!/^[A-Z]+$/.test(letra)) { alert("Escriba una letra de columna válida (por ejemplo, A, B o X)."); return elegirColumnaExcelActividad(encabezados, tipo); }
+    if (!/^[A-Z]+$/.test(letra)) { alert("Escriba una letra de columna válida (por ejemplo, A, B o X)."); return elegirColumnaExcelActividad(encabezados, tipo, filas); }
     let indice = 0;
     for (const c of letra) indice = indice * 26 + c.charCodeAt(0) - 64;
     indice--;
-    if (indice < 0 || indice >= encabezados.length) { alert("La columna " + letra + " no existe en la primera fila del archivo."); return elegirColumnaExcelActividad(encabezados, tipo); }
+    if (indice < 0 || indice >= encabezados.length) { alert("La columna " + letra + " no existe en la primera fila del archivo."); return elegirColumnaExcelActividad(encabezados, tipo, filas); }
     return indice;
 }
 document.getElementById("inputExcelActividad")?.addEventListener("change", async function() {
@@ -29892,9 +29897,9 @@ document.getElementById("inputExcelActividad")?.addEventListener("change", async
         const filas = XLSX.utils.sheet_to_json(libro.Sheets[nombreHoja], { header: 1, defval: "", raw: false });
         if (!filas || filas.length < 2) throw new Error(`La hoja "${nombreHoja}" no contiene encabezados y filas de estudiantes.`);
         const encabezados = filas[0] || [];
-        const colNombre = elegirColumnaExcelActividad(encabezados, "nombre");
+        const colNombre = elegirColumnaExcelActividad(encabezados, "nombre", filas);
         if (colNombre === null) return;
-        const colNota = elegirColumnaExcelActividad(encabezados, "nota");
+        const colNota = elegirColumnaExcelActividad(encabezados, "nota", filas);
         if (colNota === null) return;
         if (colNombre === colNota) { alert("Debe elegir columnas diferentes para el nombre y la nota."); return; }
 
@@ -29934,8 +29939,8 @@ document.getElementById("inputExcelActividad")?.addEventListener("change", async
         }
         const resumen = `Se identificaron ${asignaciones.length} estudiante(s) con nota válida para la actividad "${actividad.nombre}".\n\n` +
             `Hoja de Excel: ${nombreHoja}\n` +
-            `Columna de nombres: ${letraColumnaExcelActividad(colNombre)} (${encabezados[colNombre] || "sin título"})\n` +
-            `Columna de notas: ${letraColumnaExcelActividad(colNota)} (${encabezados[colNota] || "sin título"})\n\n` +
+            `Columna de nombres: ${letraColumnaExcelActividad(colNombre)} (${String(encabezados[colNombre] ?? "").trim() || String((filas.find((f, i) => i > 0 && String((f || [])[colNombre] ?? "").trim()) || [])[colNombre] ?? "").trim() || "vacía"})\n` +
+            `Columna de notas: ${letraColumnaExcelActividad(colNota)} (${String(encabezados[colNota] ?? "").trim() || String((filas.find((f, i) => i > 0 && String((f || [])[colNota] ?? "").trim()) || [])[colNota] ?? "").trim() || "vacía"})\n\n` +
             `No encontrados: ${noEncontrados.length}\nNombres ambiguos: ${ambiguos.length}\nNotas inválidas: ${notasInvalidas.length}\n\n¿Desea copiar las notas y guardarlas en esta actividad?`;
         if (!confirm(resumen)) return;
         const entradas = new Map(Array.from(document.querySelectorAll(`.nota-input[data-actividad="${Number(actividad.id)}"]`))
