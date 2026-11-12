@@ -30932,8 +30932,12 @@ function restaurarContextoActividadDespuesDeFoto(){
 }
 async function cargarImagenEditorFoto(foto){
  const signedUrl=await obtenerUrlFotoRapida(foto.ruta,600);
+ // Cada navegación solicita una URL distinta para impedir que Storage/CDN
+ // entregue una copia anterior cuando se reemplazó el archivo en la misma ruta.
+ const separador=signedUrl.includes("?")?"&":"?";
+ const urlActualizada=signedUrl+separador+"editor_v="+Date.now()+"_"+Math.random().toString(36).slice(2);
  // Cargar como Blob y usar una URL local: evita que la imagen remota contamine el canvas.
- const respuesta=await fetch(signedUrl);
+ const respuesta=await fetch(urlActualizada,{cache:"no-store"});
  if(!respuesta.ok)throw new Error("No se pudo descargar la fotografía ("+respuesta.status+").");
  const blob=await respuesta.blob();
  if(editorFotoObjectUrl)URL.revokeObjectURL(editorFotoObjectUrl);
@@ -31171,7 +31175,7 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
    const base=nombre.replace(/\.[^.]+$/ ,"");
    nombre=obtenerNombreFotoActividadUnicoServidor(f.actividad_id,f.estudiante_id,base,servidor);
    ruta=`${f.estudiante_id}/${nombre}`;
-   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:false,contentType:"image/jpeg"});
+   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:false,contentType:"image/jpeg",cacheControl:"0"});
    if(up.error)throw up.error;
    const reg={actividad_id:Number(f.actividad_id),estudiante_id:Number(f.estudiante_id),ruta,nombre_archivo:nombre};
    const q=await supabaseClient.from("fotos_actividades").insert(reg);
@@ -31179,7 +31183,7 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
   }else{
    // "Guardar" reemplaza el contenido del archivo original, conservando
    // su ruta y su registro. No crea *_anotada ni deja la foto original huérfana.
-   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:true,contentType:"image/jpeg"});
+   up=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).upload(ruta,blob,{upsert:true,contentType:"image/jpeg",cacheControl:"0"});
    if(up.error)throw up.error;
    const q=await supabaseClient.from("fotos_actividades").update({nombre_archivo:nombre,ruta}).eq("id",objetivo.id);
    if(q.error)throw q.error;
