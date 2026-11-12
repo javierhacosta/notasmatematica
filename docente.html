@@ -31194,7 +31194,27 @@ async function guardarFotoEditadaActividad(comoNueva=false,desdeCerrar=false){
   editorFotoIndice=indiceGuardada>=0?indiceGuardada:0;
   const guardada=nuevas[editorFotoIndice]||{...objetivo,ruta,nombre_archivo:nombre};
   editorFotoActual=guardada;
-  await mostrarFotoEnEditorActividad();
+  // Mostrar inmediatamente la misma imagen que se acaba de guardar.
+  // Se utiliza el Blob recién generado para evitar que el navegador o
+  // una URL firmada en caché vuelvan a mostrar una versión anterior.
+  if(editorFotoObjectUrl){URL.revokeObjectURL(editorFotoObjectUrl);editorFotoObjectUrl=null}
+  editorFotoObjectUrl=URL.createObjectURL(blob);
+  const imagenGuardada=await new Promise((resolve,reject)=>{
+   const im=new Image();
+   im.onload=()=>resolve(im);
+   im.onerror=()=>reject(new Error("La fotografía se guardó, pero no se pudo mostrar la vista actualizada."));
+   im.src=editorFotoObjectUrl;
+  });
+  editorFotoImagen=imagenGuardada;
+  editorFotoDirty=false;
+  editorFotoPila=[];
+  editorFotoRehacer=[];
+  guardarEstadoFotoEditor();
+  const estudianteTituloFoto=(estudiantes||[]).find(x=>String(x.id)===String(guardada.estudiante_id));
+  const numeroListaTituloFoto=String(estudianteTituloFoto?.num_lista??"").trim();
+  document.getElementById("tituloEditorFotoActividad").textContent=`${numeroListaTituloFoto?numeroListaTituloFoto+" ":""}${nombreEstudianteFotoEditor(guardada.estudiante_id)} · Fotografía ${editorFotoIndice+1} de ${editorFotoLista.length}`;
+  document.getElementById("estadoEditorFotoActividad").textContent=guardada.nombre_archivo||nombre;
+  cargarCalificacionEnFotoEditor(guardada);
   mensajeEditorFoto(comoNueva?"Fotografía guardada como nueva correctamente. La original se conservó.":"Fotografía original reemplazada correctamente.");
  }catch(e){mensajeEditorFoto("No se pudo guardar la fotografía: "+(e.message||e))}
  finally{mostrarProgresoGuardadoFoto(false);botones.forEach(b=>b.disabled=false)}
