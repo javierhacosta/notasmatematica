@@ -20451,7 +20451,7 @@ async function exportarExcel() {
 
                 "PROMEDIO HACER",
 
-                "AUTOEVALUACIÓN",
+                "PROMEDIO AUTOEVALUACIÓN",
 
                 "NOTA 3T",
 
@@ -20723,9 +20723,8 @@ async function exportarExcel() {
                     let sumaMaximos = 0;
 
                     lista.forEach(actividad => {
-                        const registro = mapaCalificaciones[
-                            estudiante.id + "_" + actividad.id
-                        ];
+                        const clave = String(estudiante.id) + "_" + String(actividad.id);
+                        const registro = mapaCalificaciones[clave];
 
                         if (!registro || registro.nota === null ||
                             registro.nota === undefined ||
@@ -20733,13 +20732,17 @@ async function exportarExcel() {
                             return;
                         }
 
-                        const nota = Number(registro.nota);
+                        const nota = Number(String(registro.nota).trim().replace(",", "."));
+                        const maximoConfigurado = actividad.puntaje_maximo;
                         const maximo = Number(
-                            actividad.puntaje_maximo ||
-                            LIMITES[actividad.categoria]
+                            maximoConfigurado !== null &&
+                            maximoConfigurado !== undefined &&
+                            String(maximoConfigurado).trim() !== ""
+                                ? maximoConfigurado
+                                : LIMITES[actividad.categoria]
                         );
 
-                        if (isNaN(nota) || isNaN(maximo) || maximo <= 0) {
+                        if (!Number.isFinite(nota) || !Number.isFinite(maximo) || maximo <= 0) {
                             return;
                         }
 
@@ -20767,10 +20770,26 @@ async function exportarExcel() {
                             const registro = mapaCalificaciones[
                                 estudiante.id + "_" + actividad.id
                             ];
-                            return registro &&
-                                registro.nota !== null &&
-                                registro.nota !== undefined &&
-                                String(registro.nota).trim() !== "";
+                            if (!registro ||
+                                registro.nota === null ||
+                                registro.nota === undefined ||
+                                String(registro.nota).trim() === "") {
+                                return false;
+                            }
+
+                            const nota = Number(String(registro.nota).trim().replace(",", "."));
+                            const maximoConfigurado = actividad.puntaje_maximo;
+                            const maximo = Number(
+                                maximoConfigurado !== null &&
+                                maximoConfigurado !== undefined &&
+                                String(maximoConfigurado).trim() !== ""
+                                    ? maximoConfigurado
+                                    : LIMITES[actividad.categoria]
+                            );
+
+                            return Number.isFinite(nota) &&
+                                Number.isFinite(maximo) &&
+                                maximo > 0;
                         })
                     );
 
@@ -21186,10 +21205,8 @@ async function exportarExcel() {
                     let sumaMaximos = 0;
 
                     lista.forEach(actividad => {
-                        const registro =
-                            mapaCalificaciones[
-                                estudiante.id + "_" + actividad.id
-                            ];
+                        const clave = String(estudiante.id) + "_" + String(actividad.id);
+                        const registro = mapaCalificaciones[clave];
 
                         if (
                             !registro ||
@@ -21200,15 +21217,19 @@ async function exportarExcel() {
                             return;
                         }
 
-                        const nota = Number(registro.nota);
+                        const nota = Number(String(registro.nota).trim().replace(",", "."));
+                        const maximoConfigurado = actividad.puntaje_maximo;
                         const maximo = Number(
-                            actividad.puntaje_maximo ||
-                            LIMITES[actividad.categoria]
+                            maximoConfigurado !== null &&
+                            maximoConfigurado !== undefined &&
+                            String(maximoConfigurado).trim() !== ""
+                                ? maximoConfigurado
+                                : LIMITES[actividad.categoria]
                         );
 
                         if (
-                            isNaN(nota) ||
-                            isNaN(maximo) ||
+                            !Number.isFinite(nota) ||
+                            !Number.isFinite(maximo) ||
                             maximo <= 0
                         ) {
                             return;
@@ -21256,12 +21277,26 @@ async function exportarExcel() {
                                         estudiante.id + "_" + actividad.id
                                     ];
 
-                                return (
-                                    registro &&
-                                    registro.nota !== null &&
-                                    registro.nota !== undefined &&
-                                    String(registro.nota).trim() !== ""
+                                if (!registro ||
+                                    registro.nota === null ||
+                                    registro.nota === undefined ||
+                                    String(registro.nota).trim() === "") {
+                                    return false;
+                                }
+
+                                const nota = Number(String(registro.nota).trim().replace(",", "."));
+                                const maximoConfigurado = actividad.puntaje_maximo;
+                                const maximo = Number(
+                                    maximoConfigurado !== null &&
+                                    maximoConfigurado !== undefined &&
+                                    String(maximoConfigurado).trim() !== ""
+                                        ? maximoConfigurado
+                                        : LIMITES[actividad.categoria]
                                 );
+
+                                return Number.isFinite(nota) &&
+                                    Number.isFinite(maximo) &&
+                                    maximo > 0;
                             })
                     );
 
@@ -21639,24 +21674,24 @@ function calcularPromedioPonderado(
         ];
 
 
-        const maximo =
-        Number(
-
-            actividad.puntaje_maximo ||
-
-            LIMITES[
-                actividad.categoria
-            ]
-
+        const maximoConfigurado = actividad.puntaje_maximo;
+        const maximo = Number(
+            maximoConfigurado !== null &&
+            maximoConfigurado !== undefined &&
+            String(maximoConfigurado).trim() !== ""
+                ? maximoConfigurado
+                : LIMITES[actividad.categoria]
         );
+        const notaNumerica = Number(String(nota).trim().replace(",", "."));
 
+        if (!Number.isFinite(notaNumerica) ||
+            !Number.isFinite(maximo) ||
+            maximo <= 0) {
+            return;
+        }
 
-        suma +=
-        Number(nota);
-
-
-        maximos +=
-        maximo;
+        suma += notaNumerica;
+        maximos += maximo;
 
     });
 
