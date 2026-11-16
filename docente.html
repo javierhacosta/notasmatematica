@@ -17709,11 +17709,11 @@ function calcularNota3TEstadisticas(estudianteId, actividades3T, mapaCalificacio
         });
 
         if (sumaMaximos > 0) {
-            total += Math.round((sumaNotas / sumaMaximos) * LIMITES[categoria]);
+            total += redondear((sumaNotas / sumaMaximos) * LIMITES[categoria]);
         }
     });
 
-    return hayNotas ? Math.round(total) : null;
+    return hayNotas ? redondear(total) : null;
 }
 
 let xOrdenCursosEstadistica = false;
@@ -18507,7 +18507,7 @@ async function cargarInformeGeneral() {
         });
         if (!maximos) return "";
         const limite = LIMITES[lista[0] ? lista[0].categoria : ""] || 0;
-        return Math.round(suma / maximos * limite);
+        return redondear(suma / maximos * limite);
     };
 
     /*
@@ -20015,9 +20015,8 @@ function redondear(
     }
 
 
-    return Math.round(
-        Number(numero)
-    );
+    // Evita que errores mínimos de precisión conviertan 24.5 en 24.
+    return Math.floor(Number(numero) + 0.5 + 1e-9);
 
 }
 
@@ -20080,9 +20079,7 @@ function mostrarNota(
     }
 
 
-    return Math.round(
-        Number(nota)
-    );
+    return redondear(Number(nota));
 
 }
 
@@ -21682,12 +21679,8 @@ function calcularPromedioPonderado(
     ];
 
 
-    return Math.round(
-
-        suma /
-        maximos *
-        limite
-
+    return redondear(
+        suma / maximos * limite
     );
 
 }
@@ -24669,7 +24662,7 @@ function calcularNota3TDetalleQR(actividadesLista, calificacionesMapa) {
             }
         });
 
-        if (maximos > 0) total += Math.round((suma / maximos) * limites[categoria]);
+        if (maximos > 0) total += redondear((suma / maximos) * limites[categoria]);
     });
 
     return hayNota ? Math.round(total) : null;
@@ -25384,7 +25377,7 @@ async function mostrarDetalleEstudianteQR(estudiante) {
             if (!Number.isNaN(n) && max > 0) { suma += n; maximos += max; }
         });
         return maximos > 0
-            ? Math.round((suma / maximos) * limitesPromedioDetalleQR[categoria])
+            ? redondear((suma / maximos) * limitesPromedioDetalleQR[categoria])
             : null;
     };
     const promediosDetalleQR = {
