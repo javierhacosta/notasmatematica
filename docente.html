@@ -6487,7 +6487,7 @@ Selecciona un curso
 </div>
 
 <div id="panelArchivosEstudiantes" class="panel-archivos-estudiantes oculto">
-<div class="titulo-archivos-estudiantes"><span>📁 Archivos</span><div class="acciones-titulo-archivos-estudiantes"><button type="button" id="botonConfigArchivosEstudiantes" class="boton-archivos-estudiantes" onclick="abrirConfiguracionArchivosEstudiantes()" title="Configuración de archivos" aria-label="Configuración de archivos">⚙️</button><button type="button" id="botonArchivosEstudiantes" class="boton-archivos-estudiantes" onclick="mostrarOcultarArchivosEstudiantes()" title="Mostrar u ocultar archivos">+</button></div></div>
+<div class="titulo-archivos-estudiantes"><span>📁 Archivos</span><div class="acciones-titulo-archivos-estudiantes"><button type="button" class="boton-archivos-estudiantes" onclick="borrarTodasFotosCurso()" title="Borrar todas las fotos del curso" aria-label="Borrar todas las fotos del curso">🗑️</button><button type="button" class="boton-archivos-estudiantes" onclick="exportarImagenesCursoZIP()" title="Exportar imágenes en ZIP" aria-label="Exportar imágenes en ZIP">🗜️</button><button type="button" id="botonConfigArchivosEstudiantes" class="boton-archivos-estudiantes" onclick="abrirConfiguracionArchivosEstudiantes()" title="Configuración de archivos" aria-label="Configuración de archivos">⚙️</button><button type="button" id="botonArchivosEstudiantes" class="boton-archivos-estudiantes" onclick="mostrarOcultarArchivosEstudiantes()" title="Mostrar u ocultar archivos">+</button></div></div>
 <div id="contenidoArchivosEstudiantes" class="contenido-archivos-estudiantes oculto"><div id="listaArchivosEstudiantes" class="lista-archivos-estudiantes">Selecciona un curso para ver los estudiantes.</div></div>
 </div>
 
@@ -30671,6 +30671,135 @@ function construirNombreArchivoNuevo(archivo, estudiante){
     return `${partes.join("_")}.${ext}`;
 }
 async function listarArchivosDeEstudiante(id){const{data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).list(String(id),{limit:100,sortBy:{column:"created_at",order:"desc"}});if(error)throw error;return(data||[]).filter(x=>x&&x.name)}
+
+function esImagenArchivoEstudiante(nombre){
+    return /\.(?:jpe?g|png|webp|gif|heic|heif|bmp|tiff?)$/i.test(String(nombre||""));
+}
+async function listarTodosArchivosEstudiante(id){
+    const todos=[];
+    const limite=1000;
+    for(let offset=0; ; offset+=limite){
+        const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES)
+            .list(String(id),{limit:limite,offset,sortBy:{column:"name",order:"asc"}});
+        if(error)throw error;
+        const bloque=(data||[]).filter(x=>x&&x.name);
+        todos.push(...bloque);
+        if(bloque.length<limite)break;
+    }
+    return todos;
+}
+async function cargarJSZipArchivos(){
+    if(typeof JSZip!=="undefined")return;
+    await new Promise((resolve,reject)=>{
+        const existente=document.querySelector('script[data-jszip-archivos="1"]');
+        if(existente){
+            existente.addEventListener("load",resolve,{once:true});
+            existente.addEventListener("error",()=>reject(new Error("No se pudo cargar la herramienta ZIP.")),{once:true});
+            if(typeof JSZip!=="undefined")resolve();
+            return;
+        }
+        const script=document.createElement("script");
+        script.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+        script.async=true;
+        script.dataset.jszipArchivos="1";
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error("No se pudo cargar la herramienta ZIP. Verifica tu conexión a Internet."));
+        document.head.appendChild(script);
+    });
+    if(typeof JSZip==="undefined")throw new Error("La herramienta ZIP no está disponible.");
+}
+async function obtenerEstudiantesCursoArchivos(){
+    const lista=(typeof estudiantesPorCursoCache!=="undefined"&&estudiantesPorCursoCache.get)
+        ?(estudiantesPorCursoCache.get(cursoSeleccionado)||[])
+        :(estudiantes||[]).filter(e=>String(e.curso)===String(cursoSeleccionado));
+    return [...lista].sort((a,b)=>(Number(a.num_lista)||99999)-(Number(b.num_lista)||99999));
+}
+async function borrarTodasFotosCurso(){
+    if(!cursoSeleccionado){alert("Selecciona un curso.");return;}
+    if(!supabaseClient){alert("No hay conexión con la base de datos.");return;}
+    const lista=await obtenerEstudiantesCursoArchivos();
+    if(!lista.length){alert("No hay estudiantes en el curso seleccionado.");return;}
+    if(!confirm(`¿Eliminar TODAS las fotografías del curso ${cursoSeleccionado}?\n\nSe borrarán únicamente las imágenes guardadas en Archivos de todos los estudiantes de este curso. Los demás archivos no se eliminarán.\n\nEsta acción no se puede deshacer.`))return;
+    const boton=document.querySelector('.acciones-titulo-archivos-estudiantes button[aria-label="Borrar todas las fotos del curso"]');
+    if(boton){boton.disabled=true;boton.textContent="⏳";}
+    let eliminadas=0, errores=[];
+    try{
+        for(const estudiante of lista){
+            try{
+                const archivos=await listarTodosArchivosEstudiante(estudiante.id);
+                const rutas=archivos.filter(a=>esImagenArchivoEstudiante(a.name))
+                    .map(a=>`${estudiante.id}/${a.name}`);
+                for(let i=0;i<rutas.length;i+=100){
+                    const {error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove(rutas.slice(i,i+100));
+                    if(error)throw error;
+                    eliminadas+=rutas.slice(i,i+100).length;
+                }
+            }catch(errorEstudiante){
+                errores.push(`${estudiante.nombre||estudiante.id}: ${errorEstudiante.message||errorEstudiante}`);
+            }
+        }
+        await cargarListaArchivosEstudiantes();
+        let mensaje=`Se eliminaron ${eliminadas} fotografía(s) del curso ${cursoSeleccionado}.`;
+        if(errores.length)mensaje+=`\n\nNo se pudieron procesar ${errores.length} estudiante(s):\n${errores.slice(0,8).join("\n")}`;
+        alert(mensaje);
+    }catch(error){
+        console.error("Error al borrar las fotografías del curso:",error);
+        alert("No se pudieron eliminar todas las fotografías.\n\n"+(error.message||error));
+    }finally{
+        if(boton){boton.disabled=false;boton.textContent="🗑️";}
+    }
+}
+async function exportarImagenesCursoZIP(){
+    if(!cursoSeleccionado){alert("Selecciona un curso.");return;}
+    if(!supabaseClient){alert("No hay conexión con la base de datos.");return;}
+    const boton=document.querySelector('.acciones-titulo-archivos-estudiantes button[aria-label="Exportar imágenes en ZIP"]');
+    if(boton){boton.disabled=true;boton.textContent="⏳";}
+    try{
+        const lista=await obtenerEstudiantesCursoArchivos();
+        if(!lista.length)throw new Error("No hay estudiantes en el curso seleccionado.");
+        await cargarJSZipArchivos();
+        const zip=new JSZip();
+        let total=0, fallidos=[];
+        for(const estudiante of lista){
+            const archivos=await listarTodosArchivosEstudiante(estudiante.id);
+            const imagenes=archivos.filter(a=>esImagenArchivoEstudiante(a.name));
+            if(!imagenes.length)continue;
+            const nombreCarpeta=String(estudiante.nombre||`Estudiante ${estudiante.id}`)
+                .replace(/[\\/:*?"<>|]/g,"_").trim()||`Estudiante_${estudiante.id}`;
+            const carpeta=zip.folder(nombreCarpeta);
+            for(const archivo of imagenes){
+                try{
+                    const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES)
+                        .download(`${estudiante.id}/${archivo.name}`);
+                    if(error)throw error;
+                    carpeta.file(archivo.name,data);
+                    total++;
+                }catch(errorArchivo){
+                    fallidos.push(`${estudiante.nombre||estudiante.id}/${archivo.name}: ${errorArchivo.message||errorArchivo}`);
+                }
+            }
+        }
+        if(!total)throw new Error("No se encontraron imágenes para exportar en el curso seleccionado.");
+        const contenido=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:5}});
+        const url=URL.createObjectURL(contenido);
+        const enlace=document.createElement("a");
+        enlace.href=url;
+        enlace.download=`Archivos_${nombreArchivoSeguro(cursoSeleccionado)}.zip`;
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),30000);
+        let mensaje=`Se exportaron ${total} imagen(es) del curso ${cursoSeleccionado} en un archivo ZIP.`;
+        if(fallidos.length)mensaje+=`\n\nNo se pudieron incluir ${fallidos.length} imagen(es).`;
+        alert(mensaje);
+    }catch(error){
+        console.error("Error al exportar imágenes del curso:",error);
+        alert("No se pudo exportar el ZIP.\n\n"+(error.message||error));
+    }finally{
+        if(boton){boton.disabled=false;boton.textContent="🗜️";}
+    }
+}
+
 async function obtenerEstudianteArchivo(id){
     const lista=(typeof estudiantesPorCursoCache!=="undefined"&&estudiantesPorCursoCache.get)?(estudiantesPorCursoCache.get(cursoSeleccionado)||[]):(estudiantes||[]);
     return lista.find(e=>String(e.id)===String(id)) || (estudiantes||[]).find(e=>String(e.id)===String(id)) || null;
