@@ -14181,116 +14181,6 @@ async function actualizarNotaAsistenciaSER(actividadId, boton) {
     }
 }
 
-
-/* Orden alternado de estudiantes dentro de cada actividad:
-   primero por asiento y luego por la lista de elegidos al azar de esa fecha. */
-const modoOrdenActividadesPorId = new Map();
-
-async function alternarOrdenEstudiantesActividad(boton, actividad) {
-    if (!actividad || !cursoSeleccionado) return;
-
-    const siguienteModo = modoOrdenActividadesPorId.get(String(actividad.id)) === "asiento"
-        ? "azar"
-        : "asiento";
-
-    const filas = boton.closest(".actividad")?.querySelectorAll("tbody tr[data-estudiante]");
-    if (!filas || !filas.length) {
-        alert("No se encontraron estudiantes para ordenar en esta actividad.");
-        return;
-    }
-
-    const estudiantesCurso = obtenerEstudiantesCursoActual();
-    const mapaEstudiantes = new Map(estudiantesCurso.map(e => [String(e.id), e]));
-
-    if (siguienteModo === "asiento") {
-        const distribucion = obtenerDistribucionGuardadaParaOrdenAsientos();
-        if (!distribucion) {
-            alert("No existen asientos designados para este curso.");
-            return;
-        }
-
-        const asientoPorEstudiante = new Map();
-        Object.entries(distribucion).forEach(([asiento, estudianteId]) => {
-            const id = String(estudianteId);
-            const numero = Number(asiento);
-            if (!asientoPorEstudiante.has(id) || numero < asientoPorEstudiante.get(id)) {
-                asientoPorEstudiante.set(id, numero);
-            }
-        });
-
-        const ordenadas = Array.from(filas).sort((fa, fb) => {
-            const a = asientoPorEstudiante.get(String(fa.dataset.estudiante));
-            const b = asientoPorEstudiante.get(String(fb.dataset.estudiante));
-            if (a == null && b == null) {
-                return Number(mapaEstudiantes.get(String(fa.dataset.estudiante))?.num_lista ?? 9999) -
-                       Number(mapaEstudiantes.get(String(fb.dataset.estudiante))?.num_lista ?? 9999);
-            }
-            if (a == null) return 1;
-            if (b == null) return -1;
-            return a - b;
-        });
-        const tbody = filas[0].parentElement;
-        ordenadas.forEach(f => tbody.appendChild(f));
-        modoOrdenActividadesPorId.set(String(actividad.id), "asiento");
-        boton.textContent = "🎲";
-        boton.title = "Ordenar según los estudiantes elegidos al azar de esta fecha";
-        return;
-    }
-
-    const fecha = String(actividad.fecha || "");
-    if (!fecha) {
-        alert("La actividad no tiene una fecha seleccionada para consultar el orden aleatorio.");
-        return;
-    }
-
-    let elegidos = [];
-    try {
-        const { data, error } = await supabaseClient
-            .from(TABLA_AZAR_ASISTENCIA_BD)
-            .select("estudiante_id,orden")
-            .eq("curso", String(cursoSeleccionado).trim())
-            .eq("fecha", fecha)
-            .order("orden", { ascending: true });
-        if (error) throw error;
-        elegidos = (data || []).map(r => String(r.estudiante_id));
-    } catch (error) {
-        console.warn("No se pudo consultar el orden aleatorio de la actividad:", error);
-        const clave = `${String(cursoSeleccionado).trim()}__${fecha}`;
-        try {
-            const datos = JSON.parse(localStorage.getItem("azarAsistenciaElegidos") || "{}");
-            elegidos = Array.isArray(datos[clave]) ? datos[clave].map(String) : [];
-        } catch (_) {}
-    }
-
-    if (!elegidos.length) {
-        alert("No existe una lista de estudiantes elegidos al azar para la fecha de esta actividad.");
-        return;
-    }
-
-    const posicion = new Map();
-    elegidos.forEach((id, indice) => {
-        if (!posicion.has(id)) posicion.set(id, indice);
-    });
-    const ordenadas = Array.from(filas).sort((fa, fb) => {
-        const idA = String(fa.dataset.estudiante);
-        const idB = String(fb.dataset.estudiante);
-        const posA = posicion.get(idA);
-        const posB = posicion.get(idB);
-        if (posA == null && posB == null) {
-            return Number(mapaEstudiantes.get(idA)?.num_lista ?? 9999) -
-                   Number(mapaEstudiantes.get(idB)?.num_lista ?? 9999);
-        }
-        if (posA == null) return 1;
-        if (posB == null) return -1;
-        return posA - posB;
-    });
-    const tbody = filas[0].parentElement;
-    ordenadas.forEach(f => tbody.appendChild(f));
-    modoOrdenActividadesPorId.set(String(actividad.id), "azar");
-    boton.textContent = "💺";
-    boton.title = "Ordenar según los asientos designados";
-}
-
 function crearActividadHTML(
     actividad
 ) {
@@ -14689,26 +14579,10 @@ function crearActividadHTML(
     );
 
 
-    const botonOrdenarEstudiantes = document.createElement("button");
-    botonOrdenarEstudiantes.type = "button";
-    botonOrdenarEstudiantes.className = "boton-guardar-actividad-manual";
-    botonOrdenarEstudiantes.style.display = "inline-flex";
-    botonOrdenarEstudiantes.style.width = "38px";
-    botonOrdenarEstudiantes.style.minWidth = "38px";
-    botonOrdenarEstudiantes.style.padding = "0";
-    botonOrdenarEstudiantes.style.background = "#546e7a";
-    botonOrdenarEstudiantes.textContent = "💺";
-    botonOrdenarEstudiantes.title = "Ordenar según los asientos designados";
-    botonOrdenarEstudiantes.addEventListener("click", function(event) {
-        event.stopPropagation();
-        alternarOrdenEstudiantesActividad(botonOrdenarEstudiantes, actividad);
-    });
-
     /* El guardado manual queda a la izquierda de la cámara QR. */
     derecha.appendChild(
         botonGuardarActividad
     );
-    derecha.appendChild(botonOrdenarEstudiantes);
 
     derecha.appendChild(
         botonEscanearQR
