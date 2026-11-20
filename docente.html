@@ -30714,6 +30714,23 @@ async function obtenerEstudiantesCursoArchivos(){
         :(estudiantes||[]).filter(e=>String(e.curso)===String(cursoSeleccionado));
     return [...lista].sort((a,b)=>(Number(a.num_lista)||99999)-(Number(b.num_lista)||99999));
 }
+function mostrarProgresoArchivosCurso(titulo,porcentaje,detalle=""){
+    let modal=document.getElementById("progresoArchivosCurso");
+    if(!modal){
+        modal=document.createElement("div");
+        modal.id="progresoArchivosCurso";
+        modal.style.cssText="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:18px;";
+        modal.innerHTML='<div style="width:100%;max-width:380px;background:#fff;border-radius:14px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.3);font-family:Arial,sans-serif;color:#222"><div id="progresoArchivosTitulo" style="font-size:17px;font-weight:700;margin-bottom:12px"></div><div style="height:13px;background:#e5e7eb;border-radius:20px;overflow:hidden"><div id="progresoArchivosBarra" style="height:100%;width:0%;background:#16803c;border-radius:20px;transition:width .18s"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px"><strong id="progresoArchivosPorcentaje" style="font-size:20px;color:#16803c">0%</strong><span id="progresoArchivosDetalle" style="font-size:12px;color:#555;text-align:right"></span></div><div style="font-size:12px;color:#666;margin-top:12px">No cierres esta ventana hasta que termine el proceso.</div></div>';
+        document.body.appendChild(modal);
+    }
+    const pct=Math.max(0,Math.min(100,Math.round(Number(porcentaje)||0)));
+    document.getElementById("progresoArchivosTitulo").textContent=titulo;
+    document.getElementById("progresoArchivosBarra").style.width=pct+"%";
+    document.getElementById("progresoArchivosPorcentaje").textContent=pct+"%";
+    document.getElementById("progresoArchivosDetalle").textContent=detalle;
+    modal.style.display="flex";
+}
+function ocultarProgresoArchivosCurso(){const modal=document.getElementById("progresoArchivosCurso");if(modal)modal.remove();}
 async function borrarTodasFotosCurso(){
     if(!cursoSeleccionado){alert("Selecciona un curso.");return;}
     if(!supabaseClient){alert("No hay conexión con la base de datos.");return;}
@@ -30722,32 +30739,43 @@ async function borrarTodasFotosCurso(){
     if(!confirm(`¿Eliminar TODAS las fotografías del curso ${cursoSeleccionado}?\n\nSe borrarán únicamente las imágenes guardadas en Archivos de todos los estudiantes de este curso. Los demás archivos no se eliminarán.\n\nEsta acción no se puede deshacer.`))return;
     const boton=document.querySelector('.acciones-titulo-archivos-estudiantes button[aria-label="Borrar todas las fotos del curso"]');
     if(boton){boton.disabled=true;boton.textContent="⏳";}
-    let eliminadas=0, errores=[];
+    let eliminadas=0, errores=[], total=0, procesadas=0;
     try{
-        for(const estudiante of lista){
+        const pendientes=[];
+        mostrarProgresoArchivosCurso("Preparando eliminación",0,"Revisando fotografías...");
+        for(let i=0;i<lista.length;i++){
+            const estudiante=lista[i];
             try{
                 const archivos=await listarTodosArchivosEstudiante(estudiante.id);
-                const rutas=archivos.filter(a=>esImagenArchivoEstudiante(a.name))
-                    .map(a=>`${estudiante.id}/${a.name}`);
-                for(let i=0;i<rutas.length;i+=100){
-                    const {error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove(rutas.slice(i,i+100));
-                    if(error)throw error;
-                    eliminadas+=rutas.slice(i,i+100).length;
-                }
-            }catch(errorEstudiante){
-                errores.push(`${estudiante.nombre||estudiante.id}: ${errorEstudiante.message||errorEstudiante}`);
+                const rutas=archivos.filter(a=>esImagenArchivoEstudiante(a.name)).map(a=>`${estudiante.id}/${a.name}`);
+                total+=rutas.length;
+                if(rutas.length)pendientes.push({estudiante,rutas});
+            }catch(errorEstudiante){errores.push(`${estudiante.nombre||estudiante.id}: ${errorEstudiante.message||errorEstudiante}`);}
+            mostrarProgresoArchivosCurso("Preparando eliminación",Math.round(((i+1)/lista.length)*15),`Revisando estudiante ${i+1} de ${lista.length}`);
+        }
+        if(!total){ocultarProgresoArchivosCurso();alert("No se encontraron fotografías para eliminar en este curso.");return;}
+        for(const item of pendientes){
+            for(let i=0;i<item.rutas.length;i+=100){
+                const lote=item.rutas.slice(i,i+100);
+                const {error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).remove(lote);
+                if(error){errores.push(`${item.estudiante.nombre||item.estudiante.id}: ${error.message||error}`);procesadas+=lote.length;}
+                else eliminadas+=lote.length;
+                procesadas+=error?0:lote.length;
+                mostrarProgresoArchivosCurso("Eliminando fotografías",15+Math.round((procesadas/total)*85),`${procesadas} de ${total} fotografías procesadas`);
             }
         }
         await cargarListaArchivosEstudiantes();
+        mostrarProgresoArchivosCurso("Eliminación finalizada",100,`${eliminadas} fotografías eliminadas`);
+        await new Promise(resolve=>setTimeout(resolve,450));
+        ocultarProgresoArchivosCurso();
         let mensaje=`Se eliminaron ${eliminadas} fotografía(s) del curso ${cursoSeleccionado}.`;
-        if(errores.length)mensaje+=`\n\nNo se pudieron procesar ${errores.length} estudiante(s):\n${errores.slice(0,8).join("\n")}`;
+        if(errores.length)mensaje+=`\n\nNo se pudieron procesar ${errores.length} elemento(s):\n${errores.slice(0,8).join("\n")}`;
         alert(mensaje);
     }catch(error){
         console.error("Error al borrar las fotografías del curso:",error);
+        ocultarProgresoArchivosCurso();
         alert("No se pudieron eliminar todas las fotografías.\n\n"+(error.message||error));
-    }finally{
-        if(boton){boton.disabled=false;boton.textContent="🗑️";}
-    }
+    }finally{if(boton){boton.disabled=false;boton.textContent="🗑️";}}
 }
 async function exportarImagenesCursoZIP(){
     if(!cursoSeleccionado){alert("Selecciona un curso.");return;}
@@ -30757,47 +30785,57 @@ async function exportarImagenesCursoZIP(){
     try{
         const lista=await obtenerEstudiantesCursoArchivos();
         if(!lista.length)throw new Error("No hay estudiantes en el curso seleccionado.");
-        await cargarJSZipArchivos();
-        const zip=new JSZip();
-        let total=0, fallidos=[];
-        for(const estudiante of lista){
+        mostrarProgresoArchivosCurso("Preparando archivo ZIP",0,"Revisando imágenes...");
+        const encontrados=[];
+        for(let i=0;i<lista.length;i++){
+            const estudiante=lista[i];
             const archivos=await listarTodosArchivosEstudiante(estudiante.id);
             const imagenes=archivos.filter(a=>esImagenArchivoEstudiante(a.name));
-            if(!imagenes.length)continue;
-            const nombreCarpeta=String(estudiante.nombre||`Estudiante ${estudiante.id}`)
-                .replace(/[\\/:*?"<>|]/g,"_").trim()||`Estudiante_${estudiante.id}`;
-            const carpeta=zip.folder(nombreCarpeta);
-            for(const archivo of imagenes){
+            if(imagenes.length){
+                const nombreCarpeta=String(estudiante.nombre||`Estudiante ${estudiante.id}`).replace(/[\\/:*?"<>|]/g,"_").trim()||`Estudiante_${estudiante.id}`;
+                encontrados.push({estudiante,nombreCarpeta,imagenes});
+            }
+            mostrarProgresoArchivosCurso("Preparando archivo ZIP",Math.round(((i+1)/lista.length)*10),`Revisando estudiante ${i+1} de ${lista.length}`);
+        }
+        const total=encontrados.reduce((s,x)=>s+x.imagenes.length,0);
+        if(!total)throw new Error("No se encontraron imágenes para exportar en el curso seleccionado.");
+        await cargarJSZipArchivos();
+        const zip=new JSZip();
+        let descargadas=0,fallidos=[];
+        for(const grupo of encontrados){
+            const carpeta=zip.folder(grupo.nombreCarpeta);
+            for(const archivo of grupo.imagenes){
                 try{
-                    const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES)
-                        .download(`${estudiante.id}/${archivo.name}`);
+                    const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).download(`${grupo.estudiante.id}/${archivo.name}`);
                     if(error)throw error;
                     carpeta.file(archivo.name,data);
-                    total++;
-                }catch(errorArchivo){
-                    fallidos.push(`${estudiante.nombre||estudiante.id}/${archivo.name}: ${errorArchivo.message||errorArchivo}`);
-                }
+                    descargadas++;
+                }catch(errorArchivo){fallidos.push(`${grupo.estudiante.nombre||grupo.estudiante.id}/${archivo.name}: ${errorArchivo.message||errorArchivo}`);}
+                mostrarProgresoArchivosCurso("Descargando imágenes",10+Math.round((descargadas/total)*65),`${descargadas} de ${total} imágenes descargadas`);
             }
         }
-        if(!total)throw new Error("No se encontraron imágenes para exportar en el curso seleccionado.");
-        const contenido=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:5}});
+        if(!descargadas)throw new Error("No se pudo descargar ninguna imagen para exportar.");
+        mostrarProgresoArchivosCurso("Comprimiendo archivo ZIP",76,"Preparando descarga...");
+        const contenido=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:5}},info=>{
+            mostrarProgresoArchivosCurso("Comprimiendo archivo ZIP",76+Math.round((info.percent||0)*.23),`Compresión: ${Math.round(info.percent||0)}%`);
+        });
         const url=URL.createObjectURL(contenido);
         const enlace=document.createElement("a");
         enlace.href=url;
         enlace.download=`Archivos_${nombreArchivoSeguro(cursoSeleccionado)}.zip`;
-        document.body.appendChild(enlace);
-        enlace.click();
-        enlace.remove();
+        document.body.appendChild(enlace);enlace.click();enlace.remove();
         setTimeout(()=>URL.revokeObjectURL(url),30000);
-        let mensaje=`Se exportaron ${total} imagen(es) del curso ${cursoSeleccionado} en un archivo ZIP.`;
+        mostrarProgresoArchivosCurso("ZIP listo",100,`${descargadas} imágenes incluidas`);
+        await new Promise(resolve=>setTimeout(resolve,650));
+        ocultarProgresoArchivosCurso();
+        let mensaje=`Se exportaron ${descargadas} imagen(es) del curso ${cursoSeleccionado} en un archivo ZIP.`;
         if(fallidos.length)mensaje+=`\n\nNo se pudieron incluir ${fallidos.length} imagen(es).`;
         alert(mensaje);
     }catch(error){
         console.error("Error al exportar imágenes del curso:",error);
+        ocultarProgresoArchivosCurso();
         alert("No se pudo exportar el ZIP.\n\n"+(error.message||error));
-    }finally{
-        if(boton){boton.disabled=false;boton.textContent="🗜️";}
-    }
+    }finally{if(boton){boton.disabled=false;boton.textContent="🗜️";}}
 }
 
 async function obtenerEstudianteArchivo(id){
