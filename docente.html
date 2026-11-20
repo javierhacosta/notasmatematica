@@ -31119,7 +31119,22 @@ async function guardarCalificacionFotoEditor(){
 function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehacer.push(editorFotoPila.pop());restaurarEstadoFotoEditor(editorFotoPila[editorFotoPila.length-1])}
 function rehacerFotoEditor(){if(!editorFotoRehacer.length)return;const u=editorFotoRehacer.pop();editorFotoPila.push(u);restaurarEstadoFotoEditor(u)}
 function limpiarAnotacionesFotoEditor(){if(!editorFotoImagen||!confirm("¿Quitar todas las anotaciones de esta fotografía?"))return;const c=document.getElementById("canvasEditorFoto"),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);x.drawImage(editorFotoImagen,0,0);editorFotoDirty=true;guardarEstadoFotoEditor()}
-function navegarFotoEditor(d){if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de fotografía?"))return;const n=editorFotoIndice+d;if(n<0||n>=editorFotoLista.length)return;editorFotoIndice=n;mostrarFotoEnEditorActividad().catch(e=>alert(e.message||e))}
+function navegarFotoEditor(d){
+ if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de fotografía?"))return;
+ const n=editorFotoIndice+d;if(n<0||n>=editorFotoLista.length)return;
+ // Al cambiar de fotografía del mismo estudiante, conservar los campos
+ // de nota y observación tal como están escritos. Solo se recargan al
+ // cambiar de estudiante mediante los botones de navegación de estudiantes.
+ const notaActual=document.getElementById("textoNotaFotoEditor")?.value??"";
+ const observacionActual=document.getElementById("textoObservacionFotoEditor")?.value??"";
+ editorFotoIndice=n;
+ mostrarFotoEnEditorActividad().then(()=>{
+  const nota=document.getElementById("textoNotaFotoEditor");
+  const observacion=document.getElementById("textoObservacionFotoEditor");
+  if(nota)nota.value=notaActual;
+  if(observacion)observacion.value=observacionActual;
+ }).catch(e=>alert(e.message||e));
+}
 function navegarAnteriorEstudianteFotoEditor(){
  if(!editorFotoActual||editorFotoActual.actividad_id==null)return;
  if(editorFotoDirty&&!confirm("Hay cambios sin guardar. ¿Descartarlos y pasar al estudiante anterior?"))return;
