@@ -31106,8 +31106,8 @@ async function guardarCalificacionFotoEditor(){
  try{
   const consulta=await supabaseClient.from("calificaciones").select("id").eq("actividad_id",Number(f.actividad_id)).eq("estudiante_id",Number(f.estudiante_id)).maybeSingle();
   if(consulta.error)throw consulta.error;
-  let resultado;if(consulta.data?.id){resultado=await supabaseClient.from("calificaciones").update({nota}).eq("id",consulta.data.id)}
-  else{resultado=await supabaseClient.from("calificaciones").insert({actividad_id:Number(f.actividad_id),estudiante_id:Number(f.estudiante_id),nota,fecha_entrega:new Date().toISOString()})}
+  let resultado;if(consulta.data?.id){resultado=await supabaseClient.from("calificaciones").update({nota,observacion:observacion||null}).eq("id",consulta.data.id)}
+  else{resultado=await supabaseClient.from("calificaciones").insert({actividad_id:Number(f.actividad_id),estudiante_id:Number(f.estudiante_id),nota,observacion:observacion||null,fecha_entrega:new Date().toISOString()})}
   if(resultado.error)throw resultado.error;
   if(!calificaciones[f.estudiante_id])calificaciones[f.estudiante_id]={};
   const anterior=calificaciones[f.estudiante_id][f.actividad_id]||{};
