@@ -197,7 +197,10 @@ async function importBackup(file) {
     throw new Error("El ZIP no es un respaldo compatible del Panel Docente.");
   }
   const combine = confirm("¿Deseas COMBINAR los datos del ZIP con los que ya existen en este celular?\n\nAceptar: combinar y actualizar registros coincidentes.\nCancelar: reemplazar completamente la copia offline actual.");
-  if (!combine && !confirm("Se reemplazarán las tablas, archivos y cambios pendientes que existen en este celular. ¿Continuar?")) return;
+  if (!combine && !confirm("Se reemplazarán las tablas, archivos y cambios pendientes que existen en este celular. ¿Continuar?")) {
+    closeProgress();
+    return;
+  }
   const db = await openDB();
   const incomingTables = [];
   const tableNames = Object.keys(zip.files).filter(name => name.startsWith("tablas/") && name.endsWith(".json"));
