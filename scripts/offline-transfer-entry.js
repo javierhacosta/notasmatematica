@@ -16,6 +16,13 @@ const PK = {
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("tables")) db.createObjectStore("tables", { keyPath: "name" });
+      if (!db.objectStoreNames.contains("files")) db.createObjectStore("files", { keyPath: "path" });
+      if (!db.objectStoreNames.contains("queue")) db.createObjectStore("queue", { keyPath: "qid", autoIncrement: true });
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error || new Error("No se pudo abrir la base de datos offline."));
   });
