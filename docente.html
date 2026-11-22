@@ -5906,6 +5906,14 @@ body.modo-presidente-qr-bloqueado #modalAsistenciaQR {
 Usuario:
 <span id="usuario"></span>
 <div id="indicadorConsumoInternet" role="button" tabindex="0" aria-label="Mantén pulsado para ver el consumo de Internet" style="font-size:12px;color:#777;margin-top:4px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-y;">Internet consumido: 0 KB</div>
+<div id="controlModoConexion" style="margin-top:10px;padding:10px;border:1px solid #cfd8dc;border-radius:9px;background:#f7fafb;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+    <strong id="textoModoConexion">Modo online</strong>
+    <button type="button" id="botonCambiarModoConexion" onclick="cambiarModoConexion()" style="border:0;border-radius:7px;padding:9px 13px;background:#1565c0;color:white;font-weight:700;">Activar modo offline</button>
+  </div>
+  <div id="estadoModoConexion" role="status" style="font-size:12px;margin-top:7px;color:#555;">La aplicación funciona en modo online.</div>
+  <div id="avisoLimitacionesOffline" style="display:none;margin-top:8px;padding:9px;border-radius:7px;background:#fff3cd;color:#765600;font-size:12px;line-height:1.45;">Modo offline: primero descarga al celular las tablas de todos los cursos y los archivos del bucket. Los cambios se guardan localmente y quedan pendientes de sincronización. No borres los datos del navegador ni desinstales la aplicación mientras haya cambios pendientes. La descarga puede ocupar bastante espacio.</div>
+</div>
 </div>
 <!-- =====================================================
      FILTROS
@@ -7925,11 +7933,99 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_jescZ3lb8XHHuDGuDeh82A_X8UvMinP";
 
-const supabaseClient =
+const supabaseClientBase =
 window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
 );
+
+/* =====================================================
+   MOTOR OFFLINE V2: IndexedDB + cola de sincronización + Storage local.
+   El modo offline solo se activa cuando termina la copia completa.
+===================================================== */
+const OFF_DB_NAME = "docente_offline_completo_v2";
+const OFF_DB_VERSION = 1;
+const OFF_TABLES = ["matematica","listageneral","actividades","calificaciones","asistencia","asistencia_horarios","asistencia_tipos_dia","anotaciones","anotaciones_actividades","visitas_estudiantes","fotos_actividades","fotos_asistencia","azar_estudiantes_elegidos","azar_estudiantes_descartados","distribuciones_aula"];
+const OFF_BUCKET = "archivos_estudiantes";
+let offDB = null;
+let offSyncBusy = false;
+let offObjectUrls = new Map();
+let offLastError = "";
+
+function offOpenDB(){
+ if(offDB) return Promise.resolve(offDB);
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(OFF_DB_NAME,OFF_DB_VERSION);
+  req.onupgradeneeded=()=>{const db=req.result;
+   if(!db.objectStoreNames.contains("tables"))db.createObjectStore("tables",{keyPath:"name"});
+   if(!db.objectStoreNames.contains("files"))db.createObjectStore("files",{keyPath:"path"});
+   if(!db.objectStoreNames.contains("queue"))db.createObjectStore("queue",{keyPath:"qid",autoIncrement:true});
+   if(!db.objectStoreNames.contains("meta"))db.createObjectStore("meta",{keyPath:"key"});
+  };
+  req.onsuccess=()=>{offDB=req.result;offDB.onversionchange=()=>offDB.close();resolve(offDB)};
+  req.onerror=()=>reject(req.error||new Error("No se pudo abrir IndexedDB."));
+ });
+}
+function offReq(store,method,arg){return offOpenDB().then(db=>new Promise((resolve,reject)=>{const soloLectura=method==='get'||method==='getAll';const tx=db.transaction(store,soloLectura?'readonly':'readwrite');const st=tx.objectStore(store);const req=arg===undefined?st[method]():st[method](arg);if(soloLectura){req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)}else{tx.oncomplete=()=>resolve(req.result);tx.onerror=()=>reject(tx.error||req.error);tx.onabort=()=>reject(tx.error||req.error)}}))}
+async function offGetTable(name){return (await offReq('tables','get',name))?.rows||[]}
+async function offPutTable(name,rows){await offReq('tables','put',{name,rows,updated:Date.now()})}
+async function offQueue(item){await offReq('queue','add',{...item,created:Date.now()});if(modoConexionDocente==='offline'){const n=(await offQueueAll()).length;offSetStatus('Guardado en este celular; pendiente de sincronización. Pendientes: '+n+'.')}}
+async function offQueueAll(){return await offReq('queue','getAll')||[]}
+async function offDeleteQueue(id){await offReq('queue','delete',id)}
+async function offFilePut(path,blob,type,name){await offReq('files','put',{path,blob,type:type||blob?.type||"application/octet-stream",name:name||path.split('/').pop(),updated:Date.now()})}
+async function offFileGet(path){return await offReq('files','get',path)}
+async function offFileAll(){return await offReq('files','getAll')||[]}
+async function offFileDelete(path){await offReq('files','delete',path)}
+function offSetStatus(msg,error=false){const el=document.getElementById('estadoModoConexion');if(el){el.textContent=msg;el.style.color=error?'#b71c1c':'#365';}const av=document.getElementById('avisoLimitacionesOffline');if(av&&error)av.style.background='#ffebee';}
+function offProgress(title,done,total,detail){let m=document.getElementById('offProgressModal');if(!m){m=document.createElement('div');m.id='offProgressModal';m.style.cssText='position:fixed;inset:0;z-index:200000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:18px';m.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;width:min(440px,100%);font-family:Arial;color:#222"><b id="offProgressTitle"></b><div style="height:12px;background:#e5e7eb;border-radius:20px;margin:16px 0 8px;overflow:hidden"><div id="offProgressBar" style="height:100%;width:0;background:#16803c;transition:width .2s"></div></div><div style="display:flex;justify-content:space-between;gap:10px"><strong id="offProgressPct">0%</strong><small id="offProgressDetail" style="text-align:right"></small></div><small style="display:block;margin-top:12px;color:#666">Mantén abierta esta página hasta que termine.</small></div>';document.body.appendChild(m)}const pct=total?Math.min(100,Math.round(done/total*100)):0;document.getElementById('offProgressTitle').textContent=title;document.getElementById('offProgressBar').style.width=pct+'%';document.getElementById('offProgressPct').textContent=pct+'%';document.getElementById('offProgressDetail').textContent=detail||'';}
+function offProgressClose(){document.getElementById('offProgressModal')?.remove()}
+async function offDownloadTable(name){let rows=[],start=0,step=700;while(true){const r=await supabaseClientBase.from(name).select('*').range(start,start+step-1);if(r.error)throw new Error(name+': '+r.error.message);rows.push(...(r.data||[]));if((r.data||[]).length<step)break;start+=step;}await offPutTable(name,rows);return rows.length}
+async function offListAllFiles(bucket,path=''){let all=[],offset=0,limit=1000;while(true){const r=await supabaseClientBase.storage.from(bucket).list(path,{limit,offset,sortBy:{column:'name',order:'asc'}});if(r.error)throw new Error('Storage '+(path||'/')+': '+r.error.message);const block=r.data||[];all.push(...block);if(block.length<limit)break;offset+=limit;}return all}
+async function offDownloadFolder(path=''){const entries=await offListAllFiles(OFF_BUCKET,path);let count=0;for(const entry of entries){if(!entry?.name||entry.name==='.'||entry.name==='..')continue;const child=path?path+'/'+entry.name:entry.name;const isFolder=entry.id==null&&!entry.metadata;if(isFolder){count+=await offDownloadFolder(child);continue;}const r=await supabaseClientBase.storage.from(OFF_BUCKET).download(child);if(r.error)throw new Error('Archivo '+child+': '+r.error.message);await offFilePut(child,r.data,entry.metadata?.mimetype||r.data?.type,entry.name);count++;offProgress('Descargando fotografías y archivos',count,Math.max(count+1,entries.length),count+' archivos descargados');}return count}
+async function prepararCopiaOfflineCompleta(){
+ if(!navigator.onLine)throw new Error('Necesitas Internet para descargar por primera vez todos los cursos, fotografías y archivos.');
+ await offOpenDB();try{await navigator.storage?.persist?.()}catch(_){}
+ const fallos=[],totales={tablas:0,archivos:0};
+ for(let i=0;i<OFF_TABLES.length;i++){const t=OFF_TABLES[i];offProgress('Descargando datos de todos los cursos',i,OFF_TABLES.length,'Tabla: '+t);try{totales.tablas+=await offDownloadTable(t)}catch(e){fallos.push(e.message)}}
+ if(!fallos.length){try{offProgress('Preparando fotografías y archivos',0,1,'Descargando todos los directorios del bucket '+OFF_BUCKET);totales.archivos=await offDownloadFolder('')}catch(e){fallos.push(e.message)}}
+ if(fallos.length){await offReq('meta','put',{key:'copiaCompleta',value:false,updated:Date.now()});throw new Error('La copia no se completó. No se activó el modo offline para evitar que falten datos.\n\n'+fallos.slice(0,12).join('\n'))}
+ await offReq('meta','put',{key:'copiaCompleta',value:true,updated:Date.now()});
+ await offReq('meta','put',{key:'copiaFecha',value:Date.now()});
+ return totales;
+}
+function offCmp(a,op,b){if(op==='eq')return String(a??'')===String(b??'');if(op==='neq')return String(a??'')!==String(b??'');if(op==='gt')return a>b;if(op==='gte')return a>=b;if(op==='lt')return a<b;if(op==='lte')return a<=b;if(op==='ilike'||op==='like'){let x=String(a??'');let y=String(b??'').replace(/^%|%$/g,'');return op==='ilike'?x.toLowerCase().includes(y.toLowerCase()):x.includes(y)}if(op==='is')return b===null?a==null:a===b;return false}
+function offMatches(row,filters){return filters.every(f=>{let v=row?.[f.field];if(f.kind==='in')return (f.values||[]).some(x=>String(x)===String(v));if(f.kind==='match')return Object.entries(f.values||{}).every(([k,x])=>String(row?.[k]??'')===String(x??''));if(f.kind==='contains'){if(Array.isArray(v))return (Array.isArray(f.value)?f.value:[f.value]).every(x=>v.includes(x));if(v&&typeof v==='object')return Object.entries(f.value||{}).every(([k,x])=>v[k]===x);return false}if(f.kind==='not')return !offCmp(v,f.op,f.value);return offCmp(v,f.op,f.value)})}
+function offParseFilter(field,op,value){if(op==='in'){let vals=value;if(typeof vals==='string'&&vals.startsWith('('))vals=vals.slice(1,-1).split(',');return{kind:'in',field,values:vals}}if(op==='is')return{kind:'normal',field,op,value:value==='null'?null:value};return{kind:'normal',field,op,value}}
+function offProject(rows,select){if(!select||select==='*')return rows.map(x=>({...x}));const cols=String(select).split(',').map(x=>x.trim()).filter(Boolean);return rows.map(row=>{const out={};for(const c of cols){const m=c.match(/^([\w]+)(?:\s+as\s+(\w+))?$/);if(m)out[m[2]||m[1]]=row[m[1]];}return out})}
+const OFF_PK={actividades:'id',anotaciones:'id',anotaciones_actividades:'actividad_id',asistencia:'id',asistencia_horarios:['curso','fecha'],asistencia_tipos_dia:'id',calificaciones:'id',visitas_estudiantes:'id',fotos_actividades:'id',fotos_asistencia:'id',matematica:'id',listageneral:'id',azar_estudiantes_elegidos:'id',azar_estudiantes_descartados:'id',distribuciones_aula:'curso'};
+function offTempId(){return -(Date.now()*1000+Math.floor(Math.random()*900))}
+function offRowKey(row,pk){return Array.isArray(pk)?pk.map(k=>String(row?.[k]??'')).join('|'):String(row?.[pk]??'')}
+async function offRemapId(table,oldId,newId){const refs={actividades:['actividad_id'],matematica:['estudiante_id']};for(const name of OFF_TABLES){const rows=await offGetTable(name);let changed=false;for(const row of rows){if(name===table&&String(row[OFF_PK[table]])===String(oldId)){row[OFF_PK[table]]=newId;changed=true}for(const col of (refs[table]||[])){if(String(row[col])===String(oldId)){row[col]=newId;changed=true}}}if(changed)await offPutTable(name,rows)}const q=await offQueueAll();for(const item of q){let changed=false;const walk=(v)=>{if(!v||typeof v!=='object')return;for(const [k,x] of Object.entries(v)){if((k==='id'&&item.tabla===table|| (refs[table]||[]).includes(k))&&String(x)===String(oldId)){v[k]=newId;changed=true}else if(x&&typeof x==='object')walk(x)}};walk(item);if(changed){const copy={...item};delete copy.qid;await offReq('queue','put',{...copy,qid:item.qid})}}}
+async function offLocalMutation(table,e){let rows=await offGetTable(table);const matched=()=>rows.filter(r=>offMatches(r,e.filters));let output=[];const pk=OFF_PK[table];
+ if(e.op==='insert'||e.op==='upsert'){const vals=Array.isArray(e.value)?e.value:[e.value];for(const source of vals){const v={...source};let ix=-1;const conflict=(e.options?.onConflict||'').split(',').map(x=>x.trim()).filter(Boolean);if(conflict.length)ix=rows.findIndex(r=>conflict.every(k=>String(r[k]??'')===String(v[k]??'')));else if(pk&&typeof pk==='string'&&v[pk]!=null)ix=rows.findIndex(r=>String(r[pk])===String(v[pk]));if(ix>=0){rows[ix]={...rows[ix],...v};output.push(rows[ix])}else{if(pk&&typeof pk==='string'&&v[pk]==null)v[pk]=offTempId();rows.push(v);output.push(v)}}await offPutTable(table,rows);await offQueue({kind:'table',tabla:table,op:e.op,value:output,options:e.options||null});}
+ else if(e.op==='update'){const before=matched();rows=rows.map(r=>before.includes(r)?{...r,...e.value}:r);output=rows.filter(r=>before.some(b=>offRowKey(b,pk)===offRowKey(r,pk)));await offPutTable(table,rows);if(output.length)await offQueue({kind:'table',tabla:table,op:'update',filters:e.filters,value:e.value});}
+ else if(e.op==='delete'){output=matched();const ids=new Set(output);rows=rows.filter(r=>!ids.has(r));await offPutTable(table,rows);if(output.length)await offQueue({kind:'table',tabla:table,op:'delete',filters:e.filters});}
+ else return {data:null,error:{message:'Operación local no soportada.'}};
+ return {data:e.selectAfter?offProject(output,e.select):null,error:null,count:null};
+}
+function offLocalQuery(table,e){let rows=offGetTable(table);return rows.then(all=>{let r=all.filter(x=>offMatches(x,e.filters));for(const o of e.orders.slice().reverse())r.sort((a,b)=>{const x=a[o.field],y=b[o.field];const c=String(x??'').localeCompare(String(y??''),undefined,{numeric:true,sensitivity:'base'});return o.asc?c:-c});if(e.limit!=null)r=r.slice(0,e.limit);if(e.range)r=r.slice(e.range[0],e.range[1]+1);const count=r.length;if(e.head)return{data:null,error:null,count};const data=offProject(r,e.select);if(e.single||e.maybeSingle){if(!data.length)return e.single?{data:null,error:{message:'No se encontró ningún registro.',code:'PGRST116'}}:{data:null,error:null};if(e.single&&data.length>1)return{data:null,error:{message:'Se esperaba un único registro.',code:'PGRST116'}};return{data:data[0],error:null}}return{data,error:null,count:e.countExact?count:null}})}
+function offBuilder(table){const e={select:'*',filters:[],orders:[],limit:null,range:null,countExact:false,head:false,single:false,maybeSingle:false,op:null,value:null,options:null,selectAfter:false,unsupported:[]};let builder;builder=new Proxy({}, {get(_t,p){if(p==='then')return(resolve,reject)=>Promise.resolve(e.unsupported.length?{data:null,error:{message:'Consulta no compatible con modo offline: '+e.unsupported.join(', ')}}:(e.op?offLocalMutation(table,e):offLocalQuery(table,e))).then(resolve,reject);if(p==='catch')return fn=>Promise.resolve(builder).catch(fn);if(p==='finally')return fn=>Promise.resolve(builder).finally(fn);if(typeof p!=='string')return;return(...a)=>{if(p==='select'){e.select=a[0]||'*';e.countExact=a[1]?.count==='exact';e.head=a[1]?.head===true;if(e.op)e.selectAfter=true}else if(['eq','neq','gt','gte','lt','lte','ilike','like','is'].includes(p))e.filters.push({kind:'normal',field:a[0],op:p,value:a[1]});else if(p==='in')e.filters.push({kind:'in',field:a[0],values:a[1]});else if(p==='not')e.filters.push({kind:'not',field:a[0],op:a[1],value:a[2]});else if(p==='match')e.filters.push({kind:'match',values:a[0]||{}});else if(p==='contains')e.filters.push({kind:'contains',field:a[0],value:a[1]});else if(p==='filter')e.filters.push(offParseFilter(a[0],a[1],a[2]));else if(p==='order')e.orders.push({field:a[0],asc:a[1]?.ascending!==false});else if(p==='limit')e.limit=Number(a[0]);else if(p==='range')e.range=[Number(a[0]),Number(a[1])];else if(p==='maybeSingle')e.maybeSingle=true;else if(p==='single')e.single=true;else if(['insert','upsert','update','delete'].includes(p)){e.op=p;if(p!=='delete')e.value=a[0];if(p==='upsert')e.options=a[1]||null}else{e.unsupported.push(p);console.warn('Método Supabase no implementado offline:',p,table)}return builder}}});return builder}
+function offStorage(bucket){const remote=supabaseClientBase.storage.from(bucket);return new Proxy(remote,{get(obj,p){if(p==='upload')return async(path,file,options={})=>{if(modoConexionDocente!=='offline')return obj.upload(path,file,options);const existing=await offFileGet(path);if(existing&&!options.upsert)return{data:null,error:{message:'El archivo ya existe localmente.'}};await offFilePut(path,file,options.contentType||file.type,path.split('/').pop());await offQueue({kind:'storage',op:'upload',bucket,path,blob:file,options});return{data:{path},error:null}};if(p==='download')return async(path)=>{if(modoConexionDocente!=='offline')return obj.download(path);const f=await offFileGet(path);return f?{data:f.blob,error:null}:{data:null,error:{message:'El archivo no está descargado en este dispositivo: '+path}}};if(p==='createSignedUrl')return async(path,...args)=>{if(modoConexionDocente!=='offline')return obj.createSignedUrl(path,...args);const f=await offFileGet(path);if(!f)return{data:null,error:{message:'Archivo no disponible en la copia offline: '+path}};if(!offObjectUrls.has(path))offObjectUrls.set(path,URL.createObjectURL(f.blob));return{data:{signedUrl:offObjectUrls.get(path)},error:null}};if(p==='list')return async(path='',options={})=>{if(modoConexionDocente!=='offline')return obj.list(path,options);const prefix=path?path.replace(/\/$/,'')+'/':'';const files=await offFileAll();const direct=new Map();for(const f of files){if(!f.path.startsWith(prefix))continue;const rest=f.path.slice(prefix.length);if(!rest)continue;const parts=rest.split('/');if(parts.length===1)direct.set(parts[0],{name:parts[0],id:'local',metadata:{size:f.blob?.size||0,mimetype:f.type,cacheControl:'',lastModified:new Date(f.updated).toISOString()}});else direct.set(parts[0],{name:parts[0],id:null,metadata:null})}let out=[...direct.values()];if(options.search)out=out.filter(x=>x.name.includes(options.search));if(options.sortBy?.column==='name')out.sort((a,b)=>a.name.localeCompare(b.name));const start=options.offset||0;return{data:out.slice(start,start+(options.limit||100)),error:null}};if(p==='remove')return async(paths)=>{if(modoConexionDocente!=='offline')return obj.remove(paths);for(const path of paths){await offFileDelete(path);await offQueue({kind:'storage',op:'remove',bucket,path})}return{data:paths.map(name=>({name})),error:null}};if(p==='move')return async(from,to)=>{if(modoConexionDocente!=='offline')return obj.move(from,to);const f=await offFileGet(from);if(!f)return{data:null,error:{message:'No se encontró el archivo local: '+from}};await offFilePut(to,f.blob,f.type,to.split('/').pop());await offFileDelete(from);await offQueue({kind:'storage',op:'move',bucket,from,to});return{data:{path:to},error:null}};return Reflect.get(obj,p,obj)}})}
+function crearSupabaseOfflineProxy(base){return new Proxy(base,{get(obj,p){if(p==='from')return table=>modoConexionDocente==='offline'&&OFF_TABLES.includes(table)?offBuilder(table):obj.from(table);if(p==='storage')return new Proxy(obj.storage,{get(st,p2){if(p2==='from')return bucket=>offStorage(bucket);return Reflect.get(st,p2,st)}});return Reflect.get(obj,p,obj)}})}
+let supabaseClient=crearSupabaseOfflineProxy(supabaseClientBase);
+function offRemoteFilters(q,filters){for(const f of filters||[]){if(f.kind==='in')q=q.in(f.field,f.values);else if(f.kind==='match')q=q.match(f.values);else if(f.kind==='contains')q=q.contains(f.field,f.value);else if(f.kind==='not')q=q.not(f.field,f.op,f.value);else q=q[f.op](f.field,f.value)}return q}
+async function offSyncQueue(){if(offSyncBusy||!navigator.onLine)return;const queue=await offQueueAll();if(!queue.length)return;offSyncBusy=true;let ok=0;try{for(const item of queue){try{if(item.kind==='storage'){const st=supabaseClientBase.storage.from(item.bucket);let r;if(item.op==='upload')r=await st.upload(item.path,item.blob,item.options||{});else if(item.op==='remove')r=await st.remove([item.path]);else if(item.op==='move')r=await st.move(item.from,item.to);if(r?.error)throw r.error;}
+ else if(item.kind==='table'){let q=supabaseClientBase.from(item.tabla),r;if(item.op==='insert'||item.op==='upsert'){const vals=(Array.isArray(item.value)?item.value:[item.value]).map(v=>{const x={...v};const pk=OFF_PK[item.tabla];if(pk&&typeof pk==='string'&&Number(x[pk])<0)delete x[pk];return x});if(item.op==='upsert')r=await q.upsert(vals,item.options||{}).select('*');else r=await q.insert(vals).select('*');if(r.error)throw r.error;const returned=r.data||[];for(let i=0;i<(item.value||[]).length;i++){const old=item.value[i],pk=OFF_PK[item.tabla];if(pk&&typeof pk==='string'&&Number(old[pk])<0&&returned[i]?.[pk]!=null)await offRemapId(item.tabla,old[pk],returned[i][pk]);}}
+ else if(item.op==='update'){q=offRemoteFilters(q.update(item.value),item.filters);r=await q.select('*');if(r.error)throw r.error;}
+ else if(item.op==='delete'){q=offRemoteFilters(q.delete(),item.filters);r=await q; if(r.error)throw r.error;}}
+ await offDeleteQueue(item.qid);ok++;
+ }catch(e){offLastError=(e?.message||String(e));console.error('Sincronización offline pendiente:',item,e);break}}
+ }finally{offSyncBusy=false;const rest=await offQueueAll();if(rest.length)offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);else{offLastError='';offSetStatus('✓ Todos los cambios locales se sincronizaron ('+ok+').')}}}
+window.addEventListener('online',()=>setTimeout(offSyncQueue,1500));
+setInterval(()=>{offSyncQueue().catch(e=>console.warn(e))},20000);
+
+/* Storage: la vista previa usa blob local cuando está en modo offline. */
+
 
 /* =====================================================
    CONFIGURACIÓN DE GUARDADO AUTOMÁTICO
@@ -8326,14 +8422,92 @@ new Set();
    SESIÓN
 ===================================================== */
 
+const CLAVE_MODO_CONEXION_DOCENTE = "modoConexionDocente_v1";
+let modoConexionDocente = localStorage.getItem(CLAVE_MODO_CONEXION_DOCENTE) === "offline" ? "offline" : "online";
+
+function actualizarInterfazModoConexion() {
+    const offline = modoConexionDocente === "offline";
+    const texto = document.getElementById("textoModoConexion");
+    const boton = document.getElementById("botonCambiarModoConexion");
+    const estado = document.getElementById("estadoModoConexion");
+    const aviso = document.getElementById("avisoLimitacionesOffline");
+    if (texto) texto.textContent = offline ? "Modo offline" : "Modo online";
+    if (boton) {
+        boton.textContent = offline ? "Cambiar a modo online" : "Activar modo offline";
+        boton.style.background = offline ? "#455a64" : "#1565c0";
+    }
+    if (estado && !estado.textContent.startsWith("⚠️") && !estado.textContent.startsWith("✓") && !estado.textContent.startsWith("📱")) estado.textContent = offline
+        ? (navigator.onLine ? "Modo offline: se utiliza la copia local de todos los cursos y archivos." : "Sin Internet: se utilizan los datos y archivos descargados en este celular.")
+        : (navigator.onLine ? "La aplicación funciona en modo online." : "Sin Internet: activa offline si ya descargaste la copia completa.");
+    if (aviso) aviso.style.display = offline ? "block" : "none";
+}
+
+async function cambiarModoConexion() {
+    const boton=document.getElementById("botonCambiarModoConexion");
+    if(boton)boton.disabled=true;
+    try {
+      if(modoConexionDocente==="online") {
+        const meta=await offReq("meta","get","copiaCompleta");
+        if(!meta?.value) {
+          if(!navigator.onLine)throw new Error("No existe una copia completa en este celular. Conéctate a Internet para descargar todos los cursos, fotografías y archivos.");
+          offProgress("Preparando modo offline",0,1,"Se copiarán todas las tablas y todos los archivos del bucket. Puede ocupar varios GB.");
+          const estimate=await navigator.storage?.estimate?.();
+          if(estimate?.quota&&estimate?.usage!=null){const libre=estimate.quota-estimate.usage;offProgress("Preparando modo offline",0,1,"Espacio disponible aproximado: "+(libre/1024/1024/1024).toFixed(2)+" GB. Descargando datos...")}
+          const r=await prepararCopiaOfflineCompleta();
+          offProgress("Copia completa",1,1,r.tablas+" registros de tablas y "+r.archivos+" archivos guardados en el celular.");
+          await new Promise(resolve=>setTimeout(resolve,900));
+        } else if(navigator.onLine) {
+          // No se sobrescriben datos locales con cambios pendientes.
+          const pendientes=await offQueueAll();
+          if(pendientes.length)throw new Error("Hay "+pendientes.length+" cambios pendientes. Sincronízalos antes de actualizar la copia completa.");
+          offProgress("Actualizando copia offline",0,1,"Actualizando todos los cursos y archivos...");
+          const r=await prepararCopiaOfflineCompleta();
+          offProgress("Copia actualizada",1,1,r.tablas+" registros y "+r.archivos+" archivos.");
+          await new Promise(resolve=>setTimeout(resolve,700));
+        }
+        modoConexionDocente="offline";
+        localStorage.setItem(CLAVE_MODO_CONEXION_DOCENTE,"offline");
+        offSetStatus("📱 Modo offline activo. Datos y archivos disponibles en este celular.");
+      } else {
+        if(!navigator.onLine)throw new Error("No puedes cambiar a modo online sin Internet. Los cambios locales se conservarán.");
+        modoConexionDocente="online";
+        localStorage.setItem(CLAVE_MODO_CONEXION_DOCENTE,"online");
+        await offSyncQueue();
+        const pendientes=await offQueueAll();
+        if(pendientes.length){modoConexionDocente="offline";localStorage.setItem(CLAVE_MODO_CONEXION_DOCENTE,"offline");throw new Error("No se pudieron sincronizar todos los cambios. Se mantiene el modo offline para protegerlos. Pendientes: "+pendientes.length+". Detalle: "+(offLastError||"revisa la conexión y los permisos"));}
+        offSetStatus("✓ Modo online activo. Todos los cambios pendientes fueron enviados.");
+      }
+      actualizarInterfazModoConexion();
+      if(modoConexionDocente==="offline")document.getElementById("avisoLimitacionesOffline")?.style.setProperty("display","block");
+    } catch(e) { offProgressClose(); alert("No se pudo cambiar el modo de conexión.\n\n"+(e?.message||e)); actualizarInterfazModoConexion(); }
+    finally {offProgressClose();if(boton)boton.disabled=false;}
+}
+
+window.addEventListener("online", actualizarInterfazModoConexion);
+window.addEventListener("offline", actualizarInterfazModoConexion);
+
 async function comprobarSesion() {
 
-    const {
-        data: {
-            user
+    if (modoConexionDocente === "offline") {
+        const copia = await offReq("meta", "get", "copiaCompleta").catch(() => null);
+        if (!copia?.value) {
+            modoConexionDocente = "online";
+            localStorage.setItem(CLAVE_MODO_CONEXION_DOCENTE, "online");
         }
-    } =
-    await supabaseClient.auth.getUser();
+    }
+    actualizarInterfazModoConexion();
+    let user = null;
+    if (navigator.onLine) {
+        const { data, error } = await supabaseClient.auth.getUser();
+        if (!error) user = data?.user || null;
+        else {
+            const sesionLocal = await supabaseClient.auth.getSession();
+            user = sesionLocal?.data?.session?.user || null;
+        }
+    } else {
+        const sesionLocal = await supabaseClient.auth.getSession();
+        user = sesionLocal?.data?.session?.user || null;
+    }
 
 
     if (!user) {
@@ -31448,6 +31622,15 @@ async function cerrarEditorFotoActividad(){
  </div>
 </div>
 
+
+<script>
+/* En modo offline, los mensajes de éxito aclaran que el dato está local y pendiente de enviar. */
+(function(){const original=window.mostrarMensaje;if(typeof original!=="function")return;window.mostrarMensaje=function(mensaje,...args){let texto=String(mensaje??"");if(modoConexionDocente==="offline"&&/(guardad[oa]|actualizad[oa]|eliminad[oa]|registrad[oa]|reemplazad[oa])/i.test(texto)&&!/pendiente de sincronizaci[oó]n/i.test(texto)){texto+=" · Guardado localmente, pendiente de sincronización";}return original.call(this,texto,...args)}})();
+</script>
+<script>
+/* Service Worker: guarda el HTML y los recursos de la aplicación para volver a abrirla sin Internet. */
+(function(){if(!('serviceWorker' in navigator))return;window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js',{scope:'./'}).then(()=>console.info('Service Worker offline activo')).catch(e=>console.warn('No se pudo registrar service-worker.js',e));});})();
+</script>
 </body>
 
 </html>
