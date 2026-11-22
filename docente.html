@@ -7981,13 +7981,49 @@ function offProgress(title,done,total,detail){let m=document.getElementById('off
 function offProgressClose(){document.getElementById('offProgressModal')?.remove()}
 async function offDownloadTable(name){let rows=[],start=0,step=700;while(true){const r=await supabaseClientBase.from(name).select('*').range(start,start+step-1);if(r.error)throw new Error(name+': '+r.error.message);rows.push(...(r.data||[]));if((r.data||[]).length<step)break;start+=step;}await offPutTable(name,rows);return rows.length}
 async function offListAllFiles(bucket,path=''){let all=[],offset=0,limit=1000;while(true){const r=await supabaseClientBase.storage.from(bucket).list(path,{limit,offset,sortBy:{column:'name',order:'asc'}});if(r.error)throw new Error('Storage '+(path||'/')+': '+r.error.message);const block=r.data||[];all.push(...block);if(block.length<limit)break;offset+=limit;}return all}
-async function offDownloadFolder(path=''){const entries=await offListAllFiles(OFF_BUCKET,path);let count=0;for(const entry of entries){if(!entry?.name||entry.name==='.'||entry.name==='..')continue;const child=path?path+'/'+entry.name:entry.name;const isFolder=entry.id==null&&!entry.metadata;if(isFolder){count+=await offDownloadFolder(child);continue;}const r=await supabaseClientBase.storage.from(OFF_BUCKET).download(child);if(r.error)throw new Error('Archivo '+child+': '+r.error.message);await offFilePut(child,r.data,entry.metadata?.mimetype||r.data?.type,entry.name);count++;offProgress('Descargando fotografías y archivos',count,Math.max(count+1,entries.length),count+' archivos descargados');}return count}
+async function offContarArchivosFolder(path=''){
+ const entries=await offListAllFiles(OFF_BUCKET,path);
+ let total=0;
+ for(const entry of entries){
+  if(!entry?.name||entry.name==='.'||entry.name==='..')continue;
+  const child=path?path+'/'+entry.name:entry.name;
+  const isFolder=entry.id==null&&!entry.metadata;
+  total+=isFolder?await offContarArchivosFolder(child):1;
+ }
+ return total;
+}
+async function offDownloadFolder(path='',progreso=null){
+ const entries=await offListAllFiles(OFF_BUCKET,path);
+ let count=0;
+ for(const entry of entries){
+  if(!entry?.name||entry.name==='.'||entry.name==='..')continue;
+  const child=path?path+'/'+entry.name:entry.name;
+  const isFolder=entry.id==null&&!entry.metadata;
+  if(isFolder){count+=await offDownloadFolder(child,progreso);continue;}
+  const r=await supabaseClientBase.storage.from(OFF_BUCKET).download(child);
+  if(r.error)throw new Error('Archivo '+child+': '+r.error.message);
+  await offFilePut(child,r.data,entry.metadata?.mimetype||r.data?.type,entry.name);
+  count++;
+  if(progreso){
+   progreso.done++;
+   offProgress('Descargando fotografías y archivos',progreso.done,progreso.total,
+    progreso.done+' de '+progreso.total+' archivos descargados · '+child);
+  }
+ }
+ return count;
+}
 async function prepararCopiaOfflineCompleta(){
  if(!navigator.onLine)throw new Error('Necesitas Internet para descargar por primera vez todos los cursos, fotografías y archivos.');
  await offOpenDB();try{await navigator.storage?.persist?.()}catch(_){}
  const fallos=[],totales={tablas:0,archivos:0};
  for(let i=0;i<OFF_TABLES.length;i++){const t=OFF_TABLES[i];offProgress('Descargando datos de todos los cursos',i,OFF_TABLES.length,'Tabla: '+t);try{totales.tablas+=await offDownloadTable(t)}catch(e){fallos.push(e.message)}}
- if(!fallos.length){try{offProgress('Preparando fotografías y archivos',0,1,'Descargando todos los directorios del bucket '+OFF_BUCKET);totales.archivos=await offDownloadFolder('')}catch(e){fallos.push(e.message)}}
+ if(!fallos.length){try{
+  offProgress('Contando fotografías y archivos',0,1,'Revisando todos los directorios almacenados...');
+  const progresoArchivos={done:0,total:await offContarArchivosFolder('')};
+  offProgress('Descargando fotografías y archivos',0,progresoArchivos.total,
+   '0 de '+progresoArchivos.total+' archivos descargados');
+  totales.archivos=await offDownloadFolder('',progresoArchivos);
+ }catch(e){fallos.push(e.message)}}
  if(fallos.length){await offReq('meta','put',{key:'copiaCompleta',value:false,updated:Date.now()});throw new Error('La copia no se completó. No se activó el modo offline para evitar que falten datos.\n\n'+fallos.slice(0,12).join('\n'))}
  await offReq('meta','put',{key:'copiaCompleta',value:true,updated:Date.now()});
  await offReq('meta','put',{key:'copiaFecha',value:Date.now()});
