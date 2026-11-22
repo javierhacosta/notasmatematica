@@ -16,7 +16,8 @@ for (const name of ["docente.html", "index.html"]) {
   const file = path.join(web, name);
   let html = fs.readFileSync(file, "utf8");
   const tag = '<script src="./offline-transfer.js"></script>';
-  if (!html.includes(tag)) html = html.replace(/<\\/body>/i, tag + "\\n</body>");
+  if (!html.includes(tag)) html = html.replace(/<\/body>/i, tag + "\n</body>");
+  if (!html.includes(tag)) throw new Error("No se encontró </body> en " + name);
   fs.writeFileSync(file, html, "utf8");
 }
 
