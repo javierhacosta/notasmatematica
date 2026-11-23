@@ -11976,10 +11976,13 @@ const cacheUrlsFotosRapidas = new Map();
 async function obtenerUrlFotoRapida(ruta, segundos=600){
  if(!ruta)throw new Error("Ruta de fotografía no válida.");
  const ahora=Date.now(), guardada=cacheUrlsFotosRapidas.get(ruta);
- if(guardada && guardada.vence>ahora+30000)return guardada.url;
+ // En modo offline no reutilizar enlaces firmados de Internet: solicitar la URL
+ // local del archivo guardado en IndexedDB.
+ if(modoConexionDocente!=='offline' && guardada && guardada.vence>ahora+30000)return guardada.url;
+ if(modoConexionDocente==='offline')cacheUrlsFotosRapidas.delete(ruta);
  const {data,error}=await supabaseClient.storage.from(BUCKET_ARCHIVOS_ESTUDIANTES).createSignedUrl(ruta,segundos);
  if(error||!data?.signedUrl)throw error||new Error("No se pudo generar el enlace de la fotografía.");
- cacheUrlsFotosRapidas.set(ruta,{url:data.signedUrl,vence:ahora+(segundos-45)*1000});
+ if(!String(data.signedUrl).startsWith('blob:'))cacheUrlsFotosRapidas.set(ruta,{url:data.signedUrl,vence:ahora+(segundos-45)*1000});
  if(cacheUrlsFotosRapidas.size>500){for(const [k,v] of cacheUrlsFotosRapidas){if(v.vence<=ahora)cacheUrlsFotosRapidas.delete(k);if(cacheUrlsFotosRapidas.size<=350)break;}}
  return data.signedUrl;
 }
@@ -31364,10 +31367,13 @@ async function cargarImagenEditorFoto(foto){
  const signedUrl=await obtenerUrlFotoRapida(foto.ruta,600);
  // Cada navegación solicita una URL distinta para impedir que Storage/CDN
  // entregue una copia anterior cuando se reemplazó el archivo en la misma ruta.
+ // Las URL blob: ya representan el archivo local de IndexedDB; no agregarles
+ // parámetros de caché porque dejarían de apuntar a una URL válida.
+ const esUrlLocal=String(signedUrl).startsWith("blob:");
  const separador=signedUrl.includes("?")?"&":"?";
- const urlActualizada=signedUrl+separador+"editor_v="+Date.now()+"_"+Math.random().toString(36).slice(2);
+ const urlActualizada=esUrlLocal?signedUrl:(signedUrl+separador+"editor_v="+Date.now()+"_"+Math.random().toString(36).slice(2));
  // Cargar como Blob y usar una URL local: evita que la imagen remota contamine el canvas.
- const respuesta=await fetch(urlActualizada,{cache:"no-store"});
+ const respuesta=await fetch(urlActualizada,esUrlLocal?{}:{cache:"no-store"});
  if(!respuesta.ok)throw new Error("No se pudo descargar la fotografía ("+respuesta.status+").");
  const blob=await respuesta.blob();
  if(editorFotoObjectUrl)URL.revokeObjectURL(editorFotoObjectUrl);
