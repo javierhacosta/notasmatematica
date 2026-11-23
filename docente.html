@@ -8201,7 +8201,11 @@ async function offSyncQueue(){
     offFkAutoRetryUsed=true;
     offSetStatus('⏳ '+ok+' cambios sincronizados; '+rest.length+' pendientes. Comprobando nuevamente las actividades y fotografías...',false);
     offProgress('Reintentando sincronización',ok,total,'Se sincronizaron '+ok+' cambios. Volviendo a comprobar los '+rest.length+' pendientes...');
-    setTimeout(()=>offSyncQueue(),1200);
+    // Esperar el segundo intento dentro de esta misma sincronización.
+   // Así, el cambio de modo no revisa la cola antes de que termine el reintento.
+   await new Promise(resolve=>setTimeout(resolve,1200));
+   await offSyncQueue();
+   return;
    }else{
     offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);
     offProgress('Sincronización incompleta',ok,total,ok+' de '+total+' cambios subidos. Quedan '+rest.length+' pendientes.');
