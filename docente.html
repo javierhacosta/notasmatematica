@@ -8094,13 +8094,92 @@ function offStorage(bucket){const remote=supabaseClientBase.storage.from(bucket)
 function crearSupabaseOfflineProxy(base){return new Proxy(base,{get(obj,p){if(p==='from')return table=>modoConexionDocente==='offline'&&OFF_TABLES.includes(table)?offBuilder(table):obj.from(table);if(p==='storage')return new Proxy(obj.storage,{get(st,p2){if(p2==='from')return bucket=>offStorage(bucket);return Reflect.get(st,p2,st)}});return Reflect.get(obj,p,obj)}})}
 let supabaseClient=crearSupabaseOfflineProxy(supabaseClientBase);
 function offRemoteFilters(q,filters){for(const f of filters||[]){if(f.kind==='in')q=q.in(f.field,f.values);else if(f.kind==='match')q=q.match(f.values);else if(f.kind==='contains')q=q.contains(f.field,f.value);else if(f.kind==='not')q=q.not(f.field,f.op,f.value);else q=q[f.op](f.field,f.value)}return q}
-async function offSyncQueue(){if(offSyncBusy||!navigator.onLine)return;const queue=await offQueueAll();if(!queue.length)return;offSyncBusy=true;let ok=0;try{for(const item of queue){try{if(item.kind==='storage'){const st=supabaseClientBase.storage.from(item.bucket);let r;if(item.op==='upload')r=await st.upload(item.path,item.blob,item.options||{});else if(item.op==='remove')r=await st.remove([item.path]);else if(item.op==='move')r=await st.move(item.from,item.to);if(r?.error)throw r.error;}
- else if(item.kind==='table'){let q=supabaseClientBase.from(item.tabla),r;if(item.op==='insert'||item.op==='upsert'){const vals=(Array.isArray(item.value)?item.value:[item.value]).map(v=>{const x={...v};const pk=OFF_PK[item.tabla];if(pk&&typeof pk==='string'&&Number(x[pk])<0)delete x[pk];return x});if(item.tabla==='calificaciones'){/* Sincronizar calificaciones de forma idempotente: insert local también se convierte en upsert para respetar la clave única actividad_id + estudiante_id en Supabase. */r=await q.upsert(vals,{...(item.options||{}),onConflict:'actividad_id,estudiante_id'}).select('*');}else if(item.op==='upsert')r=await q.upsert(vals,item.options||{}).select('*');else r=await q.insert(vals).select('*');if(r.error)throw r.error;const returned=r.data||[];for(let i=0;i<(item.value||[]).length;i++){const old=item.value[i],pk=OFF_PK[item.tabla];if(pk&&typeof pk==='string'&&Number(old[pk])<0&&returned[i]?.[pk]!=null)await offRemapId(item.tabla,old[pk],returned[i][pk]);}}
- else if(item.op==='update'){q=offRemoteFilters(q.update(item.value),item.filters);r=await q.select('*');if(r.error)throw r.error;}
- else if(item.op==='delete'){q=offRemoteFilters(q.delete(),item.filters);r=await q; if(r.error)throw r.error;}}
- await offDeleteQueue(item.qid);ok++;
- }catch(e){offLastError=(e?.message||String(e));console.error('Sincronización offline pendiente:',item,e);break}}
- }finally{offSyncBusy=false;const rest=await offQueueAll();if(rest.length)offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);else{offLastError='';offSetStatus('✓ Todos los cambios locales se sincronizaron ('+ok+').')}}}
+async function offSyncQueue(){
+ if(offSyncBusy||!navigator.onLine)return;
+ const queue=await offQueueAll();
+ if(!queue.length)return;
+ offSyncBusy=true;
+ let ok=0;
+ const total=queue.length;
+ const detalle=(item)=>{
+  if(item.kind==='storage'){
+   if(item.op==='upload')return 'Subiendo fotografía o archivo: '+(item.path||'');
+   if(item.op==='remove')return 'Eliminando archivo: '+(item.path||'');
+   if(item.op==='move')return 'Moviendo archivo: '+(item.from||'');
+  }
+  if(item.kind==='table'){
+   const n=Array.isArray(item.value)?item.value.length:(item.value?1:0);
+   const nombre=item.tabla==='calificaciones'?'calificaciones':item.tabla;
+   return 'Subiendo datos de '+nombre+(n?' ('+n+' registro'+(n===1?'':'s')+')':'')+'...';
+  }
+  return 'Sincronizando cambio...';
+ };
+ try{
+  offProgress('Subiendo datos e imágenes',0,total,detalle(queue[0])+' · 0 de '+total+' cambios');
+  for(let i=0;i<queue.length;i++){
+   const item=queue[i];
+   try{
+    offProgress('Subiendo datos e imágenes',ok,total,detalle(item)+' · '+ok+' de '+total+' cambios completados');
+    if(item.kind==='storage'){
+     const st=supabaseClientBase.storage.from(item.bucket);
+     let r;
+     if(item.op==='upload')r=await st.upload(item.path,item.blob,item.options||{});
+     else if(item.op==='remove')r=await st.remove([item.path]);
+     else if(item.op==='move')r=await st.move(item.from,item.to);
+     if(r?.error)throw r.error;
+    } else if(item.kind==='table'){
+     let q=supabaseClientBase.from(item.tabla),r;
+     if(item.op==='insert'||item.op==='upsert'){
+      const vals=(Array.isArray(item.value)?item.value:[item.value]).map(v=>{
+       const x={...v};const pk=OFF_PK[item.tabla];
+       if(pk&&typeof pk==='string'&&Number(x[pk])<0)delete x[pk];
+       return x;
+      });
+      if(item.tabla==='calificaciones'){
+       r=await q.upsert(vals,{...(item.options||{}),onConflict:'actividad_id,estudiante_id'}).select('*');
+      }else if(item.op==='upsert'){
+       r=await q.upsert(vals,item.options||{}).select('*');
+      }else{
+       r=await q.insert(vals).select('*');
+      }
+      if(r.error)throw r.error;
+      const returned=r.data||[];
+      for(let j=0;j<(item.value||[]).length;j++){
+       const old=item.value[j],pk=OFF_PK[item.tabla];
+       if(pk&&typeof pk==='string'&&Number(old[pk])<0&&returned[j]?.[pk]!=null)await offRemapId(item.tabla,old[pk],returned[j][pk]);
+      }
+     }else if(item.op==='update'){
+      q=offRemoteFilters(q.update(item.value),item.filters);r=await q.select('*');
+      if(r.error)throw r.error;
+     }else if(item.op==='delete'){
+      q=offRemoteFilters(q.delete(),item.filters);r=await q;
+      if(r.error)throw r.error;
+     }
+    }
+    await offDeleteQueue(item.qid);
+    ok++;
+    offProgress('Subiendo datos e imágenes',ok,total,ok+' de '+total+' cambios completados'+(ok<total?' · '+detalle(queue[i+1]):' · Finalizando...'));
+   }catch(e){
+    offLastError=(e?.message||String(e));
+    console.error('Sincronización offline pendiente:',item,e);
+    break;
+   }
+  }
+ }finally{
+  offSyncBusy=false;
+  const rest=await offQueueAll();
+  if(rest.length){
+   offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);
+   offProgress('Sincronización incompleta',ok,total,ok+' de '+total+' cambios subidos. Quedan '+rest.length+' pendientes.');
+   setTimeout(offProgressClose,1600);
+  }else{
+   offLastError='';
+   offSetStatus('✓ Todos los cambios locales se sincronizaron ('+ok+').');
+   offProgress('Sincronización completada',total,total,'✓ Se subieron todos los datos, fotografías y archivos ('+ok+' cambios).');
+   setTimeout(offProgressClose,1100);
+  }
+ }
+}
 window.addEventListener('online',()=>setTimeout(offSyncQueue,1500));
 setInterval(()=>{offSyncQueue().catch(e=>console.warn(e))},20000);
 
