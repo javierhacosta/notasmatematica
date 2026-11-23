@@ -8180,10 +8180,13 @@ async function offSyncQueue(){
     offLastError=(e?.message||String(e));
     console.error('Sincronización offline pendiente:',item,e);
     const msg=String(e?.message||e||'').toLowerCase();
-    // Una foto puede llegar a la cola antes de que Supabase tenga creada su actividad.
-    // Se conserva pendiente, se procesan los demás cambios y luego se vuelve a leer la cola
-    // para usar los ID definitivos que pudieron actualizarse al sincronizar actividades.
-    if(item.kind==='table'&&item.tabla==='fotos_actividades'&&(/foreign key|violates.*constraint|fotos_actividades_actividad_id_fkey/.test(msg))){
+    // Las calificaciones y fotografías pueden llegar a la cola antes de que
+    // Supabase tenga creada su actividad. Se conservan pendientes, se procesan
+    // los demás cambios (incluida la creación de actividades) y luego se reintentan.
+    const fkActividadPendiente=item.kind==='table'&&
+     ['calificaciones','fotos_actividades'].includes(item.tabla)&&
+     (/foreign key|violates.*constraint|calificaciones_actividad_id_fkey|fotos_actividades_actividad_id_fkey/.test(msg));
+    if(fkActividadPendiente){
      offFkNeedsRetry=true;
      continue;
     }
