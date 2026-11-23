@@ -5800,7 +5800,9 @@ table tbody tr:nth-child(10n+10) td {
 .editor-foto-navegacion{display:flex;align-items:center;gap:5px}
 .editor-foto-navegacion button{width:32px;height:30px;min-width:32px;padding:0;border:1px solid #b7c1ca;border-radius:6px;background:#eef3f7;color:#263746;font-size:16px;font-weight:700;cursor:pointer}
 .editor-foto-nota{display:flex;gap:6px;padding:7px;background:#f1f4f7}
-.editor-foto-nota input{min-width:0;flex:1}\n.editor-foto-nota #textoObservacionFotoEditor{flex:1.5}
+.editor-foto-nota input{min-width:0;flex:1}
+.editor-foto-nota #textoObservacionFotoEditor{flex:3;min-width:0}
+.editor-foto-nota button[onclick="guardarCalificacionFotoEditor()"]{flex:0 0 auto;min-width:42px;padding:9px 11px;font-size:19px;line-height:1}
 .editor-foto-lienzo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#202124;overflow:auto;touch-action:pan-x pan-y}
 #canvasEditorFoto{display:block;max-width:100%;max-height:100%;object-fit:contain;touch-action:none}
 .editor-foto-pie{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;flex-wrap:wrap}
@@ -31282,7 +31284,7 @@ document.addEventListener("contextmenu", function(event) {
     <div class="editor-foto-zoom-inline"><button type="button" onclick="cambiarZoomFotoEditor(-0.25)" title="Reducir zoom" aria-label="Reducir zoom">−</button><span id="zoomFotoEditorTexto">100%</span><button type="button" onclick="cambiarZoomFotoEditor(0.25)" title="Aumentar zoom" aria-label="Aumentar zoom">+</button><button type="button" onclick="girarFotoEditor90()" title="Girar imagen 90°" aria-label="Girar imagen 90 grados">⟳</button></div>
    </div>
   </div>
-  <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" inputmode="decimal" placeholder="Calificación de esta actividad"><input id="textoObservacionFotoEditor" type="text" placeholder="Observación del estudiante" aria-label="Observación del estudiante"><button type="button" onclick="guardarCalificacionFotoEditor()">Guardar calificación</button></div>
+  <div class="editor-foto-nota"><input id="textoNotaFotoEditor" type="text" inputmode="decimal" placeholder="Calificación de esta actividad"><input id="textoObservacionFotoEditor" type="text" placeholder="Observación del estudiante" aria-label="Observación del estudiante"><button type="button" onclick="guardarCalificacionFotoEditor()" title="Guardar calificación" aria-label="Guardar calificación">💾</button></div>
   <div class="editor-foto-lienzo" id="zonaLienzoFotoEditor"><canvas id="canvasEditorFoto"></canvas></div>
   <div class="editor-foto-pie">
    <div class="editor-foto-navegacion"><button type="button" onclick="navegarFotoEditor(-1)" title="Fotografía anterior" aria-label="Fotografía anterior">◀</button><button type="button" onclick="navegarFotoEditor(1)" title="Fotografía siguiente" aria-label="Fotografía siguiente">▶</button><button type="button" onclick="navegarAnteriorEstudianteFotoEditor()" title="Anterior estudiante" aria-label="Anterior estudiante">⏮</button><button type="button" onclick="navegarSiguienteEstudianteFotoEditor()" title="Siguiente estudiante" aria-label="Siguiente estudiante">⏭</button></div>
@@ -31532,7 +31534,7 @@ async function guardarCalificacionFotoEditor(){
  const nota=Number(valor);const observacion=String(campoObservacion?.value||"").trim();const actividad=actividades.find(a=>String(a.id)===String(f.actividad_id));
  let maximo=Number(actividad?.puntaje_maximo);if(!maximo||maximo<=0)maximo=Number(LIMITES?.[actividad?.categoria])||null;
  if(!Number.isFinite(nota)||nota<0||(maximo!==null&&nota>maximo)){mensajeEditorFoto(maximo!==null?`La calificación debe estar entre 0 y ${maximo}.`:"Introduzca una calificación válida.");campo.focus();return}
- const boton=document.querySelector("#editorFotoActividad .editor-foto-nota button");const textoOriginal=boton?.textContent;if(boton){boton.disabled=true;boton.textContent="Guardando..."}
+ const boton=document.querySelector("#editorFotoActividad .editor-foto-nota button[onclick=\"guardarCalificacionFotoEditor()\"]");const tituloOriginal=boton?.title;if(boton){boton.disabled=true;boton.title="Guardando calificación...";boton.setAttribute("aria-label","Guardando calificación...")}
  try{
   const consulta=await supabaseClient.from("calificaciones").select("id").eq("actividad_id",Number(f.actividad_id)).eq("estudiante_id",Number(f.estudiante_id)).maybeSingle();
   if(consulta.error)throw consulta.error;
@@ -31544,7 +31546,7 @@ async function guardarCalificacionFotoEditor(){
   calificaciones[f.estudiante_id][f.actividad_id]={...anterior,nota,observacion};
   mensajeEditorFoto("Calificación guardada correctamente: "+nota);
  }catch(e){mensajeEditorFoto("No se pudo guardar la calificación: "+(e.message||e))}
- finally{if(boton){boton.disabled=false;boton.textContent=textoOriginal||"Guardar calificación"}}
+ finally{if(boton){boton.disabled=false;boton.title=tituloOriginal||"Guardar calificación";boton.setAttribute("aria-label","Guardar calificación")}}
 }
 function deshacerFotoEditor(){if(editorFotoPila.length<2)return;editorFotoRehacer.push(editorFotoPila.pop());restaurarEstadoFotoEditor(editorFotoPila[editorFotoPila.length-1])}
 function rehacerFotoEditor(){if(!editorFotoRehacer.length)return;const u=editorFotoRehacer.pop();editorFotoPila.push(u);restaurarEstadoFotoEditor(u)}
