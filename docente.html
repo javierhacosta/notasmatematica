@@ -7972,7 +7972,7 @@ async function offPutTable(name,rows){await offReq('tables','put',{name,rows,upd
 async function offQueue(item){await offReq('queue','add',{...item,created:Date.now()});if(modoConexionDocente==='offline'){const n=(await offQueueAll()).length;offSetStatus('Guardado en este celular; pendiente de sincronización. Pendientes: '+n+'.')}}
 async function offQueueAll(){return await offReq('queue','getAll')||[]}
 async function offDeleteQueue(id){await offReq('queue','delete',id)}
-async function offFilePut(path,blob,type,name){await offReq('files','put',{path,blob,type:type||blob?.type||"application/octet-stream",name:name||path.split('/').pop(),updated:Date.now()})}
+async function offFilePut(path,blob,type,name,remoteInfo=null){await offReq('files','put',{path,blob,type:type||blob?.type||"application/octet-stream",name:name||path.split('/').pop(),updated:Date.now(),remoteUpdated:remoteInfo?.updated||null,remoteSize:remoteInfo?.size??blob?.size??null})}
 async function offFileGet(path){return await offReq('files','get',path)}
 async function offFileAll(){return await offReq('files','getAll')||[]}
 async function offFileDelete(path){await offReq('files','delete',path)}
@@ -8002,7 +8002,7 @@ async function offDownloadFolder(path='',progreso=null){
   if(isFolder){count+=await offDownloadFolder(child,progreso);continue;}
   const r=await supabaseClientBase.storage.from(OFF_BUCKET).download(child);
   if(r.error)throw new Error('Archivo '+child+': '+r.error.message);
-  await offFilePut(child,r.data,entry.metadata?.mimetype||r.data?.type,entry.name);
+  await offFilePut(child,r.data,entry.metadata?.mimetype||r.data?.type,entry.name,{updated:entry.updated_at||entry.created_at||null,size:entry.metadata?.size??r.data?.size??null});
   count++;
   if(progreso){
    progreso.done++;
@@ -8011,6 +8011,48 @@ async function offDownloadFolder(path='',progreso=null){
   }
  }
  return count;
+}
+async function offObtenerInventarioRemoto(path='',inventario=[]){
+ const entries=await offListAllFiles(OFF_BUCKET,path);
+ for(const entry of entries){
+  if(!entry?.name||entry.name==='.'||entry.name==='..')continue;
+  const child=path?path+'/'+entry.name:entry.name;
+  const isFolder=entry.id==null&&!entry.metadata;
+  if(isFolder)await offObtenerInventarioRemoto(child,inventario);
+  else inventario.push({path:child,entry,updated:entry.updated_at||entry.created_at||null,size:entry.metadata?.size??null});
+ }
+ return inventario;
+}
+async function offActualizarArchivosIncremental(){
+ const remotos=await offObtenerInventarioRemoto('');
+ const locales=await offFileAll();
+ const localPorRuta=new Map(locales.map(f=>[f.path,f]));
+ const remotoPorRuta=new Map(remotos.map(f=>[f.path,f]));
+ const descargar=remotos.filter(r=>{
+  const local=localPorRuta.get(r.path);
+  if(!local)return true;
+  // Las copias anteriores a esta mejora no tienen metadatos remotos:
+  // se actualizan una sola vez para habilitar comparaciones fiables posteriores.
+  if(!local.remoteUpdated)return true;
+  return String(local.remoteUpdated)!==String(r.updated||'') ||
+   (r.size!=null && Number(local.remoteSize)!==Number(r.size));
+ });
+ const eliminar=locales.filter(f=>!remotoPorRuta.has(f.path));
+ offProgress('Revisando fotografías y archivos',0,1,
+  remotos.length+' archivos en Supabase · '+descargar.length+' nuevos o modificados');
+ for(let i=0;i<descargar.length;i++){
+  const item=descargar[i];
+  const r=await supabaseClientBase.storage.from(OFF_BUCKET).download(item.path);
+  if(r.error)throw new Error('Archivo '+item.path+': '+r.error.message);
+  await offFilePut(item.path,r.data,item.entry.metadata?.mimetype||r.data?.type,item.entry.name,
+   {updated:item.updated,size:item.size??r.data?.size??null});
+  offProgress('Actualizando fotografías y archivos',i+1,descargar.length,
+   (i+1)+' de '+descargar.length+' archivos nuevos o modificados · '+item.path);
+ }
+ for(const f of eliminar)await offFileDelete(f.path);
+ if(!descargar.length)offProgress('Fotografías y archivos actualizados',1,1,
+  'No hay archivos nuevos ni modificados. '+eliminar.length+' archivos eliminados de la copia local.');
+ return {descargados:descargar.length,eliminados:eliminar.length,total:remotos.length};
 }
 async function prepararCopiaOfflineCompleta(){
  if(!navigator.onLine)throw new Error('Necesitas Internet para descargar por primera vez todos los cursos, fotografías y archivos.');
@@ -8495,10 +8537,21 @@ async function cambiarModoConexion() {
         } else if(navigator.onLine) {
           // No se sobrescriben datos locales con cambios pendientes.
           const pendientes=await offQueueAll();
-          if(pendientes.length)throw new Error("Hay "+pendientes.length+" cambios pendientes. Sincronízalos antes de actualizar la copia completa.");
-          offProgress("Actualizando copia offline",0,1,"Actualizando todos los cursos y archivos...");
-          const r=await prepararCopiaOfflineCompleta();
-          offProgress("Copia actualizada",1,1,r.tablas+" registros y "+r.archivos+" archivos.");
+          if(pendientes.length)throw new Error("Hay "+pendientes.length+" cambios pendientes. Sincronízalos antes de actualizar la copia.");
+          // Las tablas se vuelven a consultar completas porque no todas tienen
+          // una columna de modificación común y verificable. Los archivos sí
+          // se comparan por fecha/tamaño y solo se descargan si cambiaron.
+          offProgress("Actualizando datos",0,OFF_TABLES.length,"Comprobando todos los cursos...");
+          let registros=0;
+          for(let i=0;i<OFF_TABLES.length;i++){
+            const t=OFF_TABLES[i];
+            offProgress("Actualizando datos",i,OFF_TABLES.length,"Tabla: "+t);
+            registros+=await offDownloadTable(t);
+          }
+          const archivos=await offActualizarArchivosIncremental();
+          offProgress("Copia offline actualizada",1,1,
+            registros+" registros revisados · "+archivos.descargados+" archivos descargados · "+archivos.eliminados+" eliminados.");
+          await offReq('meta','put',{key:'copiaFecha',value:Date.now()});
           await new Promise(resolve=>setTimeout(resolve,700));
         }
         modoConexionDocente="offline";
