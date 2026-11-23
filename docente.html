@@ -8109,12 +8109,14 @@ function offStorage(bucket){const remote=supabaseClientBase.storage.from(bucket)
 function crearSupabaseOfflineProxy(base){return new Proxy(base,{get(obj,p){if(p==='from')return table=>modoConexionDocente==='offline'&&OFF_TABLES.includes(table)?offBuilder(table):obj.from(table);if(p==='storage')return new Proxy(obj.storage,{get(st,p2){if(p2==='from')return bucket=>offStorage(bucket);return Reflect.get(st,p2,st)}});return Reflect.get(obj,p,obj)}})}
 let supabaseClient=crearSupabaseOfflineProxy(supabaseClientBase);
 function offRemoteFilters(q,filters){for(const f of filters||[]){if(f.kind==='in')q=q.in(f.field,f.values);else if(f.kind==='match')q=q.match(f.values);else if(f.kind==='contains')q=q.contains(f.field,f.value);else if(f.kind==='not')q=q.not(f.field,f.op,f.value);else q=q[f.op](f.field,f.value)}return q}
+let offFkAutoRetryUsed=false;
 async function offSyncQueue(){
  if(modoConexionDocente==='offline'||offSyncBusy||!navigator.onLine)return;
  const queue=await offQueueAll();
  if(!queue.length)return;
  offSyncBusy=true;
  let ok=0;
+ let offFkNeedsRetry=false;
  const total=queue.length;
  const detalle=(item)=>{
   if(item.kind==='storage'){
@@ -8177,6 +8179,14 @@ async function offSyncQueue(){
    }catch(e){
     offLastError=(e?.message||String(e));
     console.error('Sincronización offline pendiente:',item,e);
+    const msg=String(e?.message||e||'').toLowerCase();
+    // Una foto puede llegar a la cola antes de que Supabase tenga creada su actividad.
+    // Se conserva pendiente, se procesan los demás cambios y luego se vuelve a leer la cola
+    // para usar los ID definitivos que pudieron actualizarse al sincronizar actividades.
+    if(item.kind==='table'&&item.tabla==='fotos_actividades'&&(/foreign key|violates.*constraint|fotos_actividades_actividad_id_fkey/.test(msg))){
+     offFkNeedsRetry=true;
+     continue;
+    }
     break;
    }
   }
@@ -8184,10 +8194,18 @@ async function offSyncQueue(){
   offSyncBusy=false;
   const rest=await offQueueAll();
   if(rest.length){
-   offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);
-   offProgress('Sincronización incompleta',ok,total,ok+' de '+total+' cambios subidos. Quedan '+rest.length+' pendientes.');
-   setTimeout(offProgressClose,1600);
+   if(offFkNeedsRetry&&!offFkAutoRetryUsed&&navigator.onLine&&modoConexionDocente!=='offline'){
+    offFkAutoRetryUsed=true;
+    offSetStatus('⏳ '+ok+' cambios sincronizados; '+rest.length+' pendientes. Comprobando nuevamente las actividades y fotografías...',false);
+    offProgress('Reintentando sincronización',ok,total,'Se sincronizaron '+ok+' cambios. Volviendo a comprobar los '+rest.length+' pendientes...');
+    setTimeout(()=>offSyncQueue(),1200);
+   }else{
+    offSetStatus('⚠️ '+ok+' cambios sincronizados; '+rest.length+' pendientes. '+(offLastError||''),true);
+    offProgress('Sincronización incompleta',ok,total,ok+' de '+total+' cambios subidos. Quedan '+rest.length+' pendientes.');
+    setTimeout(offProgressClose,1600);
+   }
   }else{
+   offFkAutoRetryUsed=false;
    offLastError='';
    offSetStatus('✓ Todos los cambios locales se sincronizaron ('+ok+').');
    offProgress('Sincronización completada',total,total,'✓ Se subieron todos los datos, fotografías y archivos ('+ok+' cambios).');
@@ -16271,7 +16289,12 @@ async function guardarFotoActividadConfirmada(){
     }
     try{
         mostrarMensaje("🔎 Comprobando las fotografías guardadas...");
-        const fotosServidor=await obtenerFotosActividadServidor(p.actividad.id,p.estudiante.id);
+        // En modo offline no consultar Supabase: usar únicamente el inventario
+        // local de fotos y archivos descargados en este dispositivo.
+        const enOffline=modoConexionDocente==="offline";
+        const fotosServidor=enOffline
+            ? obtenerFotosActividad(p.actividad.id,p.estudiante.id)
+            : await obtenerFotosActividadServidor(p.actividad.id,p.estudiante.id);
 
         // Nunca convertir una operación NUEVA en un reemplazo. Si durante una
         // conexión lenta apareció una foto que no estaba en memoria, se genera
@@ -16315,6 +16338,13 @@ async function guardarFotoActividadConfirmada(){
             while(numero<=30){
                 const nombre=numero===1?`${base}.jpg`:`${base}_${numero}.jpg`;
                 ruta=`${p.estudiante.id}/${nombre}`;
+                // La copia local puede contener una fotografía descargada
+                // previamente aunque no figure en el inventario de la actividad.
+                // Para una foto NUEVA elegir otra ruta libre sin sobrescribirla.
+                if(enOffline && await offFileGet(ruta)){
+                    numero++;
+                    continue;
+                }
                 archivo=new File([archivo0],nombre,{type:tipo});
                 up=await supabaseClient.storage
                     .from(BUCKET_ARCHIVOS_ESTUDIANTES)
