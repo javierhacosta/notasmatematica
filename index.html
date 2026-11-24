@@ -957,9 +957,9 @@ button:hover {
 /* Barra de progreso al cargar la autoevaluación */
 .auto-carga-progreso { padding:18px 10px 22px; text-align:center; color:#1557a6; }
 .auto-carga-texto { font-size:14px; font-weight:700; margin-bottom:12px; }
-.auto-progreso-fondo { width:100%; height:12px; overflow:hidden; border-radius:20px; background:#e5eaf0; }
-.auto-progreso-barra { width:38%; height:100%; border-radius:20px; background:linear-gradient(90deg,#00897b,#26a69a); animation:avanceAutoevaluacion 1.15s ease-in-out infinite; }
-@keyframes avanceAutoevaluacion { 0% { transform:translateX(-110%); } 100% { transform:translateX(270%); } }
+.auto-progreso-fondo { width:100%; height:14px; overflow:hidden; border-radius:20px; background:#e5eaf0; }
+.auto-progreso-barra { width:0%; height:100%; border-radius:20px; background:linear-gradient(90deg,#00897b,#26a69a); transition:width .25s ease; }
+.auto-progreso-porcentaje { display:block; margin-top:8px; color:#00897b; font-size:18px; font-weight:800; }
 
 /* Autoevaluación del estudiante */
 .boton-autoevaluacion { width:auto; margin:4px 0; padding:12px 16px; font-size:15px; font-weight:800; letter-spacing:.3px; color:#fff; background:#e65100; border:2px solid #bf360c; border-radius:10px; box-shadow:0 3px 7px rgba(0,0,0,.25); }
@@ -1139,17 +1139,29 @@ async function abrirAutoevaluacion(actividadId) {
     const acciones = document.getElementById("accionesAutoevaluacion");
     contenido.innerHTML = `
         <div class="auto-carga-progreso" role="status" aria-live="polite">
-            <div class="auto-carga-texto">Cargando Autoevaluación de Matemática...</div>
+            <div class="auto-carga-texto" id="textoProgresoAutoevaluacion">Conectando...</div>
             <div class="auto-progreso-fondo">
-                <div class="auto-progreso-barra"></div>
+                <div class="auto-progreso-barra" id="barraProgresoAutoevaluacion"></div>
             </div>
+            <span class="auto-progreso-porcentaje" id="porcentajeAutoevaluacion">0%</span>
             <p style="font-size:12px;color:#667085;margin:10px 0 0">Por favor, espera mientras se cargan tus respuestas.</p>
         </div>`;
     acciones.style.display = "none";
     modal.classList.remove("oculto");
 
+    const actualizarProgresoAutoevaluacion = (porcentaje, mensaje) => {
+        const barra = document.getElementById("barraProgresoAutoevaluacion");
+        const texto = document.getElementById("textoProgresoAutoevaluacion");
+        const numero = document.getElementById("porcentajeAutoevaluacion");
+        if (barra) barra.style.width = `${porcentaje}%`;
+        if (texto) texto.textContent = mensaje;
+        if (numero) numero.textContent = `${porcentaje}%`;
+    };
+
     try {
+        actualizarProgresoAutoevaluacion(15, "Conectando con el servidor...");
         // La consulta se realiza en el servidor usando CI + fecha de nacimiento.
+        actualizarProgresoAutoevaluacion(35, "Consultando Autoevaluación de Matemática...");
         const r = await fetch(`${SUPABASE_URL}/functions/v1/guardar-autoevaluacion`, {
             method: "POST",
             headers: {
@@ -1165,7 +1177,9 @@ async function abrirAutoevaluacion(actividadId) {
             })
         });
 
+        actualizarProgresoAutoevaluacion(75, "Respuesta recibida. Cargando datos...");
         const textoRespuesta = await r.text();
+        actualizarProgresoAutoevaluacion(90, "Preparando tus respuestas...");
         let datos = {};
         if (textoRespuesta) {
             try { datos = JSON.parse(textoRespuesta); }
@@ -1219,6 +1233,8 @@ async function abrirAutoevaluacion(actividadId) {
             acciones.style.display = "flex";
         }
 
+        actualizarProgresoAutoevaluacion(100, "¡Autoevaluación cargada!");
+        await new Promise(resolve => setTimeout(resolve, 120));
         contenido.innerHTML = html;
     } catch (e) {
         contenido.innerHTML = `<p class="error">${escapeHTML(e.message || "Error al cargar.")}</p>`;
