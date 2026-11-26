@@ -14594,9 +14594,16 @@ function actualizarContadorNotasActividad(actividadId) {
     const contador = document.getElementById(`contador-notas-actividad-${actividadId}`);
     if (!contador) return;
 
+    const estudiantesEfectivos = estudiantes.filter(e =>
+        e.curso === cursoSeleccionado && estudianteEsEfectivo(e)
+    );
+    const idsEfectivos = new Set(estudiantesEfectivos.map(e => String(e.id)));
     const entradas = Array.from(document.querySelectorAll(".nota-input"))
-        .filter(input => String(input.dataset.actividad) === String(actividadId));
-    const total = entradas.length;
+        .filter(input =>
+            String(input.dataset.actividad) === String(actividadId) &&
+            idsEfectivos.has(String(input.dataset.estudiante))
+        );
+    const total = estudiantesEfectivos.length;
     const llenadas = entradas.filter(input =>
         input.value !== null && String(input.value).trim() !== ""
     ).length;
@@ -14763,7 +14770,7 @@ function crearActividadHTML(
         <span class="puntaje-actividad" id="contador-notas-actividad-${actividad.id}">
 
             ${(() => {
-                const estudiantesActividad = estudiantes.filter(e => e.curso === cursoSeleccionado);
+                const estudiantesActividad = estudiantes.filter(e => e.curso === cursoSeleccionado && estudianteEsEfectivo(e));
                 const total = estudiantesActividad.length;
                 const llenadas = estudiantesActividad.filter(e => {
                     const registro = calificaciones?.[e.id]?.[actividad.id];
