@@ -15119,6 +15119,10 @@ function crearActividadHTML(
         let fecha_entrega = "";
         let observacion = "";
         const actividadTieneHora = !!obtenerFechaHoraActividad(actividad);
+        // En AUTOEVALUACIÓN también se registra la fecha real de realización,
+        // aunque la actividad no tenga una hora de inicio configurada.
+        const permiteFechaEntrega = actividadTieneHora ||
+            String(actividad.categoria || "").toUpperCase() === "AUTOEVALUACION";
 
 
         if (
@@ -15257,13 +15261,13 @@ function crearActividadHTML(
                 <input
                     type="datetime-local"
                     class="entrega-actividad"
-                    value="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
+                    value="${permiteFechaEntrega ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     data-estudiante="${estudiante.id}"
                     data-actividad="${actividad.id}"
-                    data-valor-inicial="${actividadTieneHora ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
+                    data-valor-inicial="${permiteFechaEntrega ? escapeHTML(formatearEntregaParaInput(fecha_entrega)) : ""}"
                     oninput="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
                     onchange="programarGuardadoCambioActividad(this); actualizarObsEntregaFila(this.closest('tr'), actividades.find(a => String(a.id) === String(this.dataset.actividad)))"
-                    ${actividadTieneHora ? "" : "disabled"}
+                    ${permiteFechaEntrega ? "" : "disabled"}
                 >
 
             </td>
