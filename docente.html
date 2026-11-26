@@ -14590,6 +14590,20 @@ async function actualizarNotaAsistenciaSER(actividadId, boton) {
     }
 }
 
+function actualizarContadorNotasActividad(actividadId) {
+    const contador = document.getElementById(`contador-notas-actividad-${actividadId}`);
+    if (!contador) return;
+
+    const entradas = Array.from(document.querySelectorAll(".nota-input"))
+        .filter(input => String(input.dataset.actividad) === String(actividadId));
+    const total = entradas.length;
+    const llenadas = entradas.filter(input =>
+        input.value !== null && String(input.value).trim() !== ""
+    ).length;
+
+    contador.textContent = `${llenadas} de ${total} estudiantes`;
+}
+
 function crearActividadHTML(
     actividad
 ) {
@@ -14746,9 +14760,18 @@ function crearActividadHTML(
         </span>
 
 
-        <span class="puntaje-actividad">
+        <span class="puntaje-actividad" id="contador-notas-actividad-${actividad.id}">
 
-            — máximo ${puntajeMaximo} puntos
+            ${(() => {
+                const estudiantesActividad = estudiantes.filter(e => e.curso === cursoSeleccionado);
+                const total = estudiantesActividad.length;
+                const llenadas = estudiantesActividad.filter(e => {
+                    const registro = calificaciones?.[e.id]?.[actividad.id];
+                    const nota = registro && typeof registro === "object" ? registro.nota : registro;
+                    return nota !== null && nota !== undefined && String(nota).trim() !== "";
+                }).length;
+                return `${llenadas} de ${total} estudiantes`;
+            })()}
 
         </span>
 
@@ -15245,7 +15268,7 @@ function crearActividadHTML(
 
                     disabled
 
-                    oninput="validarNota(this); programarGuardadoCambioActividad(this)"
+                    oninput="validarNota(this); programarGuardadoCambioActividad(this); actualizarContadorNotasActividad(this.dataset.actividad)"
 
                 >
                 ${String(actividad.categoria || "").toUpperCase() === "AUTOEVALUACION" ? `
