@@ -137,6 +137,82 @@ button:hover {
     line-height: 1.5;
 }
 
+.aviso-cierre-notas {
+    background: #eef7ff;
+    border: 1px solid #90caf9;
+    color: #23415f;
+    padding: 14px;
+    border-radius: 12px;
+    margin: 0 0 20px;
+    font-size: 13px;
+    line-height: 1.55;
+    text-align: center;
+}
+.aviso-cierre-notas strong {
+    display: block;
+    color: #1557a6;
+    font-size: 16px;
+    margin-bottom: 7px;
+}
+.titulo-contador-cierre {
+    display: block;
+    margin: 14px 0 2px;
+    color: #1557a6;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: .3px;
+}
+.contador-cierre-notas {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
+    margin: 12px auto;
+    flex-wrap: nowrap;
+}
+.contador-cierre-notas .unidad-tiempo {
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 9px 4px 7px;
+    background: #fff;
+    border: 1px solid #c8def3;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(21, 87, 166, .08);
+}
+.contador-cierre-notas .numero-tiempo {
+    display: block;
+    color: #0d5b9b;
+    font-size: clamp(23px, 5vw, 32px);
+    font-weight: 900;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+.contador-cierre-notas .etiqueta-tiempo {
+    display: block;
+    margin-top: 4px;
+    color: #58718a;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: lowercase;
+}
+.aviso-cierre-notas .enlace-contactar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 4px;
+    color: #087443;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+.aviso-cierre-notas .enlace-contactar svg {
+    width: 15px;
+    height: 15px;
+    fill: currentColor;
+    flex: 0 0 15px;
+}
+
 .aviso-provisional strong {
     display: block;
     color: #e65100;
@@ -1907,6 +1983,67 @@ function aplicarVistaDosFilas() {
 }
 
 /* =================================================
+   CIERRE DE NOTAS: 30/11/2026 A LAS 13:00 (BOLIVIA)
+================================================= */
+const FECHA_CIERRE_NOTAS = new Date("2026-11-30T13:00:00-04:00").getTime();
+let temporizadorCierreNotas = null;
+
+function notasYaCerradas() {
+    return Date.now() >= FECHA_CIERRE_NOTAS;
+}
+
+function htmlAvisoCierreNotas() {
+    if (notasYaCerradas()) return "";
+    return `
+        <div class="aviso-cierre-notas">
+            <strong>📘 Revisión de calificaciones.</strong>
+            Te invitamos a revisar con atención tus calificaciones. Si tienes alguna consulta o quedó algún trabajo pendiente de presentar, puedes comunicarte para recibir orientación.
+            <span class="titulo-contador-cierre">Nota oficial en:</span>
+            <span class="contador-cierre-notas" data-contador-cierre aria-live="polite">Calculando tiempo...</span>
+            <a class="enlace-contactar" href="https://wa.me/59178480040" target="_blank" rel="noopener noreferrer"
+               aria-label="Contactar por WhatsApp" title="Contactar por WhatsApp">
+                <svg viewBox="0 0 32 32" role="img" aria-hidden="true">
+                    <path d="M16 .0C7.18 0 .02 7.15.02 15.96c0 2.82.74 5.57 2.14 7.99L0 32l8.26-2.16a15.9 15.9 0 0 0 7.73 1.99h.01c8.81 0 15.97-7.16 15.97-15.97A15.86 15.86 0 0 0 16 0zm0 29.13h-.01a13.2 13.2 0 0 1-6.72-1.84l-.48-.28-4.9 1.28 1.31-4.78-.31-.49a13.15 13.15 0 1 1 11.11 6.11zm7.22-9.85c-.39-.2-2.3-1.14-2.66-1.27-.36-.13-.62-.2-.88.2-.26.39-1.01 1.27-1.24 1.53-.23.26-.46.29-.85.1-.39-.2-1.65-.61-3.14-1.94-1.16-1.04-1.94-2.32-2.17-2.71-.23-.39-.02-.6.17-.79.18-.18.39-.46.59-.69.2-.23.26-.39.39-.65.13-.26.07-.49-.03-.69-.1-.2-.88-2.12-1.21-2.9-.32-.76-.64-.66-.88-.67h-.75c-.26 0-.69.1-1.05.49-.36.39-1.38 1.35-1.38 3.27s1.41 3.79 1.61 4.05c.2.26 2.77 4.23 6.71 5.93.94.41 1.67.66 2.24.84.94.3 1.8.26 2.48.16.76-.11 2.3-.94 2.63-1.86.33-.91.33-1.69.23-1.86-.1-.16-.36-.26-.75-.46z"/>
+                </svg>
+                <span>Contactar</span>
+            </a>
+        </div>`;
+}
+
+function actualizarContadorCierreNotas() {
+    const restante = FECHA_CIERRE_NOTAS - Date.now();
+    if (restante <= 0) {
+        if (temporizadorCierreNotas) clearInterval(temporizadorCierreNotas);
+        temporizadorCierreNotas = null;
+        document.querySelectorAll("[data-contador-cierre]").forEach(el => {
+            el.textContent = "El periodo de revisión ha finalizado.";
+        });
+        if (alumnoActual) mostrarResultado(alumnoActual);
+        return;
+    }
+
+    const totalSegundos = Math.floor(restante / 1000);
+    const dias = Math.floor(totalSegundos / 86400);
+    const horas = Math.floor((totalSegundos % 86400) / 3600);
+    const minutos = Math.floor((totalSegundos % 3600) / 60);
+    const segundos = totalSegundos % 60;
+    document.querySelectorAll("[data-contador-cierre]").forEach(el => {
+        el.innerHTML = `
+            <span class="unidad-tiempo"><span class="numero-tiempo">${dias}</span><span class="etiqueta-tiempo">días</span></span>
+            <span class="unidad-tiempo"><span class="numero-tiempo">${horas}</span><span class="etiqueta-tiempo">horas</span></span>
+            <span class="unidad-tiempo"><span class="numero-tiempo">${minutos}</span><span class="etiqueta-tiempo">min</span></span>
+            <span class="unidad-tiempo"><span class="numero-tiempo">${String(segundos).padStart(2, "0")}</span><span class="etiqueta-tiempo">seg</span></span>`;
+    });
+}
+
+function iniciarContadorCierreNotas() {
+    if (temporizadorCierreNotas) clearInterval(temporizadorCierreNotas);
+    if (notasYaCerradas()) return;
+    actualizarContadorCierreNotas();
+    temporizadorCierreNotas = setInterval(actualizarContadorCierreNotas, 1000);
+}
+
+/* =================================================
    MOSTRAR RESULTADO
 ================================================= */
 
@@ -2044,21 +2181,18 @@ async function mostrarResultado(alumno) {
             </div>
 
 
-            <div class="aviso-provisional">
-
-                <strong>
-                    📌 RESULTADOS PROVISIONALES
-                </strong>
-
-                Las calificaciones pueden modificarse
-                con las próximas actividades y evaluaciones.
-
-            </div>
+            ${!notasYaCerradas() ? `
+                <div class="aviso-provisional">
+                    <strong>📌 RESULTADOS PROVISIONALES</strong>
+                    Las calificaciones pueden modificarse con las próximas actividades y evaluaciones.
+                </div>
+                ${htmlAvisoCierreNotas()}
+            ` : ""}
 
 
             <div class="titulo-3t">
 
-                Nota del 3er Trimestre
+                ${notasYaCerradas() ? "Nota oficial del 3er Trimestre" : "Nota del 3er Trimestre"}
 
             </div>
 
@@ -2166,7 +2300,7 @@ async function mostrarResultado(alumno) {
 
                 <div class="final-titulo">
 
-                    NOTA FINAL PROVISIONAL
+                    ${notasYaCerradas() ? "NOTA FINAL" : "NOTA FINAL PROVISIONAL"}
 
                 </div>
 
@@ -2228,6 +2362,7 @@ async function mostrarResultado(alumno) {
 
 
     mostrarDetalles();
+    iniciarContadorCierreNotas();
 
 }
 
@@ -3086,8 +3221,7 @@ async function mostrarDetalles() {
 
                     <div class="resultado-3t-titulo">
 
-                        ⭐ Nota del 3er trimestre
-                        provisional
+                        ⭐ ${notasYaCerradas() ? "Nota oficial del 3er trimestre" : "Nota del 3er trimestre provisional"}
 
                     </div>
 
@@ -3105,20 +3239,14 @@ async function mostrarDetalles() {
                     </div>
 
 
-                    <div style="
-                        color:#666;
-                        font-size:13px;
-                        line-height:1.5;
-                    ">
-
-                        Resultado provisional.
-
-                        <br>
-
-                        Las calificaciones pueden modificarse
-                        con las próximas actividades y evaluaciones.
-
-                    </div>
+                    ${!notasYaCerradas() ? `
+                        <div style="color:#666;font-size:13px;line-height:1.5;">
+                            Resultado provisional.
+                            <br>
+                            Las calificaciones pueden modificarse con las próximas actividades y evaluaciones.
+                        </div>
+                        ${htmlAvisoCierreNotas()}
+                    ` : ""}
 
                 </div>
 
@@ -3131,6 +3259,7 @@ async function mostrarDetalles() {
         contenedor.innerHTML =
             html;
 
+        iniciarContadorCierreNotas();
         aplicarVistaDosFilas();
         await mostrarAsistenciaEnDetalle();
 
