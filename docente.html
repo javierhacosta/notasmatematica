@@ -3577,6 +3577,11 @@ td,
 }
 .tabla-informe-general tbody tr { height:42px; }
 .tabla-informe-general tbody td { height:42px; }
+/* Notas de 50 o menos: resaltado exclusivo de las cuatro columnas de notas. */
+.tabla-informe-general tbody td.nota-baja-informe {
+    color: #c62828 !important;
+    font-weight: bold !important;
+}
 .tabla-informe-general thead tr:first-child th { background:#e4e9ee; height:145px; padding:5px 4px; writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; width:34px; min-width:34px; max-width:34px; }
 .tabla-informe-general thead tr:first-child th.nombre-col { width:180px; min-width:180px; max-width:180px; writing-mode:vertical-rl; }
 
@@ -19010,6 +19015,13 @@ async function cargarInformeGeneral() {
     encabezado1 += `<th class="nota-trimestre-general">Nota 1T</th><th class="nota-trimestre-general">Nota 2T</th><th class="nota-trimestre-general">Nota 3T</th><th class="nota-final-general">Nota Final</th><th class="visitas-general">Visitas a la página</th></tr>`;
 
     
+    // Resaltar únicamente las notas de 50 o menos en las columnas del informe general.
+    const claseNotaBajaInforme = valor => {
+        if (valor === null || valor === undefined || String(valor).trim() === "") return "";
+        const numero = Number(String(valor).replace(",", "."));
+        return Number.isFinite(numero) && numero <= 50 ? " nota-baja-informe" : "";
+    };
+
     let cuerpo = "";
     estudiantesCurso.forEach(estudiante => {
         const totales = {asistio:0, atraso:0, licencia:0, falta:0};
@@ -19047,7 +19059,7 @@ async function cargarInformeGeneral() {
         agregarNotas(saber); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioSABER))}</td>`;
         agregarNotas(hacer); cuerpo+=`<td class="promedio-dimension">${escapeHTML(String(promedioHACER))}</td>`;
         agregarNotas(auto);
-        cuerpo += `<td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_1t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(estudiante.nota_2t ?? ""))}</td><td class="nota-trimestre-general">${escapeHTML(String(nota3))}</td><td class="nota-final-general">${escapeHTML(String(notaFinal))}</td><td class="visitas-general" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" onclick="mostrarVisitasInforme(${estudiante.id})" title="Ver días y horas de visita">${totalVisitasPorEstudiante[estudiante.id]||0}</td></tr>`;
+        cuerpo += `<td class="nota-trimestre-general${claseNotaBajaInforme(estudiante.nota_1t)}">${escapeHTML(String(estudiante.nota_1t ?? ""))}</td><td class="nota-trimestre-general${claseNotaBajaInforme(estudiante.nota_2t)}">${escapeHTML(String(estudiante.nota_2t ?? ""))}</td><td class="nota-trimestre-general${claseNotaBajaInforme(nota3)}">${escapeHTML(String(nota3))}</td><td class="nota-final-general${claseNotaBajaInforme(notaFinal)}">${escapeHTML(String(notaFinal))}</td><td class="visitas-general" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;" onclick="mostrarVisitasInforme(${estudiante.id})" title="Ver días y horas de visita">${totalVisitasPorEstudiante[estudiante.id]||0}</td></tr>`;
     });
 
     contenedor.innerHTML = `<div class="tabla-informe-general-contenedor"><table class="tabla-informe-general"><thead>${encabezado1}</thead><tbody>${cuerpo}</tbody></table></div>`;
