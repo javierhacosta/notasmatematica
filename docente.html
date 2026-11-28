@@ -8154,7 +8154,10 @@ function offRemoteFilters(q,filters){for(const f of filters||[]){if(f.kind==='in
 let offFkAutoRetryUsed=false;
 async function offSyncQueue(){
  if(modoConexionDocente==='offline'||offSyncBusy||!navigator.onLine)return;
- const queue=await offQueueAll();
+ const queue=(await offQueueAll()).slice().sort((a,b)=>{
+  const ta=Number(a.created)||0,tb=Number(b.created)||0;
+  return ta-tb || Number(a.qid||0)-Number(b.qid||0);
+ });
  if(!queue.length)return;
  offSyncBusy=true;
  let ok=0;
@@ -8191,9 +8194,7 @@ async function offSyncQueue(){
      if(item.op==='insert'||item.op==='upsert'){
       const vals=(Array.isArray(item.value)?item.value:[item.value]).map(v=>{
        const x={...v};const pk=OFF_PK[item.tabla];
-       // Los identificadores temporales negativos y los id nulos no deben
-       // enviarse a Supabase: se omiten para que la BD genere el id definitivo.
-       if(pk&&typeof pk==='string'&&(x[pk]==null||Number(x[pk])<0))delete x[pk];
+       if(pk&&typeof pk==='string'&&Number(x[pk])<0)delete x[pk];
        return x;
       });
       if(item.tabla==='calificaciones'){
@@ -17361,6 +17362,47 @@ async function crearActividad() {
 
 
 /* =====================================================
+   COALESCE DE CAMBIOS OFFLINE AL ELIMINAR UNA ACTIVIDAD
+   Si una calificación se editó y después se elimina su actividad,
+   esa edición ya no debe enviarse a Supabase: la eliminación de la
+   actividad también elimina sus calificaciones relacionadas.
+===================================================== */
+async function offCancelarCambiosPendientesCalificaciones(actividadId){
+ if(modoConexionDocente!=='offline'||actividadId==null)return 0;
+ const pendientes=await offQueueAll();
+ const calificacionesLocales=await offGetTable('calificaciones');
+ let cancelados=0;
+ for(const item of pendientes){
+  if(item.kind!=='table'||item.tabla!=='calificaciones'||
+     !['insert','upsert','update'].includes(item.op))continue;
+  if(item.op==='update'){
+   const filtros=item.filters||[];
+   const filtroActividad=filtros.some(f=>f.field==='actividad_id'&&
+    ((f.kind==='normal'&&f.op==='eq'&&String(f.value)===String(actividadId))||
+     (f.kind==='in'&&(f.values||[]).some(v=>String(v)===String(actividadId)))));
+   // También reconoce actualizaciones filtradas por id de calificación:
+   // relaciona esos ids con la copia local antes de eliminar sus filas.
+   const filasAfectadas=calificacionesLocales.filter(row=>offMatches(row,filtros));
+   const soloEstaActividad=filasAfectadas.length>0&&filasAfectadas.every(row=>String(row.actividad_id)===String(actividadId));
+   if(filtroActividad||soloEstaActividad){await offDeleteQueue(item.qid);cancelados++;}
+   continue;
+  }
+  const eraArray=Array.isArray(item.value);
+  const valores=eraArray?item.value:[item.value];
+  const restantes=valores.filter(v=>String(v?.actividad_id??'')!==String(actividadId));
+  const quitados=valores.length-restantes.length;
+  if(!quitados)continue;
+  if(!restantes.length){await offDeleteQueue(item.qid);}
+  else{
+   const copia={...item,value:eraArray?restantes:restantes[0]};
+   await offReq('queue','put',copia);
+  }
+  cancelados+=quitados;
+ }
+ return cancelados;
+}
+
+/* =====================================================
    ELIMINAR ACTIVIDAD
 ===================================================== */
 
@@ -17461,6 +17503,17 @@ async function eliminarActividad(
         "Eliminando actividad..."
     );
 
+    // Evita que una edición offline de sus notas se intente insertar/actualizar
+    // después de decidir borrar la actividad. La eliminación de calificaciones
+    // que sigue a continuación queda en la cola y se sincroniza antes que
+    // la eliminación de la actividad.
+    try {
+        await offCancelarCambiosPendientesCalificaciones(actividad.id);
+    } catch (e) {
+        console.error("No se pudieron depurar cambios offline de calificaciones:", e);
+        alert("No se pudo preparar la eliminación segura de la actividad. No se eliminará.\n\n" + (e?.message || e));
+        return;
+    }
 
     const {
         error:
