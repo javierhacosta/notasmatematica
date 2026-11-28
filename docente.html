@@ -8191,7 +8191,9 @@ async function offSyncQueue(){
      if(item.op==='insert'||item.op==='upsert'){
       const vals=(Array.isArray(item.value)?item.value:[item.value]).map(v=>{
        const x={...v};const pk=OFF_PK[item.tabla];
-       if(pk&&typeof pk==='string'&&Number(x[pk])<0)delete x[pk];
+       // Los identificadores temporales negativos y los id nulos no deben
+       // enviarse a Supabase: se omiten para que la BD genere el id definitivo.
+       if(pk&&typeof pk==='string'&&(x[pk]==null||Number(x[pk])<0))delete x[pk];
        return x;
       });
       if(item.tabla==='calificaciones'){
